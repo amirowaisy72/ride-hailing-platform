@@ -1,0 +1,73 @@
+
+"use client";
+
+import Link from "next/link";
+import { BRAND } from "@/config/brand";
+
+export default function Home() {
+  return (
+    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-[#F8FAF9] text-[#111827]">
+      <header className="flex items-center gap-3 px-6 pt-8">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#087F5B] text-xl font-bold text-white shadow-lg shadow-emerald-900/15">
+          {BRAND.shortName}
+        </div>
+        <span className="text-xl font-bold tracking-tight">
+          {BRAND.name}
+        </span>
+      </header>
+
+      <section className="flex flex-1 flex-col justify-center px-7 py-10">
+        <div className="relative mx-auto mb-12 flex h-72 w-full max-w-sm items-center justify-center overflow-hidden rounded-[36px] bg-gradient-to-br from-[#D1FAE5] via-[#E8F7EF] to-white">
+          <div className="absolute left-[-20%] top-[30%] h-24 w-[150%] rotate-[-28deg] border-y-[14px] border-white/80" />
+          <div className="absolute left-[40%] top-[-20%] h-[150%] w-20 rotate-[33deg] border-x-[12px] border-white/80" />
+
+          <div className="absolute left-10 top-12 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-2xl shadow-lg">
+            📍
+          </div>
+
+          <div className="absolute bottom-10 right-9 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#087F5B] text-3xl text-white shadow-xl">
+            🚘
+          </div>
+
+          <div className="relative z-10 rounded-2xl border border-white/80 bg-white/95 px-6 py-4 text-center shadow-xl">
+            <div className="mb-1 text-sm font-semibold text-[#087F5B]">
+              YOUR CITY, YOUR WAY
+            </div>
+            <div className="text-sm text-gray-500">
+              Easy rides. Better journeys.
+            </div>
+          </div>
+        </div>
+
+        <span className="mb-4 w-fit rounded-full bg-[#D1FAE5] px-4 py-2 text-xs font-bold tracking-wide text-[#065F46]">
+          MOVE SMARTER
+        </span>
+
+        <h1 className="max-w-md text-[40px] font-extrabold leading-[1.13] tracking-tight">
+          Your ride.
+          <span className="block text-[#087F5B]">
+            Your choice.
+          </span>
+        </h1>
+
+        <p className="mt-5 max-w-sm text-base leading-7 text-gray-500">
+          Find your ride, choose your fare, and travel
+          comfortably with drivers around you.
+        </p>
+      </section>
+
+      <footer className="rounded-t-[32px] bg-white px-6 pb-[max(28px,env(safe-area-inset-bottom))] pt-7 shadow-[0_-10px_40px_rgba(0,0,0,0.04)]">
+        <Link
+          href="/login"
+          className="flex h-14 w-full items-center justify-center rounded-2xl bg-[#087F5B] text-base font-bold text-white shadow-lg shadow-emerald-900/15 active:scale-[0.98]"
+        >
+          Get Started →
+        </Link>
+
+        <p className="mt-5 text-center text-sm text-gray-500">
+          Passenger or driver? Sign in to continue.
+        </p>
+      </footer>
+    </main>
+  );
+}

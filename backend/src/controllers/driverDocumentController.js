@@ -1,0 +1,64 @@
+const Driver = require("../models/Driver");
+const DriverDocument = require("../models/DriverDocument");
+const { uploadToCloudinary } = require("../integrations/cloudinary/uploadService");
+
+const uploadDocument = async (req, res) => {
+    try {
+        const driver = await Driver.findOne({ userId: req.user._id });
+
+        if (!driver) {
+            return res.status(404).json({
+                success: false,
+                message: "Driver profile not found",
+            });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: "Document image required",
+            });
+        }
+
+        const allowedTypes = DriverDocument.schema.path("documentType").enumValues;
+        const { documentType } = req.body;
+
+        if (!allowedTypes.includes(documentType)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid document type",
+            });
+        }
+
+        const uploaded = await uploadToCloudinary(
+            req.file.buffer,
+            driver._id.toString()
+        );
+
+        const document = await DriverDocument.create({
+            driverId: driver._id,
+            documentType,
+            imageUrl: uploaded.imageUrl,
+            cloudinaryPublicId: uploaded.publicId,
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: "Document uploaded successfully",
+            document: {
+                id: document._id,
+                documentType: document.documentType,
+                verificationStatus: document.verificationStatus,
+            },
+        });
+    } catch (error) {
+        console.error("Document upload error:", error.message);
+
+        return res.status(500).json({
+            success: false,
+            message: "Document upload failed",
+        });
+    }
+};
+
+module.exports = { uploadDocument };

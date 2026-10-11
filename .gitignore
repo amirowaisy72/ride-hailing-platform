@@ -1,0 +1,58 @@
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Next.js build files
+.next/
+out/
+.vercel/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Capacitor / Android local files
+android/.gradle/
+android/local.properties
+android/**/build/
+*.keystore
+*.jks
+*.p12
+*.pem
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.bak
+*.zip
+
+# Local testing and temporary files
+cloudflared.exe
+mobile-test-proxy.cjs
+New Text Document.txt
+quick.txt
+
+# Local database exports and backups
+*.sqlite
+*.db
+*.dump
+*.bak
