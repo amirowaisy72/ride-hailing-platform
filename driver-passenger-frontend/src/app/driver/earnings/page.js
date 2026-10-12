@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -101,7 +100,7 @@ function EarningsScreen() {
             Number(tx.balanceAfter) > Number(tx.balanceBefore));
 
     return (
-        <main className="min-h-dvh bg-[#F7F9F8] pb-[calc(100px+env(safe-area-inset-bottom))] text-slate-900">
+        <main className="driver-subpage min-h-dvh bg-[#F7F9F8] pb-[calc(100px+env(safe-area-inset-bottom))] text-slate-900">
             <MobileBottomNav role="DRIVER" />
 
             <header className="bg-[#087F5B] px-5 pb-32 pt-[max(24px,env(safe-area-inset-top))] text-white">

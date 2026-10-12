@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -114,7 +113,7 @@ function DocumentUploadScreen() {
     }
 
     return (
-        <main className="min-h-dvh bg-[#F7F9F8] pb-28 text-slate-900">
+        <main className="driver-subpage min-h-dvh bg-[#F7F9F8] pb-28 text-slate-900">
             <MobileBottomNav role="DRIVER" />
 
             <header className="bg-[#087F5B] px-5 pb-24 pt-[max(24px,env(safe-area-inset-top))] text-white">

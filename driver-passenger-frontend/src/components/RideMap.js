@@ -221,7 +221,7 @@ export default function RideMap({
         if (!map || !bounds) return;
         const height = map.getContainer().clientHeight;
         const bottom = bottomInsetPx(height, sheetRatioRef.current, DEFAULT_PADDING_RATIO);
-        map.fitBounds(bounds, { padding: { top: 100, bottom, left: 40, right: 40 }, maxZoom: 15, duration: 600 });
+        map.fitBounds(bounds, { padding: { top: 100, bottom: bottom + 24, left: 40, right: 40 }, maxZoom: 15, duration: 600 });
     }
 
     // Passenger tracking camera: frame once per phase, then only re-frame when a point leaves the visible area.
@@ -350,7 +350,7 @@ export default function RideMap({
             map.easeTo({
                 center: point, zoom: navigationMode ? 16.5 : 15,
                 bearing: navigationMode ? bearing : 0, pitch: navigationMode ? 45 : 0,
-                offset: navigationMode ? [0, 105] : [0, 0], duration: 750
+                offset: navigationMode ? [0, -Math.round(bottomInsetPx(map.getContainer().clientHeight, sheetRatioRef.current, 0.12) * 0.55)] : [0, 0], duration: 750
             });
         }
     }, [mapReady, driverLocation?.latitude, driverLocation?.longitude, driverLocation?.coordinates?.[0], driverLocation?.coordinates?.[1], followDriver, navigationMode, locateRequest, destination?.latitude, destination?.longitude, destination?.coordinates?.[0], destination?.coordinates?.[1]]);
