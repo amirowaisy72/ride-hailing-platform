@@ -254,6 +254,13 @@ export default function RideMap({
         const map = mapRef.current;
         const point = getPoint(userLocation);
         if (!map || !point) return;
+
+        if (driverLocation && !passengerView) {
+            pickupRef.current?.remove();
+            pickupRef.current = null;
+            return;
+        }
+
         if (!pickupRef.current) {
             pickupRef.current = new maplibregl.Marker({ element: createPickupElement(), draggable: Boolean(onPickupChange) })
                 .setLngLat(point).addTo(map);
@@ -344,13 +351,19 @@ export default function RideMap({
 
         if (passengerView) {
             if (navigationMode && mapReady) frameTargets([point, targetPoint], `driver:${phaseKey}`, forceFrame);
-        } else if (followDriver) {
+        } else {
             const bearing = movedBearing != null ? movedBearing : map.getBearing();
             // Place moving driver toward lower half so upcoming roads remain visible.
             map.easeTo({
                 center: point, zoom: navigationMode ? 16.5 : 15,
                 bearing: navigationMode ? bearing : 0, pitch: navigationMode ? 45 : 0,
-                offset: navigationMode ? [0, -Math.round(bottomInsetPx(map.getContainer().clientHeight, sheetRatioRef.current, 0.12) * 0.55)] : [0, 0], duration: 750
+                offset: navigationMode ? [0, -Math.round(bottomInsetPx(map.getContainer().clientHeight, sheetRatioRef.current, 0.12) * 0.55)] : [0, -Math.round(
+                    bottomInsetPx(
+                        map.getContainer().clientHeight,
+                        sheetRatioRef.current,
+                        0.49
+                    ) / 2
+                )], duration: 750
             });
         }
     }, [mapReady, driverLocation?.latitude, driverLocation?.longitude, driverLocation?.coordinates?.[0], driverLocation?.coordinates?.[1], followDriver, navigationMode, locateRequest, destination?.latitude, destination?.longitude, destination?.coordinates?.[0], destination?.coordinates?.[1]]);

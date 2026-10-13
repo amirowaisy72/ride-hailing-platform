@@ -195,6 +195,7 @@ function PassengerDashboard() {
     ]);
     const [pickupAddress, setPickupAddress] = useState("");
     const [fullScreenMap, setFullScreenMap] = useState(false);
+    const [bookingOpen, setBookingOpen] = useState(false);
     const [manualPickup, setManualPickup] = useState(false);
     const [mapPickTarget, setMapPickTarget] = useState(null);
     useEffect(() => {
@@ -745,6 +746,7 @@ function PassengerDashboard() {
         const target = mapPickTarget;
         setMapPickTarget(null);
         setFullScreenMap(false);
+        setBookingOpen(true);
         let name = target === "pickup" ? "Pinned pickup" : "Pinned destination";
         try {
             const result = await reverseGeocode(position.latitude, position.longitude, token);
@@ -767,6 +769,7 @@ function PassengerDashboard() {
 
     function startMapPick(target) {
         setMapPickTarget(target);
+        setBookingOpen(false);
         setFullScreenMap(true);
     }
 
@@ -782,6 +785,7 @@ function PassengerDashboard() {
         setFare(null);
         setProposedFare("");
         setFullScreenMap(false);
+        setBookingOpen(false);
         if (rated) setNotification("Thank you for rating your driver!");
     }
 
@@ -800,9 +804,10 @@ function PassengerDashboard() {
         : routeLoading ? "Calculating your route..."
             : fareLoading ? "Calculating your fare..."
                 : !fareIsValid && fare ? "Enter a valid fare" : "";
-    const sheetRatio = fullScreenMap || mapPickTarget
-        ? 0.14
-        : !activeRide ? 0.6 : searchingForDriver ? 0.58 : 0.46;
+    const sheetRatio = mapPickTarget || (!activeRide && !bookingOpen) || fullScreenMap
+        ? 0.12
+        : !activeRide ? 0.12 : searchingForDriver ? 0.58 : 0.46;
+    useEffect(() => { if (activeRide) setBookingOpen(false); }, [activeRide?._id]);
     const pickupLabel = activeRide ? placeLabel(activeRide.pickup, pickupAddress || "Pickup location") : pickupAddress;
     const destinationLabel = activeRide ? placeLabel(activeRide.destination, destinationQuery || "Destination") : destinationQuery;
 
@@ -912,28 +917,39 @@ function PassengerDashboard() {
                 <MapPickBanner target={mapPickTarget} onCancel={() => { setMapPickTarget(null); setFullScreenMap(false); }} />
             )}
 
-            {!activeRide && fullScreenMap && !mapPickTarget && (
-                <BookingPeek
-                    destinationLabel={destinationSelected ? destinationQuery : ""}
-                    route={route}
-                    onOpen={() => setFullScreenMap(false)}
-                />
+            {!activeRide && !mapPickTarget && !bookingOpen && (
+                <div className="absolute inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] z-20 rounded-t-[30px] bg-white px-4 pb-5 pt-4 shadow-[0_-14px_44px_rgba(17,17,17,0.12)]">
+                    <div className="mx-auto max-w-lg space-y-3">
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                            <span className="shrink-0 rounded-xl bg-[#C1F11D] px-4 py-2.5 text-sm font-extrabold text-[#111111]"><Car size={17} className="mr-1 inline" /> Ride</span>
+                            <span className="shrink-0 rounded-xl bg-[#F4F5F7] px-4 py-2.5 text-sm font-semibold text-[#6B7280]">Cash payments</span>
+                        </div>
+                        <button type="button" onClick={() => setBookingOpen(true)}
+                            className="flex w-full items-center gap-3 rounded-2xl bg-[#F4F5F7] px-4 py-4 text-left shadow-sm transition-transform active:scale-[0.98]"
+                            aria-label="Where to and for how much? Open ride booking">
+                            <Crosshair size={22} className="shrink-0 text-[#111111]" />
+                            <span className="min-w-0 flex-1 truncate text-base font-extrabold">Where to &amp; for how much?</span>
+                            <ArrowRight size={20} className="shrink-0" />
+                        </button>
+                        {destinationSelected && destinationQuery && <p className="truncate px-1 text-xs text-[#6B7280]">Last selected: {destinationQuery}</p>}
+                    </div>
+                </div>
             )}
 
             <section
-                aria-hidden={fullScreenMap || Boolean(activeRide)}
-                inert={fullScreenMap || Boolean(activeRide)}
+                aria-hidden={!bookingOpen || fullScreenMap || Boolean(activeRide)}
+                inert={!bookingOpen || fullScreenMap || Boolean(activeRide)}
                 aria-label="Book a ride"
-                className={`absolute inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] z-10 flex max-h-[calc(80dvh-68px)] flex-col rounded-t-[28px] bg-white shadow-[0_-16px_48px_rgba(17,17,17,0.14)] transition-transform duration-300 ease-out ${(fullScreenMap || activeRide) ? "pointer-events-none translate-y-[120%]" : ""}`}
+                className={`absolute inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] top-0 z-30 flex flex-col bg-white shadow-xl transition-transform duration-300 ease-out ${(!bookingOpen || fullScreenMap || activeRide) ? "pointer-events-none translate-y-[120%]" : ""}`}
             >
-                <button
-                    type="button"
-                    onClick={() => setFullScreenMap(true)}
-                    aria-label="Minimise booking panel"
-                    className="flex shrink-0 justify-center pb-2 pt-3"
-                >
-                    <span className="h-1.5 w-10 rounded-full bg-[#E3E5E8]" />
-                </button>
+                <div className="flex shrink-0 items-center justify-between border-b border-[#EEF0F2] px-5 pb-3 pt-[max(16px,env(safe-area-inset-top))]">
+                    <button type="button" onClick={() => setBookingOpen(false)} aria-label="Back to map"
+                        className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F4F5F7]">
+                        <ChevronDown size={22} />
+                    </button>
+                    <strong className="text-base font-extrabold">Book your ride</strong>
+                    <span className="w-11" />
+                </div>
 
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-3 sm:px-6">
                     <div className="mx-auto max-w-lg">
@@ -948,8 +964,8 @@ function PassengerDashboard() {
                             </div>
                             <button
                                 type="button"
-                                onClick={() => setFullScreenMap(true)}
-                                aria-label="Show full map"
+                                onClick={() => setBookingOpen(false)}
+                                aria-label="Back to map"
                                 className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F4F5F7] transition-colors hover:bg-[#E9EBEE]"
                             >
                                 <ChevronDown size={20} />

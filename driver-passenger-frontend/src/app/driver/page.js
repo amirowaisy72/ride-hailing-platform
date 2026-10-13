@@ -418,9 +418,11 @@ function DriverDashboard() {
             }
             setIsOnline(Boolean(data.isOnline));
             setIsAvailable(Boolean(data.isAvailable));
-            notify({ kind: data.isOnline ? "success" : "info", key: `online:${data.isOnline}:${Date.now()}`, sound: false,
+            notify({
+                kind: data.isOnline ? "success" : "info", key: `online:${data.isOnline}:${Date.now()}`, sound: false,
                 title: data.isOnline ? "You're online" : "You're offline",
-                body: data.isOnline ? "Location synced. Requests will appear automatically." : "You won't receive new requests." });
+                body: data.isOnline ? "Location synced. Requests will appear automatically." : "You won't receive new requests."
+            });
             if (data.isOnline) {
                 const available = await apiRequest("/drivers/me/available-rides", { token });
                 setRequests((available.rides || []).map((ride) => ({ ...ride, rideId: String(ride._id) })));
@@ -470,8 +472,10 @@ function DriverDashboard() {
             await submitDriverOffer(ride.rideId, price, token);
             setSubmittedIds((previous) => [...new Set([...previous, ride.rideId])]);
             setNextBidAt((previous) => ({ ...previous, [ride.rideId]: Date.now() + 15000 }));
-            notify({ kind: "success", sound: false, key: `offer:${ride.rideId}:${price}:${Date.now()}`,
-                title: wasSubmitted ? "Offer updated" : "Offer sent", body: `${money(price)} · waiting for passenger` });
+            notify({
+                kind: "success", sound: false, key: `offer:${ride.rideId}:${price}:${Date.now()}`,
+                title: wasSubmitted ? "Offer updated" : "Offer sent", body: `${money(price)} · waiting for passenger`
+            });
         } catch (error) {
             reportError(error, "Offer not sent");
         } finally {
@@ -485,9 +489,11 @@ function DriverDashboard() {
         try {
             const data = await apiRequest(`/rides/${selectedRide._id}/stops`, { method: "PATCH", token, body: JSON.stringify({ action }) });
             setSelectedRide(data.ride);
-            notify({ kind: "success", sound: false, key: `stop:${action}:${data.ride?.stopsCompleted}`,
+            notify({
+                kind: "success", sound: false, key: `stop:${action}:${data.ride?.stopsCompleted}`,
                 title: action === "ARRIVE" ? "Stop arrival recorded" : "Stop completed",
-                body: action === "ARRIVE" ? "Waiting timer started." : "Navigating to the next location." });
+                body: action === "ARRIVE" ? "Waiting timer started." : "Navigating to the next location."
+            });
         } catch (error) {
             reportError(error, "Stop update failed");
         } finally {
@@ -503,9 +509,11 @@ function DriverDashboard() {
             const data = await apiRequest(`/rides/${selectedRide._id}/status`, { method: "PATCH", token, body: JSON.stringify({ status: action[0] }) });
             setSelectedRide(data.ride);
             const s = data.ride.status;
-            notify({ kind: "success", sound: s === "TRIP_COMPLETED", tone: "success", key: `status:${data.ride._id}:${s}`,
+            notify({
+                kind: "success", sound: s === "TRIP_COMPLETED", tone: "success", key: `status:${data.ride._id}:${s}`,
                 title: STATUS_LABEL[s] || s.replaceAll("_", " "),
-                body: s === "DRIVER_ARRIVED" ? "Passenger has been notified." : s === "TRIP_STARTED" ? "Navigating to the next destination." : "" });
+                body: s === "DRIVER_ARRIVED" ? "Passenger has been notified." : s === "TRIP_STARTED" ? "Navigating to the next destination." : ""
+            });
             if (s === "TRIP_COMPLETED") setIsAvailable(isOnline);
         } catch (error) {
             reportError(error, "Status update failed");
@@ -772,11 +780,7 @@ function DriverDashboard() {
                         </div>
                     </div>
                 ) : (
-                    <div className="dx-brand">
-                        <span className="dx-logo">{BRAND.shortName}</span>
-                        {!rideInProgress && statusPill}
-                        <Link href="/driver/account" aria-label="My account" className="dx-fab dx-fab-flat"><UserRound size={18} /></Link>
-                    </div>
+                    null
                 )}
                 <DriverMapControls notifications={notifications} onLocate={locateMe} locating={locating} />
             </header>
