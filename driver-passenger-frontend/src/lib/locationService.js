@@ -11,10 +11,10 @@ function decorate(place) {
     const full = normalize(place.display_name || place.displayName || place.name);
     const segments = full.split(",").map(normalize).filter(Boolean);
     const primary = normalize(place.name) || segments[0] || "Selected place";
-    const city = segments.slice(1).find((part) => strip(part) !== strip(primary)) || "";
+    const city = normalize(place.address?.city || place.address?.town || place.address?.village || place.city) || segments.slice(1).find((part) => strip(part) !== strip(primary) && !/^\d{4,}$/.test(part)) || "";
     // Display a concise label, but preserve the complete original address.
     const label = [primary, city].filter(Boolean).join(", ");
-    return { ...place, name: label, display_name: full, shortName: primary, subtitle: segments.slice(1, 3).join(", ") };
+    return { ...place, name: label, display_name: full, shortName: primary, city, subtitle: [city, ...segments.slice(1).filter((part) => strip(part) !== strip(city)).slice(0, 1)].filter(Boolean).join(", ") };
 }
 
 async function queryProvider(q, token, userLocation) {
@@ -35,10 +35,15 @@ export async function searchLocations(query, token, userLocation) {
     if (cached && Date.now() - cached.at < CACHE_MS) return cached.items;
 
     let results = await queryProvider(q, token, userLocation);
-    // For sparse POI coverage, retry only after an empty result, not on every keystroke.
-    // This improves local disambiguation but cannot invent missing map-provider entries.
-    if (!results.length && !/\bkhanpur\b/i.test(q) && q.length >= 5) {
-        try { results = await queryProvider(`${q}, Khanpur`, token, userLocation); } catch { /* Retain initial empty results. */ }
+    // Supplement sparse results with local context, without inventing POIs.
+    // Keep requests sequential to avoid unnecessary pressure on the geocoder.
+    if (results.length < 5 && !/\bkhanpur\b/i.test(q) && q.length >= 4 &&
+        Number.isFinite(userLocation?.latitude) && Number.isFinite(userLocation?.longitude) &&
+        Math.abs(userLocation.latitude - 28.65) < 0.5 && Math.abs(userLocation.longitude - 70.66) < 0.5) {
+        try {
+            const local = await queryProvider(`${q}, Khanpur`, token, userLocation);
+            results = [...results, ...local];
+        } catch { /* Keep initial results when locality search fails. */ }
     }
     const seen = new Set();
     const items = results.filter((place) => {
@@ -53,6 +58,16 @@ export async function searchLocations(query, token, userLocation) {
     if (memo.size >= MAX_CACHE) memo.delete(memo.keys().next().value);
     memo.set(key, { at: Date.now(), items });
     return items;
+}
+
+// Approximate straight-line distance for suggestion display (not driving distance).
+export function placeDistanceKm(from, to) {
+    const a = Number(from?.latitude), b = Number(from?.longitude);
+    const c = Number(to?.latitude), d = Number(to?.longitude);
+    if (![a, b, c, d].every(Number.isFinite)) return null;
+    const rad = Math.PI / 180;
+    const h = Math.sin((c - a) * rad / 2) ** 2 + Math.cos(a * rad) * Math.cos(c * rad) * Math.sin((d - b) * rad / 2) ** 2;
+    return 12742 * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
 export async function reverseGeocode(latitude, longitude, token) {

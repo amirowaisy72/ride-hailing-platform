@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Car } from "lucide-react";
+import { Car, UserRound } from "lucide-react";
 import { getVehicle } from "@/lib/rideDisplay";
 
 maplibregl.setWorkerUrl("/maplibre-worker.mjs");
@@ -19,9 +19,10 @@ const DEFAULT_PADDING_RATIO = 0.62;
 const TRACKING_PADDING_RATIO = 0.42;
 
 const MAP_STYLES = `
-.rx-map-pickup{position:relative;width:30px;height:30px;display:grid;place-items:center;cursor:grab}
+.rx-map-pickup{position:relative;width:42px;height:42px;display:grid;place-items:center;cursor:grab}
 .rx-map-pickup-pin{position:relative;z-index:2;width:30px;height:30px;border-radius:50%;background:${DARK};border:3px solid #fff;box-shadow:0 4px 14px rgba(17,17,17,.35);display:grid;place-items:center}
 .rx-map-pickup-dot{width:10px;height:10px;border-radius:50%;background:${LIME}}
+.rx-map-pickup-pin svg{display:block}
 .rx-map-radar{display:none;position:absolute;z-index:1;left:50%;top:50%;width:220px;height:220px;margin:-110px 0 0 -110px;border-radius:50%;background:radial-gradient(circle,rgba(193,241,29,.45) 0%,rgba(193,241,29,.18) 55%,rgba(193,241,29,0) 70%);border:2px solid rgba(140,180,0,.45);pointer-events:none;animation:rx-map-radar 2.8s cubic-bezier(0,0,.2,1) infinite}
 .rx-map-searching .rx-map-radar{display:block}
 .rx-map-radar-delay{animation-delay:1.4s}

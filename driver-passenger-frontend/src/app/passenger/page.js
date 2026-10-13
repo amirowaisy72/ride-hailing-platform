@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
     ArrowRight, Banknote, Bell, Check, ChevronDown, ChevronUp, Clock, Crosshair, LocateFixed,
     Map as MapIcon, MapPin, Minimize2, Minus, Navigation, Plus, Radio, Route as RouteIcon,
-    ShieldCheck, Star, UserRound, Users, Volume2, VolumeX, X, Car,
+    ShieldCheck, Star, UserRound, Users, Volume2, VolumeX, X, Car, Menu,
 } from "lucide-react";
 import { Geolocation } from "@capacitor/geolocation";
 import AuthGuard from "@/components/AuthGuard";
@@ -21,6 +21,7 @@ import {
     reverseGeocode,
     searchLocations,
     calculateRoute,
+    placeDistanceKm,
 } from "@/lib/locationService";
 import RideMap from "@/components/RideMap";
 import { useLiveDriverLocation } from "@/hooks/useLiveDriverLocation";
@@ -196,6 +197,7 @@ function PassengerDashboard() {
     const [pickupAddress, setPickupAddress] = useState("");
     const [fullScreenMap, setFullScreenMap] = useState(false);
     const [bookingOpen, setBookingOpen] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
     const [manualPickup, setManualPickup] = useState(false);
     const [mapPickTarget, setMapPickTarget] = useState(null);
     useEffect(() => {
@@ -842,17 +844,12 @@ function PassengerDashboard() {
             </div>
 
             <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-3 px-4 pb-4 pt-[max(16px,env(safe-area-inset-top))]">
-                <div className={`pointer-events-auto flex items-center gap-1.5 rounded-2xl bg-white p-1.5 ${FLOATING_SHADOW}`}>
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#111111] text-sm font-black tracking-tight text-[#C1F11D]">
-                        {BRAND.shortName}
-                    </div>
-                    <Link
-                        href="/passenger/account"
-                        aria-label="My account"
-                        className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F4F5F7] text-[#111111] transition-colors hover:bg-[#E9EBEE]"
-                    >
-                        <UserRound size={20} />
-                    </Link>
+                <div className="pointer-events-auto relative">
+                    <button type="button" aria-label="Open menu" aria-expanded={menuOpen}
+                        onClick={() => setMenuOpen((open) => !open)}
+                        className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#111111] transition-transform active:scale-95 ${FLOATING_SHADOW}`}>
+                        {menuOpen ? <X size={23} /> : <Menu size={23} />}
+                    </button>
                 </div>
 
                 {searchingForDriver && (
@@ -865,30 +862,33 @@ function PassengerDashboard() {
                     </div>
                 )}
 
-                <div className="pointer-events-auto flex items-center gap-2">
-                    <button
-                        type="button"
-                        aria-label={soundEnabled ? "Mute ride alerts" : "Enable ride alert sound"}
-                        aria-pressed={soundEnabled}
-                        title={soundEnabled ? "Mute alerts" : "Enable alerts"}
-                        onClick={toggleSound}
-                        className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-white transition-transform active:scale-95 ${FLOATING_SHADOW}`}
-                    >
-                        {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} className="text-[#6B7280]" />}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setNotification((message) => message ? "" : "No new notifications")}
-                        aria-label="Notifications"
-                        className={`relative flex h-12 w-12 items-center justify-center rounded-2xl bg-white transition-transform active:scale-95 ${FLOATING_SHADOW}`}
-                    >
-                        <Bell size={21} />
-                        {notification && (
-                            <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full border-2 border-white bg-[#E5484D]" />
-                        )}
-                    </button>
-                </div>
             </header>
+
+            {menuOpen && (
+                <>
+                    <button type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)}
+                        className="absolute inset-0 z-30 bg-black/20" />
+                    <nav aria-label="Passenger menu"
+                        className={`absolute left-4 top-[calc(max(16px,env(safe-area-inset-top))+60px)] z-40 w-64 max-w-[calc(100vw-32px)] space-y-1 rounded-2xl bg-white p-2 text-[#111111] ${FLOATING_SHADOW}`}>
+                        <Link href="/passenger/account" onClick={() => setMenuOpen(false)}
+                            className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-[#F4F5F7]">
+                            <UserRound size={19} /> My account
+                        </Link>
+                        <button type="button" onClick={toggleSound}
+                            className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold hover:bg-[#F4F5F7]">
+                            {soundEnabled ? <Volume2 size={19} /> : <VolumeX size={19} />}
+                            {soundEnabled ? "Mute alerts" : "Enable sound"}
+                        </button>
+                        <button type="button" onClick={() => {
+                            setNotification((message) => message || "No new notifications");
+                            setMenuOpen(false);
+                        }} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold hover:bg-[#F4F5F7]">
+                            <Bell size={19} /> Notifications
+                            {notification && <span className="ml-auto h-2 w-2 rounded-full bg-[#E5484D]" />}
+                        </button>
+                    </nav>
+                </>
+            )}
 
             <div className="absolute right-4 top-[calc(max(16px,env(safe-area-inset-top))+64px)] z-20">
                 <button
@@ -953,24 +953,9 @@ function PassengerDashboard() {
 
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-3 sm:px-6">
                     <div className="mx-auto max-w-lg">
-                        <div className="mb-4 flex items-end justify-between gap-3">
-                            <div className="min-w-0">
-                                <p className="text-sm font-medium text-[#6B7280]">
-                                    Hello, {user?.firstName || "Passenger"}
-                                </p>
-                                <h1 className="mt-0.5 text-pretty text-2xl font-extrabold tracking-tight">
-                                    {currentCity ? `Where to in ${currentCity}?` : "Where to today?"}
-                                </h1>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setBookingOpen(false)}
-                                aria-label="Back to map"
-                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#F4F5F7] transition-colors hover:bg-[#E9EBEE]"
-                            >
-                                <ChevronDown size={20} />
-                            </button>
-                        </div>
+                        <p className="mb-3 text-xs font-medium text-[#6B7280]">
+                            Choose your pickup and destination. Search real places nearby.
+                        </p>
 
                         <div className="rounded-2xl border border-[#EEF0F2] bg-white shadow-[0_4px_18px_rgba(17,17,17,0.05)]">
                             <div className="px-3.5 py-3">
@@ -1046,7 +1031,7 @@ function PassengerDashboard() {
                             </div>
                         )}
                         {!searching && searchResults.length > 0 && (
-                            <ul className="rx-slide-up mt-2 max-h-60 overflow-y-auto rounded-2xl border border-[#EEF0F2] bg-white">
+                            <ul className="rx-slide-up mt-3 max-h-[45dvh] overflow-y-auto rounded-2xl border border-[#E9EBEE] bg-white shadow-[0_12px_36px_rgba(17,17,17,0.09)]" aria-label="Destination search results">
                                 {searchResults.map((place, index) => (
                                     <li key={place.place_id || index} className="border-b border-[#F1F2F4] last:border-b-0">
                                         <button
@@ -1057,23 +1042,34 @@ function PassengerDashboard() {
                                                 setDestinationQuery(place.name);
                                                 setSearchResults([]);
                                             }}
-                                            className="flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-[#F7F8F9]"
+                                            className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-[#F7F8F9] focus-visible:outline-2 focus-visible:outline-[#C1F11D]"
                                         >
-                                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F4F5F7]">
-                                                <MapPin size={16} className="text-[#6B7280]" aria-hidden="true" />
+                                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F4F5F7]">
+                                                <MapPin size={19} className="text-[#111111]" aria-hidden="true" />
                                             </span>
-                                            <span className="min-w-0">
-                                                <span className="block truncate text-sm font-semibold">{place.shortName || place.name || "Selected location"}</span>
-                                                {(place.subtitle || place.display_name) && (
-                                                    <span className="mt-0.5 block truncate text-xs text-[#6B7280]" title={place.display_name}>
-                                                        {place.subtitle || place.display_name}
-                                                    </span>
-                                                )}
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block truncate text-[15px] font-bold text-[#111111]">{place.shortName || place.name || "Selected location"}</span>
+                                                <span className="mt-1 block truncate text-xs text-[#6B7280]" title={place.display_name}>
+                                                    {place.city || place.subtitle || "Nearby place"}
+                                                </span>
                                             </span>
+                                            {placeDistanceKm(userLocation, place) != null && (
+                                                <span className="shrink-0 text-xs font-bold tabular-nums text-[#6B7280]">
+                                                    {placeDistanceKm(userLocation, place) < 1
+                                                        ? `${Math.round(placeDistanceKm(userLocation, place) * 1000)} m`
+                                                        : `${placeDistanceKm(userLocation, place).toFixed(1)} km`}
+                                                </span>
+                                            )}
                                         </button>
                                     </li>
                                 ))}
                             </ul>
+                        )}
+
+                        {!searching && destinationQuery.trim().length >= 3 && !destinationSelected && searchResults.length === 0 && (
+                            <div className="mt-3 rounded-2xl bg-[#F4F5F7] px-4 py-4 text-sm text-[#6B7280]">
+                                No matching places found. Try the business name with its area or city.
+                            </div>
                         )}
 
                         <div className="mt-3 flex flex-wrap items-start gap-2">
