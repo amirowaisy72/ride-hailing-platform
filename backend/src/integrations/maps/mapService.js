@@ -62,10 +62,10 @@ const searchAddress = async (query, latitude, longitude) => {
     url.searchParams.set("format", "json");
     url.searchParams.set("addressdetails", "1");
     url.searchParams.set("countrycodes", "pk");
-    url.searchParams.set("limit", "5");
+    url.searchParams.set("limit", "15");
 
     if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
-        const radius = 0.2;
+        const radius = 0.12;
 
         url.searchParams.set("viewbox", [
             longitude - radius,
