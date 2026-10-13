@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
     ArrowRight, Banknote, Bell, Check, ChevronDown, ChevronUp, Clock, Crosshair, LocateFixed,
     Map as MapIcon, MapPin, Minimize2, Minus, Navigation, Plus, Radio, Route as RouteIcon,
-    ShieldCheck, Star, UserRound, Users, Volume2, VolumeX, X, Car, Menu,
+    ShieldCheck, Star, UserRound, Users, Volume2, VolumeX, X, Car, Menu, MessageCircle,
 } from "lucide-react";
 import { Geolocation } from "@capacitor/geolocation";
 import AuthGuard from "@/components/AuthGuard";
@@ -196,6 +196,7 @@ function PassengerDashboard() {
     ]);
     const [pickupAddress, setPickupAddress] = useState("");
     const [fullScreenMap, setFullScreenMap] = useState(false);
+    const [mapChatOpen, setMapChatOpen] = useState(false);
     const [bookingOpen, setBookingOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [manualPickup, setManualPickup] = useState(false);
@@ -276,6 +277,12 @@ function PassengerDashboard() {
     const { driverLocation, driverLocationUpdatedAt, driverLocationFresh } = useLiveDriverLocation(activeRideId, token, Boolean(activeRide?.driverId || ASSIGNED_STATUSES.includes(activeRide?.status)));
     const searchingForDriver = Boolean(activeRide && SEARCHING_STATUSES.includes(activeRide.status));
     const rideAssigned = Boolean(activeRide && ASSIGNED_STATUSES.includes(activeRide.status));
+    useEffect(() => {
+        if (rideAssigned) setFullScreenMap(true);
+    }, [activeRide?._id, rideAssigned]);
+    useEffect(() => {
+        if (!rideAssigned) setMapChatOpen(false);
+    }, [rideAssigned]);
     const nearbyDrivers = useNearbyDrivers(activeRideId, token, searchingForDriver);
     const [liveRoute, setLiveRoute] = useState(null);
     useEffect(() => {
@@ -450,7 +457,8 @@ function PassengerDashboard() {
                 status: "DRIVER_SELECTED",
             }));
             setOffers([]);
-            setFullScreenMap(false);
+            setMapChatOpen(false);
+            setFullScreenMap(true);
             setNotification("Driver selected successfully!");
         } catch (error) {
             setNotification(error.message);
@@ -488,7 +496,8 @@ function PassengerDashboard() {
             });
             setOffers([]);
             setActiveRide(data.ride);
-            setFullScreenMap(false);
+            setBookingOpen(false);
+            setFullScreenMap(true);
             setNotification("Ride requested! Waiting for driver offers.");
         } catch (error) {
             setNotification(error.message);
@@ -821,7 +830,7 @@ function PassengerDashboard() {
                     userLocation={activeRide?.pickup || userLocation}
                     locateRequest={mapLocateRequest}
                     driverLocation={driverLocation}
-                    nearbyDriverCells={searchingForDriver ? nearbyDrivers.cells : []}
+                    nearbyDriverCells={nearbyDrivers?.cells || []}
                     navigationMode={rideAssigned}
                     followDriver={Boolean(driverLocation && activeRide?.status === "DRIVER_EN_ROUTE")}
                     destination={activeRide
@@ -890,7 +899,7 @@ function PassengerDashboard() {
                 </>
             )}
 
-            <div className="absolute right-4 top-[calc(max(16px,env(safe-area-inset-top))+64px)] z-20">
+            <div className="absolute right-4 bottom-[calc(170px+env(safe-area-inset-bottom))] z-20">
                 <button
                     type="button"
                     aria-label={activeRide ? "Recenter map" : "Locate me"}
@@ -1267,17 +1276,58 @@ function PassengerDashboard() {
             </section>
 
             {activeRide && fullScreenMap && (
-                <button
-                    type="button"
-                    onClick={() => setFullScreenMap(false)}
-                    aria-label="Show ride details"
-                    className="absolute bottom-[calc(88px+env(safe-area-inset-bottom))] left-1/2 z-30 flex h-12 -translate-x-1/2 items-center gap-2 rounded-full bg-[#111111] px-5 text-sm font-bold text-white shadow-xl"
-                >
-                    <Minimize2 size={18} aria-hidden="true" />
-                    {searchingForDriver
-                        ? validOffers.length > 0 ? `View ${validOffers.length} offer${validOffers.length > 1 ? "s" : ""}` : "Show search details"
-                        : "Show ride details"}
-                </button>
+                <div className="pointer-events-none absolute inset-x-4 bottom-[calc(84px+env(safe-area-inset-bottom))] z-30 mx-auto max-w-lg space-y-2">
+                    <div role="status" aria-live="polite" className="rounded-2xl border border-[#E9EBEE] bg-white/95 px-4 py-3 shadow-xl backdrop-blur-sm">
+                        <div className="flex items-center gap-3">
+                            <span className="relative flex h-3 w-3 shrink-0 rounded-full bg-[#C1F11D] ring-4 ring-[#C1F11D]/20">
+                                {searchingForDriver && <span className="absolute inset-0 animate-ping rounded-full bg-[#C1F11D] opacity-60" />}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-extrabold text-[#111111]">
+                                    {searchingForDriver
+                                        ? validOffers.length > 0
+                                            ? `${validOffers.length} driver offer${validOffers.length > 1 ? "s" : ""} received`
+                                            : "Searching for drivers..."
+                                        : activeRide.status === "DRIVER_SELECTED" ? "Driver confirmed · awaiting departure"
+                                            : activeRide.status === "DRIVER_EN_ROUTE" ? "Driver heading to you"
+                                                : activeRide.status === "DRIVER_ARRIVED" ? "Driver has arrived"
+                                                    : activeRide.status === "TRIP_STARTED" ? "Trip in progress"
+                                                        : "Ride status"}
+                                </p>
+                                <p className="truncate text-xs text-[#6B7280]">
+                                    {searchingForDriver
+                                        ? validOffers.length > 0 ? "View and compare your offers" : `${onlineNearby} online within range · Drivers can view your request`
+                                        : activeRide.status === "DRIVER_ARRIVED" ? "Meet your driver at the pickup point"
+                                            : liveRoute?.distanceKm != null
+                                                ? `${liveRoute.distanceKm} km · approx. ${liveRoute.durationMinutes} min remaining`
+                                                : driverLocationFresh ? "Live driver location updating" : "Waiting for live driver location"}
+                                </p>
+                            </div>
+                            {rideAssigned && (
+                                <button type="button" aria-label="Message driver" title="Message driver"
+                                    onClick={() => setMapChatOpen(true)}
+                                    className="pointer-events-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F4F5F7] text-[#111111]">
+                                    <MessageCircle size={19} />
+                                </button>
+                            )}
+                            <button type="button" onClick={() => { setMapChatOpen(false); setFullScreenMap(false); }}
+                                className="pointer-events-auto shrink-0 rounded-xl bg-[#C1F11D] px-3 py-2 text-xs font-extrabold text-[#111111]">
+                                {validOffers.length > 0 && searchingForDriver ? "View offers" : "Details"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeRide && rideAssigned && fullScreenMap && mapChatOpen && (
+                <RideChat
+                    rideId={activeRide._id}
+                    token={token}
+                    userId={user?._id || user?.id}
+                    directOpen
+                    onClose={() => setMapChatOpen(false)}
+                    driverPhone={activeRide?.driverId?.userId?.phone || activeRide?.driverId?.phone || activeRide?.driver?.phone || ""}
+                />
             )}
 
             {activeRide && !fullScreenMap && searchingForDriver && (

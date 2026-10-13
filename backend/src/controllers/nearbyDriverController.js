@@ -34,8 +34,8 @@ async function nearbyDriversForRide(req, res) {
         for (const driver of drivers) {
             const [lng, lat] = driver.currentLocation?.coordinates || [];
             if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue;
-            const latitude = Math.round(lat * 100) / 100;
-            const longitude = Math.round(lng * 100) / 100;
+            const latitude = Math.round(lat * 200) / 200;
+            const longitude = Math.round(lng * 200) / 200;
             const key = `${latitude}:${longitude}`;
             const previous = cells.get(key) || { latitude, longitude, count: 0 };
             previous.count += 1;

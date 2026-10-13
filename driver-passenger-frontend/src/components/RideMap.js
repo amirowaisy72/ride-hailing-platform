@@ -35,7 +35,7 @@ const MAP_STYLES = `
 .rx-map-driver-heading.is-visible{opacity:1}
 .rx-map-driver-heading::before{content:"";position:absolute;left:50%;top:0;margin-left:-7px;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:10px solid ${DARK}}
 .rx-map-driver-body{position:absolute;inset:0;border-radius:50%;background:${DARK};border:3px solid #fff;display:grid;place-items:center;box-shadow:0 6px 18px rgba(17,17,17,.4)}
-.rx-map-cell{position:relative;width:38px;height:38px;display:grid;place-items:center;animation:rx-map-fade .5s ease both}
+.rx-map-cell{position:relative;width:38px;height:38px;display:grid;place-items:center}
 .rx-map-cell-halo{position:absolute;inset:-12px;border-radius:50%;border:1.5px dashed rgba(17,17,17,.35);background:rgba(193,241,29,.2)}
 .rx-map-cell-body{position:relative;width:36px;height:36px;border-radius:50%;background:#fff;border:2px solid ${DARK};display:grid;place-items:center;box-shadow:0 3px 10px rgba(17,17,17,.25)}
 .rx-map-cell-count{position:absolute;right:-7px;bottom:-7px;min-width:19px;height:19px;padding:0 4px;border-radius:10px;background:${DARK};color:${LIME};font:800 10px/15px system-ui,sans-serif;text-align:center;border:2px solid #fff}
@@ -111,6 +111,7 @@ function createDriverElement(type) {
 
 // Privacy-protected anonymous grid cells; these are NOT drivers' exact positions.
 function createCellElement(cell, fallbackType) {
+    console.log("DRIVER MAP CELL:", cell);
     const element = document.createElement("div");
     const count = Math.max(1, Number(cell.count) || 1);
     element.className = "rx-map-cell";
@@ -119,6 +120,7 @@ function createCellElement(cell, fallbackType) {
     element.innerHTML = `<span class="rx-map-cell-halo"></span><span class="rx-map-cell-body">${vehicleIconMarkup(cell.vehicleType || fallbackType, DARK, 18)}</span>${count > 1 ? `<span class="rx-map-cell-count">${count}</span>` : ""}`;
     return element;
 }
+
 
 function bottomInsetPx(height, sheetRatio, fallbackRatio) {
     const ratio = Number.isFinite(sheetRatio) ? sheetRatio : fallbackRatio;
