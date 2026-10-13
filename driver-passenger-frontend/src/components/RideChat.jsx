@@ -1,10 +1,8 @@
 "use client";
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, MessageCircle, Send, Phone, CheckCheck } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { getRealtimeSocket } from "@/lib/socket";
-
 const QUICK = ["I'm at the pickup", "Please wait 2 minutes", "Where are you?", "Please call me"];
 const same = (a, b) => String(a) === String(b);
 const merge = (old, incoming) => {
@@ -12,13 +10,13 @@ const merge = (old, incoming) => {
     for (const item of [...old, ...incoming]) if (item?._id) map.set(String(item._id), item);
     return Array.from(map.values()).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 };
-
-export default function RideChat({ rideId, token, userId, directOpen = false, onClose, driverPhone }) {
+export default function RideChat({ rideId, token, userId, directOpen = false, onClose, driverPhone, participantLabel = "driver" }) {
     const [open, setOpen] = useState(false);
     const isOpen = Boolean(directOpen || open);
     const closeChat = () => { if (directOpen) onClose?.(); else setOpen(false); };
     const callNumber = typeof driverPhone === "string" && /^[+\d ()-]{7,20}$/.test(driverPhone.trim()) ? driverPhone.trim() : "";
     const [messages, setMessages] = useState([]);
+    const [loadingMessages, setLoadingMessages] = useState(true);
     const [unread, setUnread] = useState(0);
     const [text, setText] = useState("");
     const [sending, setSending] = useState(false);
@@ -27,10 +25,9 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
     const known = useRef(new Set());
     const endRef = useRef(null);
     useEffect(() => { openRef.current = isOpen; if (isOpen) setUnread(0); }, [isOpen]);
-    useEffect(() => { known.current = new Set(); setMessages([]); setUnread(0); setOpen(false); }, [rideId]);
-
+    useEffect(() => { known.current = new Set(); setMessages([]); setUnread(0); setOpen(false); setLoadingMessages(true); }, [rideId]);
     const load = useCallback(async () => {
-        if (!rideId || !token) return;
+        if (!rideId || !token) { setError("Chat unavailable. Please reopen the ride."); return; }
         try {
             const data = await apiRequest(`/rides/${rideId}/messages`, { token });
             const incoming = Array.isArray(data.messages) ? data.messages : [];
@@ -39,7 +36,6 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
             setError("");
         } catch (e) { setError(e.message); }
     }, [rideId, token]);
-
     useEffect(() => {
         if (!rideId || !token) return;
         const socket = getRealtimeSocket();
@@ -63,15 +59,18 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
             document.removeEventListener("visibilitychange", onVisible);
         };
     }, [rideId, token, userId, load]);
-
     useEffect(() => {
         if (!isOpen) return;
-        load();
-        const timer = setInterval(() => { if (!document.hidden) load(); }, 15_000);
-        return () => clearInterval(timer);
+        let mounted = true;
+        // Keep existing messages visible when refreshing; show loader only on an empty chat.
+        if (messages.length === 0) setLoadingMessages(true);
+        void load().finally(() => {
+            if (mounted) setLoadingMessages(false);
+        });
+        const timer = setInterval(() => { if (!document.hidden) void load(); }, 15_000);
+        return () => { mounted = false; clearInterval(timer); };
     }, [isOpen, load]);
     useEffect(() => { if (isOpen) endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, [messages.length, isOpen]);
-
     async function send(value) {
         const body = value.trim();
         if (!body || sending || body.length > 1000) return;
@@ -87,7 +86,6 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
             setText(""); setError("");
         } catch (e) { setError(e.message); } finally { setSending(false); }
     }
-
     return <>
         {!directOpen && <button
             type="button"
@@ -95,7 +93,7 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
             className="relative flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#111111] px-4 text-sm font-bold text-white transition-transform active:scale-[0.98]"
         >
             <MessageCircle size={18} aria-hidden="true" />
-            Message driver
+            Message {participantLabel}
             {unread > 0 && (
                 <span className="rounded-full bg-[#C1F11D] px-2 py-0.5 text-[11px] font-extrabold text-[#111111]">
                     {unread === 99 ? "99+" : unread}
@@ -117,11 +115,11 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                     <MessageCircle size={20} aria-hidden="true" />
                 </div>
                 <div className="min-w-0 flex-1">
-                    <p className="truncate font-extrabold tracking-tight">Chat with driver</p>
+                    <p className="truncate font-extrabold tracking-tight">Chat with {participantLabel}</p>
                     <p className="text-xs text-[#6B7280]">Private trip conversation</p>
                 </div>
                 {callNumber ? (
-                    <a href={`tel:${callNumber.replace(/[^+\d]/g, "")}`} aria-label="Call driver" title="Call driver"
+                    <a href={`tel:${callNumber.replace(/[^+\d]/g, "")}`} aria-label={`Call ${participantLabel}`} title={`Call ${participantLabel}`}
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#C1F11D]">
                         <Phone size={19} />
                     </a>
@@ -133,7 +131,12 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                 )}
             </header>
             <main className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-[#F4F5F7] p-4 pb-6" aria-live="polite">
-                {messages.length === 0 && (
+                {loadingMessages && messages.length === 0 ? (
+                    <div role="status" aria-label="Loading messages" className="mx-auto mt-12 flex flex-col items-center gap-3 text-sm font-semibold text-[#6B7280]">
+                        <span className="h-9 w-9 animate-spin rounded-full border-[3px] border-[#E5E7EB] border-t-[#111111]" />
+                        Loading messages…
+                    </div>
+                ) : !error && messages.length === 0 ? (
                     <div className="mx-auto mt-10 max-w-xs rounded-3xl bg-white p-7 text-center shadow-sm">
                         <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#EFFFBE]">
                             <MessageCircle size={24} aria-hidden="true" />
@@ -141,7 +144,7 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                         <p className="text-sm font-semibold">No messages yet</p>
                         <p className="mt-1 text-xs text-[#6B7280]">Send a quick note to coordinate your pickup.</p>
                     </div>
-                )}
+                ) : null}
                 {messages.map((m) => {
                     const mine = same(m.senderId, userId);
                     return <div key={m._id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>

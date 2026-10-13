@@ -1,21 +1,26 @@
 "use client";
-
 import { useEffect, useRef, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Car, UserRound } from "lucide-react";
 import { getVehicle } from "@/lib/rideDisplay";
-
 maplibregl.setWorkerUrl("/maplibre-worker.mjs");
 
 const DARK = "#111111";
+
 const LIME = "#C1F11D";
+
 const ROUTE_SOURCE = "actual-road-route";
+
 const ROUTE_LAYER = "actual-road-route-layer";
+
 const ROUTE_CASING_LAYER = "actual-road-route-casing";
+
 const DEFAULT_OFFSET_RATIO = 0.32;
+
 const DEFAULT_PADDING_RATIO = 0.62;
+
 const TRACKING_PADDING_RATIO = 0.42;
 
 const MAP_STYLES = `
@@ -36,6 +41,9 @@ const MAP_STYLES = `
 .rx-map-driver-heading::before{content:"";position:absolute;left:50%;top:0;margin-left:-7px;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:10px solid ${DARK}}
 .rx-map-driver-body{position:absolute;inset:0;border-radius:50%;background:${DARK};border:3px solid #fff;display:grid;place-items:center;box-shadow:0 6px 18px rgba(17,17,17,.4)}
 .rx-map-cell{position:relative;width:38px;height:38px;display:grid;place-items:center}
+/* Pending passenger requests are distinct from nearby driver grid cells. */
+.rx-map-request{width:36px;height:36px;border:3px solid #fff;border-radius:50%;background:#111111;color:#C1F11D;display:grid;place-items:center;box-shadow:0 4px 15px #0005}
+.rx-map-request svg{width:19px;height:19px}
 .rx-map-cell-halo{position:absolute;inset:-12px;border-radius:50%;border:1.5px dashed rgba(17,17,17,.35);background:rgba(193,241,29,.2)}
 .rx-map-cell-body{position:relative;width:36px;height:36px;border-radius:50%;background:#fff;border:2px solid ${DARK};display:grid;place-items:center;box-shadow:0 3px 10px rgba(17,17,17,.25)}
 .rx-map-cell-count{position:absolute;right:-7px;bottom:-7px;min-width:19px;height:19px;padding:0 4px;border-radius:10px;background:${DARK};color:${LIME};font:800 10px/15px system-ui,sans-serif;text-align:center;border:2px solid #fff}
@@ -44,7 +52,6 @@ const MAP_STYLES = `
 @keyframes rx-map-fade{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion: reduce){.rx-map-radar,.rx-map-driver-pulse,.rx-map-cell{animation:none!important}.rx-map-radar{opacity:.35;transform:scale(.6)}}
 `;
-
 const getPoint = (point) => {
     if (!point) return null;
     const longitude = Array.isArray(point.coordinates) ? Number(point.coordinates[0]) : Number(point.longitude);
@@ -52,7 +59,6 @@ const getPoint = (point) => {
     return Number.isFinite(longitude) && Number.isFinite(latitude) && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180
         ? [longitude, latitude] : null;
 };
-
 const geoLine = (coordinates) => ({
     type: "Feature", properties: {}, geometry: { type: "LineString", coordinates },
 });
@@ -67,8 +73,8 @@ function bearingBetween(from, to) {
     if (Math.hypot(deltaLng, deltaLat) <= 0.00008) return null;
     return (Math.atan2(deltaLng, deltaLat) * 180 / Math.PI + 360) % 360;
 }
-
 const iconCache = new Map();
+
 function vehicleIconMarkup(type, color, size) {
     const key = `${type}|${color}|${size}`;
     if (!iconCache.has(key)) {
@@ -108,10 +114,18 @@ function createDriverElement(type) {
     element.innerHTML = `<span class="rx-map-driver-pulse"></span><span class="rx-map-driver-heading"></span><span class="rx-map-driver-body">${vehicleIconMarkup(type, LIME, 20)}</span>`;
     return element;
 }
-
 // Privacy-protected anonymous grid cells; these are NOT drivers' exact positions.
+
+function createRequestElement() {
+    const el = document.createElement("div");
+    el.className = "rx-map-request";
+    el.title = "Passenger waiting for driver";
+    el.setAttribute("aria-label", el.title);
+    el.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg>';
+    return el;
+}
+
 function createCellElement(cell, fallbackType) {
-    console.log("DRIVER MAP CELL:", cell);
     const element = document.createElement("div");
     const count = Math.max(1, Number(cell.count) || 1);
     element.className = "rx-map-cell";
@@ -120,7 +134,6 @@ function createCellElement(cell, fallbackType) {
     element.innerHTML = `<span class="rx-map-cell-halo"></span><span class="rx-map-cell-body">${vehicleIconMarkup(cell.vehicleType || fallbackType, DARK, 18)}</span>${count > 1 ? `<span class="rx-map-cell-count">${count}</span>` : ""}`;
     return element;
 }
-
 
 function bottomInsetPx(height, sheetRatio, fallbackRatio) {
     const ratio = Number.isFinite(sheetRatio) ? sheetRatio : fallbackRatio;
@@ -138,6 +151,7 @@ export default function RideMap({
     destination = null, stops = [], onPickupChange = null,
     driverLocation = null, followDriver = false, navigationMode = false,
     nearbyDriverCells = [],
+    rideRequestPoints = [],
     onRouteUpdate = null,
     // Optional props below are additive; existing callers keep their previous behaviour.
     passengerView = false,
@@ -154,6 +168,7 @@ export default function RideMap({
     const destinationRef = useRef(null);
     const stopRefs = useRef([]);
     const nearbyRefs = useRef([]);
+    const rideRequestRefs = useRef([]);
     const dragHandler = useRef(onPickupChange);
     const routeUpdateRef = useRef(onRouteUpdate);
     const clickRef = useRef(onMapClick);
@@ -172,7 +187,6 @@ export default function RideMap({
     routeUpdateRef.current = onRouteUpdate;
     clickRef.current = onMapClick;
     sheetRatioRef.current = sheetRatio;
-
     useEffect(() => {
         if (!node.current || mapRef.current) return;
         const map = new maplibregl.Map({
@@ -204,6 +218,7 @@ export default function RideMap({
             destinationRef.current?.remove();
             stopRefs.current.forEach((marker) => marker.remove());
             nearbyRefs.current.forEach((marker) => marker.remove());
+            rideRequestRefs.current.forEach((marker) => marker.remove());
             pickupRef.current = driverRef.current = destinationRef.current = null;
             stopRefs.current = [];
             nearbyRefs.current = [];
@@ -212,13 +227,11 @@ export default function RideMap({
             mapRef.current = null;
         };
     }, []);
-
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !mapReady) return;
         map.getCanvas().style.cursor = onMapClick ? "crosshair" : "";
     }, [mapReady, Boolean(onMapClick)]);
-
     function fitRoute(bounds) {
         const map = mapRef.current;
         if (!map || !bounds) return;
@@ -226,7 +239,6 @@ export default function RideMap({
         const bottom = bottomInsetPx(height, sheetRatioRef.current, DEFAULT_PADDING_RATIO);
         map.fitBounds(bounds, { padding: { top: 100, bottom: bottom + 24, left: 40, right: 40 }, maxZoom: 15, duration: 600 });
     }
-
     // Passenger tracking camera: frame once per phase, then only re-frame when a point leaves the visible area.
     function frameTargets(points, key, force) {
         const map = mapRef.current;
@@ -251,19 +263,16 @@ export default function RideMap({
         const bounds = valid.reduce((box, point) => box.extend(point), new maplibregl.LngLatBounds(valid[0], valid[0]));
         map.fitBounds(bounds, { padding: { top: 120, bottom: bottom + 24, left: 60, right: 60 }, maxZoom: 16.5, duration: 800 });
     }
-
     // The marker is anchored to the true geographic coordinate, not the centre of a scrollable sheet.
     useEffect(() => {
         const map = mapRef.current;
         const point = getPoint(userLocation);
         if (!map || !point) return;
-
         if (driverLocation && !passengerView) {
             pickupRef.current?.remove();
             pickupRef.current = null;
             return;
         }
-
         if (!pickupRef.current) {
             pickupRef.current = new maplibregl.Marker({ element: createPickupElement(), draggable: Boolean(onPickupChange) })
                 .setLngLat(point).addTo(map);
@@ -284,15 +293,12 @@ export default function RideMap({
             map.flyTo({ center: point, zoom: Math.max(map.getZoom(), 15), duration: 550, essential: true, offset: [0, -bookingOffset] });
         }
     }, [mapReady, userLocation?.latitude, userLocation?.longitude, userLocation?.coordinates?.[0], userLocation?.coordinates?.[1], locateRequest, Boolean(onPickupChange), followDriver]);
-
     useEffect(() => {
         pickupRef.current?.getElement().classList.toggle("rx-map-searching", Boolean(searching));
     }, [mapReady, searching, userLocation?.latitude, userLocation?.longitude, userLocation?.coordinates?.[0]]);
-
     useEffect(() => {
         framedKeyRef.current = "";
     }, [navigationMode]);
-
     useEffect(() => {
         const map = mapRef.current;
         const point = getPoint(driverLocation);
@@ -301,7 +307,6 @@ export default function RideMap({
         if (!map) return;
         const targetPoint = getPoint(destination);
         const phaseKey = targetPoint ? targetPoint.map((value) => value.toFixed(5)).join(",") : "none";
-
         if (!point) {
             cancelAnimationFrame(driverAnimRef.current);
             driverRef.current?.remove();
@@ -313,7 +318,6 @@ export default function RideMap({
             }
             return;
         }
-
         if (!driverRef.current) {
             driverRef.current = new maplibregl.Marker({ element: createDriverElement(vehicleType) }).setLngLat(point).addTo(map);
             driverShownRef.current = point;
@@ -340,7 +344,6 @@ export default function RideMap({
                 driverAnimRef.current = requestAnimationFrame(step);
             }
         }
-
         const previous = lastDriverPointRef.current;
         const movedBearing = previous ? bearingBetween(previous, point) : null;
         lastDriverPointRef.current = point;
@@ -351,7 +354,6 @@ export default function RideMap({
                 heading.classList.add("is-visible");
             }
         }
-
         if (passengerView) {
             if (navigationMode && mapReady) frameTargets([point, targetPoint], `driver:${phaseKey}`, forceFrame);
         } else {
@@ -370,12 +372,10 @@ export default function RideMap({
             });
         }
     }, [mapReady, driverLocation?.latitude, driverLocation?.longitude, driverLocation?.coordinates?.[0], driverLocation?.coordinates?.[1], followDriver, navigationMode, locateRequest, destination?.latitude, destination?.longitude, destination?.coordinates?.[0], destination?.coordinates?.[1]]);
-
     useEffect(() => {
         const body = driverRef.current?.getElement().querySelector(".rx-map-driver-body");
         if (body) body.innerHTML = vehicleIconMarkup(vehicleType, LIME, 20);
     }, [vehicleType]);
-
     useEffect(() => {
         const map = mapRef.current;
         if (!map) return;
@@ -395,7 +395,6 @@ export default function RideMap({
         });
         return () => { destinationRef.current?.remove(); destinationRef.current = null; stopRefs.current.forEach((m) => m.remove()); stopRefs.current = []; };
     }, [mapReady, destination?.latitude, destination?.longitude, destination?.coordinates?.[0], destination?.coordinates?.[1], userLocation?.latitude, userLocation?.longitude, JSON.stringify(stops)]);
-
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !mapReady) return;
@@ -408,7 +407,19 @@ export default function RideMap({
         });
         return () => { nearbyRefs.current.forEach((marker) => marker.remove()); nearbyRefs.current = []; };
     }, [mapReady, JSON.stringify(nearbyDriverCells), vehicleType]);
-
+    // Pending passenger pickups (driver discovery only); do not expose passenger identity.
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !mapReady) return;
+        rideRequestRefs.current.forEach((marker) => marker.remove());
+        rideRequestRefs.current = [];
+        (Array.isArray(rideRequestPoints) ? rideRequestPoints : []).forEach(({ point }) => {
+            const coordinates = getPoint(point);
+            if (!coordinates) return;
+            rideRequestRefs.current.push(new maplibregl.Marker({ element: createRequestElement() }).setLngLat(coordinates).addTo(map));
+        });
+        return () => { rideRequestRefs.current.forEach((marker) => marker.remove()); rideRequestRefs.current = []; };
+    }, [mapReady, JSON.stringify(rideRequestPoints)]);
     // Re-frame when the bottom sheet grows or shrinks, without requesting a new route.
     useEffect(() => {
         const map = mapRef.current;
@@ -420,21 +431,19 @@ export default function RideMap({
             frameTargets([driverShownRef.current || getPoint(userLocation), targetPoint], framedKeyRef.current, true);
         }
     }, [sheetRatio]);
-
     // Road geometry from OSRM demo server is development-only; replace with production routing backend.
     useEffect(() => {
         const map = mapRef.current;
         if (!mapReady || !map) return;
         const starting = navigationMode && getPoint(driverLocation) ? getPoint(driverLocation) : getPoint(userLocation);
         const targets = [starting, ...(Array.isArray(stops) ? stops.map(getPoint) : []), getPoint(destination)].filter(Boolean);
-        // Round only the route-request origin (~55 m) to limit requests to public OSRM.
+        // Round only the route-request origin (\~55 m) to limit requests to public OSRM.
         // The actual moving marker always keeps full GPS precision.
         const requestTargets = targets.map((p, index) => index === 0 && navigationMode
             ? [Math.round(p[0] * 2000) / 2000, Math.round(p[1] * 2000) / 2000]
             : p);
         const controller = new AbortController();
         let abandoned = false;
-
         function clearRoute() {
             if (map.getLayer(ROUTE_LAYER)) map.removeLayer(ROUTE_LAYER);
             if (map.getLayer(ROUTE_CASING_LAYER)) map.removeLayer(ROUTE_CASING_LAYER);
@@ -442,7 +451,6 @@ export default function RideMap({
             routeBoundsRef.current = null;
             setRouteInfo(null);
         }
-
         async function drawRoute() {
             if (targets.length < 2 || (targets.length === 2 && samePoint(targets[0], targets[1]))) {
                 clearRoute();
@@ -500,26 +508,17 @@ export default function RideMap({
         return () => { abandoned = true; controller.abort(); };
     }, [mapReady, navigationMode, destination?.latitude, destination?.longitude,
         destination?.coordinates?.[0], destination?.coordinates?.[1],
-        // Trigger a new routing request after meaningful GPS movement (~55 m).
+        // Trigger a new routing request after meaningful GPS movement (\~55 m).
         Math.round((navigationMode && getPoint(driverLocation) ? getPoint(driverLocation)[0] : (getPoint(userLocation)?.[0] || 0)) * 2000),
         Math.round((navigationMode && getPoint(driverLocation) ? getPoint(driverLocation)[1] : (getPoint(userLocation)?.[1] || 0)) * 2000),
         JSON.stringify(stops)]);
-
     const statusPillClass = passengerView
         ? "pointer-events-none absolute left-1/2 top-[calc(max(16px,env(safe-area-inset-top))+128px)] z-10 -translate-x-1/2 rounded-full bg-white/95 px-3.5 py-1.5 text-xs font-semibold text-[#374151] shadow-md"
         : "absolute bottom-28 left-3 rounded-xl bg-white/90 px-3 py-2 text-xs shadow";
-
     return (
         <div className="relative h-full w-full">
             <style>{MAP_STYLES}</style>
             <div ref={node} className="h-full w-full" />
-            {navigationMode && !passengerView && routeInfo && (
-                <div className="pointer-events-none absolute left-3 right-3 top-20 z-10 rounded-2xl bg-[#111111] px-4 py-3 text-white shadow-xl">
-                    <p className="text-xs font-semibold text-[#C1F11D]">ROAD NAVIGATION · ESTIMATE</p>
-                    <p className="mt-1 text-lg font-bold">{routeInfo.nextStep}</p>
-                    <p className="text-sm text-white/80">{routeInfo.stepDistanceMeters > 0 ? `${routeInfo.stepDistanceMeters} m to maneuver · ` : ""}{routeInfo.distanceKm} km · approx. {routeInfo.durationMinutes} min</p>
-                </div>
-            )}
             {routing && !error && <div className={statusPillClass}>Loading road route…</div>}
             {error && <div role="status" className={`${statusPillClass} text-amber-700`}>{error}</div>}
         </div>

@@ -4,16 +4,17 @@ import Link from "next/link";
 import {
     ArrowRight, CarFront, CheckCircle2, ChevronRight, Compass, CornerUpRight, FileCheck2,
     Flag, Hourglass, MapPin, MessageCircle, Navigation, Power, RefreshCw, Satellite, UserRound,
-    WifiOff, XCircle,
+    WifiOff, XCircle, Menu, X, Bell, BellRing, Volume2, VolumeX, LocateFixed,
 } from "lucide-react";
 import { Geolocation } from "@capacitor/geolocation";
 import AuthGuard from "@/components/AuthGuard";
 import RideMap from "@/components/RideMap";
+import { reverseGeocode } from "@/lib/locationService";
 import RideChat from "@/components/RideChat";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import DriverSheet from "@/components/driver/DriverSheet";
 import DriverRequestCard, { money, placeText, vehicleNames } from "@/components/driver/DriverRequestCard";
-import { DriverMapControls, DriverToast } from "@/components/driver/DriverMapControls";
+import { DriverToast } from "@/components/driver/DriverMapControls";
 import useDriverNotifications from "@/components/driver/useDriverNotifications";
 import { useAuth } from "@/context/AuthContext";
 import { BRAND } from "@/config/brand";
@@ -21,17 +22,22 @@ import { apiRequest } from "@/lib/api";
 import { submitDriverOffer } from "@/lib/driverRideService";
 import { getMyVehicles, selectVehicle, updateOnlineStatus, updateDriverLocation } from "@/lib/vehicleService";
 import { getRealtimeSocket } from "@/lib/socket";
-
+import { useRideUnreadMessages } from "@/hooks/useRideUnreadMessages";
 // Allowed driver-side transitions (unchanged backend contract).
+
 const ACTIONS = {
     DRIVER_SELECTED: ["DRIVER_EN_ROUTE", "Head to pickup"],
     DRIVER_EN_ROUTE: ["DRIVER_ARRIVED", "I've arrived"],
     DRIVER_ARRIVED: ["TRIP_STARTED", "Start trip"],
     TRIP_STARTED: ["TRIP_COMPLETED", "Complete trip"],
 };
+
 const IN_PROGRESS = ["DRIVER_SELECTED", "DRIVER_EN_ROUTE", "DRIVER_ARRIVED", "TRIP_STARTED"];
+
 const ENDED = ["TRIP_COMPLETED", "CANCELLED", "EXPIRED"];
+
 const STAGES = ["Accepted", "To pickup", "Arrived", "On trip"];
+
 const STATUS_LABEL = {
     REQUESTED: "Requested", SEARCHING: "Searching", BIDDING: "Bidding", REASSIGNING: "Reassigning",
     DRIVER_SELECTED: "Assignment confirmed", DRIVER_EN_ROUTE: "Heading to pickup",
@@ -73,7 +79,6 @@ function DriverDashboard() {
     const { notify } = notifications;
     const notifyRef = useRef(notify);
     notifyRef.current = notify;
-
     const [tab, setTab] = useState("requests");
     const [vehicles, setVehicles] = useState([]);
     const [selectedVehicle, setSelectedVehicle] = useState("");
@@ -86,6 +91,57 @@ function DriverDashboard() {
     const [gps, setGps] = useState({ accuracy: null, text: "Waiting for GPS" });
     const [requests, setRequests] = useState([]);
     const [selectedRide, setSelectedRide] = useState(null);
+    const [requestAddresses, setRequestAddresses] = useState({});
+    const addressCacheRef = useRef(new Map());
+    // Resolve only newly seen request points; keep earlier results across polling.
+    useEffect(() => {
+        if (!token || (!requests.length && !selectedRide)) return;
+        let cancelled = false;
+        const unknown = [];
+        for (const ride of [...requests, ...(selectedRide ? [selectedRide] : [])]) {
+            for (const point of [ride.pickup, ride.destination, ...(ride.stops || [])]) {
+                const coords = Array.isArray(point?.coordinates) ? point.coordinates : [point?.longitude, point?.latitude];
+                const lng = Number(coords?.[0]);
+                const lat = Number(coords?.[1]);
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+                const key = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+                if (!point?.name && !addressCacheRef.current.has(key) && !unknown.some((item) => item.key === key)) {
+                    unknown.push({ key, lat, lng });
+                }
+            }
+        }
+        // Public Nominatim is rate-limited. One request per 1.2 s, maximum 12 new points in a batch.
+        async function resolveNames() {
+            for (const { key, lat, lng } of unknown.slice(0, 12)) {
+                if (cancelled) break;
+                addressCacheRef.current.set(key, "Locating place...");
+                try {
+                    const place = await reverseGeocode(lat, lng, token);
+                    const raw = String(place?.display_name || place?.displayName || place?.name || "").trim();
+                    const label = raw ? raw.split(",").slice(0, 2).join(",").trim() : "Nearby location";
+                    addressCacheRef.current.set(key, label);
+                } catch {
+                    addressCacheRef.current.set(key, "Nearby location");
+                }
+                if (!cancelled) setRequestAddresses(Object.fromEntries(addressCacheRef.current));
+                await new Promise((resolve) => setTimeout(resolve, 1200));
+            }
+        }
+        void resolveNames();
+        return () => { cancelled = true; };
+    }, [token, requests, selectedRide?._id]);
+    const labelPoint = (point) => {
+        if (!point || point.name || point.address) return point;
+        const coords = Array.isArray(point.coordinates) ? point.coordinates : [point.longitude, point.latitude];
+        const lng = Number(coords?.[0]);
+        const lat = Number(coords?.[1]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return point;
+        const key = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+        return { ...point, name: requestAddresses[key] || "Locating place..." };
+    };
+    const namedRequests = requests.map((ride) => ({
+        ...ride, pickup: labelPoint(ride.pickup), destination: labelPoint(ride.destination), stops: ride.stops?.map(labelPoint)
+    }));
     const [offerPrices, setOfferPrices] = useState({});
     const [submittedIds, setSubmittedIds] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -98,12 +154,15 @@ function DriverDashboard() {
     const [navigationInfo, setNavigationInfo] = useState(null);
     const [sheet, setSheet] = useState("half");
     const [chatOpen, setChatOpen] = useState(false);
+    const [mapMenuOpen, setMapMenuOpen] = useState(false);
     const lastGps = useRef({ time: 0, point: null });
     const selectedRideRef = useRef(null);
     selectedRideRef.current = selectedRide;
     const viewportH = useViewportHeight();
-
     const rideInProgress = Boolean(selectedRide && IN_PROGRESS.includes(selectedRide.status));
+    const { unread: unreadMessages, markRead: markMessagesRead } = useRideUnreadMessages(
+        rideInProgress ? String(selectedRide._id) : null, token, user?._id || user?.id, chatOpen
+    );
     const rideEnded = Boolean(selectedRide && ENDED.includes(selectedRide.status));
     const stopsTotal = selectedRide?.stops?.length || 0;
     const stopsDone = selectedRide?.stopsCompleted || 0;
@@ -116,37 +175,31 @@ function DriverDashboard() {
         ? (pendingStop ? `Stop ${stopsDone + 1} of ${stopsTotal}` : "Destination")
         : "Passenger pickup";
     const navigating = rideInProgress && ["DRIVER_EN_ROUTE", "TRIP_STARTED"].includes(selectedRide.status);
-
     // Sheet geometry — the map camera is told how much of the screen the sheet covers.
     const navH = rideInProgress ? 0 : 68;
     const heights = useMemo(() => (rideInProgress
-        ? { peek: "164px", half: "min(52dvh, 460px)", full: "calc(100dvh - 128px - env(safe-area-inset-top))" }
+        ? { peek: "118px", half: "min(52dvh, 460px)", full: "calc(100dvh - 128px - env(safe-area-inset-top))" }
         : { peek: "148px", half: "min(50dvh, 440px)", full: "calc(100dvh - 150px - env(safe-area-inset-top))" }), [rideInProgress]);
-    const sheetPx = sheet === "peek" ? (rideInProgress ? 164 : 148)
+    const sheetPx = sheet === "peek" ? (rideInProgress ? 118 : 148)
         : sheet === "half" ? Math.min(viewportH * 0.52, rideInProgress ? 460 : 440)
             : viewportH * 0.7;
     const sheetRatio = Math.min(0.75, (sheetPx + navH) / Math.max(1, viewportH));
-
     // Ride lifecycle drives the layout: navigation collapses the sheet to keep the map dominant.
     useEffect(() => {
         if (!selectedRide) { setNavigationInfo(null); return; }
         if (["DRIVER_EN_ROUTE", "TRIP_STARTED"].includes(selectedRide.status)) setSheet("peek");
-        else if (selectedRide.status === "DRIVER_SELECTED" || selectedRide.status === "DRIVER_ARRIVED") setSheet("half");
+        else if (selectedRide.status === "DRIVER_SELECTED" || selectedRide.status === "DRIVER_ARRIVED") setSheet("peek");
         else if (ENDED.includes(selectedRide.status)) setSheet("half");
     }, [selectedRide?._id, selectedRide?.status, stopsDone, Boolean(selectedRide?.stopWaitingSince)]); // eslint-disable-line react-hooks/exhaustive-deps
-
     useEffect(() => { setNavigationInfo(null); }, [selectedRide?._id, selectedRide?.status, stopsDone]);
     useEffect(() => { if (!rideInProgress) setChatOpen(false); }, [rideInProgress]);
-
     useEffect(() => {
         const interval = setInterval(() => setClock(Date.now()), 1000);
         return () => clearInterval(interval);
     }, []);
-
     const reportError = useCallback((error, title = "Something went wrong") => {
         notifyRef.current({ kind: "error", title, body: error?.message || String(error || ""), key: `err:${error?.message}` });
     }, []);
-
     const loadRequests = useCallback(async () => {
         if (!token || !isOnline || !isAvailable) {
             setRequests([]);
@@ -163,7 +216,6 @@ function DriverDashboard() {
             reportError(error, "Couldn't load ride requests");
         }
     }, [token, isOnline, isAvailable, reportError]);
-
     useEffect(() => {
         if (!token) return;
         let cancelled = false;
@@ -195,9 +247,7 @@ function DriverDashboard() {
         initialize();
         return () => { cancelled = true; };
     }, [token, reportError]);
-
     useEffect(() => { if (!loading) loadRequests(); }, [loading, loadRequests]);
-
     // Socket is primary; polling catches missed events, reconnects, and late GPS updates.
     useEffect(() => {
         if (!token || !isOnline || !isAvailable || loading) return;
@@ -206,7 +256,6 @@ function DriverDashboard() {
         }, 12000);
         return () => clearInterval(timer);
     }, [token, isOnline, isAvailable, loading, loadRequests]);
-
     const refreshActiveRide = useCallback(async () => {
         const [active, status] = await Promise.all([
             apiRequest("/drivers/me/active-ride", { token }),
@@ -216,7 +265,6 @@ function DriverDashboard() {
         setIsAvailable(Boolean(status.driver?.isAvailable));
         return active.ride || null;
     }, [token]);
-
     useEffect(() => {
         const socket = getRealtimeSocket();
         if (!socket || !token) return;
@@ -295,7 +343,6 @@ function DriverDashboard() {
             socket.off("ride:chat:new", onChat);
         };
     }, [token, loadRequests, isOnline, isAvailable, refreshActiveRide, reportError, user?._id, user?.id]);
-
     // GPS tracking: map shows any fix; backend only receives fixes within 100 m accuracy.
     useEffect(() => {
         if (!isOnline || !token) return;
@@ -350,7 +397,6 @@ function DriverDashboard() {
             if (watchId != null) Geolocation.clearWatch({ id: watchId });
         };
     }, [isOnline, token, loadRequests]);
-
     useEffect(() => {
         let cancelled = false;
         (async () => {
@@ -365,7 +411,6 @@ function DriverDashboard() {
         })();
         return () => { cancelled = true; };
     }, []);
-
     async function locateMe() {
         setLocating(true);
         try {
@@ -379,7 +424,6 @@ function DriverDashboard() {
             setLocating(false);
         }
     }
-
     async function toggleOnline() {
         if (busy) return;
         setBusy(true);
@@ -435,7 +479,6 @@ function DriverDashboard() {
             setBusy(false);
         }
     }
-
     async function saveVehicle() {
         if (!selectedVehicle || isOnline || busy) return;
         setBusy(true);
@@ -449,13 +492,11 @@ function DriverDashboard() {
             setBusy(false);
         }
     }
-
     async function refreshNow() {
         setRefreshing(true);
         await loadRequests();
         setRefreshing(false);
     }
-
     async function sendOffer(ride) {
         const price = Number(offerPrices[ride.rideId] ?? ride.requestedPrice);
         if (!Number.isSafeInteger(price) || price <= 0 || price > 1000000 || offerBusy) {
@@ -482,7 +523,6 @@ function DriverDashboard() {
             setOfferBusy(null);
         }
     }
-
     async function updateStop(action) {
         if (!selectedRide?._id || busy) return;
         setBusy(true);
@@ -500,7 +540,6 @@ function DriverDashboard() {
             setBusy(false);
         }
     }
-
     async function advanceTrip() {
         const action = ACTIONS[selectedRide?.status];
         if (!action || busy || !selectedRide?._id) return;
@@ -521,14 +560,12 @@ function DriverDashboard() {
             setBusy(false);
         }
     }
-
     function finishRide() {
         setSelectedRide(null);
         setNavigationInfo(null);
         setSheet("half");
         loadRequests();
     }
-
     const activeVehicle = vehicles.find((v) => v._id === selectedVehicle);
     const completeBlocked = selectedRide?.status === "TRIP_STARTED" && (pendingStop || Boolean(selectedRide?.stopWaitingSince));
     const userId = user?._id || user?.id;
@@ -537,16 +574,13 @@ function DriverDashboard() {
     const etaClock = navigationInfo?.durationMinutes
         ? new Date(clock + navigationInfo.durationMinutes * 60000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
         : null;
-
     /* ---------- Sheet content builders ---------- */
-
     const statusPill = (
         <span className="dx-status" data-on={isOnline}>
             <span className="dx-status-dot" />
             {isOnline ? (isAvailable ? "Online" : "On trip") : "Offline"}
         </span>
     );
-
     const idlePeek = (
         <div className="dx-duty">
             <div className="min-w-0 flex-1">
@@ -571,7 +605,6 @@ function DriverDashboard() {
             </button>
         </div>
     );
-
     const requestsView = (
         <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -592,7 +625,7 @@ function DriverDashboard() {
                     <p className="dx-muted">{isOnline ? "New requests appear here automatically." : "Go online to start receiving rides."}</p>
                 </div>
             ) : (
-                requests.map((ride) => {
+                namedRequests.map((ride) => {
                     const left = Math.max(0, Math.ceil(((nextBidAt[ride.rideId] || 0) - clock) / 1000));
                     return (
                         <DriverRequestCard key={ride.rideId} ride={ride}
@@ -608,7 +641,6 @@ function DriverDashboard() {
             )}
         </div>
     );
-
     const vehicleView = (
         <div className="space-y-3">
             <h2 className="dx-h2">Active vehicle</h2>
@@ -644,7 +676,6 @@ function DriverDashboard() {
             </div>
         </div>
     );
-
     const idleBody = (
         <>
             <div className="dx-tabs" role="tablist">
@@ -654,7 +685,6 @@ function DriverDashboard() {
             {tab === "vehicle" ? vehicleView : requestsView}
         </>
     );
-
     const primaryAction = selectedRide && ACTIONS[selectedRide.status] && (
         pendingStop ? (
             <button type="button" className="dx-btn dx-btn-lime dx-btn-xl" disabled={busy}
@@ -670,27 +700,24 @@ function DriverDashboard() {
             </button>
         )
     );
-
     const tripPeek = rideInProgress && (
-        <div className="dx-trip-peek">
-            <div className="flex items-center gap-3">
-                <div className="min-w-0 flex-1">
-                    <p className="dx-eyebrow"><span className="dx-status-dot" /> {STATUS_LABEL[selectedRide.status]}</p>
-                    <p className="dx-trip-target">{placeText(nextTarget)}</p>
-                    <p className="dx-muted text-xs">
-                        {selectedRide.status === "DRIVER_ARRIVED"
-                            ? "Start the trip once the passenger boards"
-                            : navigationInfo ? `${navigationInfo.distanceKm} km · ~${navigationInfo.durationMinutes} min to ${targetTitle.toLowerCase()}` : "Calculating road route…"}
-                    </p>
-                </div>
-                <span className="dx-fare-tag">{money(selectedRide.finalPrice)}</span>
+        <div className="flex items-center gap-3 px-1 py-1">
+            <span className="h-3 w-3 shrink-0 rounded-full bg-[#C1F11D] ring-4 ring-[#C1F11D]/20" />
+            <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-extrabold">{STATUS_LABEL[selectedRide.status]}</p>
+                <p className="truncate text-xs text-[#6B7280]">
+                    {navigationInfo ? `${navigationInfo.distanceKm} km · approx. ${navigationInfo.durationMinutes} min · ${targetTitle}` : targetTitle}
+                </p>
             </div>
-            {primaryAction}
+            <button type="button" onClick={() => setSheet("half")}
+                className="shrink-0 rounded-xl bg-[#C1F11D] px-3 py-2 text-xs font-extrabold text-[#111111]">
+                Details
+            </button>
         </div>
     );
-
     const tripBody = rideInProgress && (
         <div className="space-y-3">
+            {primaryAction}
             <div className="dx-stages" aria-label="Trip progress">
                 {STAGES.map((stage, i) => (
                     <div key={stage} data-done={i <= stageIndex} data-current={i === stageIndex}>
@@ -717,21 +744,20 @@ function DriverDashboard() {
                 </div>
             )}
             <ol className="dx-route dx-route-card">
-                <li data-done={selectedRide.status === "TRIP_STARTED"}><span className="dx-dot dx-dot-pickup"><Navigation size={11} /></span><p><small>Pickup</small>{placeText(selectedRide.pickup)}</p></li>
+                <li data-done={selectedRide.status === "TRIP_STARTED"}><span className="dx-dot dx-dot-pickup"><Navigation size={11} /></span><p><small>Pickup</small>{placeText(labelPoint(selectedRide.pickup))}</p></li>
                 {selectedRide.stops?.map((stop, i) => (
                     <li key={i} data-done={i < stopsDone} data-next={selectedRide.status === "TRIP_STARTED" && i === stopsDone}>
-                        <span className="dx-dot dx-dot-stop">{i + 1}</span><p><small>Stop {i + 1}{i < stopsDone ? " · done" : ""}</small>{placeText(stop)}</p>
+                        <span className="dx-dot dx-dot-stop">{i + 1}</span><p><small>Stop {i + 1}{i < stopsDone ? " · done" : ""}</small>{placeText(labelPoint(stop))}</p>
                     </li>
                 ))}
-                <li><span className="dx-dot dx-dot-drop"><Flag size={11} /></span><p><small>Destination</small>{placeText(selectedRide.destination)}</p></li>
+                <li><span className="dx-dot dx-dot-drop"><Flag size={11} /></span><p><small>Destination</small>{placeText(labelPoint(selectedRide.destination))}</p></li>
             </ol>
             {completeBlocked && !pendingStop && <p className="dx-inline-warn">Continue from the current stop before completing.</p>}
-            <div className="dx-chat-wrap" data-open={chatOpen}>
-                <RideChat rideId={selectedRide._id} token={token} userId={userId} />
-            </div>
+            <button type="button" className="dx-btn dx-btn-ink" onClick={() => { markMessagesRead(); setChatOpen(true); }}>
+                <MessageCircle size={18} /> Message passenger{unreadMessages > 0 && <span className="rounded-full bg-[#C1F11D] px-2 py-0.5 text-xs font-extrabold text-[#111111]">{unreadMessages === 99 ? "99+" : unreadMessages}</span>}
+            </button>
         </div>
     );
-
     const endedView = rideEnded && (
         <div className="dx-ended" data-status={selectedRide.status}>
             <span className="dx-ended-icon">{selectedRide.status === "TRIP_COMPLETED" ? <CheckCircle2 size={34} /> : <XCircle size={34} />}</span>
@@ -748,7 +774,6 @@ function DriverDashboard() {
             <button type="button" className="dx-btn dx-btn-lime dx-btn-xl" onClick={finishRide}>Back to ride requests <ArrowRight size={18} /></button>
         </div>
     );
-
     return (
         <main className="driver-live-home dx-home" data-ride={rideInProgress ? "active" : "idle"}>
             <div className="absolute inset-0">
@@ -761,42 +786,74 @@ function DriverDashboard() {
                     followDriver={navigating}
                     onRouteUpdate={setNavigationInfo}
                     sheetRatio={sheetRatio}
+                    rideRequestPoints={isOnline && isAvailable && !rideInProgress ? requests.map((ride) => ({ id: ride.rideId, point: ride.pickup })) : []}
                     showNavigationControl={false}
                     stops={[]}
                 />
             </div>
-
-            {/* Top bar: brand/account on the left, compact controls on the right. */}
-            <header className="dx-topbar">
-                {rideInProgress && navigating ? (
-                    <div className="dx-nav-hud" role="status" aria-live="polite">
-                        <span className="dx-nav-turn"><CornerUpRight size={22} /></span>
-                        <div className="min-w-0 flex-1">
-                            {turnDistance && <p className="dx-nav-dist">{turnDistance}</p>}
-                            <p className="dx-nav-step">{navigationInfo?.nextStep || "Follow the highlighted route"}</p>
-                            <p className="dx-nav-meta">
-                                {navigationInfo ? `${navigationInfo.distanceKm} km · ${navigationInfo.durationMinutes} min${etaClock ? ` · arrive ~${etaClock}` : ""}` : "Calculating route…"}
-                            </p>
+            {/* Minimal passenger-style map controls: menu at top-left, GPS bottom-right. */}
+            {rideInProgress && navigating && navigationInfo?.nextStep && (
+                <div className="pointer-events-none absolute left-[76px] right-4 top-[calc(max(16px,env(safe-area-inset-top)))] z-20 rounded-xl bg-[#111111]/90 px-3 py-2 text-white shadow-md">
+                    <p className="truncate text-xs font-semibold">{turnDistance ? `${turnDistance} · ` : ""}{navigationInfo.nextStep}</p>
+                </div>
+            )}
+            <div className="absolute left-4 top-[calc(max(16px,env(safe-area-inset-top)))] z-50">
+                <button type="button" aria-label="Open driver menu" aria-expanded={mapMenuOpen}
+                    onClick={() => { setMapMenuOpen((open) => !open); notifications.markRead(); }}
+                    className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#111111] shadow-[0_6px_24px_rgba(17,17,17,0.12)]">
+                    {mapMenuOpen ? <X size={23} /> : <Menu size={23} />}
+                    {!mapMenuOpen && notifications.unread > 0 && <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-[#C1F11D] ring-2 ring-white" />}
+                </button>
+            </div>
+            {mapMenuOpen && (
+                <>
+                    <button type="button" aria-label="Close driver menu" onClick={() => setMapMenuOpen(false)}
+                        className="absolute inset-0 z-40 bg-black/20" />
+                    <nav aria-label="Driver menu" className="absolute left-4 top-[calc(max(16px,env(safe-area-inset-top))+60px)] z-50 w-72 max-w-[calc(100vw-32px)] rounded-2xl bg-white p-2 text-[#111111] shadow-xl">
+                        <Link href="/driver/account" onClick={() => setMapMenuOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-[#F4F5F7]">
+                            <UserRound size={19} /> My account
+                        </Link>
+                        <button type="button" onClick={notifications.toggleSound} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold hover:bg-[#F4F5F7]">
+                            {notifications.soundEnabled ? <Volume2 size={19} /> : <VolumeX size={19} />}
+                            {notifications.soundEnabled ? "Mute ride alerts" : "Enable ride alert sounds"}
+                        </button>
+                        <div className="border-t border-[#E9EBEE] px-3 py-2">
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="flex items-center gap-2 text-sm font-semibold"><Bell size={19} /> Notifications</span>
+                                {notifications.items.length > 0 && <button type="button" onClick={notifications.clear} className="text-xs font-semibold text-[#6B7280]">Clear</button>}
+                            </div>
+                            <div className="mt-2 max-h-60 space-y-1 overflow-y-auto">
+                                {notifications.items.length === 0 ? <p className="py-2 text-xs text-[#6B7280]">No notifications yet</p> : notifications.items.map((item) => (
+                                    <div key={item.id} className="rounded-xl bg-[#F4F5F7] p-2.5">
+                                        <p className="text-xs font-bold">{item.title}</p>
+                                        {item.body && <p className="mt-0.5 text-xs text-[#6B7280]">{item.body}</p>}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                ) : (
-                    null
-                )}
-                <DriverMapControls notifications={notifications} onLocate={locateMe} locating={locating} />
-            </header>
-
+                    </nav>
+                </>
+            )}
+            <button type="button" onClick={locateMe} disabled={locating} aria-label="Centre on my location"
+                style={{ bottom: `calc(${heights[sheet]} + ${rideInProgress ? "18px" : "78px"})` }}
+                className="absolute right-4 z-30 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#111111] shadow-[0_6px_24px_rgba(17,17,17,0.12)] disabled:opacity-60">
+                <LocateFixed size={21} className={locating ? "animate-pulse" : ""} />
+            </button>
             <DriverToast toast={notifications.toast} onDismiss={notifications.dismissToast} />
-
+            {rideInProgress && chatOpen && (
+                <RideChat rideId={selectedRide._id} token={token} userId={userId}
+                    directOpen onClose={() => setChatOpen(false)} participantLabel="passenger" />
+            )}
             {rideInProgress && (
                 <div className="dx-quick" style={{ bottom: `calc(${heights[sheet]} + 12px)` }}>
-                    <button type="button" className="dx-fab" aria-label="Open chat with passenger"
-                        onClick={() => { setSheet("full"); setChatOpen(true); }}>
+                    <button type="button" className="dx-fab relative" aria-label="Open chat with passenger"
+                        onClick={() => { markMessagesRead(); setChatOpen(true); }}>
                         <MessageCircle size={18} />
+                        {unreadMessages > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#C1F11D] px-1 text-[11px] font-extrabold text-[#111111] ring-2 ring-white">{unreadMessages === 99 ? "99+" : unreadMessages}</span>}
                     </button>
                     <span className="dx-target-chip"><MapPin size={13} /> {targetTitle}</span>
                 </div>
             )}
-
             <DriverSheet
                 label={rideInProgress ? "Trip controls" : "Driver dashboard"}
                 state={sheet}
@@ -807,7 +864,6 @@ function DriverDashboard() {
             >
                 {rideEnded ? endedView : rideInProgress ? tripBody : idleBody}
             </DriverSheet>
-
             {!rideInProgress && <MobileBottomNav role="DRIVER" />}
         </main>
     );

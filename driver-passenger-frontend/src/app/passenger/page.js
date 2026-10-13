@@ -26,6 +26,7 @@ import {
 import RideMap from "@/components/RideMap";
 import { useLiveDriverLocation } from "@/hooks/useLiveDriverLocation";
 import { useNearbyDrivers } from "@/hooks/useNearbyDrivers";
+import { useRideUnreadMessages } from "@/hooks/useRideUnreadMessages";
 import RideChat from "@/components/RideChat";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { PickupLocationSearch } from "@/components/PassengerBookingExperience";
@@ -277,6 +278,9 @@ function PassengerDashboard() {
     const { driverLocation, driverLocationUpdatedAt, driverLocationFresh } = useLiveDriverLocation(activeRideId, token, Boolean(activeRide?.driverId || ASSIGNED_STATUSES.includes(activeRide?.status)));
     const searchingForDriver = Boolean(activeRide && SEARCHING_STATUSES.includes(activeRide.status));
     const rideAssigned = Boolean(activeRide && ASSIGNED_STATUSES.includes(activeRide.status));
+    const { unread: unreadMessages, markRead: markMessagesRead } = useRideUnreadMessages(
+        rideAssigned ? activeRideId : null, token, user?._id || user?.id, mapChatOpen
+    );
     useEffect(() => {
         if (rideAssigned) setFullScreenMap(true);
     }, [activeRide?._id, rideAssigned]);
@@ -916,7 +920,7 @@ function PassengerDashboard() {
                     key={toast.id}
                     role="status"
                     aria-live="polite"
-                    className="rx-slide-down pointer-events-none fixed left-4 right-4 top-[calc(env(safe-area-inset-top)+80px)] z-[9999] mx-auto max-w-md rounded-2xl bg-[#111111] px-4 py-3 text-sm font-semibold text-white shadow-xl"
+                    className="rx-slide-down pointer-events-none absolute left-4 right-[76px] top-[calc(max(16px,env(safe-area-inset-top))+64px)] z-40 mx-auto max-w-md rounded-2xl bg-[#111111] px-4 py-3 text-sm font-semibold text-white shadow-xl"
                 >
                     {toast.text}
                 </div>
@@ -1305,9 +1309,10 @@ function PassengerDashboard() {
                             </div>
                             {rideAssigned && (
                                 <button type="button" aria-label="Message driver" title="Message driver"
-                                    onClick={() => setMapChatOpen(true)}
-                                    className="pointer-events-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F4F5F7] text-[#111111]">
+                                    onClick={() => { markMessagesRead(); setMapChatOpen(true); }}
+                                    className="pointer-events-auto relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F4F5F7] text-[#111111]">
                                     <MessageCircle size={19} />
+                                    {unreadMessages > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#C1F11D] px-1 text-[11px] font-extrabold text-[#111111] ring-2 ring-white">{unreadMessages === 99 ? "99+" : unreadMessages}</span>}
                                 </button>
                             )}
                             <button type="button" onClick={() => { setMapChatOpen(false); setFullScreenMap(false); }}
