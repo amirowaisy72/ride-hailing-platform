@@ -916,7 +916,7 @@ function PassengerDashboard() {
                     key={toast.id}
                     role="status"
                     aria-live="polite"
-                    className="rx-slide-down pointer-events-none absolute left-4 right-[76px] top-[calc(max(16px,env(safe-area-inset-top))+64px)] z-40 mx-auto max-w-md rounded-2xl bg-[#111111] px-4 py-3 text-sm font-semibold text-white shadow-xl"
+                    className="rx-slide-down pointer-events-none fixed left-4 right-4 top-[calc(env(safe-area-inset-top)+80px)] z-[9999] mx-auto max-w-md rounded-2xl bg-[#111111] px-4 py-3 text-sm font-semibold text-white shadow-xl"
                 >
                     {toast.text}
                 </div>
