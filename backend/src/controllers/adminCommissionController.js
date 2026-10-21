@@ -24,6 +24,8 @@ async function updateCommissionSettings(req, res) {
             percentage,
             minimumWalletBalance,
             isActive,
+            freeWaitingMinutes,
+            waitingChargePerMinute,
         } = req.body || {};
 
         if (
@@ -34,6 +36,12 @@ async function updateCommissionSettings(req, res) {
             Math.round(percentage * 100) !== percentage * 100 ||
             !Number.isSafeInteger(minimumWalletBalance) ||
             minimumWalletBalance < 0 ||
+            !Number.isInteger(freeWaitingMinutes) ||
+            freeWaitingMinutes < 0 ||
+            freeWaitingMinutes > 120 ||
+            typeof waitingChargePerMinute !== "number" ||
+            !Number.isFinite(waitingChargePerMinute) ||
+            waitingChargePerMinute < 0 ||
             typeof isActive !== "boolean"
         ) {
             return res.status(400).json({
@@ -49,6 +57,8 @@ async function updateCommissionSettings(req, res) {
                     percentage,
                     minimumWalletBalance,
                     isActive,
+                    freeWaitingMinutes,
+                    waitingChargePerMinute,
                     updatedBy: req.user._id,
                 },
                 $setOnInsert: {

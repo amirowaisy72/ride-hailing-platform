@@ -61,6 +61,8 @@ const searchLocations = async (req, res) => {
             locations,
         });
     } catch (error) {
+        console.error("[LOCATION SEARCH ERROR]", error);
+
         const invalid = error.message === "Invalid search query";
 
         return res.status(invalid ? 400 : 502).json({

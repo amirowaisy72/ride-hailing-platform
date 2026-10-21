@@ -22,6 +22,19 @@ const commissionSettingsSchema = new mongoose.Schema(
             min: 0,
         },
 
+        freeWaitingMinutes: {
+            type: Number,
+            default: 5,
+            min: 0,
+            max: 120,
+        },
+
+        waitingChargePerMinute: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+
         isActive: {
             type: Boolean,
             default: true,

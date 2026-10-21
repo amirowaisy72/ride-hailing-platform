@@ -14,6 +14,7 @@ const createRide = async (req, res) => {
             stops = [],
             requestedPrice,
             vehicleType,
+            tripType = "ONE_WAY",
             passengerCount = 1,
             notes = "",
         } = req.body || {};
@@ -30,8 +31,11 @@ const createRide = async (req, res) => {
         if (
             !validPoint(pickup) ||
             !validPoint(destination) ||
+            (tripType === "ROUND_TRIP" &&
+                pickup.latitude === destination.latitude &&
+                pickup.longitude === destination.longitude) ||
             !Array.isArray(stops) ||
-            stops.length > 5 ||
+            stops.length > (tripType === "ROUND_TRIP" ? 4 : 5) ||
             stops.some(
                 (stop) =>
                     !validPoint(stop) ||
@@ -42,7 +46,7 @@ const createRide = async (req, res) => {
         ) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid pickup or destination",
+                message: "Invalid pickup, destination, or trip stops. Round trips require different outbound and pickup locations and support up to 4 additional stops.",
             });
         }
 
@@ -50,6 +54,7 @@ const createRide = async (req, res) => {
             typeof requestedPrice !== "number" ||
             !Number.isFinite(requestedPrice) ||
             requestedPrice <= 0 ||
+            !["ONE_WAY", "ROUND_TRIP"].includes(tripType) ||
             !["BIKE", "RICKSHAW", "CAR_AC", "CAR_NON_AC"].includes(vehicleType) ||
             !Number.isInteger(passengerCount) ||
             passengerCount < 1 ||
@@ -106,7 +111,12 @@ const createRide = async (req, res) => {
             });
         }
 
-        const waypoints = [pickup, ...stops, destination];
+        const waypoints = [
+            pickup,
+            ...stops,
+            destination,
+            ...(tripType === "ROUND_TRIP" ? [pickup] : []),
+        ];
 
         const legs = await Promise.all(
             waypoints.slice(0, -1).map((point, index) =>
@@ -150,15 +160,27 @@ const createRide = async (req, res) => {
             },
             destination: {
                 type: "Point",
-                coordinates: [destination.longitude, destination.latitude],
+                coordinates: tripType === "ROUND_TRIP"
+                    ? [pickup.longitude, pickup.latitude]
+                    : [destination.longitude, destination.latitude],
             },
-            stops: stops.map((stop) => ({
-                type: "Point",
-                coordinates: [stop.longitude, stop.latitude],
-                name: (stop.name || "").trim(),
-            })),
+            stops: [
+                ...stops.map((stop) => ({
+                    type: "Point",
+                    coordinates: [stop.longitude, stop.latitude],
+                    name: (stop.name || "").trim(),
+                })),
+                ...(tripType === "ROUND_TRIP"
+                    ? [{
+                        type: "Point",
+                        coordinates: [destination.longitude, destination.latitude],
+                        name: "Outbound destination",
+                    }]
+                    : []),
+            ],
             requestedPrice,
             vehicleType,
+            tripType,
             passengerCount,
             notes,
             distance: route.distanceKm,
@@ -180,10 +202,13 @@ const createRide = async (req, res) => {
                     {
                         rideId: ride._id.toString(),
                         pickup,
-                        destination,
-                        stops,
+                        destination: tripType === "ROUND_TRIP" ? pickup : destination,
+                        stops: tripType === "ROUND_TRIP"
+                            ? [...stops, { ...destination, name: "Outbound Destination" }]
+                            : stops,
                         requestedPrice: ride.requestedPrice,
                         vehicleType: ride.vehicleType,
+                        tripType: ride.tripType,
                     }
                 );
             }
@@ -198,6 +223,9 @@ const createRide = async (req, res) => {
                 rideId: ride._id.toString(),
                 status: ride.status,
                 requestedPrice: ride.requestedPrice,
+                tripType: ride.tripType,
+                distance: ride.distance,
+                estimatedDuration: ride.estimatedDuration,
             }
         );
 

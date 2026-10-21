@@ -20,8 +20,9 @@ async function getRideReceipt(req, res) {
             status: "TRIP_COMPLETED",
         })
             .select(
-                "passengerId driverId vehicleType pickup destination " +
-                "requestedPrice finalPrice currency distance duration " +
+                "passengerId driverId vehicleType tripType pickup destination stops " +
+                "requestedPrice finalPrice waitingCharge waitingSessions " +
+                "pickupWaitingSeconds totalStopWaitingSeconds currency distance duration " +
                 "createdAt startedAt completedAt status"
             )
             .lean();
@@ -45,10 +46,16 @@ async function getRideReceipt(req, res) {
                 rideId: ride._id,
                 status: ride.status,
                 vehicleType: ride.vehicleType,
+                tripType: ride.tripType || "ONE_WAY",
                 pickup: ride.pickup,
                 destination: ride.destination,
+                stops: ride.stops || [],
                 requestedPrice: ride.requestedPrice,
                 finalPrice: ride.finalPrice,
+                waitingCharge: ride.waitingCharge || 0,
+                waitingSessions: ride.waitingSessions || [],
+                pickupWaitingSeconds: ride.pickupWaitingSeconds || 0,
+                totalStopWaitingSeconds: ride.totalStopWaitingSeconds || 0,
                 currency: ride.currency || "PKR",
                 distance: ride.distance,
                 duration: ride.duration,

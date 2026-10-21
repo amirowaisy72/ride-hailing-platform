@@ -229,6 +229,17 @@ function ReceiptScreen() {
                             />
                             <DetailRow
                                 label="Agreed fare"
+                                value={formatMoney(
+                                    Number(receipt.finalPrice || 0) -
+                                    Number(receipt.waitingCharge || 0)
+                                )}
+                            />
+                            <DetailRow
+                                label="Waiting charges"
+                                value={formatMoney(receipt.waitingCharge || 0)}
+                            />
+                            <DetailRow
+                                label="Total payable"
                                 value={formatMoney(receipt.finalPrice)}
                             />
                             <DetailRow

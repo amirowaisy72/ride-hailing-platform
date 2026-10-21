@@ -22,6 +22,8 @@ export default function CommissionPage() {
     const [minimumWalletBalance, setMinimumWalletBalance] =
         useState("0");
     const [isActive, setIsActive] = useState(true);
+    const [freeWaitingMinutes, setFreeWaitingMinutes] = useState("5");
+    const [waitingChargePerMinute, setWaitingChargePerMinute] = useState("0");
 
     const [configured, setConfigured] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -46,11 +48,15 @@ export default function CommissionPage() {
                     String(settings.minimumWalletBalance ?? 0)
                 );
                 setIsActive(Boolean(settings.isActive));
+                setFreeWaitingMinutes(String(settings.freeWaitingMinutes ?? 5));
+                setWaitingChargePerMinute(String(settings.waitingChargePerMinute ?? 0));
                 setConfigured(true);
             } else {
                 setPercentage("");
                 setMinimumWalletBalance("0");
                 setIsActive(true);
+                setFreeWaitingMinutes("5");
+                setWaitingChargePerMinute("0");
                 setConfigured(false);
             }
         } catch (err) {
@@ -92,6 +98,22 @@ export default function CommissionPage() {
             return;
         }
 
+        const freeMinutes = Number(freeWaitingMinutes);
+        const chargePerMinute = Number(waitingChargePerMinute);
+
+        if (
+            freeWaitingMinutes.trim() === "" ||
+            !Number.isInteger(freeMinutes) ||
+            freeMinutes < 0 ||
+            freeMinutes > 120 ||
+            waitingChargePerMinute.trim() === "" ||
+            !Number.isFinite(chargePerMinute) ||
+            chargePerMinute < 0
+        ) {
+            setError("Enter valid waiting settings.");
+            return;
+        }
+
         setSaving(true);
         setError("");
         setMessage("");
@@ -104,6 +126,8 @@ export default function CommissionPage() {
                     body: JSON.stringify({
                         percentage: rate,
                         minimumWalletBalance: balance,
+                        freeWaitingMinutes: freeMinutes,
+                        waitingChargePerMinute: chargePerMinute,
                         isActive,
                     }),
                 }
@@ -114,6 +138,8 @@ export default function CommissionPage() {
                 String(data.settings.minimumWalletBalance)
             );
             setIsActive(Boolean(data.settings.isActive));
+            setFreeWaitingMinutes(String(data.settings.freeWaitingMinutes ?? 5));
+            setWaitingChargePerMinute(String(data.settings.waitingChargePerMinute ?? 0));
             setConfigured(true);
             setMessage("Commission settings saved successfully.");
         } catch (err) {
@@ -281,6 +307,39 @@ export default function CommissionPage() {
                                     Zero disables the minimum-balance threshold. Enforcement
                                     during driver matching is not yet enabled.
                                 </p>
+                            </div>
+
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <label className="block">
+                                    <span className="mb-2 block text-sm font-bold">
+                                        Free Waiting Minutes (Per Location)
+                                    </span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="120"
+                                        step="1"
+                                        required
+                                        value={freeWaitingMinutes}
+                                        onChange={(e) => setFreeWaitingMinutes(e.target.value)}
+                                        className="h-12 w-full rounded-xl border px-4"
+                                    />
+                                </label>
+
+                                <label className="block">
+                                    <span className="mb-2 block text-sm font-bold">
+                                        Waiting Charge (PKR / Minute)
+                                    </span>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        required
+                                        value={waitingChargePerMinute}
+                                        onChange={(e) => setWaitingChargePerMinute(e.target.value)}
+                                        className="h-12 w-full rounded-xl border px-4"
+                                    />
+                                </label>
                             </div>
 
                             <div className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 p-5">

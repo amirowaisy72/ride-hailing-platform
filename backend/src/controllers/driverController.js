@@ -2,6 +2,7 @@
 const Driver = require("../models/Driver");
 const Vehicle = require("../models/Vehicle");
 const Ride = require("../models/Ride");
+const ParcelOrder = require("../models/ParcelOrder");
 const { publishEvent } = require("../services/socketService");
 
 const registerDriver = async (req, res) => {
@@ -178,6 +179,32 @@ const updateDriverLocation = async (req, res) => {
                 location: { latitude, longitude },
                 updatedAt: driver.lastLocationUpdate.toISOString(),
             });
+        }
+
+        // Share GPS only with the customer assigned to an active parcel.
+        const parcel = await ParcelOrder.findOne({
+            driverId: driver._id,
+            status: {
+                $in: [
+                    "DRIVER_ASSIGNED",
+                    "DRIVER_EN_ROUTE",
+                    "ARRIVED_AT_PICKUP",
+                    "PICKED_UP",
+                    "OUT_FOR_DELIVERY",
+                ],
+            },
+        }).select("_id customerId").lean();
+
+        if (parcel) {
+            publishEvent(
+                "parcel:driver:location",
+                `passenger:${parcel.customerId}`,
+                {
+                    parcelId: String(parcel._id),
+                    location: { latitude, longitude },
+                    updatedAt: driver.lastLocationUpdate.toISOString(),
+                }
+            );
         }
 
         return res.json({

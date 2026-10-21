@@ -21,7 +21,7 @@ const getMyRideHistory = async (req, res) => {
                 .skip((page - 1) * limit)
                 .limit(limit)
                 .select(
-                    "status vehicleType requestedPrice finalPrice currency distance estimatedDuration createdAt completedAt cancelledAt"
+                    "status vehicleType tripType requestedPrice finalPrice currency distance estimatedDuration createdAt completedAt"
                 )
                 .lean(),
             Ride.countDocuments(filter),

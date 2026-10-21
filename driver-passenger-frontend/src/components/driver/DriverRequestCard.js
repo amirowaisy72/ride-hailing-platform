@@ -21,6 +21,9 @@ export default function DriverRequestCard({ ride, price, onPriceChange, onSend, 
         <article className="dx-request" data-live={ride.live ? "true" : undefined} data-submitted={submitted ? "true" : undefined}>
             <header className="dx-request-head">
                 <span className="dx-chip">{vehicleNames[ride.vehicleType] || ride.vehicleType}</span>
+                <span className="dx-chip dx-chip-ghost">
+                    {ride.tripType === "ROUND_TRIP" ? "↩ Round Trip" : "One Way"}
+                </span>
                 {ride.distance != null && <span className="dx-chip dx-chip-ghost"><Route size={12} /> {ride.distance} km</span>}
                 {ride.live && <span className="dx-chip dx-chip-new">New</span>}
                 <span className="dx-request-fare">
@@ -32,9 +35,25 @@ export default function DriverRequestCard({ ride, price, onPriceChange, onSend, 
             <ol className="dx-route">
                 <li><span className="dx-dot dx-dot-pickup"><Navigation size={11} /></span><p><small>Pickup</small>{placeText(ride.pickup)}</p></li>
                 {ride.stops?.map((stop, index) => (
-                    <li key={index}><span className="dx-dot dx-dot-stop">{index + 1}</span><p><small>Stop {index + 1}</small>{placeText(stop)}</p></li>
+                    <li key={index}>
+                        <span className="dx-dot dx-dot-stop">{index + 1}</span>
+                        <p>
+                            <small>
+                                {ride.tripType === "ROUND_TRIP" && index === ride.stops.length - 1
+                                    ? "Outbound Destination"
+                                    : `Stop ${index + 1}`}
+                            </small>
+                            {placeText(stop)}
+                        </p>
+                    </li>
                 ))}
-                <li><span className="dx-dot dx-dot-drop"><Flag size={11} /></span><p><small>Destination</small>{placeText(ride.destination)}</p></li>
+                <li>
+                    <span className="dx-dot dx-dot-drop"><Flag size={11} /></span>
+                    <p>
+                        <small>{ride.tripType === "ROUND_TRIP" ? "Return to Pickup" : "Destination"}</small>
+                        {placeText(ride.destination)}
+                    </p>
+                </li>
             </ol>
 
             {submitted && (

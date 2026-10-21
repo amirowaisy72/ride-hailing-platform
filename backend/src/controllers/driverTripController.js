@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Ride = require("../models/Ride");
 const Driver = require("../models/Driver");
+const CommissionSettings = require("../models/CommissionSettings");
 const { publishEvent } = require("../services/socketService");
 
 const transitions = {
@@ -51,8 +52,85 @@ const updateTripStatus = async (req, res) => {
         }[status];
 
         const update = { status };
+        const now = new Date();
 
-        if (timestampField) update[timestampField] = new Date();
+        if (timestampField) update[timestampField] = now;
+
+        if (status === "DRIVER_ARRIVED") {
+            update.pickupWaitingSince = now;
+            update.driverArrivedAt = now;
+        }
+
+        if (status === "TRIP_STARTED") {
+            const currentRide = await Ride.findOne({
+                _id: rideId,
+                driverId: driver._id,
+                status: "DRIVER_ARRIVED",
+            });
+
+            if (!currentRide) {
+                return res.status(409).json({
+                    success: false,
+                    message: "Ride unavailable",
+                });
+            }
+
+            const settings = await CommissionSettings.findOne({
+                key: "GLOBAL",
+            }).lean();
+
+            const seconds = currentRide.pickupWaitingSince
+                ? Math.max(0, Math.floor(
+                    (now - new Date(currentRide.pickupWaitingSince)) / 1000
+                ))
+                : 0;
+
+            const freeMinutes = settings?.freeWaitingMinutes ?? 5;
+            const chargePerMinute = settings?.waitingChargePerMinute ?? 0;
+            const billableMinutes = Math.max(
+                0, Math.ceil(seconds / 60) - freeMinutes
+            );
+            const charge = Math.round(
+                billableMinutes * chargePerMinute * 100
+            ) / 100;
+
+            update.pickupWaitingSince = null;
+            update.pickupWaitingSeconds = seconds;
+            update.waitingCharge = (currentRide.waitingCharge || 0) + charge;
+            update.$pickupSession = {
+                locationType: "PICKUP",
+                locationIndex: 0,
+                startedAt: currentRide.pickupWaitingSince || now,
+                endedAt: now,
+                durationSeconds: seconds,
+                freeMinutes,
+                chargePerMinute,
+                chargedAmount: charge,
+            };
+        }
+
+        const pickupSession = update.$pickupSession;
+        delete update.$pickupSession;
+
+        if (status === "TRIP_COMPLETED") {
+            const completionRide = await Ride.findOne({
+                _id: rideId,
+                driverId: driver._id,
+                status: "TRIP_STARTED",
+            }).select("finalPrice waitingCharge");
+
+            if (!completionRide || !Number.isFinite(completionRide.finalPrice)) {
+                return res.status(409).json({
+                    success: false,
+                    message: "Agreed fare unavailable",
+                });
+            }
+
+            update.finalPrice = Math.round(
+                completionRide.finalPrice +
+                Number(completionRide.waitingCharge || 0)
+            );
+        }
 
         const ride = await Ride.findOneAndUpdate(
             {
@@ -71,7 +149,12 @@ const updateTripStatus = async (req, res) => {
                     }
                     : {}),
             },
-            { $set: update },
+            {
+                $set: update,
+                ...(pickupSession
+                    ? { $push: { waitingSessions: pickupSession } }
+                    : {}),
+            },
             { returnDocument: "after", runValidators: true }
         );
 
@@ -115,6 +198,11 @@ const updateTripStatus = async (req, res) => {
                 rideId: ride._id.toString(),
                 status: ride.status,
                 driverId: driver._id.toString(),
+                waitingCharge: ride.waitingCharge || 0,
+                finalPrice: ride.finalPrice,
+                pickupWaitingSince: ride.pickupWaitingSince || null,
+                driverArrivedAt: ride.driverArrivedAt || null,
+                stopWaitingSince: ride.stopWaitingSince || null,
             }
         );
 

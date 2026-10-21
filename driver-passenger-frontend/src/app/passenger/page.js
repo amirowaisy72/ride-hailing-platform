@@ -24,6 +24,7 @@ import {
     placeDistanceKm,
 } from "@/lib/locationService";
 import RideMap from "@/components/RideMap";
+import ParcelActivityBar from "@/components/ParcelActivityBar";
 import { useLiveDriverLocation } from "@/hooks/useLiveDriverLocation";
 import { useNearbyDrivers } from "@/hooks/useNearbyDrivers";
 import { useRideUnreadMessages } from "@/hooks/useRideUnreadMessages";
@@ -36,6 +37,9 @@ import {
 } from "@/lib/rideDisplay";
 
 const SEARCHING_STATUSES = ["REQUESTED", "SEARCHING", "BIDDING"];
+
+const calculateWaitingCharge = (seconds, freeMinutes, rate) =>
+    Math.max(0, Math.ceil(seconds / 60) - freeMinutes) * rate;
 const ASSIGNED_STATUSES = ["DRIVER_SELECTED", "DRIVER_EN_ROUTE", "DRIVER_ARRIVED", "TRIP_STARTED"];
 const FARE_STEP = 10;
 const DEFAULT_OFFER_WINDOW_MS = 60000;
@@ -83,6 +87,22 @@ function PassengerDashboard() {
     const audioContextRef = useRef(null);
     const lastSoundEventRef = useRef({ key: "", time: 0 });
     const [offerClock, setOfferClock] = useState(Date.now());
+    const [waitingSettings, setWaitingSettings] = useState(null);
+
+    useEffect(() => {
+        if (!token) return;
+        let cancelled = false;
+
+        apiRequest("/rides/waiting-settings", { token })
+            .then((data) => {
+                if (!cancelled) setWaitingSettings(data);
+            })
+            .catch(() => {
+                if (!cancelled) setWaitingSettings(null);
+            });
+
+        return () => { cancelled = true; };
+    }, [token]);
 
     useEffect(() => {
         const timer = setInterval(() => setOfferClock(Date.now()), 1000);
@@ -244,6 +264,7 @@ function PassengerDashboard() {
     const [route, setRoute] = useState(null);
     const [routeLoading, setRouteLoading] = useState(false);
     const [vehicleType, setVehicleType] = useState("CAR_NON_AC");
+    const [tripType, setTripType] = useState("ONE_WAY");
     const [passengerCount, setPassengerCount] = useState(1);
     const [fare, setFare] = useState(null);
     const [fareLoading, setFareLoading] = useState(false);
@@ -275,6 +296,50 @@ function PassengerDashboard() {
     const [completedRide, setCompletedRide] = useState(null);
     const [reviewSubmitted, setReviewSubmitted] = useState(false);
     const activeRideId = activeRide?._id?.toString();
+
+    const waitingStart = activeRide?.status === "DRIVER_ARRIVED"
+        ? (activeRide.pickupWaitingSince || activeRide.driverArrivedAt)
+        : activeRide?.status === "TRIP_STARTED"
+            ? activeRide.stopWaitingSince
+            : null;
+
+    const waitingSeconds = waitingStart
+        ? Math.max(0, Math.floor(
+            (offerClock - new Date(waitingStart).getTime()) / 1000
+        ))
+        : 0;
+
+    const freeWaitingMinutes = Number(waitingSettings?.freeWaitingMinutes ?? 5);
+    const waitingRate = Number(waitingSettings?.waitingChargePerMinute ?? 0);
+    const overtimeMinutes = Math.max(
+        0,
+        Math.ceil(waitingSeconds / 60) - freeWaitingMinutes
+    );
+    const liveWaitingCharge = calculateWaitingCharge(
+        waitingSeconds,
+        freeWaitingMinutes,
+        waitingRate
+    );
+
+    const waitingAlertRef = useRef("");
+
+    useEffect(() => {
+        if (!activeRide?._id || !waitingStart || !waitingSettings) return;
+
+        const alertKey = `${activeRide._id}:${waitingStart}`;
+
+        if (
+            waitingRate > 0 &&
+            overtimeMinutes > 0 &&
+            waitingAlertRef.current !== alertKey
+        ) {
+            waitingAlertRef.current = alertKey;
+            setNotification(
+                `Waiting overtime started! Your driver is waiting. Rs. ${waitingRate}/minute extra charges apply.`
+            );
+            playAlert();
+        }
+    }, [activeRide?._id, waitingStart, waitingSettings, overtimeMinutes, waitingRate]);
     const { driverLocation, driverLocationUpdatedAt, driverLocationFresh } = useLiveDriverLocation(activeRideId, token, Boolean(activeRide?.driverId || ASSIGNED_STATUSES.includes(activeRide?.status)));
     const searchingForDriver = Boolean(activeRide && SEARCHING_STATUSES.includes(activeRide.status));
     const rideAssigned = Boolean(activeRide && ASSIGNED_STATUSES.includes(activeRide.status));
@@ -337,7 +402,15 @@ function PassengerDashboard() {
         window.addEventListener("focus", onFocus);
         window.addEventListener("online", onOnline);
         socket?.on("connect", syncRide);
+
+        const refreshTimer = setInterval(() => {
+            if (document.visibilityState === "visible") {
+                syncRide();
+            }
+        }, 5000);
+
         return () => {
+            clearInterval(refreshTimer);
             disposed = true;
             requestId++;
             document.removeEventListener("visibilitychange", onForeground);
@@ -489,6 +562,7 @@ function PassengerDashboard() {
                         longitude: destination.longitude,
                     },
                     vehicleType,
+                    tripType,
                     requestedPrice: price,
                     passengerCount,
                     stops: stops.map(({ latitude, longitude, name }) => ({
@@ -533,7 +607,7 @@ function PassengerDashboard() {
         return () => {
             cancelled = true;
         };
-    }, [vehicleType, route?.distanceKm, token]);
+    }, [vehicleType, route?.distanceKm, token, tripType]);
     useEffect(() => {
         const seats = getVehicle(vehicleType)?.seats || 1;
         setPassengerCount((count) => Math.min(Math.max(1, count), seats));
@@ -663,6 +737,15 @@ function PassengerDashboard() {
                 return {
                     ...previous,
                     status: data.status,
+                    ...(data.pickupWaitingSince !== undefined
+                        ? { pickupWaitingSince: data.pickupWaitingSince }
+                        : {}),
+                    ...(data.driverArrivedAt !== undefined
+                        ? { driverArrivedAt: data.driverArrivedAt }
+                        : {}),
+                    ...(data.stopWaitingSince !== undefined
+                        ? { stopWaitingSince: data.stopWaitingSince }
+                        : {}),
                 };
             });
             const messages = {
@@ -675,6 +758,18 @@ function PassengerDashboard() {
                 if (data.status === "DRIVER_ARRIVED") playAlert();
             }
         };
+        const handleStopWaiting = (data) => {
+            if (String(data.rideId) !== String(activeRideId)) return;
+
+            setActiveRide((previous) => previous ? {
+                ...previous,
+                stopWaitingSince: data.stopWaitingSince,
+                stopsCompleted: data.stopsCompleted,
+                waitingCharge: data.waitingCharge ?? previous.waitingCharge,
+            } : previous);
+        };
+
+        socket.on("ride:stop:updated", handleStopWaiting);
         socket.on("ride:status:updated", handleTripStatus);
         socket.on("ride:started", handleTripStatus);
         socket.on("ride:completed", handleCompleted);
@@ -682,6 +777,7 @@ function PassengerDashboard() {
         socket.on("ride:offer:updated", handleOffer);
         socket.on("ride:created", handleRide);
         return () => {
+            socket.off("ride:stop:updated", handleStopWaiting);
             socket.off("ride:status:updated", handleTripStatus);
             socket.off("ride:started", handleTripStatus);
             socket.off("ride:completed", handleCompleted);
@@ -700,7 +796,12 @@ function PassengerDashboard() {
             setRouteLoading(true);
             setRoute(null);
             try {
-                const waypoints = [userLocation, ...stops, destination];
+                const waypoints = [
+                    userLocation,
+                    ...stops,
+                    destination,
+                    ...(tripType === "ROUND_TRIP" ? [userLocation] : []),
+                ];
                 const legs = await Promise.all(
                     waypoints.slice(0, -1).map((point, index) =>
                         calculateRoute(
@@ -755,6 +856,7 @@ function PassengerDashboard() {
             ({ latitude, longitude }) => [latitude, longitude]
         )),
         token,
+        tripType,
     ]);
 
     async function handleMapPick(position) {
@@ -824,12 +926,20 @@ function PassengerDashboard() {
         : !activeRide ? 0.12 : searchingForDriver ? 0.58 : 0.46;
     useEffect(() => { if (activeRide) setBookingOpen(false); }, [activeRide?._id]);
     const pickupLabel = activeRide ? placeLabel(activeRide.pickup, pickupAddress || "Pickup location") : pickupAddress;
-    const destinationLabel = activeRide ? placeLabel(activeRide.destination, destinationQuery || "Destination") : destinationQuery;
+    const destinationLabel = activeRide
+        ? placeLabel(
+            activeRide.tripType === "ROUND_TRIP"
+                ? activeRide.stops?.[activeRide.stops.length - 1] || activeRide.destination
+                : activeRide.destination,
+            destinationQuery || "Destination"
+        )
+        : destinationQuery;
 
     return (
         <main className="relative h-dvh w-full overflow-hidden bg-[#F4F5F7] text-[#111111]">
             <style>{MOTION_STYLES}</style>
             <div className="absolute inset-0">
+                <ParcelActivityBar token={token} role="PASSENGER" />
                 <RideMap
                     userLocation={activeRide?.pickup || userLocation}
                     locateRequest={mapLocateRequest}
@@ -840,7 +950,14 @@ function PassengerDashboard() {
                     destination={activeRide
                         ? (["DRIVER_SELECTED", "DRIVER_EN_ROUTE"].includes(activeRide.status) ? activeRide.pickup : activeRide.destination)
                         : destination}
-                    stops={activeRide ? (activeRide.status === "TRIP_STARTED" ? (activeRide.stops || []).slice(activeRide.stopsCompleted || 0) : []) : stops}
+                    stops={activeRide
+                        ? (activeRide.status === "TRIP_STARTED"
+                            ? (activeRide.stops || []).slice(activeRide.stopsCompleted || 0)
+                            : [])
+                        : [
+                            ...stops,
+                            ...(tripType === "ROUND_TRIP" && destination ? [destination] : []),
+                        ]}
                     onPickupChange={!activeRide && !mapPickTarget ? (position) => {
                         setManualPickup(false);
                         setUserLocation(position);
@@ -935,6 +1052,12 @@ function PassengerDashboard() {
                     <div className="mx-auto max-w-lg space-y-3">
                         <div className="flex items-center gap-2 overflow-x-auto pb-1">
                             <span className="shrink-0 rounded-xl bg-[#C1F11D] px-4 py-2.5 text-sm font-extrabold text-[#111111]"><Car size={17} className="mr-1 inline" /> Ride</span>
+                            <Link
+                                href="/passenger/parcels"
+                                className="shrink-0 rounded-xl bg-[#F4F5F7] px-4 py-2.5 text-sm font-bold text-[#111111]"
+                            >
+                                📦 Parcel Delivery
+                            </Link>
                             <span className="shrink-0 rounded-xl bg-[#F4F5F7] px-4 py-2.5 text-sm font-semibold text-[#6B7280]">Cash payments</span>
                         </div>
                         <button type="button" onClick={() => setBookingOpen(true)}
@@ -1137,9 +1260,41 @@ function PassengerDashboard() {
                         {route && (
                             <div className="rx-slide-up mt-5 space-y-4">
                                 <div className="grid grid-cols-3 gap-2">
-                                    <TripStat icon={RouteIcon} label="Distance" value={`${route.distanceKm} km`} />
+                                    <TripStat
+                                        icon={RouteIcon}
+                                        label={tripType === "ROUND_TRIP" ? "Round Trip Distance" : "Distance"}
+                                        value={`${route.distanceKm} km`}
+                                    />
                                     <TripStat icon={Clock} label="Duration" value={`${route.durationMinutes} min`} />
                                     <TripStat icon={MapPin} label="Arrive by" value={formatArrival(route.durationMinutes, offerClock)} />
+                                </div>
+
+                                <div>
+                                    <h2 className="mb-2.5 text-sm font-bold uppercase tracking-wide text-[#6B7280]">Trip type</h2>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {[
+                                            { id: "ONE_WAY", label: "One Way" },
+                                            { id: "ROUND_TRIP", label: "Round Trip" },
+                                        ].map((option) => (
+                                            <button
+                                                key={option.id}
+                                                type="button"
+                                                onClick={() => setTripType(option.id)}
+                                                aria-pressed={tripType === option.id}
+                                                className={`rounded-2xl border-2 px-4 py-3 text-sm font-bold ${tripType === option.id
+                                                    ? "border-[#111111] bg-[#C1F11D] text-[#111111]"
+                                                    : "border-[#E5E7EB] bg-white text-[#6B7280]"
+                                                    }`}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {tripType === "ROUND_TRIP" && (
+                                        <p className="mt-2 text-xs text-[#6B7280]">
+                                            Driver will bring you back to your original pickup location.
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div>
@@ -1324,6 +1479,45 @@ function PassengerDashboard() {
                 </div>
             )}
 
+            {activeRide && waitingStart && waitingSettings && !mapChatOpen && (
+                <div
+                    role="status"
+                    aria-live="off"
+                    className="absolute inset-x-4 top-[calc(max(16px,env(safe-area-inset-top))+80px)] z-30 mx-auto max-w-md rounded-2xl border border-amber-200 bg-white p-4 shadow-xl"
+                >
+                    <p className="text-sm font-extrabold">
+                        ⏱ Driver is waiting · {Math.floor(waitingSeconds / 60)}m {waitingSeconds % 60}s
+                    </p>
+
+                    {overtimeMinutes > 0 ? (
+                        <div className="mt-2 text-sm font-bold text-red-600">
+                            <p>⚠️ Overtime charges are applying!</p>
+                            <p>
+                                {activeRide.status === "DRIVER_ARRIVED"
+                                    ? "Your driver is waiting at pickup."
+                                    : activeRide.tripType === "ROUND_TRIP" &&
+                                        (activeRide.stopsCompleted || 0) ===
+                                        (activeRide.stops?.length || 0) - 1
+                                        ? "Your driver is waiting at the outbound destination."
+                                        : "Your driver is waiting at a trip stop."}
+                            </p>
+                            <p>Rs. {waitingRate}/minute</p>
+                            <p>Extra charge: Rs. {liveWaitingCharge.toFixed(2)}</p>
+                        </div>
+                    ) : (
+                        <div className="mt-2 text-xs font-semibold text-amber-800">
+                            <p>
+                                Free waiting remaining: {Math.max(
+                                    0,
+                                    freeWaitingMinutes * 60 - waitingSeconds
+                                )} seconds
+                            </p>
+                            <p>After free time: Rs. {waitingRate}/minute</p>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {activeRide && rideAssigned && fullScreenMap && mapChatOpen && (
                 <RideChat
                     rideId={activeRide._id}
@@ -1383,7 +1577,12 @@ function PassengerDashboard() {
                     ride={completedRide}
                     token={token}
                     pickupLabel={placeLabel(completedRide?.pickup, pickupAddress || "Pickup point")}
-                    destinationLabel={placeLabel(completedRide?.destination, destinationQuery || "Destination")}
+                    destinationLabel={placeLabel(
+                        completedRide?.tripType === "ROUND_TRIP"
+                            ? completedRide.stops?.[completedRide.stops.length - 1] || completedRide.destination
+                            : completedRide?.destination,
+                        destinationQuery || "Destination"
+                    )}
                     onFinish={finishCompletedTrip}
                 />
             )}
@@ -1606,8 +1805,12 @@ function DriverSearchSheet({
                                     </p>
                                 )}
                                 <div>
-                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">Drop-off</p>
-                                    <p className="truncate text-sm font-semibold" title={destinationLabel}>{destinationLabel}</p>
+                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                                        {ride.tripType === "ROUND_TRIP" ? "Return to Pickup" : "Drop-off"}
+                                    </p>
+                                    <p className="truncate text-sm font-semibold" title={ride.tripType === "ROUND_TRIP" ? pickupLabel : destinationLabel}>
+                                        {ride.tripType === "ROUND_TRIP" ? pickupLabel : destinationLabel}
+                                    </p>
                                 </div>
                             </div>
                         </div>

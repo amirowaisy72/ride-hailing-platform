@@ -62,7 +62,7 @@ const getAvailableRides = async (req, res) => {
         })
             .limit(30)
             .sort({ createdAt: -1 })
-            .select("pickup destination stops requestedPrice vehicleType distance estimatedDuration status createdAt");
+            .select("pickup destination stops requestedPrice vehicleType tripType distance estimatedDuration status createdAt");
 
         return res.json({ success: true, rides });
     } catch (error) {

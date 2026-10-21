@@ -68,7 +68,10 @@ export default function RideJourneyExperience({
     const showEta = Boolean(routeInfo && driverLocationFresh && ["DRIVER_SELECTED", "DRIVER_EN_ROUTE", "TRIP_STARTED"].includes(status));
     const nextStop = tripStarted && stopsCompleted < stops.length ? stops[stopsCompleted] : null;
     const pickupText = pickupLabel || placeLabel(ride.pickup, "Your pickup point");
-    const destinationText = destinationLabel || placeLabel(ride.destination, "Your destination");
+    const isRoundTrip = ride.tripType === "ROUND_TRIP";
+    const destinationText = ride.tripType === "ROUND_TRIP"
+        ? placeLabel(ride.pickup, "Original pickup")
+        : destinationLabel || placeLabel(ride.destination, "Your destination");
     const vehicleLine = driver.vehicleText || vehicle?.name || "Vehicle";
     const lastFix = locationUpdatedAt ? new Date(locationUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
 
@@ -150,7 +153,11 @@ export default function RideJourneyExperience({
                         <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-[#374151]">
                             <Clock3 size={13} aria-hidden="true" />
                             {tripStarted
-                                ? <>Estimated arrival at {nextStop ? "next stop" : "destination"} {formatArrival(nextStop && routeInfo.nextLegDurationMinutes ? routeInfo.nextLegDurationMinutes : routeInfo.durationMinutes, now)}</>
+                                ? <>Estimated arrival at {nextStop
+                                    ? (ride.tripType === "ROUND_TRIP" && stopsCompleted === stops.length - 1
+                                        ? "outbound destination"
+                                        : "next stop")
+                                    : (ride.tripType === "ROUND_TRIP" ? "original pickup" : "destination")} {formatArrival(nextStop && routeInfo.nextLegDurationMinutes ? routeInfo.nextLegDurationMinutes : routeInfo.durationMinutes, now)}</>
                                 : <>Driver arrives around {formatArrival(routeInfo.durationMinutes, now)}</>}
                         </p>
                     )}
@@ -246,8 +253,12 @@ export default function RideJourneyExperience({
                                 key={`${stop.name || "stop"}-${index}`}
                                 kind="stop"
                                 index={index}
-                                label={`Stop ${index + 1}`}
-                                text={stop.name || `Stop ${index + 1}`}
+                                label={ride.tripType === "ROUND_TRIP" && index === stops.length - 1
+                                    ? "Outbound Destination"
+                                    : `Stop ${index + 1}`}
+                                text={stop.name || (ride.tripType === "ROUND_TRIP" && index === stops.length - 1
+                                    ? destinationLabel || "Outbound Destination"
+                                    : `Stop ${index + 1}`)}
                                 done={tripStarted && index < stopsCompleted}
                                 active={tripStarted && index === stopsCompleted}
                                 meta={tripStarted && index === stopsCompleted && showEta && routeInfo.nextLegDistanceKm != null
@@ -256,7 +267,7 @@ export default function RideJourneyExperience({
                         ))}
                         <TimelineItem
                             kind="destination"
-                            label="Drop-off"
+                            label={ride.tripType === "ROUND_TRIP" ? "Return to Pickup" : "Drop-off"}
                             text={destinationText}
                             active={tripStarted && stopsCompleted >= stops.length}
                             meta={tripStarted && !nextStop && showEta ? `${routeInfo.distanceKm} km · ${routeInfo.durationMinutes} min left` : ""}

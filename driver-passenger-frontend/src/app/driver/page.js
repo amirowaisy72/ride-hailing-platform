@@ -1,6 +1,5 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import {
     ArrowRight, CarFront, CheckCircle2, ChevronRight, Compass, CornerUpRight, FileCheck2,
     Flag, Hourglass, MapPin, MessageCircle, Navigation, Power, RefreshCw, Satellite, UserRound,
@@ -11,6 +10,9 @@ import AuthGuard from "@/components/AuthGuard";
 import RideMap from "@/components/RideMap";
 import { reverseGeocode } from "@/lib/locationService";
 import RideChat from "@/components/RideChat";
+import ParcelActivityBar from "@/components/ParcelActivityBar";
+import { Package } from "lucide-react";
+import Link from "next/link";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import DriverSheet from "@/components/driver/DriverSheet";
 import DriverRequestCard, { money, placeText, vehicleNames } from "@/components/driver/DriverRequestCard";
@@ -24,6 +26,20 @@ import { getMyVehicles, selectVehicle, updateOnlineStatus, updateDriverLocation 
 import { getRealtimeSocket } from "@/lib/socket";
 import { useRideUnreadMessages } from "@/hooks/useRideUnreadMessages";
 // Allowed driver-side transitions (unchanged backend contract).
+
+const PARCEL_LINK = "/driver/parcels";
+
+function ParcelShortcut() {
+    return (
+        <Link
+            href={PARCEL_LINK}
+            className="fixed right-4 top-[calc(80px+env(safe-area-inset-top))] z-40 flex h-12 items-center gap-2 rounded-2xl bg-[#C1F11D] px-4 text-sm font-extrabold text-[#111111] shadow-lg"
+        >
+            <Package size={19} />
+            Parcels
+        </Link>
+    );
+}
 
 const ACTIONS = {
     DRIVER_SELECTED: ["DRIVER_EN_ROUTE", "Head to pickup"],
@@ -90,6 +106,7 @@ function DriverDashboard() {
     const [locating, setLocating] = useState(false);
     const [gps, setGps] = useState({ accuracy: null, text: "Waiting for GPS" });
     const [requests, setRequests] = useState([]);
+    const [parcelRequests, setParcelRequests] = useState([]);
     const [selectedRide, setSelectedRide] = useState(null);
     const [requestAddresses, setRequestAddresses] = useState({});
     const addressCacheRef = useRef(new Map());
@@ -151,6 +168,18 @@ function DriverDashboard() {
     const [socketConnected, setSocketConnected] = useState(true);
     const [nextBidAt, setNextBidAt] = useState({});
     const [clock, setClock] = useState(Date.now());
+
+    const waitingSince = selectedRide?.status === "DRIVER_ARRIVED"
+        ? (selectedRide.pickupWaitingSince || selectedRide.driverArrivedAt)
+        : selectedRide?.stopWaitingSince;
+
+    const waitingSeconds = waitingSince
+        ? Math.max(0, Math.floor(
+            (clock - new Date(waitingSince).getTime()) / 1000
+        ))
+        : 0;
+
+    const waitingTime = `${String(Math.floor(waitingSeconds / 60)).padStart(2, "0")}:${String(waitingSeconds % 60).padStart(2, "0")}`;
     const [navigationInfo, setNavigationInfo] = useState(null);
     const [sheet, setSheet] = useState("half");
     const [chatOpen, setChatOpen] = useState(false);
@@ -172,7 +201,13 @@ function DriverDashboard() {
         : selectedRide.pickup;
     const stageIndex = { DRIVER_SELECTED: 0, DRIVER_EN_ROUTE: 1, DRIVER_ARRIVED: 2, TRIP_STARTED: 3 }[selectedRide?.status] ?? 0;
     const targetTitle = selectedRide?.status === "TRIP_STARTED"
-        ? (pendingStop ? `Stop ${stopsDone + 1} of ${stopsTotal}` : "Destination")
+        ? (pendingStop
+            ? (selectedRide?.tripType === "ROUND_TRIP" && stopsDone === stopsTotal - 1
+                ? "Outbound destination"
+                : `Stop ${stopsDone + 1} of ${stopsTotal}`)
+            : selectedRide?.tripType === "ROUND_TRIP"
+                ? "Return to pickup"
+                : "Destination")
         : "Passenger pickup";
     const navigating = rideInProgress && ["DRIVER_EN_ROUTE", "TRIP_STARTED"].includes(selectedRide.status);
     // Sheet geometry — the map camera is told how much of the screen the sheet covers.
@@ -256,6 +291,32 @@ function DriverDashboard() {
         }, 12000);
         return () => clearInterval(timer);
     }, [token, isOnline, isAvailable, loading, loadRequests]);
+    useEffect(() => {
+        if (!token || !isOnline || !isAvailable) {
+            setParcelRequests([]);
+            return;
+        }
+
+        let active = true;
+
+        async function loadParcels() {
+            try {
+                const data = await apiRequest("/parcels/available", { token });
+                if (active) setParcelRequests(data.orders || []);
+            } catch {
+                if (active) setParcelRequests([]);
+            }
+        }
+
+        loadParcels();
+        const timer = setInterval(loadParcels, 12000);
+
+        return () => {
+            active = false;
+            clearInterval(timer);
+        };
+    }, [token, isOnline, isAvailable]);
+
     const refreshActiveRide = useCallback(async () => {
         const [active, status] = await Promise.all([
             apiRequest("/drivers/me/active-ride", { token }),
@@ -290,7 +351,11 @@ function DriverDashboard() {
             notifyRef.current({
                 kind: "ride", tone: "ride", key: `ride:new:${id}`,
                 title: "New ride request",
-                body: [vehicleNames[ride?.vehicleType], ride?.requestedPrice ? money(ride.requestedPrice) : null].filter(Boolean).join(" · "),
+                body: [
+                    vehicleNames[ride?.vehicleType],
+                    ride?.tripType === "ROUND_TRIP" ? "Round Trip ↩" : "One Way",
+                    ride?.requestedPrice ? money(ride.requestedPrice) : null
+                ].filter(Boolean).join(" · "),
             });
         };
         const onCancelled = async ({ rideId } = {}) => {
@@ -543,6 +608,15 @@ function DriverDashboard() {
     async function advanceTrip() {
         const action = ACTIONS[selectedRide?.status];
         if (!action || busy || !selectedRide?._id) return;
+
+        if (
+            action[0] === "TRIP_COMPLETED" &&
+            selectedRide.tripType === "ROUND_TRIP" &&
+            !window.confirm(
+                "Have you returned the passenger to the original pickup location?"
+            )
+        ) return;
+
         setBusy(true);
         try {
             const data = await apiRequest(`/rides/${selectedRide._id}/status`, { method: "PATCH", token, body: JSON.stringify({ status: action[0] }) });
@@ -607,8 +681,43 @@ function DriverDashboard() {
     );
     const requestsView = (
         <div className="space-y-3">
+            <ParcelShortcut />
+
+            {parcelRequests.length > 0 && (
+                <div className="space-y-2">
+                    <h2 className="dx-h2">
+                        📦 Parcel requests ({parcelRequests.length})
+                    </h2>
+                    {parcelRequests.map((parcel) => (
+                        <Link
+                            key={parcel._id}
+                            href="/driver/parcels"
+                            className="block rounded-2xl border border-[#E9EBEE] bg-white p-4"
+                        >
+                            <p className="font-bold">
+                                {parcel.serviceType?.replaceAll("_", " ")}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                                {parcel.parcel?.category} · {parcel.parcel?.weightKg} kg
+                            </p>
+                            <p className="mt-2 font-extrabold">
+                                PKR {parcel.requestedPrice}
+                            </p>
+                            <span className="text-xs font-bold underline">
+                                View & Send Offer →
+                            </span>
+                        </Link>
+                    ))}
+                </div>
+            )}
+
             <div className="flex items-center justify-between">
-                <h2 className="dx-h2">Ride requests {requests.length > 0 && <span className="dx-count">{requests.length}</span>}</h2>
+                <div className="flex min-w-0 items-center gap-2">
+                    <h2 className="dx-h2">
+                        Ride requests
+                        {requests.length > 0 && <span className="dx-count">{requests.length}</span>}
+                    </h2>
+                </div>
                 <button type="button" className="dx-btn-ghost" onClick={refreshNow} disabled={!isOnline || refreshing} aria-label="Refresh requests">
                     <RefreshCw size={15} className={refreshing ? "dx-spin" : ""} /> Refresh
                 </button>
@@ -689,13 +798,24 @@ function DriverDashboard() {
         pendingStop ? (
             <button type="button" className="dx-btn dx-btn-lime dx-btn-xl" disabled={busy}
                 onClick={() => updateStop(selectedRide.stopWaitingSince ? "CONTINUE" : "ARRIVE")}>
-                {busy ? "Please wait…" : selectedRide.stopWaitingSince ? "Continue trip" : `Arrived at stop ${stopsDone + 1}`}
+                {busy
+                    ? "Please wait…"
+                    : selectedRide.stopWaitingSince
+                        ? "Continue trip"
+                        : selectedRide.tripType === "ROUND_TRIP" && stopsDone === stopsTotal - 1
+                            ? "Arrived at outbound destination"
+                            : `Arrived at stop ${stopsDone + 1}`}
                 <ArrowRight size={18} />
             </button>
         ) : (
             <button type="button" className={`dx-btn dx-btn-xl ${selectedRide.status === "TRIP_STARTED" ? "dx-btn-ink" : "dx-btn-lime"}`}
                 onClick={advanceTrip} disabled={busy || completeBlocked}>
-                {busy ? "Please wait…" : ACTIONS[selectedRide.status][1]}
+                {busy
+                    ? "Please wait…"
+                    : selectedRide.status === "TRIP_STARTED" &&
+                        selectedRide.tripType === "ROUND_TRIP"
+                        ? "Complete Round Trip"
+                        : ACTIONS[selectedRide.status][1]}
                 <ArrowRight size={18} />
             </button>
         )
@@ -734,7 +854,14 @@ function DriverDashboard() {
             {selectedRide.status === "DRIVER_ARRIVED" && (
                 <div className="dx-banner dx-banner-amber">
                     <Hourglass size={18} />
-                    <p><strong>Waiting for passenger</strong><small>Passenger has been notified. Start only after they board.</small></p>
+                    <p>
+                        <strong>Waiting for passenger</strong>
+                        <small>
+                            {waitingSince
+                                ? `Waiting time: ${waitingTime}`
+                                : "Waiting timer unavailable"}
+                        </small>
+                    </p>
                 </div>
             )}
             {selectedRide.stopWaitingSince && (
@@ -747,10 +874,18 @@ function DriverDashboard() {
                 <li data-done={selectedRide.status === "TRIP_STARTED"}><span className="dx-dot dx-dot-pickup"><Navigation size={11} /></span><p><small>Pickup</small>{placeText(labelPoint(selectedRide.pickup))}</p></li>
                 {selectedRide.stops?.map((stop, i) => (
                     <li key={i} data-done={i < stopsDone} data-next={selectedRide.status === "TRIP_STARTED" && i === stopsDone}>
-                        <span className="dx-dot dx-dot-stop">{i + 1}</span><p><small>Stop {i + 1}{i < stopsDone ? " · done" : ""}</small>{placeText(labelPoint(stop))}</p>
+                        <span className="dx-dot dx-dot-stop">{i + 1}</span><p><small>
+                            {selectedRide.tripType === "ROUND_TRIP" && i === selectedRide.stops.length - 1
+                                ? "Outbound Destination"
+                                : `Stop ${i + 1}`}
+                            {i < stopsDone ? " · done" : ""}
+                        </small>{placeText(labelPoint(stop))}</p>
                     </li>
                 ))}
-                <li><span className="dx-dot dx-dot-drop"><Flag size={11} /></span><p><small>Destination</small>{placeText(labelPoint(selectedRide.destination))}</p></li>
+                <li><span className="dx-dot dx-dot-drop"><Flag size={11} /></span><p><small>
+                    {selectedRide.tripType === "ROUND_TRIP" ? "Return to Pickup" : "Destination"}
+                </small>
+                    {placeText(labelPoint(selectedRide.destination))}</p></li>
             </ol>
             {completeBlocked && !pendingStop && <p className="dx-inline-warn">Continue from the current stop before completing.</p>}
             <button type="button" className="dx-btn dx-btn-ink" onClick={() => { markMessagesRead(); setChatOpen(true); }}>
@@ -777,6 +912,7 @@ function DriverDashboard() {
     return (
         <main className="driver-live-home dx-home" data-ride={rideInProgress ? "active" : "idle"}>
             <div className="absolute inset-0">
+                <ParcelActivityBar token={token} role="DRIVER" />
                 <RideMap
                     userLocation={location}
                     locateRequest={locateRequest}

@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Ride = require("../models/Ride");
 const Driver = require("../models/Driver");
+const CommissionSettings = require("../models/CommissionSettings");
 const { publishEvent } = require("../services/socketService");
 
 async function updateRideStop(req, res) {
@@ -87,6 +88,35 @@ async function updateRideStop(req, res) {
                 )
             );
 
+            const settings = await CommissionSettings.findOne({
+                key: "GLOBAL",
+            }).lean();
+
+            const freeMinutes = settings?.freeWaitingMinutes ?? 5;
+            const chargePerMinute = settings?.waitingChargePerMinute ?? 0;
+            const billableMinutes = Math.max(
+                0,
+                Math.ceil(seconds / 60) - freeMinutes
+            );
+            const charge = Math.round(
+                billableMinutes * chargePerMinute * 100
+            ) / 100;
+
+            const waitingSession = {
+                locationType:
+                    ride.tripType === "ROUND_TRIP" &&
+                        completed === stops.length - 1
+                        ? "OUTBOUND_DESTINATION"
+                        : "STOP",
+                locationIndex: completed,
+                startedAt: ride.stopWaitingSince,
+                endedAt: now,
+                durationSeconds: seconds,
+                freeMinutes,
+                chargePerMinute,
+                chargedAmount: charge,
+            };
+
             updated = await Ride.findOneAndUpdate(
                 {
                     _id: ride._id,
@@ -98,8 +128,10 @@ async function updateRideStop(req, res) {
                     $inc: {
                         stopsCompleted: 1,
                         totalStopWaitingSeconds: seconds,
+                        waitingCharge: charge,
                     },
                     $set: { stopWaitingSince: null },
+                    $push: { waitingSessions: waitingSession },
                 },
                 {
                     returnDocument: "after",
@@ -121,6 +153,10 @@ async function updateRideStop(req, res) {
             stopsCompleted: updated.stopsCompleted,
             stopWaitingSince: updated.stopWaitingSince,
             totalStopWaitingSeconds: updated.totalStopWaitingSeconds,
+            waitingCharge: updated.waitingCharge || 0,
+            waitingSessions: updated.waitingSessions || [],
+            waitingCharge: updated.waitingCharge || 0,
+            waitingSessions: updated.waitingSessions || [],
         };
 
         publishEvent(

@@ -18,6 +18,26 @@ const { getRideReceipt } = require("../controllers/rideReceiptController");
 
 const router = express.Router();
 
+router.get("/waiting-settings", protect, async (req, res) => {
+    try {
+        const CommissionSettings = require("../models/CommissionSettings");
+        const settings = await CommissionSettings.findOne({
+            key: "GLOBAL",
+        }).lean();
+
+        res.json({
+            success: true,
+            freeWaitingMinutes: settings?.freeWaitingMinutes ?? 5,
+            waitingChargePerMinute: settings?.waitingChargePerMinute ?? 0,
+        });
+    } catch {
+        res.status(500).json({
+            success: false,
+            message: "Unable to load waiting settings",
+        });
+    }
+});
+
 router.post("/", protect, authorize("PASSENGER"), createRide);
 router.get("/active", protect, authorize("PASSENGER"), getActiveRide);
 router.get("/history", protect, authorize("PASSENGER"), getMyRideHistory);

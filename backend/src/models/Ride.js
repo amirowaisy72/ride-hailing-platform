@@ -71,6 +71,33 @@ const rideSchema = new mongoose.Schema(
         stopsCompleted: { type: Number, default: 0, min: 0 },
         stopWaitingSince: { type: Date, default: null },
         totalStopWaitingSeconds: { type: Number, default: 0, min: 0 },
+
+        pickupWaitingSince: { type: Date, default: null },
+        pickupWaitingSeconds: { type: Number, default: 0, min: 0 },
+        waitingCharge: { type: Number, default: 0, min: 0 },
+
+        waitingSessions: {
+            type: [{
+                locationType: {
+                    type: String,
+                    enum: ["PICKUP", "STOP", "OUTBOUND_DESTINATION"],
+                    required: true,
+                },
+                locationIndex: { type: Number, default: 0 },
+                startedAt: { type: Date, required: true },
+                endedAt: { type: Date, required: true },
+                durationSeconds: { type: Number, min: 0 },
+                freeMinutes: { type: Number, min: 0 },
+                chargePerMinute: { type: Number, min: 0 },
+                chargedAmount: { type: Number, min: 0 },
+            }],
+            default: [],
+        },
+        tripType: {
+            type: String,
+            enum: ["ONE_WAY", "ROUND_TRIP"],
+            default: "ONE_WAY",
+        },
         requestedPrice: { type: Number, required: true, min: 1 },
         finalPrice: { type: Number, default: null },
         settlementStatus: {

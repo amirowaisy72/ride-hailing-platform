@@ -44,6 +44,8 @@ app.use("/api/v1/admin/drivers", adminDriverRoutes);
 app.use("/api/v1/locations", locationRoutes);
 app.use("/api/v1/admin/service-areas", serviceAreaRoutes);
 app.use("/api/v1/rides", rideRoutes);
+app.use("/api/v1/parcels", require("./routes/parcelRoutes"));
+app.use("/api/v1/admin/parcels", require("./routes/adminParcelRoutes"));
 app.use("/api/v1/vehicle-pricing", vehiclePricingRoutes);
 app.use("/api/v1/drivers/me/vehicles", vehicleRoutes);
 app.use("/api/v1/admin/vehicles", adminVehicleRoutes);

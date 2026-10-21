@@ -25,6 +25,7 @@ const navigation = [
     { label: "Fare Settings", href: "/dashboard/fares", icon: CarFront },
     { label: "Passengers", href: "/dashboard/passengers", icon: Users },
     { label: "Rides", href: "/dashboard/rides", icon: Route },
+    { label: "Parcels", href: "/dashboard/parcels", icon: Route },
     { label: "Wallets", href: "/dashboard/wallets", icon: Wallet },
     { label: "Settlements", href: "/dashboard/settlements", icon: CircleDollarSign },
     { label: "Commission Settings", href: "/dashboard/commission", icon: SlidersHorizontal },

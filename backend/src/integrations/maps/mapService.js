@@ -79,13 +79,18 @@ const searchAddress = async (query, latitude, longitude) => {
 
     const response = await fetch(url, {
         headers: {
-            "User-Agent": "RideHailingDevelopment/1.0 (local testing)",
+            "User-Agent": "RideHailingPlatform/1.0 (development; contact: amirowaisy72@.com)",
             "Accept": "application/json",
         },
         signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) {
+        console.error(
+            "[NOMINATIM SEARCH]",
+            "HTTP", response.status,
+            "Response:", (await response.text()).slice(0, 300)
+        );
         throw new Error("Address search unavailable");
     }
 
@@ -120,7 +125,7 @@ const reverseGeocode = async (latitude, longitude) => {
 
     const response = await fetch(url, {
         headers: {
-            "User-Agent": "RideHailingDevelopment/1.0 (local testing)",
+            "User-Agent": "RideHailingPlatform/1.0 (development; contact: amirowaisy72@.com)",
             "Accept": "application/json",
         },
         signal: AbortSignal.timeout(10000),
