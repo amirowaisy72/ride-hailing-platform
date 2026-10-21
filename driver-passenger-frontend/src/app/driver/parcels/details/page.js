@@ -1,6 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Geolocation } from "@capacitor/geolocation";
+import RideMap from "@/components/RideMap";
+import { updateDriverLocation } from "@/lib/vehicleService";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard";
@@ -32,6 +35,82 @@ function DriverParcelDetails() {
     const [busy, setBusy] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [driverLocation, setDriverLocation] = useState(null);
+    const [gpsMessage, setGpsMessage] = useState("Waiting for GPS...");
+    const [routeInfo, setRouteInfo] = useState(null);
+    const lastGpsSent = useRef(0);
+
+    useEffect(() => {
+        if (!token) return;
+
+        let stopped = false;
+        let watchId;
+
+        async function startGPS() {
+            try {
+                watchId = await Geolocation.watchPosition(
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 15000,
+                        maximumAge: 5000,
+                    },
+                    async (position, error) => {
+                        if (stopped || error || !position) return;
+
+                        const { latitude, longitude, accuracy } = position.coords;
+
+                        if (
+                            !Number.isFinite(latitude) ||
+                            !Number.isFinite(longitude) ||
+                            !Number.isFinite(accuracy) ||
+                            accuracy > 100
+                        ) {
+                            setGpsMessage("Waiting for accurate GPS...");
+                            return;
+                        }
+
+                        setDriverLocation({ latitude, longitude });
+                        setGpsMessage(`GPS ±${Math.round(accuracy)} m`);
+
+                        const now = Date.now();
+                        if (now - lastGpsSent.current >= 10000) {
+                            lastGpsSent.current = now;
+                            try {
+                                await updateDriverLocation(latitude, longitude, token);
+                            } catch (e) {
+                                console.warn("Parcel GPS sync:", e.message);
+                            }
+                        }
+                    }
+                );
+
+                if (stopped && watchId != null) {
+                    await Geolocation.clearWatch({ id: watchId });
+                }
+            } catch (e) {
+                if (!stopped) setGpsMessage(e.message);
+            }
+        }
+
+        startGPS();
+
+        return () => {
+            stopped = true;
+            if (watchId != null) {
+                Geolocation.clearWatch({ id: watchId });
+            }
+        };
+    }, [token]);
+
+    const headingToPickup = [
+        "DRIVER_ASSIGNED",
+        "DRIVER_EN_ROUTE",
+        "ARRIVED_AT_PICKUP",
+    ].includes(order?.status);
+
+    const navigationTarget = headingToPickup
+        ? order?.pickup
+        : order?.destination;
 
     const refresh = useCallback(async () => {
         if (!token || !id) return;
@@ -88,13 +167,49 @@ function DriverParcelDetails() {
         .includes(order?.status);
 
     return (
-        <main className="min-h-dvh bg-[#F4F5F7] p-4 text-[#111111]">
-            <div className="mx-auto max-w-xl space-y-4">
-                <Link href="/driver/parcels" className="text-sm font-bold">
-                    ← Parcel Deliveries
-                </Link>
+        <main className="relative h-dvh overflow-hidden bg-[#F4F5F7] text-[#111111]">
+            <div className="absolute inset-0">
+                <RideMap
+                    userLocation={driverLocation}
+                    driverLocation={driverLocation}
+                    destination={navigationTarget}
+                    navigationMode={true}
+                    followDriver={true}
+                    sheetRatio={0.43}
+                    onRouteUpdate={setRouteInfo}
+                    showNavigationControl={false}
+                />
+            </div>
 
-                <h1 className="text-2xl font-extrabold">
+            <div className="absolute left-3 right-3 top-3 z-20 mx-auto max-w-xl">
+                <div className="rounded-xl bg-white/95 px-3 py-2 shadow-lg">
+                    <div className="flex items-center justify-between gap-2">
+                        <Link href="/driver/parcels" className="text-sm font-bold">
+                            ← Back
+                        </Link>
+                        <span className="text-xs font-bold">{gpsMessage}</span>
+                    </div>
+
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                        <p className="truncate text-xs font-extrabold">
+                            {headingToPickup ? "📍 Pickup" : "📦 Delivery"}
+                        </p>
+                        {routeInfo && (
+                            <span className="shrink-0 text-xs font-bold">
+                                {routeInfo.distanceKm} km · {routeInfo.durationMinutes} min
+                            </span>
+                        )}
+                    </div>
+                    {routeInfo?.nextStep && (
+                        <p className="mt-0.5 truncate text-xs text-gray-600">
+                            ↪ {routeInfo.nextStep}
+                        </p>
+                    )}
+                </div>
+            </div>
+
+            <div className="absolute bottom-3 left-3 right-3 z-20 mx-auto max-h-[43dvh] max-w-xl space-y-4 overflow-y-auto rounded-3xl bg-[#F4F5F7] p-4 shadow-2xl">
+                <h1 className="text-xl font-extrabold">
                     📦 Manage Delivery
                 </h1>
 

@@ -33,7 +33,7 @@ function ParcelShortcut() {
     return (
         <Link
             href={PARCEL_LINK}
-            className="fixed right-4 top-[calc(80px+env(safe-area-inset-top))] z-40 flex h-12 items-center gap-2 rounded-2xl bg-[#C1F11D] px-4 text-sm font-extrabold text-[#111111] shadow-lg"
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#C1F11D] px-3 text-sm font-extrabold text-[#111111]"
         >
             <Package size={19} />
             Parcels
@@ -107,6 +107,7 @@ function DriverDashboard() {
     const [gps, setGps] = useState({ accuracy: null, text: "Waiting for GPS" });
     const [requests, setRequests] = useState([]);
     const [parcelRequests, setParcelRequests] = useState([]);
+    const [parcelAssignment, setParcelAssignment] = useState(null);
     const [selectedRide, setSelectedRide] = useState(null);
     const [requestAddresses, setRequestAddresses] = useState({});
     const addressCacheRef = useRef(new Map());
@@ -386,6 +387,18 @@ function DriverDashboard() {
                 reportError(error);
             }
         };
+        const onParcelAssigned = (data) => {
+            if (!data?.parcelId) return;
+            setParcelAssignment(data);
+            notifyRef.current({
+                kind: "success",
+                tone: "success",
+                key: `parcel:assigned:${data?.parcelId}`,
+                title: "📦 Parcel assigned to you!",
+                body: data?.message || "Passenger accepted your offer.",
+            });
+        };
+
         const onChat = (payload) => {
             const current = selectedRideRef.current;
             const msg = payload?.message;
@@ -399,6 +412,7 @@ function DriverDashboard() {
         socket.on("ride:cancelled", onCancelled);
         socket.on("ride:driver:selected", onSelected);
         socket.on("ride:chat:new", onChat);
+        socket.on("parcel:assigned", onParcelAssigned);
         return () => {
             socket.off("connect", onConnect);
             socket.off("disconnect", onDisconnect);
@@ -406,6 +420,7 @@ function DriverDashboard() {
             socket.off("ride:cancelled", onCancelled);
             socket.off("ride:driver:selected", onSelected);
             socket.off("ride:chat:new", onChat);
+            socket.off("parcel:assigned", onParcelAssigned);
         };
     }, [token, loadRequests, isOnline, isAvailable, refreshActiveRide, reportError, user?._id, user?.id]);
     // GPS tracking: map shows any fix; backend only receives fixes within 100 m accuracy.
@@ -681,8 +696,6 @@ function DriverDashboard() {
     );
     const requestsView = (
         <div className="space-y-3">
-            <ParcelShortcut />
-
             {parcelRequests.length > 0 && (
                 <div className="space-y-2">
                     <h2 className="dx-h2">
@@ -913,6 +926,14 @@ function DriverDashboard() {
         <main className="driver-live-home dx-home" data-ride={rideInProgress ? "active" : "idle"}>
             <div className="absolute inset-0">
                 <ParcelActivityBar token={token} role="DRIVER" />
+                {parcelAssignment?.parcelId && (
+                    <Link
+                        href={`/driver/parcels/details?parcelId=${parcelAssignment.parcelId}`}
+                        className="fixed left-4 right-4 top-20 z-50 mx-auto max-w-md rounded-2xl bg-[#C1F11D] p-4 font-bold text-[#111111] shadow-xl"
+                    >
+                        📦 Parcel Assigned! Tap to manage delivery →
+                    </Link>
+                )}
                 <RideMap
                     userLocation={location}
                     locateRequest={locateRequest}
@@ -949,6 +970,7 @@ function DriverDashboard() {
                         <Link href="/driver/account" onClick={() => setMapMenuOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-[#F4F5F7]">
                             <UserRound size={19} /> My account
                         </Link>
+                        <ParcelShortcut />
                         <button type="button" onClick={notifications.toggleSound} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold hover:bg-[#F4F5F7]">
                             {notifications.soundEnabled ? <Volume2 size={19} /> : <VolumeX size={19} />}
                             {notifications.soundEnabled ? "Mute ride alerts" : "Enable ride alert sounds"}
