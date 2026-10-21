@@ -8,7 +8,7 @@ export async function apiRequest(path, options = {}) {
         const response = await fetch(`${API_URL}${path}`, {
             ...requestOptions,
             headers: {
-                ...(requestOptions.body
+                ...(requestOptions.body && !(requestOptions.body instanceof FormData)
                     ? { "Content-Type": "application/json" }
                     : {}),
                 ...(accessToken

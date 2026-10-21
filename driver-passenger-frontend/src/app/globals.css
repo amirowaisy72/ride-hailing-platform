@@ -1,8 +1,122 @@
 @import "tailwindcss";
 
+/* Dark Mode — Passenger Loading Skeletons */
+.dark .animate-pulse.bg-gray-200,
+.dark .animate-pulse.bg-slate-200,
+.dark .animate-pulse.bg-gray-100,
+.dark .animate-pulse.bg-slate-100,
+.dark .animate-pulse.bg-\[\#F1F2F4\],
+.dark .animate-pulse.bg-\[\#E9EBEE\],
+.dark .animate-pulse.bg-\[\#E5E7EB\] {
+  background-color: #292e37 !important;
+}
+
+.dark .pd-skeleton {
+  background: linear-gradient(90deg,
+      #242830 0%,
+      #363d48 50%,
+      #242830 100%) !important;
+  background-size: 200% 100% !important;
+}
+
+/*
+ * ------------------------------------------------------------------
+ *  Global theme system (System / Light / Dark)
+ * ------------------------------------------------------------------
+ *  The active theme is written to <html data-theme="light|dark"> and
+ *  the `.dark` class by the inline boot script in app/layout.js (no
+ *  flash) and by ThemeProvider afterwards.
+ *
+ *  1. Semantic tokens (--pd-*) power the redesigned screens and are
+ *     exposed to Tailwind as bg-pd-*, text-pd-*, border-pd-*.
+ *  2. A "compatibility layer" further below re-maps the hard-coded
+ *     light utility classes used by existing Ride / Account screens so
+ *     the whole app follows Dark Mode without touching their logic.
+ * ------------------------------------------------------------------
+ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  --background: #f4f5f7;
+  --foreground: #111111;
+
+  /* Brand */
+  --brand-primary: #087f5b;
+  --brand-dark: #065f46;
+  --brand-light: #d1fae5;
+  --app-background: #f8faf9;
+  --app-text: #111827;
+
+  /* Semantic tokens */
+  --pd-bg: #f4f5f7;
+  --pd-surface: #ffffff;
+  --pd-surface-2: #f4f5f7;
+  --pd-surface-3: #e9ebee;
+  --pd-elevated: rgba(255, 255, 255, 0.96);
+  --pd-text: #111111;
+  --pd-text-2: #4b5563;
+  --pd-muted: #6b7280;
+  --pd-faint: #9ca3af;
+  --pd-line: #eceef1;
+  --pd-line-strong: #dcdfe4;
+  --pd-accent: #c1f11d;
+  --pd-accent-ink: #111111;
+  --pd-accent-soft: #f2f9d7;
+  --pd-accent-text: #3f5d00;
+  --pd-ink: #111111;
+  --pd-ink-text: #ffffff;
+  --pd-success: #087f5b;
+  --pd-success-soft: #e3f6ee;
+  --pd-warning: #b45309;
+  --pd-warning-soft: #fdf3e1;
+  --pd-danger: #d92d20;
+  --pd-danger-soft: #fdecec;
+  --pd-info: #1d4ed8;
+  --pd-info-soft: #e8efff;
+  --pd-shadow: 0 10px 30px rgba(17, 19, 24, 0.08);
+  --pd-shadow-lg: 0 18px 48px rgba(17, 19, 24, 0.18);
+  --pd-scrim: rgba(17, 17, 17, 0.38);
+}
+
+:root.dark {
+  color-scheme: dark;
+
+  --background: #0c0d10;
+  --foreground: #f1f2f4;
+  --app-background: #0c0d10;
+  --app-text: #f1f2f4;
+
+  --pd-bg: #0c0d10;
+  --pd-surface: #16181d;
+  --pd-surface-2: #1d2026;
+  --pd-surface-3: #272a31;
+  --pd-elevated: rgba(22, 24, 29, 0.96);
+  --pd-text: #f1f2f4;
+  --pd-text-2: #c4c8cf;
+  --pd-muted: #9aa0aa;
+  --pd-faint: #6f7682;
+  --pd-line: #262930;
+  --pd-line-strong: #343842;
+  --pd-accent: #c1f11d;
+  --pd-accent-ink: #111111;
+  --pd-accent-soft: rgba(193, 241, 29, 0.12);
+  --pd-accent-text: #d4f75e;
+  --pd-ink: #f1f2f4;
+  --pd-ink-text: #111111;
+  --pd-success: #34d399;
+  --pd-success-soft: rgba(52, 211, 153, 0.12);
+  --pd-warning: #fbbf24;
+  --pd-warning-soft: rgba(251, 191, 36, 0.12);
+  --pd-danger: #f87171;
+  --pd-danger-soft: rgba(248, 113, 113, 0.12);
+  --pd-info: #93b4ff;
+  --pd-info-soft: rgba(147, 180, 255, 0.12);
+  --pd-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --pd-shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.55);
+  --pd-scrim: rgba(0, 0, 0, 0.6);
 }
 
 @theme inline {
@@ -10,25 +124,507 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --color-pd-bg: var(--pd-bg);
+  --color-pd-surface: var(--pd-surface);
+  --color-pd-surface-2: var(--pd-surface-2);
+  --color-pd-surface-3: var(--pd-surface-3);
+  --color-pd-elevated: var(--pd-elevated);
+  --color-pd-text: var(--pd-text);
+  --color-pd-text-2: var(--pd-text-2);
+  --color-pd-muted: var(--pd-muted);
+  --color-pd-faint: var(--pd-faint);
+  --color-pd-line: var(--pd-line);
+  --color-pd-line-strong: var(--pd-line-strong);
+  --color-pd-accent: var(--pd-accent);
+  --color-pd-accent-ink: var(--pd-accent-ink);
+  --color-pd-accent-soft: var(--pd-accent-soft);
+  --color-pd-accent-text: var(--pd-accent-text);
+  --color-pd-ink: var(--pd-ink);
+  --color-pd-ink-text: var(--pd-ink-text);
+  --color-pd-success: var(--pd-success);
+  --color-pd-success-soft: var(--pd-success-soft);
+  --color-pd-warning: var(--pd-warning);
+  --color-pd-warning-soft: var(--pd-warning-soft);
+  --color-pd-danger: var(--pd-danger);
+  --color-pd-danger-soft: var(--pd-danger-soft);
+  --color-pd-info: var(--pd-info);
+  --color-pd-info-soft: var(--pd-info-soft);
+  --color-pd-scrim: var(--pd-scrim);
+  --shadow-pd: var(--pd-shadow);
+  --shadow-pd-lg: var(--pd-shadow-lg);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--background);
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  overscroll-behavior-y: none;
 }
 
-:root {
-  --brand-primary: #087f5b;
-  --brand-dark: #065f46;
-  --brand-light: #d1fae5;
-  --app-background: #f8faf9;
-  --app-text: #111827;
+/* Smooth theme switch without animating every first paint. */
+html.theme-ready body,
+html.theme-ready main,
+html.theme-ready nav {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ---------------- Parcel design utilities ---------------- */
+@utility pd-safe-top {
+  padding-top: max(12px, env(safe-area-inset-top));
+}
+
+@utility pd-safe-bottom {
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+@utility pd-no-scrollbar {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes pd-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pd-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pd-shimmer {
+  0% {
+    background-position: -320px 0;
+  }
+
+  100% {
+    background-position: 320px 0;
+  }
+}
+
+@keyframes pd-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--pd-accent) 70%, transparent);
+  }
+
+  100% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+
+.pd-rise {
+  animation: pd-rise 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.pd-drop {
+  animation: pd-drop 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.pd-live-dot {
+  animation: pd-pulse 1.6s ease-out infinite;
+}
+
+.pd-skeleton {
+  background: linear-gradient(90deg, var(--pd-surface-2) 0, var(--pd-surface-3) 160px, var(--pd-surface-2) 320px);
+  background-size: 640px 100%;
+  animation: pd-shimmer 1.3s linear infinite;
+}
+
+.pd-input {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 14px;
+  border: 1.5px solid transparent;
+  background: var(--pd-surface-2);
+  color: var(--pd-text);
+  padding: 12px 14px;
+  font-size: 16px;
+  /* >=16px prevents iOS zoom on focus */
+  outline: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.pd-input::placeholder {
+  color: var(--pd-faint);
+}
+
+.pd-input:focus {
+  border-color: var(--pd-text);
+  background: var(--pd-surface);
+}
+
+.pd-input[aria-invalid="true"] {
+  border-color: var(--pd-danger);
+}
+
+select.pd-input {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--pd-muted) 50%), linear-gradient(135deg, var(--pd-muted) 50%, transparent 50%);
+  background-position: calc(100% - 20px) 50%, calc(100% - 15px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 36px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .pd-rise,
+  .pd-drop,
+  .pd-live-dot,
+  .pd-skeleton {
+    animation: none !important;
+  }
+}
+
+/*
+ * ------------------------------------------------------------------
+ *  Dark-mode compatibility layer for existing screens
+ *  (Ride booking, Account, Trips, Profile, shared components...)
+ *  Pure presentation: no markup or logic changes required.
+ *  Unlayered rules win over Tailwind's @layer utilities.
+ * ------------------------------------------------------------------
+ */
+.dark .bg-white,
+.dark .bg-\[\#F8FAF9\],
+.dark .bg-\[\#F7F9F8\] {
+  background-color: var(--pd-surface);
+}
+
+.dark main.bg-\[\#F8FAF9\],
+.dark main.bg-\[\#F4F5F7\],
+.dark main.bg-white {
+  background-color: var(--pd-bg);
+}
+
+.dark .bg-white\/95,
+.dark .bg-white\/90 {
+  background-color: var(--pd-elevated);
+}
+
+.dark .bg-\[\#F4F5F7\],
+.dark .bg-\[\#F7F8F9\],
+.dark .bg-\[\#F1F2F4\],
+.dark .bg-slate-50,
+.dark .bg-gray-50 {
+  background-color: var(--pd-surface-2);
+}
+
+.dark .bg-\[\#E9EBEE\],
+.dark .bg-\[\#E3E5E8\],
+.dark .bg-\[\#D9DCE0\],
+.dark .bg-slate-100,
+.dark .bg-slate-200,
+.dark .bg-gray-100,
+.dark .bg-gray-200 {
+  background-color: var(--pd-surface-3);
+}
+
+.dark .bg-\[\#EFFFBE\],
+.dark .bg-\[\#F7FDE6\],
+.dark .bg-lime-100,
+.dark .bg-emerald-50 {
+  background-color: var(--pd-accent-soft);
+}
+
+.dark .bg-red-50,
+.dark .bg-\[\#FDECEC\] {
+  background-color: var(--pd-danger-soft);
+}
+
+.dark .bg-\[\#111111\] {
+  background-color: #23262d;
+}
+
+.dark .text-\[\#111111\],
+.dark .text-\[\#111827\],
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-black,
+.dark .text-gray-900 {
+  color: var(--pd-text);
+}
+
+.dark .text-\[\#374151\],
+.dark .text-\[\#4B5563\],
+.dark .text-slate-700,
+.dark .text-slate-600,
+.dark .text-gray-600,
+.dark .text-gray-700 {
+  color: var(--pd-text-2);
+}
+
+.dark .text-\[\#6B7280\],
+.dark .text-slate-500,
+.dark .text-gray-500 {
+  color: var(--pd-muted);
+}
+
+.dark .text-\[\#9CA3AF\],
+.dark .text-\[\#D1D5DB\],
+.dark .text-slate-400,
+.dark .text-slate-300,
+.dark .text-gray-400 {
+  color: var(--pd-faint);
+}
+
+.dark .text-\[\#087F5B\],
+.dark .text-\[\#065F46\] {
+  color: #3fd6a2;
+}
+
+.dark .text-green-900 {
+  color: var(--pd-accent-text);
+}
+
+.dark .text-red-600 {
+  color: var(--pd-danger);
+}
+
+/* Keep dark ink on lime brand surfaces in both themes. */
+.dark .bg-\[\#C1F11D\],
+.dark .bg-\[\#C1F11D\] .text-\[\#111111\],
+.dark .bg-\[\#C1F11D\] .text-black {
+  color: #111111;
+}
+
+.dark .border-\[\#EEF0F2\],
+.dark .border-\[\#E9EBEE\],
+.dark .border-\[\#F1F2F4\],
+.dark .border-\[\#E5E7EB\],
+.dark .border-\[\#E3E5E8\],
+.dark .border-\[\#F4F5F7\],
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-gray-200,
+.dark .border-red-100,
+.dark .divide-slate-100>* {
+  border-color: var(--pd-line);
+}
+
+.dark .border-white,
+.dark .border-white\/80 {
+  border-color: var(--pd-surface);
+}
+
+.dark .ring-white {
+  --tw-ring-color: var(--pd-surface);
+}
+
+.dark .shadow-sm,
+.dark .shadow-lg,
+.dark .shadow-xl,
+.dark .shadow-2xl {
+  --tw-shadow-color: rgba(0, 0, 0, 0.5);
+}
+
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.dark textarea,
+.dark select {
+  color: var(--pd-text);
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: var(--pd-faint);
+}
+
+/* MapLibre UI chrome follows the theme (map tiles stay readable). */
+.dark .maplibregl-ctrl-group {
+  background: var(--pd-surface);
+}
+
+.dark .maplibregl-ctrl-group button+button {
+  border-top-color: var(--pd-line);
+}
+
+.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(1);
+}
+
+.dark .maplibregl-ctrl-attrib {
+  background: rgba(22, 24, 29, 0.75);
+  color: var(--pd-muted);
+}
+
+.dark .maplibregl-ctrl-attrib a {
+  color: var(--pd-text-2);
+}
+
+.dark .maplibregl-canvas {
+  filter: brightness(0.86) contrast(1.05) saturate(0.9);
+}
+
+/* Driver Home — Dark Mode */
+.dark .dx-home {
+  background: #0c0d10;
+  color: #f1f2f4;
+}
+
+.dark .dx-home .dx-sheet {
+  background: #16181d;
+  color: #f1f2f4;
+  border-top-color: #30343d;
+}
+
+.dark .dx-home .dx-sheet-handle span {
+  background: #555b66;
+}
+
+.dark .dx-home .dx-duty-title,
+.dark .dx-home .dx-h2 {
+  color: #f1f2f4;
+}
+
+.dark .dx-home .dx-duty-sub,
+.dark .dx-home .dx-muted {
+  color: #a4aab5;
+}
+
+.dark .dx-home .dx-tabs {
+  background: #242830;
+}
+
+.dark .dx-home .dx-tabs button {
+  color: #a4aab5;
+}
+
+.dark .dx-home .dx-tabs button[aria-selected="true"] {
+  background: #363c46;
+  color: #ffffff;
+}
+
+.dark .dx-home .dx-btn-ghost {
+  background: #292f26;
+  color: #d4f75e;
+}
+
+.dark .dx-home .dx-gps[data-ok="true"] {
+  color: #d4f75e;
+}
+
+.dark .dx-home .dx-empty {
+  background: #1c2026;
+  border-color: #373d46;
+  color: #f1f2f4;
+}
+
+.dark .dx-home .dx-empty-icon {
+  background: #303740;
+  color: #f1f2f4;
+}
+
+.dark .dx-home .dx-empty-icon[data-on="true"] {
+  background: #c1f11d;
+  color: #111111;
+}
+
+.dark .dx-home .dx-request {
+  background: #20242b;
+  border-color: #373d46;
+  color: #f1f2f4;
+}
+
+.dark .dx-home .dx-request[data-submitted="true"] {
+  background: #283323;
+}
+
+/* Dark Mode — Loading Skeleton Fix */
+.dark .dx-home .dx-skeleton {
+  background: linear-gradient(90deg,
+      #1c2026 0%,
+      #303640 50%,
+      #1c2026 100%);
+  background-size: 200% 100%;
+  border: 1px solid #303640;
+}
+
+.dark .dx-home .dx-empty,
+.dark .dx-home .dx-request,
+.dark .dx-home .dx-vehicle {
+  color: #f1f2f4;
+}
+
+/* Driver My Vehicle — Dark Mode */
+
+.dark .dx-home .dx-vehicle,
+.dark .dx-home .dx-vehicle[data-active="true"] {
+  background: #242830;
+  border-color: #454b56;
+  color: #f1f2f4;
+}
+
+.dark .dx-home .dx-vehicle:disabled {
+  opacity: 1;
+}
+
+.dark .dx-home .dx-vehicle strong {
+  color: #f1f2f4;
+}
+
+.dark .dx-home .dx-vehicle small {
+  color: #a4aab5;
+}
+
+.dark .dx-home .dx-vehicle-icon {
+  background: #394722;
+  color: #c1f11d;
+}
+
+.dark .dx-home .dx-radio {
+  border-color: #858c98;
+}
+
+.dark .dx-home .dx-vehicle[data-active="true"] .dx-radio {
+  border-color: #c1f11d;
+  background: #111111;
+}
+
+.dark .dx-home .dx-link-card {
+  background: #242830;
+  color: #f1f2f4;
+  border: 1px solid #373d46;
+}
+
+.dark .dx-home .dx-inline-warn {
+  background: #382a1b;
+  color: #ffca84;
+}
+
+.dark .dx-home .dx-btn-lime {
+  background: #c1f11d;
+  color: #111111;
+}
+
+.dark .dx-home .dx-btn-lime:disabled {
+  opacity: 0.75;
+}
+
+/* Driver Parcel Navigation — Theme-aware direction banner */
+.dark .maplibregl-control-container .navigation-banner,
+.dark .navigation-banner {
+  background-color: #20242c !important;
+  color: #f9fafb !important;
 }

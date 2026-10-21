@@ -64,7 +64,7 @@ function TripsContent() {
         <main className="driver-subpage min-h-dvh bg-[#F8FAF9] pb-[calc(100px+env(safe-area-inset-bottom))] text-slate-900">
             <MobileBottomNav role="DRIVER" />
 
-            <header className="bg-[#087F5B] px-5 pb-20 pt-[max(24px,env(safe-area-inset-top))] text-white">
+            <header className="bg-[#087F5B] px-5 pb-8 pt-[max(24px,env(safe-area-inset-top))] text-white">
                 <div className="mx-auto flex max-w-xl items-center gap-4">
                     <Link href="/driver" aria-label="Back to home" className="rounded-xl bg-white/15 p-3">
                         <ArrowLeft size={20} />
@@ -79,7 +79,7 @@ function TripsContent() {
                 </div>
             </header>
 
-            <div className="mx-auto -mt-10 max-w-xl space-y-4 px-4">
+            <div className="relative z-10 mx-auto mt-4 max-w-xl space-y-4 px-4">
                 <div className="grid grid-cols-2 gap-3 rounded-2xl bg-white p-3 shadow-sm">
                     {[
                         ["ALL", "All Trips"],
@@ -89,8 +89,8 @@ function TripsContent() {
                             key={value}
                             onClick={() => setFilter(value)}
                             className={`rounded-xl py-3 text-xs font-bold ${filter === value
-                                    ? "bg-[#087F5B] text-white"
-                                    : "bg-slate-50 text-slate-600"
+                                ? "bg-[#087F5B] text-white"
+                                : "bg-slate-50 text-slate-600"
                                 }`}
                         >
                             {label}
@@ -144,8 +144,8 @@ function TripsContent() {
 
                         <div className="mt-4 flex items-center justify-between border-t pt-4">
                             <span className={`rounded-lg px-3 py-1.5 text-xs font-bold ${ride.status === "TRIP_COMPLETED"
-                                    ? "bg-emerald-50 text-[#087F5B]"
-                                    : "bg-amber-50 text-amber-700"
+                                ? "bg-emerald-50 text-[#087F5B]"
+                                : "bg-amber-50 text-amber-700"
                                 }`}>
                                 {ride.status?.replaceAll("_", " ")}
                             </span>

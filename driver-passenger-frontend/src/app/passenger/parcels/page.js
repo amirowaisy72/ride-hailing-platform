@@ -1,10 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { ArrowLeft, ChevronRight, Package, RefreshCw, ShoppingBag, WifiOff } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
+import {
+    CardSkeleton, EmptyState, InlineError, ParcelProgress, ParcelStatusBadge, RouteSummary,
+} from "@/components/parcel/ParcelKit";
+import {
+    categoryLabel, formatPKR, formatWhen, isActive, orderPrice, serviceLabel, statusMeta,
+} from "@/components/parcel/parcelUi";
 
 export default function PassengerParcelsPage() {
     return (
@@ -18,97 +25,188 @@ function ParcelDashboard() {
     const { token } = useAuth();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState("");
+    const [offline, setOffline] = useState(false);
 
-    useEffect(() => {
+    const load = useCallback(async (signal) => {
         if (!token) return;
-
-        let cancelled = false;
-
-        apiRequest("/parcels/my", { token })
-            .then((data) => {
-                if (!cancelled) setOrders(data.orders || []);
-            })
-            .catch((err) => {
-                if (!cancelled) setError(err.message);
-            })
-            .finally(() => {
-                if (!cancelled) setLoading(false);
-            });
-
-        return () => { cancelled = true; };
+        try {
+            const data = await apiRequest("/parcels/my", { token });
+            if (signal?.cancelled) return;
+            setOrders(data.orders || []);
+            setError("");
+        } catch (err) {
+            if (!signal?.cancelled) setError(err.message);
+        } finally {
+            if (!signal?.cancelled) {
+                setLoading(false);
+                setRefreshing(false);
+            }
+        }
     }, [token]);
 
+    useEffect(() => {
+        const signal = { cancelled: false };
+        load(signal);
+        return () => { signal.cancelled = true; };
+    }, [load]);
+
+    useEffect(() => {
+        const update = () => setOffline(typeof navigator !== "undefined" && navigator.onLine === false);
+        update();
+        window.addEventListener("online", update);
+        window.addEventListener("offline", update);
+        return () => {
+            window.removeEventListener("online", update);
+            window.removeEventListener("offline", update);
+        };
+    }, []);
+
+    const { active, history } = useMemo(() => ({
+        active: orders.filter(isActive),
+        history: orders.filter((o) => !isActive(o)),
+    }), [orders]);
+
     return (
-        <main className="min-h-dvh bg-[#F4F5F7] p-5 text-[#111111]">
-            <div className="mx-auto max-w-xl">
-                <Link href="/passenger" className="text-sm font-bold">
-                    ← Back
-                </Link>
+        <main className="min-h-dvh bg-pd-bg text-pd-text">
+            <div className="sticky top-0 z-20 border-b border-pd-line bg-pd-elevated backdrop-blur-xl pd-safe-top">
+                <div className="mx-auto flex max-w-xl items-center gap-2 px-3 pb-2.5">
+                    <Link href="/passenger" aria-label="Back to home" className="grid h-11 w-11 place-items-center rounded-2xl text-pd-text">
+                        <ArrowLeft size={21} />
+                    </Link>
+                    <h1 className="flex-1 text-lg font-extrabold tracking-tight">Parcels</h1>
+                    <button
+                        type="button"
+                        aria-label="Refresh"
+                        onClick={() => { setRefreshing(true); load(); }}
+                        className="grid h-11 w-11 place-items-center rounded-2xl text-pd-muted"
+                    >
+                        <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />
+                    </button>
+                </div>
+            </div>
 
-                <h1 className="mt-6 text-3xl font-extrabold">
-                    📦 Parcel Delivery
-                </h1>
-
-                <p className="mt-2 text-sm text-gray-500">
-                    Send parcels or receive orders from shops.
-                </p>
-
-                <Link
-                    href="/passenger/parcels/new"
-                    className="mt-6 block rounded-2xl bg-[#C1F11D] p-4 text-center font-extrabold"
-                >
-                    + Book Parcel Delivery
-                </Link>
-
-                <h2 className="mb-3 mt-8 text-lg font-bold">
-                    My Deliveries
-                </h2>
-
-                {loading && <p>Loading parcels...</p>}
-                {error && <p className="text-red-600">{error}</p>}
-
-                {!loading && !error && orders.length === 0 && (
-                    <p className="rounded-2xl bg-white p-5 text-sm text-gray-500">
-                        No parcel bookings yet.
+            <div className="mx-auto max-w-xl space-y-6 px-4 pb-[calc(32px+env(safe-area-inset-bottom))] pt-4">
+                {offline && (
+                    <p className="flex items-center gap-2 rounded-2xl bg-pd-warning-soft p-3 text-sm font-semibold text-pd-warning">
+                        <WifiOff size={16} /> You are offline. Showing last loaded deliveries.
                     </p>
                 )}
 
-                <div className="space-y-3">
-                    {orders.map((order) => (
-                        <article
-                            key={order._id}
-                            className="rounded-2xl bg-white p-4 shadow-sm"
-                        >
-                            <div className="flex justify-between gap-3">
-                                <strong>
-                                    {order.serviceType === "SHOP_PICKUP"
-                                        ? "Shop Pickup"
-                                        : "Send Parcel"}
-                                </strong>
-                                <span className="text-xs font-bold">
-                                    {order.status.replaceAll("_", " ")}
-                                </span>
-                            </div>
+                {/* Entry points */}
+                <section className="grid grid-cols-2 gap-3">
+                    <Link
+                        href="/passenger/parcels/new"
+                        className="group relative overflow-hidden rounded-3xl bg-pd-accent p-4 text-pd-accent-ink shadow-pd active:scale-[.98]"
+                    >
+                        <Package size={24} strokeWidth={2.2} />
+                        <p className="mt-6 text-base font-extrabold leading-tight">Send a parcel</p>
+                        <p className="mt-0.5 text-xs font-semibold opacity-70">Door to door</p>
+                        <ChevronRight size={18} className="absolute right-3 top-4 opacity-60" />
+                    </Link>
+                    <Link
+                        href="/passenger/parcels/new?service=SHOP_PICKUP"
+                        className="group relative overflow-hidden rounded-3xl border border-pd-line bg-pd-surface p-4 shadow-pd active:scale-[.98]"
+                    >
+                        <ShoppingBag size={24} strokeWidth={2} />
+                        <p className="mt-6 text-base font-extrabold leading-tight">Shop pickup</p>
+                        <p className="mt-0.5 text-xs font-semibold text-pd-muted">Collect an order</p>
+                        <ChevronRight size={18} className="absolute right-3 top-4 text-pd-faint" />
+                    </Link>
+                </section>
 
-                            <p className="mt-2 text-sm text-gray-500">
-                                {order.parcel?.category} · {order.parcel?.weightKg} kg
-                            </p>
+                <InlineError>{error}</InlineError>
 
-                            <p className="mt-2 font-bold">
-                                PKR {order.finalPrice ?? order.requestedPrice}
-                            </p>
+                {loading ? (
+                    <CardSkeleton count={2} />
+                ) : (
+                    <>
+                        <section aria-labelledby="active-title">
+                            <SectionTitle id="active-title" count={active.length}>Active</SectionTitle>
+                            {active.length === 0 ? (
+                                <EmptyState
+                                    title="No active deliveries"
+                                    body="Book a parcel and nearby drivers will send you offers."
+                                />
+                            ) : (
+                                <div className="space-y-3">
+                                    {active.map((order) => <ActiveCard key={order._id} order={order} />)}
+                                </div>
+                            )}
+                        </section>
 
-                            <Link
-                                href={`/passenger/parcels/details?parcelId=${order._id}`}
-                                className="mt-3 inline-block text-sm font-bold underline"
-                            >
-                                View Details →
-                            </Link>
-                        </article>
-                    ))}
-                </div>
+                        {history.length > 0 && (
+                            <section aria-labelledby="history-title">
+                                <SectionTitle id="history-title" count={history.length}>History</SectionTitle>
+                                <div className="divide-y divide-pd-line overflow-hidden rounded-3xl border border-pd-line bg-pd-surface">
+                                    {history.map((order) => <HistoryRow key={order._id} order={order} />)}
+                                </div>
+                            </section>
+                        )}
+                    </>
+                )}
             </div>
         </main>
+    );
+}
+
+function SectionTitle({ id, children, count }) {
+    return (
+        <h2 id={id} className="mb-3 flex items-center gap-2 px-1 text-xs font-bold uppercase tracking-wider text-pd-muted">
+            {children}
+            {count > 0 && <span className="rounded-full bg-pd-surface-3 px-2 py-0.5 text-[10px] text-pd-text-2">{count}</span>}
+        </h2>
+    );
+}
+
+function ActiveCard({ order }) {
+    const meta = statusMeta(order.status);
+    return (
+        <Link
+            href={`/passenger/parcels/details?parcelId=${order._id}`}
+            className="pd-rise block rounded-3xl border border-pd-line bg-pd-surface p-4 shadow-pd active:scale-[.99]"
+        >
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <p className="text-xs font-semibold text-pd-muted">
+                        {serviceLabel(order.serviceType)} · {categoryLabel(order.parcel?.category)} · {order.parcel?.weightKg} kg
+                    </p>
+                    <p className="mt-0.5 text-[17px] font-extrabold leading-snug">{meta.label}</p>
+                </div>
+                <ParcelStatusBadge status={order.status} />
+            </div>
+            <ParcelProgress status={order.status} className="mt-3" />
+            <div className="mt-4">
+                <RouteSummary pickup={order.pickup} destination={order.destination} compact />
+            </div>
+            <div className="mt-4 flex items-center justify-between border-t border-pd-line pt-3">
+                <strong className="text-base">{formatPKR(orderPrice(order))}</strong>
+                <span className="inline-flex items-center gap-1 text-sm font-bold text-pd-text">
+                    {order.status === "REQUESTED" ? "View offers" : "Track"}
+                    <ChevronRight size={16} />
+                </span>
+            </div>
+        </Link>
+    );
+}
+
+function HistoryRow({ order }) {
+    return (
+        <Link
+            href={`/passenger/parcels/details?parcelId=${order._id}`}
+            className="flex min-h-16 items-center gap-3 px-4 py-3 active:bg-pd-surface-2"
+        >
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-pd-surface-2 text-pd-muted">
+                {order.serviceType === "SHOP_PICKUP" ? <ShoppingBag size={18} /> : <Package size={18} />}
+            </span>
+            <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold">{order.destination?.address || serviceLabel(order.serviceType)}</p>
+                <p className="mt-0.5 text-xs text-pd-muted">
+                    {formatWhen(order.updatedAt || order.createdAt) || serviceLabel(order.serviceType)} · {formatPKR(orderPrice(order))}
+                </p>
+            </div>
+            <ParcelStatusBadge status={order.status} />
+        </Link>
     );
 }

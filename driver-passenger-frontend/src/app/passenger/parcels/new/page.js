@@ -4,11 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Geolocation } from "@capacitor/geolocation";
+import {
+    ArrowLeft, Check, ChevronRight, Crosshair, LocateFixed, MapPin, Package, Search, ShoppingBag, X,
+} from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
 import { searchLocations, reverseGeocode } from "@/lib/locationService";
 import RideMap from "@/components/RideMap";
+import { Button, InlineError, RouteSummary } from "@/components/parcel/ParcelKit";
+import { CATEGORY_LABELS, VEHICLE_LABELS, categoryLabel, formatPKR, serviceLabel } from "@/components/parcel/parcelUi";
 
 export default function NewParcelPage() {
     return (
@@ -17,6 +22,9 @@ export default function NewParcelPage() {
         </AuthGuard>
     );
 }
+
+const STEP_TITLES = { 1: "Locations", 2: "Parcel details", 3: "Review" };
+const PHONE_RE = /^[+\d][\d\s-]{6,}$/;
 
 function ParcelBookingForm() {
     const { token } = useAuth();
@@ -33,12 +41,21 @@ function ParcelBookingForm() {
     const [activeSearch, setActiveSearch] = useState(null);
     const [searching, setSearching] = useState(false);
     const [searchLocation, setSearchLocation] = useState(null);
+    const [locating, setLocating] = useState(false);
     const searchTimer = useRef(null);
 
     useEffect(() => {
         return () => clearTimeout(searchTimer.current);
     }, []);
+
+    // Deep link from the dashboard: /passenger/parcels/new?service=SHOP_PICKUP
+    useEffect(() => {
+        const service = new URLSearchParams(window.location.search).get("service");
+        if (service === "SHOP_PICKUP" || service === "SEND_PARCEL") setServiceType(service);
+    }, []);
+
     const [error, setError] = useState("");
+    const [touched, setTouched] = useState(false);
 
     const [sender, setSender] = useState({ name: "", phone: "" });
     const [receiver, setReceiver] = useState({ name: "", phone: "" });
@@ -113,6 +130,8 @@ function ParcelBookingForm() {
     }
 
     async function useCurrentPickup() {
+        setLocating(true);
+        setError("");
         try {
             const position = await Geolocation.getCurrentPosition({
                 enableHighAccuracy: true,
@@ -142,8 +161,11 @@ function ParcelBookingForm() {
             setPickup({ latitude, longitude, address });
             setPickupQuery(address);
             setResults([]);
+            setActiveSearch(null);
         } catch (e) {
             setError(e.message);
+        } finally {
+            setLocating(false);
         }
     }
 
@@ -189,10 +211,56 @@ function ParcelBookingForm() {
         }
     }
 
+    function onQueryChange(field, value) {
+        clearTimeout(searchTimer.current);
+
+        if (field === "pickup") {
+            setPickupQuery(value);
+            setPickup(null);
+        } else {
+            setDestinationQuery(value);
+            setDestination(null);
+        }
+
+        setActiveSearch(field);
+        setResults([]);
+
+        if (value.trim().length >= 3) {
+            searchTimer.current = setTimeout(() => {
+                findPlaces(value, field);
+            }, 500);
+        }
+    }
+
+    // ---- Step 2 validation (client-side only; payload unchanged) ----
+    const fieldErrors = {
+        senderName: !sender.name.trim() && "Enter sender name",
+        senderPhone: !PHONE_RE.test(sender.phone.trim()) && "Enter a valid phone number",
+        receiverName: !receiver.name.trim() && "Enter receiver name",
+        receiverPhone: !PHONE_RE.test(receiver.phone.trim()) && "Enter a valid phone number",
+        weightKg: !(Number(weightKg) > 0) && "Weight must be above 0",
+        quantity: !(Number.isInteger(Number(quantity)) && Number(quantity) >= 1) && "At least 1",
+        requestedPrice: !(Number.isSafeInteger(Number(requestedPrice)) && Number(requestedPrice) > 0) && "Enter your fare in PKR",
+    };
+    const detailsValid = Object.values(fieldErrors).every((v) => !v);
+    const showErr = (key) => (touched ? fieldErrors[key] : false);
+
+    function goToReview() {
+        setTouched(true);
+        if (!detailsValid) {
+            setError("Please complete the highlighted fields.");
+            return;
+        }
+        setError("");
+        setBookingStep(3);
+        window.scrollTo({ top: 0 });
+    }
+
     async function submitParcel(event) {
         event.preventDefault();
+        if (bookingStep !== 3) return;
         if (!pickup || !destination || submitting) {
-            setError("Select pickup and delivery locations.");
+            if (!pickup || !destination) setError("Select pickup and delivery locations.");
             return;
         }
 
@@ -225,362 +293,466 @@ function ParcelBookingForm() {
             router.push(`/passenger/parcels/details?parcelId=${data.order._id}`);
         } catch (e) {
             setError(e.message);
-        } finally {
             setSubmitting(false);
         }
     }
 
-    return (
-        <main className={`min-h-dvh bg-[#F4F5F7] text-[#111111] ${bookingStep === 1 ? "p-0" : "p-4"}`}>
-            <div className={bookingStep === 1 ? "relative h-dvh overflow-hidden" : "mx-auto max-w-xl"}>
-                <Link
-                    href="/passenger/parcels"
-                    className={`text-sm font-bold ${bookingStep === 1 ? "absolute left-4 top-4 z-30 rounded-full bg-white px-4 py-3 shadow-lg" : ""}`}
-                >
-                    ← Back
-                </Link>
+    // ===================== STEP 1 — LOCATIONS =====================
+    if (bookingStep === 1) {
+        const searchField = activeSearch;
+        return (
+            <main className="relative h-dvh overflow-hidden bg-pd-surface-3 text-pd-text">
+                <div className="absolute inset-0 z-0">
+                    <RideMap
+                        userLocation={pickup}
+                        destination={destination}
+                        onMapClick={selectLocationOnMap}
+                        showNavigationControl={false}
+                        sheetRatio={0.42}
+                    />
+                </div>
 
-                <h1 className={bookingStep === 1 ? "sr-only" : "my-5 text-2xl font-extrabold"}>
-                    📦 Book Parcel Delivery
-                </h1>
-
-                {bookingStep === 1 && (
-                    <div className="mb-4">
-                        {mapSelectionMode && (
-                            <div className="absolute left-4 right-4 top-20 z-30 mx-auto flex max-w-xl items-center justify-between gap-3 rounded-2xl bg-[#111111] p-4 text-white shadow-xl">
-                                <p className="text-sm font-bold">
-                                    📍 Tap map to set {mapSelectionMode === "pickup" ? "Pickup" : "Delivery"} location
-                                </p>
-                                <button
-                                    type="button"
-                                    onClick={() => setMapSelectionMode(null)}
-                                    className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-black"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        )}
-                        <p className="mb-2 text-sm font-bold">
-                            Select pickup and delivery on the map
-                        </p>
-                        <div className="fixed inset-0 z-0 overflow-hidden bg-gray-200">
-                            <RideMap
-                                userLocation={pickup}
-                                destination={destination}
-                                onMapClick={selectLocationOnMap}
-                                showNavigationControl
-                            />
-                        </div>
-                        <p className="sr-only">
-                            Select pickup and delivery using the map or address search.
-                        </p>
-                    </div>
-                )}
-
-                <form
-                    onSubmit={submitParcel}
-                    noValidate={bookingStep === 1}
-                    className={
-                        bookingStep === 1
-                            ? `absolute inset-x-4 bottom-4 z-20 mx-auto max-w-xl max-h-[65dvh] space-y-3 overflow-y-auto rounded-3xl bg-white/95 p-4 shadow-2xl backdrop-blur ${mapSelectionMode ? "hidden" : ""}`
-                            : "space-y-4"
-                    }
-                >
-                    {bookingStep === 1 && (
-                        <div className="grid grid-cols-2 gap-2">
+                {/* Compact top bar */}
+                <div className="pointer-events-none absolute inset-x-0 top-0 z-20 pd-safe-top">
+                    <div className="mx-auto flex max-w-xl items-center gap-2 px-3">
+                        <Link
+                            href="/passenger/parcels"
+                            aria-label="Back to parcels"
+                            className="pointer-events-auto grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-pd-surface text-pd-text shadow-pd"
+                        >
+                            <ArrowLeft size={20} />
+                        </Link>
+                        <div role="radiogroup" aria-label="Service type" className="pointer-events-auto ml-auto flex rounded-2xl bg-pd-surface p-1 shadow-pd">
                             {[
-                                ["SEND_PARCEL", "Send Parcel"],
-                                ["SHOP_PICKUP", "Shop Pickup"],
-                            ].map(([id, label]) => (
+                                ["SEND_PARCEL", "Send", Package],
+                                ["SHOP_PICKUP", "Shop pickup", ShoppingBag],
+                            ].map(([id, label, Icon]) => (
                                 <button
                                     key={id}
                                     type="button"
+                                    role="radio"
+                                    aria-checked={serviceType === id}
                                     onClick={() => setServiceType(id)}
-                                    className={`rounded-2xl p-4 text-sm font-bold ${serviceType === id
-                                        ? "bg-[#C1F11D]"
-                                        : "bg-white"
+                                    className={`flex h-9 items-center gap-1.5 rounded-xl px-3 text-xs font-bold transition ${serviceType === id
+                                        ? "bg-pd-ink text-pd-ink-text"
+                                        : "text-pd-muted"
                                         }`}
                                 >
-                                    {label}
+                                    <Icon size={14} /> {label}
                                 </button>
                             ))}
                         </div>
-                    )}
+                    </div>
 
-                    {bookingStep === 1 && (
-                        <p className="text-center text-sm font-bold">
-                            {!pickup ? "📍 Select Pickup Location" : !destination ? "📍 Select Delivery Location" : "✓ Both Locations Selected"}
-                        </p>
-                    )}
-
-                    {bookingStep === 1 && ["pickup", "destination"].map((field) => (
-                        <div key={field} className="relative rounded-2xl bg-white p-4">
-                            <label className="mb-2 block text-sm font-bold">
-                                {field === "pickup"
-                                    ? "Pickup Location"
-                                    : "Delivery Location"}
-                            </label>
-
-                            <input
-                                value={field === "pickup" ? pickupQuery : destinationQuery}
-                                onChange={(e) => {
-                                    const value = e.target.value;
-
-                                    clearTimeout(searchTimer.current);
-
-                                    if (field === "pickup") {
-                                        setPickupQuery(value);
-                                        setPickup(null);
-                                    } else {
-                                        setDestinationQuery(value);
-                                        setDestination(null);
-                                    }
-
-                                    setActiveSearch(field);
-                                    setResults([]);
-
-                                    if (value.trim().length >= 3) {
-                                        searchTimer.current = setTimeout(() => {
-                                            findPlaces(value, field);
-                                        }, 500);
-                                    }
-                                }}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        clearTimeout(searchTimer.current);
-                                        findPlaces(e.currentTarget.value, field);
-                                    }
-                                }}
-                                placeholder="Search address or place"
-                                className="w-full rounded-xl bg-[#F4F5F7] p-3 outline-none"
-                                required
-                            />
-
+                    {mapSelectionMode && (
+                        <div className="pd-drop pointer-events-auto mx-auto mt-2 flex max-w-xl items-center gap-3 px-3">
+                            <div className="flex min-h-12 flex-1 items-center gap-2 rounded-2xl bg-pd-ink px-4 text-sm font-bold text-pd-ink-text shadow-pd-lg">
+                                <Crosshair size={16} className="shrink-0" />
+                                Tap the map to set {mapSelectionMode === "pickup" ? "pickup" : "drop-off"}
+                            </div>
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setMapSelectionMode(field);
-                                    setActiveSearch(null);
-                                    setResults([]);
-                                }}
-                                className="mt-2 mr-4 text-xs font-bold text-[#111111] underline"
+                                onClick={() => setMapSelectionMode(null)}
+                                className="h-12 rounded-2xl bg-pd-surface px-4 text-sm font-bold shadow-pd"
                             >
-                                📍 Choose on Map
+                                Cancel
                             </button>
+                        </div>
+                    )}
+                </div>
 
-                            {field === "pickup" && (
+                {/* Location card */}
+                {!mapSelectionMode && !searchField && (
+                    <section className="pd-rise absolute inset-x-0 bottom-0 z-20 mx-auto max-w-xl rounded-t-[28px] bg-pd-surface px-4 pt-4 shadow-pd-lg sm:inset-x-3 sm:bottom-3 sm:rounded-[28px]">
+                        <h1 className="text-lg font-extrabold tracking-tight">
+                            {serviceType === "SHOP_PICKUP" ? "Where is the shop?" : "Where is it going?"}
+                        </h1>
+                        <p className="mt-0.5 text-xs text-pd-muted">Search, use GPS, or tap the map.</p>
+
+                        <div className="relative mt-3 rounded-2xl bg-pd-surface-2">
+                            <span className="absolute bottom-[26px] left-[22px] top-[26px] w-px border-l-2 border-dotted border-pd-line-strong" aria-hidden="true" />
+                            {["pickup", "destination"].map((field, idx) => {
+                                const point = field === "pickup" ? pickup : destination;
+                                const query = field === "pickup" ? pickupQuery : destinationQuery;
+                                return (
+                                    <div key={field} className={`flex items-center gap-1 ${idx === 0 ? "border-b border-pd-line" : ""}`}>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setActiveSearch(field); setResults([]); }}
+                                            className="flex min-h-14 min-w-0 flex-1 items-center gap-3 px-3.5 text-left"
+                                        >
+                                            <span className={`relative z-10 grid h-4 w-4 shrink-0 place-items-center ${field === "pickup" ? "rounded-full bg-pd-ink" : "rounded-[4px] bg-pd-danger"}`}>
+                                                <span className="h-1.5 w-1.5 rounded-full bg-pd-surface" />
+                                            </span>
+                                            <span className="min-w-0">
+                                                <span className="block text-[10px] font-bold uppercase tracking-wide text-pd-muted">
+                                                    {field === "pickup" ? (serviceType === "SHOP_PICKUP" ? "Shop / pickup" : "Pickup") : "Drop-off"}
+                                                </span>
+                                                <span className={`block truncate text-sm font-semibold ${point ? "text-pd-text" : "text-pd-faint"}`}>
+                                                    {point ? (point.address || query) : field === "pickup" ? "Set pickup location" : "Set delivery location"}
+                                                </span>
+                                            </span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            aria-label={`Choose ${field === "pickup" ? "pickup" : "drop-off"} on map`}
+                                            onClick={() => { setMapSelectionMode(field); setActiveSearch(null); setResults([]); }}
+                                            className="mr-1.5 grid h-11 w-11 shrink-0 place-items-center rounded-xl text-pd-muted"
+                                        >
+                                            <MapPin size={18} />
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="mt-2.5 flex gap-2">
+                            <button
+                                type="button"
+                                onClick={useCurrentPickup}
+                                disabled={locating}
+                                className="flex min-h-11 items-center gap-2 rounded-xl bg-pd-surface-2 px-3 text-xs font-bold disabled:opacity-60"
+                            >
+                                <LocateFixed size={15} className={locating ? "animate-pulse" : ""} />
+                                {locating ? "Locating…" : "Use my location as pickup"}
+                            </button>
+                        </div>
+
+                        <div className="mt-3">
+                            <InlineError onDismiss={() => setError("")}>{error}</InlineError>
+                        </div>
+
+                        <Button
+                            className="mt-3 w-full"
+                            disabled={!pickup || !destination}
+                            onClick={() => { setError(""); setBookingStep(2); }}
+                        >
+                            {!pickup ? "Set pickup to continue" : !destination ? "Set drop-off to continue" : <>Continue <ChevronRight size={18} /></>}
+                        </Button>
+                        <StepDots step={1} />
+                        <div className="pd-safe-bottom" />
+                    </section>
+                )}
+
+                {/* Search panel */}
+                {searchField && !mapSelectionMode && (
+                    <section className="pd-rise absolute inset-x-0 bottom-0 z-30 mx-auto flex max-h-[85dvh] max-w-xl flex-col rounded-t-[28px] bg-pd-surface shadow-pd-lg sm:inset-x-3 sm:bottom-3 sm:rounded-[28px]">
+                        <div className="flex items-center gap-2 px-4 pb-2 pt-4">
+                            <h2 className="flex-1 text-base font-extrabold">
+                                {searchField === "pickup" ? "Pickup location" : "Delivery location"}
+                            </h2>
+                            <button
+                                type="button"
+                                aria-label="Close search"
+                                onClick={() => { setActiveSearch(null); setResults([]); }}
+                                className="grid h-10 w-10 place-items-center rounded-full bg-pd-surface-2"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="px-4">
+                            <label className="relative block">
+                                <span className="sr-only">Search address or place</span>
+                                <Search size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-pd-faint" />
+                                <input
+                                    autoFocus
+                                    type="search"
+                                    enterKeyHint="search"
+                                    autoComplete="off"
+                                    value={searchField === "pickup" ? pickupQuery : destinationQuery}
+                                    onChange={(e) => onQueryChange(searchField, e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            clearTimeout(searchTimer.current);
+                                            findPlaces(e.currentTarget.value, searchField);
+                                        }
+                                    }}
+                                    placeholder="Search address or place"
+                                    className="pd-input pl-10"
+                                />
+                            </label>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                                {searchField === "pickup" && (
+                                    <button type="button" onClick={useCurrentPickup} disabled={locating} className="flex min-h-10 items-center gap-1.5 rounded-xl bg-pd-accent-soft px-3 text-xs font-bold text-pd-accent-text">
+                                        <LocateFixed size={14} /> {locating ? "Locating…" : "Current location"}
+                                    </button>
+                                )}
                                 <button
                                     type="button"
-                                    onClick={useCurrentPickup}
-                                    className="mt-2 text-xs font-bold underline"
+                                    onClick={() => { setMapSelectionMode(searchField); setActiveSearch(null); setResults([]); }}
+                                    className="flex min-h-10 items-center gap-1.5 rounded-xl bg-pd-surface-2 px-3 text-xs font-bold"
                                 >
-                                    Use my current location
+                                    <MapPin size={14} /> Choose on map
                                 </button>
+                            </div>
+                        </div>
+                        <div className="pd-no-scrollbar mt-2 min-h-[120px] flex-1 overflow-y-auto overscroll-contain px-2 pb-2">
+                            {searching && (
+                                <div className="space-y-2 p-2">
+                                    {[0, 1, 2].map((i) => <div key={i} className="pd-skeleton h-12 rounded-xl" />)}
+                                </div>
                             )}
-
-                            {activeSearch === field && searching && (
-                                <p className="mt-2 text-xs">Searching locations...</p>
+                            {!searching && results.length === 0 && (
+                                <p className="px-3 py-6 text-center text-sm text-pd-muted">
+                                    {(searchField === "pickup" ? pickupQuery : destinationQuery).trim().length < 3
+                                        ? "Type at least 3 characters to search."
+                                        : "No places found. Try another search or pick on the map."}
+                                </p>
                             )}
+                            {!searching && results.map((place, index) => (
+                                <button
+                                    key={place.place_id || index}
+                                    type="button"
+                                    onClick={() => choosePlace(place)}
+                                    className="flex min-h-14 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left active:bg-pd-surface-2"
+                                >
+                                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-pd-surface-2 text-pd-muted">
+                                        <MapPin size={16} />
+                                    </span>
+                                    <span className="line-clamp-2 text-sm font-medium">{place.display_name || place.name}</span>
+                                </button>
+                            ))}
+                        </div>
+                        {error && <div className="px-4 pb-2"><InlineError onDismiss={() => setError("")}>{error}</InlineError></div>}
+                        <div className="pd-safe-bottom" />
+                    </section>
+                )}
+            </main>
+        );
+    }
 
-                            {activeSearch === field && results.length > 0 && (
-                                <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border">
-                                    {results.map((place, index) => (
+    // ===================== STEPS 2 & 3 =====================
+    return (
+        <main className="min-h-dvh bg-pd-bg text-pd-text">
+            <div className="sticky top-0 z-20 border-b border-pd-line bg-pd-elevated backdrop-blur-xl pd-safe-top">
+                <div className="mx-auto flex max-w-xl items-center gap-2 px-3 pb-2.5">
+                    <button
+                        type="button"
+                        aria-label="Previous step"
+                        onClick={() => { setError(""); setBookingStep(bookingStep - 1); }}
+                        className="grid h-11 w-11 place-items-center rounded-2xl"
+                    >
+                        <ArrowLeft size={21} />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-pd-muted">Step {bookingStep} of 3</p>
+                        <h1 className="text-base font-extrabold leading-tight">{STEP_TITLES[bookingStep]}</h1>
+                    </div>
+                    <span className="rounded-full bg-pd-surface-2 px-3 py-1.5 text-[11px] font-bold">{serviceLabel(serviceType)}</span>
+                </div>
+                <div className="mx-auto flex max-w-xl gap-1 px-4 pb-2">
+                    {[1, 2, 3].map((s) => (
+                        <span key={s} className={`h-1 flex-1 rounded-full ${s <= bookingStep ? "bg-pd-accent" : "bg-pd-surface-3"}`} />
+                    ))}
+                </div>
+            </div>
+
+            <form onSubmit={submitParcel} noValidate className="mx-auto max-w-xl px-4 pt-4">
+                {bookingStep === 2 && (
+                    <div className="space-y-4 pb-4">
+                        <Card title="Sender" hint="Who hands over the parcel">
+                            <Field label="Full name" error={showErr("senderName")}>
+                                <input autoComplete="name" value={sender.name} onChange={(e) => setSender({ ...sender, name: e.target.value })} className="pd-input" aria-invalid={Boolean(showErr("senderName"))} placeholder="e.g. Ali Khan" />
+                            </Field>
+                            <Field label="Phone" error={showErr("senderPhone")}>
+                                <input type="tel" inputMode="tel" autoComplete="tel" value={sender.phone} onChange={(e) => setSender({ ...sender, phone: e.target.value })} className="pd-input" aria-invalid={Boolean(showErr("senderPhone"))} placeholder="03xx xxxxxxx" />
+                            </Field>
+                        </Card>
+
+                        <Card title="Receiver" hint="Who collects the parcel">
+                            <Field label="Full name" error={showErr("receiverName")}>
+                                <input value={receiver.name} onChange={(e) => setReceiver({ ...receiver, name: e.target.value })} className="pd-input" aria-invalid={Boolean(showErr("receiverName"))} placeholder="Receiver name" />
+                            </Field>
+                            <Field label="Phone" error={showErr("receiverPhone")}>
+                                <input type="tel" inputMode="tel" value={receiver.phone} onChange={(e) => setReceiver({ ...receiver, phone: e.target.value })} className="pd-input" aria-invalid={Boolean(showErr("receiverPhone"))} placeholder="03xx xxxxxxx" />
+                            </Field>
+                        </Card>
+
+                        <Card title="Parcel">
+                            <div className="pd-no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                                {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+                                    <button
+                                        key={value}
+                                        type="button"
+                                        aria-pressed={category === value}
+                                        onClick={() => setCategory(value)}
+                                        className={`h-10 shrink-0 rounded-xl px-3.5 text-sm font-bold transition ${category === value
+                                            ? "bg-pd-ink text-pd-ink-text"
+                                            : "bg-pd-surface-2 text-pd-text-2"
+                                            }`}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Field label="Weight (kg)" error={showErr("weightKg")}>
+                                    <input type="number" inputMode="decimal" min="0.01" step="0.01" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} className="pd-input" aria-invalid={Boolean(showErr("weightKg"))} />
+                                </Field>
+                                <Field label="Quantity" error={showErr("quantity")}>
+                                    <input type="number" inputMode="numeric" min="1" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="pd-input" aria-invalid={Boolean(showErr("quantity"))} />
+                                </Field>
+                            </div>
+                            <Field label="Description (optional)">
+                                <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What's inside? e.g. 2 books" maxLength={500} className="pd-input resize-none" />
+                            </Field>
+                        </Card>
+
+                        <Card title="Delivery & payment">
+                            <Field label="Vehicle">
+                                <div className="grid grid-cols-2 gap-2">
+                                    {Object.entries(VEHICLE_LABELS).map(([value, label]) => (
                                         <button
-                                            key={place.place_id || index}
+                                            key={value}
                                             type="button"
-                                            onClick={() => choosePlace(place)}
-                                            className="block w-full border-b p-3 text-left text-sm"
+                                            aria-pressed={vehicleType === value}
+                                            onClick={() => setVehicleType(value)}
+                                            className={`min-h-11 rounded-xl border-2 px-3 text-sm font-bold transition ${vehicleType === value
+                                                ? "border-pd-text bg-pd-surface text-pd-text"
+                                                : "border-transparent bg-pd-surface-2 text-pd-text-2"
+                                                }`}
                                         >
-                                            {place.display_name || place.name}
+                                            {label}
                                         </button>
                                     ))}
                                 </div>
-                            )}
-                        </div>
-                    ))}
+                            </Field>
 
-                    {bookingStep === 1 && (
-                        <button
-                            type="button"
-                            disabled={!pickup || !destination}
-                            onClick={() => setBookingStep(2)}
-                            className="w-full rounded-2xl bg-[#C1F11D] p-4 font-extrabold disabled:opacity-40"
-                        >
-                            Continue to Parcel Details →
-                        </button>
-                    )}
-
-                    <div
-                        className={`rounded-2xl bg-white p-4 space-y-4 ${bookingStep === 1 ? "hidden" : ""
-                            }`}
-                    >
-                        <h2 className="font-extrabold">Sender Details</h2>
-                        {["name", "phone"].map((field) => (
-                            <input
-                                key={field}
-                                type={field === "phone" ? "tel" : "text"}
-                                required
-                                value={sender[field]}
-                                onChange={(e) => setSender({
-                                    ...sender,
-                                    [field]: e.target.value,
-                                })}
-                                placeholder={`Sender ${field}`}
-                                className="w-full rounded-xl bg-[#F4F5F7] p-3"
-                            />
-                        ))}
-
-                        <h2 className="font-extrabold">Receiver Details</h2>
-                        {["name", "phone"].map((field) => (
-                            <input
-                                key={field}
-                                type={field === "phone" ? "tel" : "text"}
-                                required
-                                value={receiver[field]}
-                                onChange={(e) => setReceiver({
-                                    ...receiver,
-                                    [field]: e.target.value,
-                                })}
-                                placeholder={`Receiver ${field}`}
-                                className="w-full rounded-xl bg-[#F4F5F7] p-3"
-                            />
-                        ))}
-                    </div>
-
-                    {bookingStep === 2 && (
-                        <div className="rounded-2xl bg-white p-4 space-y-4">
-                            <h2 className="font-extrabold">Parcel Details</h2>
-
-                            <select
-                                value={category}
-                                onChange={(e) => setCategory(e.target.value)}
-                                className="w-full rounded-xl bg-[#F4F5F7] p-3"
-                            >
-                                {["DOCUMENTS", "FOOD", "CLOTHES", "ELECTRONICS", "OTHER"].map((item) => (
-                                    <option key={item} value={item}>{item}</option>
-                                ))}
-                            </select>
-
-                            <textarea
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Parcel description"
-                                maxLength={500}
-                                className="w-full rounded-xl bg-[#F4F5F7] p-3"
-                            />
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <label className="text-sm font-semibold">
-                                    Weight (kg)
+                            <Field label="Your offer" error={showErr("requestedPrice")}>
+                                <div className="relative">
+                                    <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-pd-muted">PKR</span>
                                     <input
                                         type="number"
-                                        min="0.01"
-                                        step="0.01"
-                                        required
-                                        value={weightKg}
-                                        onChange={(e) => setWeightKg(e.target.value)}
-                                        className="mt-2 w-full rounded-xl bg-[#F4F5F7] p-3"
-                                    />
-                                </label>
-
-                                <label className="text-sm font-semibold">
-                                    Quantity
-                                    <input
-                                        type="number"
+                                        inputMode="numeric"
                                         min="1"
                                         step="1"
-                                        required
-                                        value={quantity}
-                                        onChange={(e) => setQuantity(e.target.value)}
-                                        className="mt-2 w-full rounded-xl bg-[#F4F5F7] p-3"
+                                        value={requestedPrice}
+                                        onChange={(e) => setRequestedPrice(e.target.value.replace(/[^\d]/g, ""))}
+                                        placeholder="0"
+                                        aria-invalid={Boolean(showErr("requestedPrice"))}
+                                        className="pd-input pl-14 text-xl font-extrabold"
                                     />
-                                </label>
+                                </div>
+                                <p className="mt-1.5 text-xs text-pd-muted">Drivers can accept or counter your offer.</p>
+                            </Field>
+
+                            <Field label="Who pays?">
+                                <div className="grid grid-cols-2 gap-1 rounded-2xl bg-pd-surface-2 p-1">
+                                    {[["SENDER", "Sender"], ["RECEIVER", "Receiver"]].map(([value, label]) => (
+                                        <button
+                                            key={value}
+                                            type="button"
+                                            aria-pressed={paymentBy === value}
+                                            onClick={() => setPaymentBy(value)}
+                                            className={`min-h-11 rounded-xl text-sm font-bold ${paymentBy === value ? "bg-pd-surface text-pd-text shadow-pd" : "text-pd-muted"}`}
+                                        >
+                                            {label} pays
+                                        </button>
+                                    ))}
+                                </div>
+                            </Field>
+
+                            <Field label="Instructions (optional)">
+                                <textarea rows={2} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Gate code, landmark, handle with care…" maxLength={500} className="pd-input resize-none" />
+                            </Field>
+                        </Card>
+                    </div>
+                )}
+
+                {bookingStep === 3 && (
+                    <div className="space-y-4 pb-4">
+                        <Card title="Route" action={<EditLink onClick={() => setBookingStep(1)} />}>
+                            <RouteSummary pickup={pickup} destination={destination} />
+                        </Card>
+                        <Card title="People" action={<EditLink onClick={() => setBookingStep(2)} />}>
+                            <ReviewRow label="Sender" value={`${sender.name} · ${sender.phone}`} />
+                            <ReviewRow label="Receiver" value={`${receiver.name} · ${receiver.phone}`} />
+                        </Card>
+                        <Card title="Parcel" action={<EditLink onClick={() => setBookingStep(2)} />}>
+                            <ReviewRow label="Type" value={`${categoryLabel(category)} · ${weightKg} kg · ×${quantity}`} />
+                            {description && <ReviewRow label="Description" value={description} />}
+                            <ReviewRow label="Vehicle" value={VEHICLE_LABELS[vehicleType]} />
+                            {instructions && <ReviewRow label="Instructions" value={instructions} />}
+                        </Card>
+                        <div className="flex items-center justify-between rounded-3xl bg-pd-ink p-5 text-pd-ink-text">
+                            <div>
+                                <p className="text-xs font-semibold opacity-70">Your offer · {paymentBy === "SENDER" ? "Sender" : "Receiver"} pays</p>
+                                <p className="mt-0.5 text-2xl font-extrabold">{formatPKR(requestedPrice)}</p>
                             </div>
+                            <Package size={28} className="opacity-60" />
                         </div>
+                    </div>
+                )}
 
+                {/* Sticky action bar (sits above keyboard / safe area) */}
+                <div className="sticky bottom-0 z-10 -mx-4 border-t border-pd-line bg-pd-elevated px-4 pt-3 backdrop-blur-xl pd-safe-bottom">
+                    <InlineError onDismiss={() => setError("")}>{error}</InlineError>
+                    {bookingStep === 2 ? (
+                        <Button className={`w-full ${error ? "mt-2" : ""}`} onClick={goToReview}>
+                            Review booking <ChevronRight size={18} />
+                        </Button>
+                    ) : (
+                        <Button type="submit" className={`w-full ${error ? "mt-2" : ""}`} disabled={submitting}>
+                            {submitting ? "Requesting…" : <>Request delivery <Check size={18} /></>}
+                        </Button>
                     )}
-                    {bookingStep === 2 && (
-                        <div className="rounded-2xl bg-white p-4 space-y-4">
-                            <h2 className="font-extrabold">Delivery & Payment</h2>
-
-                            <label className="block text-sm font-semibold">
-                                Delivery Vehicle
-                                <select
-                                    value={vehicleType}
-                                    onChange={(e) => setVehicleType(e.target.value)}
-                                    className="mt-2 w-full rounded-xl bg-[#F4F5F7] p-3"
-                                >
-                                    <option value="BIKE">Motorcycle</option>
-                                    <option value="RICKSHAW">Rickshaw</option>
-                                    <option value="CAR_NON_AC">Car Non-AC</option>
-                                    <option value="CAR_AC">Car AC</option>
-                                </select>
-                            </label>
-
-                            <label className="block text-sm font-semibold">
-                                Your Delivery Fare (PKR)
-                                <input
-                                    type="number"
-                                    min="1"
-                                    step="1"
-                                    required
-                                    value={requestedPrice}
-                                    onChange={(e) => setRequestedPrice(e.target.value)}
-                                    placeholder="Enter your offer"
-                                    className="mt-2 w-full rounded-xl bg-[#F4F5F7] p-3"
-                                />
-                            </label>
-
-                            <label className="block text-sm font-semibold">
-                                Who Will Pay?
-                                <select
-                                    value={paymentBy}
-                                    onChange={(e) => setPaymentBy(e.target.value)}
-                                    className="mt-2 w-full rounded-xl bg-[#F4F5F7] p-3"
-                                >
-                                    <option value="SENDER">Sender Pays</option>
-                                    <option value="RECEIVER">Receiver Pays</option>
-                                </select>
-                            </label>
-
-                            <textarea
-                                value={instructions}
-                                onChange={(e) => setInstructions(e.target.value)}
-                                placeholder="Delivery instructions (optional)"
-                                maxLength={500}
-                                className="w-full rounded-xl bg-[#F4F5F7] p-3"
-                            />
-                        </div>
-                    )}
-
-                    {error && (
-                        <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-600">
-                            {error}
-                        </p>
-                    )}
-
-                    {bookingStep === 2 && (
-                        <div className="space-y-3">
-                            <button
-                                type="button"
-                                onClick={() => setBookingStep(1)}
-                                className="w-full rounded-2xl bg-white p-4 font-bold"
-                            >
-                                ← Change Locations
-                            </button>
-
-                            <button
-                                type="submit"
-                                disabled={submitting}
-                                className="w-full rounded-2xl bg-[#C1F11D] p-4 font-extrabold disabled:opacity-50"
-                            >
-                                {submitting ? "Booking..." : "Request Parcel Delivery"}
-                            </button>
-                        </div>
-                    )}
-                </form>
-            </div>
+                </div>
+            </form>
         </main>
+    );
+}
+
+function StepDots({ step }) {
+    return (
+        <div className="mt-3 flex justify-center gap-1.5" aria-label={`Step ${step} of 3`}>
+            {[1, 2, 3].map((s) => (
+                <span key={s} className={`h-1.5 rounded-full transition-all ${s === step ? "w-5 bg-pd-text" : "w-1.5 bg-pd-line-strong"}`} />
+            ))}
+        </div>
+    );
+}
+
+function Card({ title, hint, action, children }) {
+    return (
+        <section className="pd-rise space-y-3 rounded-3xl border border-pd-line bg-pd-surface p-4">
+            <div className="flex items-baseline justify-between gap-2">
+                <h2 className="text-[15px] font-extrabold">
+                    {title}
+                    {hint && <span className="ml-2 text-xs font-medium text-pd-muted">{hint}</span>}
+                </h2>
+                {action}
+            </div>
+            {children}
+        </section>
+    );
+}
+
+function Field({ label, error, children }) {
+    return (
+        <div>
+            <label className="mb-1.5 block text-xs font-bold text-pd-text-2">
+                {label}
+            </label>
+            {children}
+            {error && <p className="mt-1 text-xs font-semibold text-pd-danger">{error}</p>}
+        </div>
+    );
+}
+
+function ReviewRow({ label, value }) {
+    return (
+        <div className="flex gap-3 text-sm">
+            <span className="w-24 shrink-0 text-pd-muted">{label}</span>
+            <span className="min-w-0 flex-1 break-words font-semibold">{value}</span>
+        </div>
+    );
+}
+
+function EditLink({ onClick }) {
+    return (
+        <button type="button" onClick={onClick} className="-my-2 min-h-10 px-2 text-xs font-bold text-pd-accent-text underline-offset-2 hover:underline">
+            Edit
+        </button>
     );
 }

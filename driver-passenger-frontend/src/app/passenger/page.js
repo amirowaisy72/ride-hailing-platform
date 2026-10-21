@@ -59,7 +59,14 @@ const MOTION_STYLES = `
 .rx-slide-up { animation: rx-slide-up .38s cubic-bezier(.2,.8,.2,1) both; }
 .rx-slide-down { animation: rx-slide-down .32s cubic-bezier(.2,.8,.2,1) both; }
 .rx-sheet-in { animation: rx-sheet-in .42s cubic-bezier(.2,.8,.2,1) both; }
-.rx-shimmer { background: linear-gradient(90deg,#F1F2F4 25%,#E6E8EB 37%,#F1F2F4 63%); background-size: 400% 100%; animation: rx-shimmer 1.6s ease infinite; }
+.rx-shimmer {
+  background: linear-gradient(90deg,#F1F2F4 25%,#E6E8EB 37%,#F1F2F4 63%);
+  background-size: 400% 100%;
+  animation: rx-shimmer 1.6s ease infinite;
+}
+.dark .rx-shimmer {
+  background-image: linear-gradient(90deg,#252932 25%,#3A404B 37%,#252932 63%);
+}
 @media (prefers-reduced-motion: reduce) {
   .rx-indeterminate, .rx-radar, .rx-slide-up, .rx-slide-down, .rx-shimmer, .rx-sheet-in { animation: none !important; }
 }
@@ -939,7 +946,6 @@ function PassengerDashboard() {
         <main className="relative h-dvh w-full overflow-hidden bg-[#F4F5F7] text-[#111111]">
             <style>{MOTION_STYLES}</style>
             <div className="absolute inset-0">
-                <ParcelActivityBar token={token} role="PASSENGER" />
                 <RideMap
                     userLocation={activeRide?.pickup || userLocation}
                     locateRequest={mapLocateRequest}
@@ -1057,6 +1063,7 @@ function PassengerDashboard() {
                                 className="shrink-0 rounded-xl bg-[#F4F5F7] px-4 py-2.5 text-sm font-bold text-[#111111]"
                             >
                                 📦 Parcel Delivery
+                                <ParcelActivityBar token={token} role="PASSENGER" variant="badge" />
                             </Link>
                             <span className="shrink-0 rounded-xl bg-[#F4F5F7] px-4 py-2.5 text-sm font-semibold text-[#6B7280]">Cash payments</span>
                         </div>

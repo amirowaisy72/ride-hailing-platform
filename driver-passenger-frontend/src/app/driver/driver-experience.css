@@ -181,3 +181,22 @@
 
 @media (max-width:360px){.dx-power{width:72px;height:62px}.dx-duty-title{font-size:16px}.dx-offer-send{min-width:96px}}
 @media (prefers-reduced-motion:reduce){.driver-experience button,.driver-experience a{transition:none!important}.dx-home *,.dx-home *::before{animation:none!important;transition:none!important}}
+
+/* ================= Dark theme for the driver design system ================= */
+.dark .driver-experience { --dx-ink:#F1F2F4; --dx-muted:#9AA0AA; --dx-paper:#0C0D10; --dx-line:#262930; color:var(--dx-ink); }
+.dark .driver-experience main:not(.driver-live-home) > header { background:#16181D!important; color:#F1F2F4; border-bottom:1px solid #262930; }
+.dark .driver-experience main:not(.driver-live-home) button[class*="bg-[#087F5B]"],.dark .driver-experience main:not(.driver-live-home) a[class*="bg-[#087F5B]"]{background:#C1F11D!important;color:#111111!important;}
+.dark .driver-experience main:not(.driver-live-home) [class*="text-[#087F5B]"]{color:#D4F75E!important;}
+.dark .driver-experience main:not(.driver-live-home) [class*="bg-emerald-50"]{background:rgba(193,241,29,.12)!important;}
+.dark .driver-experience main:not(.driver-live-home) section.bg-white,.dark .driver-experience main:not(.driver-live-home) article.bg-white{border-color:#262930;box-shadow:0 12px 38px rgba(0,0,0,.4);}
+.dark .driver-experience nav[aria-label="Main navigation"]{border-top-color:#262930;background:rgba(22,24,29,.97);box-shadow:0 -12px 36px rgba(0,0,0,.4);}
+.dark .driver-experience nav[aria-label="Main navigation"] a[aria-current="page"]{color:#F1F2F4!important;}
+.dark .dx-home{background:#111317;}
+.dark .dx-brand,.dark .dx-fab,.dark .dx-notif-panel{background:#16181D;color:#F1F2F4;border-color:#262930;}
+.dark .dx-fab-flat{background:#1D2026;}
+.dark .dx-logo{background:#23262D;}
+.dark .dx-badge{border-color:#16181D;}
+.dark .dx-status{background:#1D2026;color:#9AA0AA;}
+.dark .dx-status[data-on="true"]{background:#C1F11D;color:#111111;}
+.dark .dx-notif-head button,.dark .dx-notif-empty,.dark .dx-notif-panel small{color:#9AA0AA;}
+.dark .dx-notif-icon,.dark .dx-toast-icon{background:rgba(193,241,29,.14);color:#D4F75E;}

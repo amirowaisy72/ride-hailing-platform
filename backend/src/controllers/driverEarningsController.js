@@ -1,4 +1,5 @@
 const Driver = require("../models/Driver");
+const Ride = require("../models/Ride");
 const RideSettlement = require("../models/RideSettlement");
 
 async function getMyEarnings(req, res) {
@@ -43,14 +44,29 @@ async function getMyEarnings(req, res) {
             )
             .lean();
 
+        const completedTrips = await Ride.countDocuments({
+            driverId: driver._id,
+            status: "TRIP_COMPLETED",
+        });
+
+        const settledSummary = summary || {
+            completedTrips: 0,
+            totalFares: 0,
+            totalCommission: 0,
+            netEarnings: 0,
+        };
+
         return res.json({
             success: true,
             currency: "PKR",
-            summary: summary || {
-                completedTrips: 0,
-                totalFares: 0,
-                totalCommission: 0,
-                netEarnings: 0,
+            summary: {
+                ...settledSummary,
+                completedTrips,
+                settledTrips: settledSummary.completedTrips,
+                unsettledTrips: Math.max(
+                    0,
+                    completedTrips - settledSummary.completedTrips
+                ),
             },
             recentTrips,
         });

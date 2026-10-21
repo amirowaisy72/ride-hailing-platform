@@ -1,18 +1,32 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
+import { ArrowLeft, CheckCircle2, KeyRound, Phone, RefreshCw, Star, UserRound, XCircle } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
 import { getRealtimeSocket } from "@/lib/socket";
-import dynamic from "next/dynamic";
+import BottomSheet from "@/components/parcel/BottomSheet";
+import {
+    Button, InlineError, ParcelProgress, ParcelStatusBadge, ParcelTimeline, RouteSummary, Toast,
+} from "@/components/parcel/ParcelKit";
+import {
+    VEHICLE_LABELS, categoryLabel, formatPKR, orderPrice, playNotificationSound, serviceLabel, statusMeta,
+} from "@/components/parcel/parcelUi";
 
 const ParcelTrackingMap = dynamic(
     () => import("@/components/ParcelTrackingMap"),
     { ssr: false }
 );
+
+// Used to preview pickup -> destination before a driver location exists.
+const RideMap = dynamic(() => import("@/components/RideMap"), { ssr: false });
+
+const PICKUP_OTP_STATUSES = ["DRIVER_ASSIGNED", "DRIVER_EN_ROUTE", "ARRIVED_AT_PICKUP"];
+const DELIVERY_OTP_STATUSES = ["PICKED_UP", "OUT_FOR_DELIVERY"];
 
 export default function ParcelDetailsPage() {
     return (
@@ -30,20 +44,11 @@ function ParcelDetails() {
     const [offers, setOffers] = useState([]);
     const [otp, setOtp] = useState(null);
     const [driverLocation, setDriverLocation] = useState(null);
-    const [mapOpen, setMapOpen] = useState(false);
-    const [sheetExpanded, setSheetExpanded] = useState(false);
-
-    const PARCEL_STEPS = [
-        ["REQUESTED", "Requested"],
-        ["DRIVER_ASSIGNED", "Driver Assigned"],
-        ["DRIVER_EN_ROUTE", "Driver En Route"],
-        ["ARRIVED_AT_PICKUP", "Arrived at Pickup"],
-        ["PICKED_UP", "Parcel Picked Up"],
-        ["OUT_FOR_DELIVERY", "Out for Delivery"],
-        ["DELIVERED", "Delivered"],
-    ];
+    const [snap, setSnap] = useState("peek");
+    const [snapTouched, setSnapTouched] = useState(false);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
+    const [acceptingId, setAcceptingId] = useState("");
     const [error, setError] = useState("");
     const [notification, setNotification] = useState("");
 
@@ -115,25 +120,19 @@ function ParcelDetails() {
         let socket;
         let active = true;
 
+        const handleStatus = (data) => {
+            if (String(data?.parcelId) !== String(id)) return;
+
+            setNotification(
+                data.message || "Parcel delivery status updated"
+            );
+            playNotificationSound(0.5);
+            refresh();
+        };
+
         async function connect() {
             socket = await getRealtimeSocket(token);
             if (!active || !socket) return;
-
-            const handleStatus = (data) => {
-                if (String(data?.parcelId) !== String(id)) return;
-
-                setNotification(
-                    data.message || "Parcel delivery status updated"
-                );
-
-                if (typeof Audio !== "undefined") {
-                    const audio = new Audio("/sounds/notification.mp3");
-                    audio.volume = 0.5;
-                    audio.play().catch(() => { });
-                }
-
-                refresh();
-            };
 
             socket.on("parcel:status:updated", handleStatus);
             socket.on("parcel:offer:new", handleStatus);
@@ -143,13 +142,28 @@ function ParcelDetails() {
 
         return () => {
             active = false;
-            socket?.off("parcel:status:updated");
-            socket?.off("parcel:offer:new");
+            socket?.off("parcel:status:updated", handleStatus);
+            socket?.off("parcel:offer:new", handleStatus);
         };
     }, [id, token, refresh]);
 
+    // Offers are the main content while waiting: open the sheet once.
+    useEffect(() => {
+        if (snapTouched || !order) return;
+        setSnap(order.status === "REQUESTED" ? "half" : "peek");
+    }, [order?.status, snapTouched]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // A previously shown code is no longer valid once the stage changes.
+    useEffect(() => {
+        if (!otp || !order) return;
+        if (otp.stage === "PICKUP" && !PICKUP_OTP_STATUSES.includes(order.status)) setOtp(null);
+        if (otp.stage === "DELIVERY" && !DELIVERY_OTP_STATUSES.includes(order.status)) setOtp(null);
+    }, [order, otp]);
+
     async function acceptOffer(offerId) {
+        if (busy) return;
         setBusy(true);
+        setAcceptingId(offerId);
         setError("");
 
         try {
@@ -158,14 +172,18 @@ function ParcelDetails() {
                 { method: "POST", token }
             );
             await refresh();
+            setNotification("Driver confirmed. Track your parcel live on the map.");
+            setSnap("peek");
         } catch (e) {
             setError(e.message);
         } finally {
             setBusy(false);
+            setAcceptingId("");
         }
     }
 
     async function generateOtp(stage) {
+        if (busy) return;
         setBusy(true);
         setError("");
 
@@ -201,283 +219,298 @@ function ParcelDetails() {
         }
     }
 
+    const sortedOffers = useMemo(
+        () => [...offers].sort((a, b) => Number(a.price) - Number(b.price)),
+        [offers]
+    );
+
+    const changeSnap = (value) => { setSnapTouched(true); setSnap(value); };
+
+    if (!id) {
+        return <CenteredMessage title="Parcel not found" body="This link is missing a parcel id." />;
+    }
+
+    if (loading && !order) {
+        return (
+            <main className="relative h-dvh overflow-hidden bg-pd-surface-3">
+                <div className="absolute inset-x-0 bottom-0 mx-auto max-w-xl rounded-t-[28px] bg-pd-surface p-5 pd-safe-bottom">
+                    <div className="pd-skeleton mx-auto mb-4 h-1.5 w-11 rounded-full" />
+                    <div className="pd-skeleton h-5 w-1/2 rounded-full" />
+                    <div className="pd-skeleton mt-3 h-2 w-full rounded-full" />
+                    <div className="pd-skeleton mt-5 h-12 w-full rounded-2xl" />
+                </div>
+            </main>
+        );
+    }
+
+    if (!order) {
+        return <CenteredMessage title="Couldn't load delivery" body={error || "Please try again."} retry={refresh} />;
+    }
+
+    const meta = statusMeta(order.status);
+    const delivered = order.status === "DELIVERED";
+    const cancelled = ["CANCELLED", "FAILED"].includes(order.status);
+    const otpStage = PICKUP_OTP_STATUSES.includes(order.status)
+        ? "PICKUP"
+        : DELIVERY_OTP_STATUSES.includes(order.status) ? "DELIVERY" : null;
+    const showLiveDriver = Boolean(driverLocation) && !delivered && !cancelled;
+
     return (
-        <main className="min-h-dvh bg-[#F4F5F7] p-4 text-[#111111]">
-            <div className="mx-auto max-w-xl space-y-4">
-                <Link href="/passenger/parcels" className="text-sm font-bold">
-                    ← My Parcels
-                </Link>
+        <main className="relative h-dvh overflow-hidden bg-pd-surface-3 text-pd-text">
+            <Toast message={notification} onClose={() => setNotification("")} />
 
-                <h1 className="text-2xl font-extrabold">
-                    📦 Parcel Tracking
-                </h1>
+            {/* Map */}
+            <div className="absolute inset-0 z-0">
+                {showLiveDriver ? (
+                    <ParcelTrackingMap
+                        latitude={driverLocation.latitude}
+                        longitude={driverLocation.longitude}
+                        pickup={order.pickup}
+                        destination={order.destination}
+                    />
+                ) : (
+                    <RideMap
+                        userLocation={order.pickup}
+                        destination={order.destination}
+                        showNavigationControl={false}
+                        sheetRatio={snap === "peek" ? 0.3 : 0.55}
+                    />
+                )}
+            </div>
 
-                {notification && (
-                    <div
-                        role="status"
-                        className="fixed left-4 right-4 top-4 z-[200] mx-auto max-w-xl rounded-2xl bg-[#111111] p-4 text-sm font-bold text-white shadow-xl"
+            {/* Compact top strip */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-20 pd-safe-top">
+                <div className="mx-auto flex max-w-xl items-center gap-2 px-3">
+                    <Link
+                        href="/passenger/parcels"
+                        aria-label="Back to my parcels"
+                        className="pointer-events-auto grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-pd-surface shadow-pd"
                     >
-                        <div className="flex items-center justify-between gap-3">
-                            <span>🔔 {notification}</span>
-                            <button
-                                type="button"
-                                onClick={() => setNotification("")}
-                                aria-label="Dismiss notification"
-                            >
-                                ✕
-                            </button>
+                        <ArrowLeft size={20} />
+                    </Link>
+                    {showLiveDriver && (
+                        <span className="pointer-events-auto ml-auto inline-flex h-9 items-center gap-2 rounded-full bg-pd-surface px-3 text-xs font-bold shadow-pd">
+                            <span className="pd-live-dot h-2 w-2 rounded-full bg-pd-accent" /> Live
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            <BottomSheet
+                snap={snap}
+                onSnapChange={changeSnap}
+                label="Delivery details"
+                peek={
+                    <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <p className="text-xs font-semibold text-pd-muted">
+                                    {serviceLabel(order.serviceType)} · {formatPKR(orderPrice(order))}
+                                </p>
+                                <h1 className="mt-0.5 text-lg font-extrabold leading-snug tracking-tight">
+                                    {delivered ? "Parcel delivered" : cancelled ? meta.label : meta.label}
+                                </h1>
+                            </div>
+                            <ParcelStatusBadge status={order.status} />
                         </div>
-                    </div>
-                )}
+                        {!cancelled && <ParcelProgress status={order.status} />}
 
-                {loading && <p>Loading delivery...</p>}
+                        <InlineError onDismiss={() => setError("")}>{error}</InlineError>
 
-                {error && (
-                    <p role="alert" className="rounded-xl bg-red-50 p-4 text-red-600">
-                        {error}
-                    </p>
-                )}
-
-                {order && (
-                    <>
-                        <section className="rounded-2xl bg-white p-5 shadow-sm">
-                            <p className="text-xs font-bold text-gray-500">
-                                DELIVERY STATUS
-                            </p>
-                            <h2 className="mt-2 text-xl font-extrabold">
-                                {order.status.replaceAll("_", " ")}
-                            </h2>
-                            <p className="mt-3 text-sm">
-                                {order.serviceType === "SHOP_PICKUP"
-                                    ? "Shop Pickup"
-                                    : "Send Parcel"}
-                            </p>
-                            <p className="mt-2 font-bold">
-                                PKR {order.finalPrice ?? order.requestedPrice}
-                            </p>
-                            <p className="mt-2 text-sm text-gray-500">
-                                {order.parcel?.category} · {order.parcel?.weightKg} kg
-                            </p>
-                        </section>
-
-                        {driverLocation && (
-                            <>
-                                <button
-                                    type="button"
-                                    onClick={() => setMapOpen(true)}
-                                    className="w-full rounded-2xl bg-[#C1F11D] p-4 font-extrabold"
-                                >
-                                    📍 Open Full-Screen Live Tracking
-                                </button>
-
-                                {mapOpen && (
-                                    <div className="fixed inset-0 z-[100] bg-white">
-                                        <ParcelTrackingMap
-                                            latitude={driverLocation.latitude}
-                                            longitude={driverLocation.longitude}
-                                            pickup={order.pickup}
-                                            destination={order.destination}
-                                        />
-
-                                        <div className="absolute left-4 right-4 top-[calc(16px+env(safe-area-inset-top))] z-10 flex items-center justify-between gap-3">
-                                            <div className="rounded-2xl bg-white px-4 py-3 font-extrabold shadow-lg">
-                                                📦 Live Parcel Tracking
-                                            </div>
-
-                                            <button
-                                                type="button"
-                                                onClick={() => setMapOpen(false)}
-                                                className="rounded-2xl bg-white px-4 py-3 font-bold shadow-lg"
-                                            >
-                                                ✕ Close
-                                            </button>
-                                        </div>
-
-                                        <div className="absolute bottom-0 left-0 right-0 z-10 rounded-t-[28px] bg-white p-5 pb-[calc(20px+env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(0,0,0,0.15)]">
-                                            <div className="mx-auto max-w-xl space-y-3">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setSheetExpanded((value) => !value)}
-                                                    className="flex w-full flex-col items-center gap-2 py-2"
-                                                >
-                                                    <span className="h-1.5 w-12 rounded-full bg-gray-300" />
-                                                    <span className="text-xs font-bold text-gray-500">
-                                                        {sheetExpanded ? "Show Less ▲" : "More Details ▼"}
-                                                    </span>
-                                                </button>
-
-                                                <div className="flex items-center justify-between">
-                                                    <h2 className="text-lg font-extrabold">
-                                                        {order.status === "DELIVERED"
-                                                            ? "Parcel Delivered Successfully"
-                                                            : order.status === "CANCELLED"
-                                                                ? "Delivery Cancelled"
-                                                                : order.status.replaceAll("_", " ")}
-                                                    </h2>
-                                                    <span className="rounded-full bg-[#EFFFBE] px-3 py-1 text-xs font-bold">
-                                                        ● Live GPS
-                                                    </span>
-                                                </div>
-
-                                                <p className="text-sm text-gray-500">
-                                                    {order.serviceType === "SHOP_PICKUP"
-                                                        ? "Shop Pickup"
-                                                        : "Parcel Delivery"}
-                                                </p>
-
-                                                <div className="rounded-xl bg-[#F4F5F7] p-3">
-                                                    <p className="text-xs font-bold text-gray-500">
-                                                        DELIVERY DESTINATION
-                                                    </p>
-                                                    <p className="mt-1 text-sm font-semibold">
-                                                        {order.destination?.address || "Delivery location"}
-                                                    </p>
-                                                </div>
-
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-sm text-gray-500">Agreed fare</span>
-                                                    <strong>PKR {order.finalPrice ?? order.requestedPrice}</strong>
-                                                </div>
-
-                                                {sheetExpanded && (
-                                                    <div className="space-y-3 border-t pt-4">
-                                                        <h3 className="font-extrabold">Delivery Progress</h3>
-
-                                                        <div className="space-y-3">
-                                                            {PARCEL_STEPS.map(([status, label], index) => {
-                                                                const current = PARCEL_STEPS.findIndex(
-                                                                    ([value]) => value === order.status
-                                                                );
-
-                                                                const completed = current >= index;
-
-                                                                return (
-                                                                    <div key={status} className="flex items-center gap-3">
-                                                                        <span
-                                                                            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${completed
-                                                                                ? "bg-[#C1F11D] text-black"
-                                                                                : "bg-gray-100 text-gray-400"
-                                                                                }`}
-                                                                        >
-                                                                            {completed ? "✓" : index + 1}
-                                                                        </span>
-
-                                                                        <span className={`text-sm ${completed ? "font-bold" : "text-gray-400"
-                                                                            }`}>
-                                                                            {label}
-                                                                        </span>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-xs font-bold text-gray-500">PICKUP</p>
-                                                            <p className="text-sm">{order.pickup?.address || "Pickup location"}</p>
-                                                        </div>
-
-                                                        <div>
-                                                            <p className="text-xs font-bold text-gray-500">RECEIVER</p>
-                                                            <p className="text-sm font-semibold">
-                                                                {order.receiver?.name || "Receiver"}
-                                                            </p>
-                                                        </div>
-
-                                                        <div>
-                                                            <p className="text-xs font-bold text-gray-500">PARCEL</p>
-                                                            <p className="text-sm">
-                                                                {order.parcel?.category} · {order.parcel?.weightKg} kg
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                <p className="text-center text-xs text-gray-400">
-                                                    Driver location refreshes approximately every 5 seconds.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </>
-                        )}
-
-                        {order.status === "REQUESTED" && (
-                            <section className="rounded-2xl bg-white p-5">
-                                <h3 className="mb-3 font-extrabold">
-                                    Driver Offers
-                                </h3>
-
-                                {offers.length === 0 && (
-                                    <p className="text-sm text-gray-500">
-                                        Waiting for driver offers...
-                                    </p>
-                                )}
-
-                                {offers.map((offer) => (
-                                    <div
-                                        key={offer._id}
-                                        className="flex items-center justify-between border-b py-3"
-                                    >
-                                        <strong>PKR {offer.price}</strong>
-                                        <button
-                                            type="button"
-                                            disabled={busy}
-                                            onClick={() => acceptOffer(offer._id)}
-                                            className="rounded-xl bg-[#C1F11D] px-4 py-2 text-sm font-bold disabled:opacity-50"
-                                        >
-                                            Accept
-                                        </button>
-                                    </div>
-                                ))}
-
-                                <button
-                                    type="button"
-                                    disabled={busy}
-                                    onClick={cancelOrder}
-                                    className="mt-4 text-sm font-bold text-red-600"
-                                >
-                                    Cancel Request
-                                </button>
-                            </section>
-                        )}
-
-                        {["DRIVER_ASSIGNED", "DRIVER_EN_ROUTE", "ARRIVED_AT_PICKUP"].includes(order.status) && (
-                            <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => generateOtp("PICKUP")}
-                                className="w-full rounded-2xl bg-[#C1F11D] p-4 font-bold"
-                            >
-                                Generate Pickup Code
-                            </button>
-                        )}
-
-                        {["PICKED_UP", "OUT_FOR_DELIVERY"].includes(order.status) && (
-                            <button
-                                type="button"
-                                disabled={busy}
-                                onClick={() => generateOtp("DELIVERY")}
-                                className="w-full rounded-2xl bg-[#C1F11D] p-4 font-bold"
-                            >
-                                Generate Delivery Code
-                            </button>
-                        )}
-
-                        {otp && (
-                            <div className="rounded-2xl border-2 border-[#C1F11D] bg-white p-5 text-center">
-                                <p className="text-xs font-bold">
-                                    {otp.stage} VERIFICATION CODE
-                                </p>
-                                <p className="mt-3 text-4xl font-extrabold tracking-widest">
-                                    {otp.code}
-                                </p>
-                                <p className="mt-2 text-xs text-gray-500">
-                                    Share only when parcel handover is happening.
-                                </p>
+                        {delivered && (
+                            <div className="flex items-center gap-3 rounded-2xl bg-pd-success-soft p-3 text-sm font-semibold text-pd-success">
+                                <CheckCircle2 size={20} className="shrink-0" />
+                                Delivered to {order.receiver?.name || "the receiver"}.
                             </div>
                         )}
-                    </>
-                )}
+
+                        {cancelled && (
+                            <div className="flex items-center gap-3 rounded-2xl bg-pd-danger-soft p-3 text-sm font-semibold text-pd-danger">
+                                <XCircle size={20} className="shrink-0" />
+                                This delivery is no longer active.
+                            </div>
+                        )}
+
+                        {order.status === "REQUESTED" && snap === "peek" && (
+                            <Button className="w-full" onClick={() => changeSnap("half")}>
+                                {offers.length > 0 ? `View ${offers.length} offer${offers.length > 1 ? "s" : ""}` : "Waiting for driver offers…"}
+                            </Button>
+                        )}
+
+                        {otpStage && (
+                            otp && otp.stage === otpStage ? (
+                                <OtpCard otp={otp} />
+                            ) : (
+                                <Button className="w-full" disabled={busy} onClick={() => generateOtp(otpStage)}>
+                                    <KeyRound size={18} />
+                                    {busy ? "Generating…" : otpStage === "PICKUP" ? "Show pickup code" : "Show delivery code"}
+                                </Button>
+                            )
+                        )}
+
+                        {(delivered || cancelled) && (
+                            <Link href="/passenger/parcels" className="flex min-h-12 w-full items-center justify-center rounded-2xl bg-pd-surface-2 font-extrabold">
+                                Back to my parcels
+                            </Link>
+                        )}
+                    </div>
+                }
+            >
+                <div className="space-y-5">
+                    {order.status === "REQUESTED" && (
+                        <section aria-labelledby="offers-title">
+                            <div className="mb-2 flex items-center justify-between">
+                                <h2 id="offers-title" className="text-sm font-extrabold">Driver offers</h2>
+                                <span className="text-xs text-pd-muted">Your offer {formatPKR(order.requestedPrice)}</span>
+                            </div>
+                            <div className="min-h-[96px] space-y-2.5">
+                                {sortedOffers.length === 0 && (
+                                    <div className="flex items-center gap-3 rounded-2xl bg-pd-surface-2 p-4">
+                                        <span className="pd-live-dot h-2.5 w-2.5 shrink-0 rounded-full bg-pd-accent" />
+                                        <p className="text-sm text-pd-text-2">Nearby drivers are reviewing your request. Offers appear here automatically.</p>
+                                    </div>
+                                )}
+                                {sortedOffers.map((offer, index) => (
+                                    <OfferCard
+                                        key={offer._id}
+                                        offer={offer}
+                                        best={index === 0 && sortedOffers.length > 1}
+                                        requested={order.requestedPrice}
+                                        disabled={busy}
+                                        accepting={acceptingId === offer._id}
+                                        onAccept={() => acceptOffer(offer._id)}
+                                    />
+                                ))}
+                            </div>
+                            <button
+                                type="button"
+                                disabled={busy}
+                                onClick={cancelOrder}
+                                className="mt-3 min-h-11 w-full rounded-2xl text-sm font-bold text-pd-danger disabled:opacity-50"
+                            >
+                                Cancel request
+                            </button>
+                        </section>
+                    )}
+
+                    <section>
+                        <h2 className="mb-2 text-sm font-extrabold">Route</h2>
+                        <RouteSummary pickup={order.pickup} destination={order.destination} />
+                    </section>
+
+                    {!cancelled && (
+                        <section>
+                            <h2 className="mb-3 text-sm font-extrabold">Progress</h2>
+                            <ParcelTimeline status={order.status} />
+                        </section>
+                    )}
+
+                    <section className="grid grid-cols-2 gap-2">
+                        <Info label="Sender" value={order.sender?.name} sub={order.sender?.phone} />
+                        <Info label="Receiver" value={order.receiver?.name} sub={order.receiver?.phone} />
+                        <Info label="Parcel" value={categoryLabel(order.parcel?.category)} sub={`${order.parcel?.weightKg ?? "—"} kg${order.parcel?.quantity ? ` · ×${order.parcel.quantity}` : ""}`} />
+                        <Info label="Fare" value={formatPKR(orderPrice(order))} sub={order.paymentBy === "RECEIVER" ? "Receiver pays" : order.paymentBy === "SENDER" ? "Sender pays" : undefined} />
+                    </section>
+
+                    {(order.parcel?.description || order.instructions) && (
+                        <section className="space-y-2 rounded-2xl bg-pd-surface-2 p-3 text-sm">
+                            {order.parcel?.description && <p><span className="text-pd-muted">Contents: </span>{order.parcel.description}</p>}
+                            {order.instructions && <p><span className="text-pd-muted">Instructions: </span>{order.instructions}</p>}
+                        </section>
+                    )}
+
+                    {showLiveDriver && (
+                        <p className="text-center text-[11px] text-pd-faint">Driver location refreshes about every 5 seconds.</p>
+                    )}
+                </div>
+            </BottomSheet>
+        </main>
+    );
+}
+
+function OfferCard({ offer, best, requested, disabled, accepting, onAccept }) {
+    // Driver/vehicle fields are shown only when the API includes them.
+    const driver = offer.driver || offer.driverId || {};
+    const driverName = typeof driver === "object" ? (driver.name || driver.fullName) : null;
+    const rating = typeof driver === "object" ? (driver.rating ?? driver.averageRating) : null;
+    const vehicle = offer.vehicle || (typeof driver === "object" ? driver.vehicle : null);
+    const vehicleText = vehicle && typeof vehicle === "object"
+        ? [vehicle.make, vehicle.model, vehicle.color].filter(Boolean).join(" ") || VEHICLE_LABELS[vehicle.type]
+        : null;
+    const diff = Number(offer.price) - Number(requested);
+
+    return (
+        <article className={`pd-rise flex items-center gap-3 rounded-2xl border p-3 ${best ? "border-pd-accent bg-pd-accent-soft" : "border-pd-line bg-pd-surface"}`}>
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-pd-surface-3 text-pd-muted">
+                <UserRound size={20} />
+            </span>
+            <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold">{driverName || "Driver offer"}</p>
+                <p className="flex items-center gap-1.5 truncate text-xs text-pd-muted">
+                    {Number.isFinite(Number(rating)) && rating !== null && (
+                        <span className="inline-flex items-center gap-0.5"><Star size={11} className="fill-current" /> {Number(rating).toFixed(1)}</span>
+                    )}
+                    {vehicleText && <span className="truncate">{vehicleText}</span>}
+                    {!vehicleText && !rating && (best ? "Lowest offer" : Number.isFinite(diff) && diff !== 0 ? `${diff > 0 ? "+" : "−"}${formatPKR(Math.abs(diff)).replace("PKR ", "PKR ")} vs yours` : "Matches your offer")}
+                </p>
+            </div>
+            <div className="flex shrink-0 flex-col items-end gap-1.5">
+                <strong className="text-base">{formatPKR(offer.price)}</strong>
+                <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={onAccept}
+                    className="min-h-10 rounded-xl bg-pd-ink px-4 text-sm font-extrabold text-pd-ink-text disabled:opacity-45"
+                >
+                    {accepting ? "Accepting…" : "Accept"}
+                </button>
+            </div>
+        </article>
+    );
+}
+
+function OtpCard({ otp }) {
+    return (
+        <div className="rounded-2xl border-2 border-pd-accent bg-pd-accent-soft p-4 text-center">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-pd-accent-text">
+                {otp.stage === "PICKUP" ? "Pickup" : "Delivery"} code
+            </p>
+            <p className="mt-1 font-mono text-[34px] font-extrabold leading-none tracking-[0.3em] text-pd-text" aria-live="polite">
+                {otp.code}
+            </p>
+            <p className="mt-2 text-xs text-pd-muted">
+                {otp.stage === "PICKUP"
+                    ? "Share only when handing the parcel to the driver."
+                    : "Share with the receiver; give it to the driver only on delivery."}
+            </p>
+        </div>
+    );
+}
+
+function Info({ label, value, sub }) {
+    return (
+        <div className="min-w-0 rounded-2xl bg-pd-surface-2 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-pd-muted">{label}</p>
+            <p className="mt-0.5 truncate text-sm font-bold">{value || "—"}</p>
+            {sub && (
+                <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-pd-muted">
+                    {/^[+\d][\d\s-]{6,}$/.test(String(sub)) && <Phone size={11} />} {sub}
+                </p>
+            )}
+        </div>
+    );
+}
+
+function CenteredMessage({ title, body, retry }) {
+    return (
+        <main className="grid min-h-dvh place-items-center bg-pd-bg px-6 text-center text-pd-text">
+            <div>
+                <h1 className="text-lg font-extrabold">{title}</h1>
+                <p className="mt-1 text-sm text-pd-muted">{body}</p>
+                <div className="mt-5 flex justify-center gap-2">
+                    {retry && <Button variant="ink" onClick={retry}><RefreshCw size={16} /> Retry</Button>}
+                    <Link href="/passenger/parcels" className="inline-flex min-h-12 items-center rounded-2xl bg-pd-surface-2 px-4 font-extrabold">My parcels</Link>
+                </div>
             </div>
         </main>
     );

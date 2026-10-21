@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { apiRequest } from "@/lib/api";
 
-export default function ParcelActivityBar({ token, role = "PASSENGER" }) {
+export default function ParcelActivityBar({ token, role = "PASSENGER", variant = "bar" }) {
     const [order, setOrder] = useState(null);
+    const [activeCount, setActiveCount] = useState(0);
     const [offset, setOffset] = useState({ x: 0, y: 0 });
     const drag = useRef(null);
     const wasDragged = useRef(false);
@@ -24,12 +25,13 @@ export default function ParcelActivityBar({ token, role = "PASSENGER" }) {
                 const data = await apiRequest(endpoint, { token });
                 if (!active) return;
 
-                const current = (data.orders || []).find(
+                const activeOrders = (data.orders || []).filter(
                     (item) => !["DELIVERED", "CANCELLED", "FAILED"]
                         .includes(item.status)
                 );
 
-                setOrder(current || null);
+                setActiveCount(activeOrders.length);
+                setOrder(activeOrders[0] || null);
             } catch {
                 // Retain last known state during temporary network failure.
             }
@@ -43,6 +45,14 @@ export default function ParcelActivityBar({ token, role = "PASSENGER" }) {
             clearInterval(timer);
         };
     }, [token, role]);
+
+    if (variant === "badge") {
+        return activeCount > 0 ? (
+            <span className="ml-1 inline-flex min-w-5 items-center justify-center rounded-full bg-[#C1F11D] px-1.5 text-xs font-extrabold text-[#111111]">
+                {activeCount}
+            </span>
+        ) : null;
+    }
 
     if (!order) return null;
 

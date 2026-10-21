@@ -116,7 +116,7 @@ function DocumentUploadScreen() {
         <main className="driver-subpage min-h-dvh bg-[#F7F9F8] pb-28 text-slate-900">
             <MobileBottomNav role="DRIVER" />
 
-            <header className="bg-[#087F5B] px-5 pb-24 pt-[max(24px,env(safe-area-inset-top))] text-white">
+            <header className="bg-[#087F5B] px-5 pb-8 pt-[max(24px,env(safe-area-inset-top))] text-white">
                 <div className="mx-auto max-w-xl">
                     <Link
                         href="/driver/account"
@@ -136,7 +136,7 @@ function DocumentUploadScreen() {
                 </div>
             </header>
 
-            <div className="mx-auto -mt-14 max-w-xl space-y-5 px-4">
+            <div className="relative z-10 mx-auto mt-4 max-w-xl space-y-5 px-4 pb-6">
                 <section className="rounded-[24px] bg-white p-5 shadow-sm">
                     <div className="flex items-center gap-3">
                         <ShieldCheck size={26} className="text-[#087F5B]" />

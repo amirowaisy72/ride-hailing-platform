@@ -13,6 +13,8 @@ import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
 import { BRAND } from "@/config/brand";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import ThemeSelector from "@/components/theme/ThemeSelector";
+import ProfilePicture from "@/components/ProfilePicture";
 
 const formatFare = (ride) =>
     `PKR ${Number(ride.finalPrice ?? ride.requestedPrice ?? 0).toLocaleString("en-PK")}`;
@@ -125,9 +127,16 @@ function AccountScreen() {
             <div className="mx-auto -mt-16 max-w-xl space-y-5 px-4">
                 <section className="rounded-[28px] bg-white p-5 shadow-lg shadow-slate-900/5">
                     <div className="flex items-center gap-4">
-                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-2xl font-extrabold text-[#087F5B]">
-                            {fullName.charAt(0).toUpperCase()}
-                        </div>
+                        <ProfilePicture
+                            token={token}
+                            user={displayUser}
+                            onUploaded={(profileImage) =>
+                                setAccountUser((previous) => ({
+                                    ...(previous || user),
+                                    profileImage,
+                                }))
+                            }
+                        />
 
                         <div className="min-w-0">
                             <h3 className="truncate text-xl font-extrabold">
@@ -289,6 +298,8 @@ function AccountScreen() {
                         </div>
                     </div>
                 </section>
+
+                <ThemeSelector />
 
                 <button
                     type="button"

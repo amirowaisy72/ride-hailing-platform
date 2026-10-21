@@ -38,6 +38,11 @@ async function processPendingSettlements({ limit = 20 } = {}) {
         } catch (error) {
             results.failed++;
 
+            if (error.message === "Insufficient driver wallet balance") {
+                // Insufficient wallet balance: defer silently.
+                continue;
+            }
+
             await Ride.updateOne(
                 {
                     _id: ride._id,
@@ -64,4 +69,52 @@ async function processPendingSettlements({ limit = 20 } = {}) {
     return results;
 }
 
-module.exports = { processPendingSettlements };
+let settlementTimer = null;
+let processing = false;
+
+async function runAutomaticSettlements() {
+    if (processing) return;
+
+    processing = true;
+
+    try {
+        const result = await processPendingSettlements({ limit: 20 });
+
+        if (result.settled > 0 || result.alreadySettled > 0) {
+            console.log("Automatic settlement:", {
+                settled: result.settled,
+                alreadySettled: result.alreadySettled,
+            });
+        }
+    } catch (error) {
+        console.error("Automatic settlement error:", error.message);
+    } finally {
+        processing = false;
+    }
+}
+
+function startAutomaticSettlements() {
+    if (settlementTimer) return;
+
+    settlementTimer = setInterval(
+        runAutomaticSettlements,
+        30 * 60 * 1000
+    );
+}
+
+const mongoose = require("mongoose");
+
+mongoose.connection.on("connected", () => {
+    startAutomaticSettlements();
+    runAutomaticSettlements();
+});
+
+if (mongoose.connection.readyState === 1) {
+    startAutomaticSettlements();
+    runAutomaticSettlements();
+}
+
+module.exports = {
+    processPendingSettlements,
+    startAutomaticSettlements,
+};

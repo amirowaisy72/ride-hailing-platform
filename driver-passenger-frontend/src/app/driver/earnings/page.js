@@ -197,7 +197,7 @@ function EarningsScreen() {
                             <CarFront size={21} />
                         </div>
                         <p className="mt-4 text-xs text-slate-500">
-                            Settled Trips
+                            Completed Trips
                         </p>
                         <p className="mt-1 text-xl font-extrabold">
                             {summary?.completedTrips ?? 0}
@@ -237,8 +237,8 @@ function EarningsScreen() {
                             type="button"
                             onClick={() => setActiveTab("transactions")}
                             className={`rounded-lg py-3 text-xs font-bold ${activeTab === "transactions"
-                                    ? "bg-white text-[#087F5B] shadow-sm"
-                                    : "text-slate-500"
+                                ? "bg-white text-[#087F5B] shadow-sm"
+                                : "text-slate-500"
                                 }`}
                         >
                             Wallet Transactions
@@ -248,8 +248,8 @@ function EarningsScreen() {
                             type="button"
                             onClick={() => setActiveTab("rides")}
                             className={`rounded-lg py-3 text-xs font-bold ${activeTab === "rides"
-                                    ? "bg-white text-[#087F5B] shadow-sm"
-                                    : "text-slate-500"
+                                ? "bg-white text-[#087F5B] shadow-sm"
+                                : "text-slate-500"
                                 }`}
                         >
                             Trip Earnings
@@ -277,8 +277,8 @@ function EarningsScreen() {
                                     return (
                                         <div key={tx._id} className="flex items-center gap-3 py-4">
                                             <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${credit
-                                                    ? "bg-emerald-50 text-[#087F5B]"
-                                                    : "bg-red-50 text-red-500"
+                                                ? "bg-emerald-50 text-[#087F5B]"
+                                                : "bg-red-50 text-red-500"
                                                 }`}>
                                                 {credit
                                                     ? <ArrowDownRight size={22} />
@@ -307,9 +307,9 @@ function EarningsScreen() {
                         recentTrips.length === 0 ? (
                             <div className="py-10 text-center">
                                 <CarFront size={32} className="mx-auto text-[#087F5B]" />
-                                <p className="mt-3 font-bold">No settled trips yet</p>
+                                <p className="mt-3 font-bold">No Completed Trips yet</p>
                                 <p className="mt-2 text-sm text-slate-500">
-                                    Completed and settled trips will appear here.
+                                    Completed Trips will appear here.
                                 </p>
                             </div>
                         ) : (

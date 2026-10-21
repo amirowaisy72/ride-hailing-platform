@@ -1,10 +1,11 @@
 
 const User = require("../models/User");
+const { uploadProfileImage } = require("../integrations/cloudinary/uploadService");
 
 const getAccount = async (req, res) => {
     try {
         const user = await User.findById(req.user._id)
-            .select("firstName lastName name email phone role createdAt")
+            .select("firstName lastName name email phone role profileImage createdAt")
             .lean();
 
         if (!user) {
@@ -64,7 +65,7 @@ const updateAccount = async (req, res) => {
                 runValidators: true,
             }
         )
-            .select("firstName lastName name email phone role createdAt")
+            .select("firstName lastName name email phone role profileImage createdAt")
             .lean();
 
         if (!user) {
@@ -89,4 +90,43 @@ const updateAccount = async (req, res) => {
     }
 };
 
-module.exports = { getAccount, updateAccount };
+const updateProfilePicture = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: "Profile picture required",
+            });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user || !["DRIVER", "PASSENGER"].includes(user.role)) {
+            return res.status(403).json({
+                success: false,
+                message: "Account unavailable",
+            });
+        }
+
+        const uploaded = await uploadProfileImage(
+            req.file.buffer,
+            String(user._id)
+        );
+
+        user.profileImage = uploaded.imageUrl;
+        await user.save();
+
+        return res.json({
+            success: true,
+            message: "Profile picture updated",
+            profileImage: user.profileImage,
+        });
+    } catch (error) {
+        console.error("Profile picture upload:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Profile picture upload failed",
+        });
+    }
+};
+
+module.exports = { getAccount, updateAccount, updateProfilePicture };

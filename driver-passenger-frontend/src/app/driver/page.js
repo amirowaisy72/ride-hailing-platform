@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     ArrowRight, CarFront, CheckCircle2, ChevronRight, Compass, CornerUpRight, FileCheck2,
     Flag, Hourglass, MapPin, MessageCircle, Navigation, Power, RefreshCw, Satellite, UserRound,
-    WifiOff, XCircle, Menu, X, Bell, BellRing, Volume2, VolumeX, LocateFixed,
+    WifiOff, XCircle, Menu, X, Bell, BellRing, Volume2, VolumeX, LocateFixed, Wallet,
 } from "lucide-react";
 import { Geolocation } from "@capacitor/geolocation";
 import AuthGuard from "@/components/AuthGuard";
@@ -96,6 +96,7 @@ function DriverDashboard() {
     const notifyRef = useRef(notify);
     notifyRef.current = notify;
     const [tab, setTab] = useState("requests");
+    const [requestType, setRequestType] = useState("rides");
     const [vehicles, setVehicles] = useState([]);
     const [selectedVehicle, setSelectedVehicle] = useState("");
     const [savedVehicle, setSavedVehicle] = useState("");
@@ -697,6 +698,19 @@ function DriverDashboard() {
     const requestsView = (
         <div className="space-y-3">
             {parcelRequests.length > 0 && (
+                <div className="grid grid-cols-2 gap-2 rounded-xl bg-pd-surface-2 p-1">
+                    <button type="button" onClick={() => setRequestType("rides")}
+                        className={`rounded-lg py-2.5 text-sm font-bold ${requestType === "rides" ? "bg-pd-surface text-pd-text shadow-sm" : "text-pd-muted"}`}>
+                        Rides ({requests.length})
+                    </button>
+                    <button type="button" onClick={() => setRequestType("parcels")}
+                        className={`rounded-lg py-2.5 text-sm font-bold ${requestType === "parcels" ? "bg-pd-surface text-pd-text shadow-sm" : "text-pd-muted"}`}>
+                        Parcels ({parcelRequests.length})
+                    </button>
+                </div>
+            )}
+
+            {requestType === "parcels" && parcelRequests.length > 0 && (
                 <div className="space-y-2">
                     <h2 className="dx-h2">
                         📦 Parcel requests ({parcelRequests.length})
@@ -724,7 +738,7 @@ function DriverDashboard() {
                 </div>
             )}
 
-            <div className="flex items-center justify-between">
+            <div className={requestType === "parcels" && parcelRequests.length > 0 ? "hidden" : "flex items-center justify-between"}>
                 <div className="flex min-w-0 items-center gap-2">
                     <h2 className="dx-h2">
                         Ride requests
@@ -735,7 +749,7 @@ function DriverDashboard() {
                     <RefreshCw size={15} className={refreshing ? "dx-spin" : ""} /> Refresh
                 </button>
             </div>
-            {!socketConnected && isOnline && (
+            {requestType !== "parcels" && !socketConnected && isOnline && (
                 <p className="dx-inline-warn"><WifiOff size={14} /> Live updates paused — checking every 12 s.</p>
             )}
             {loading ? (
@@ -799,13 +813,71 @@ function DriverDashboard() {
         </div>
     );
     const idleBody = (
-        <>
-            <div className="dx-tabs" role="tablist">
-                <button type="button" role="tab" aria-selected={tab === "requests"} onClick={() => setTab("requests")}>Requests</button>
-                <button type="button" role="tab" aria-selected={tab === "vehicle"} onClick={() => setTab("vehicle")}>My vehicle</button>
-            </div>
-            {tab === "vehicle" ? vehicleView : requestsView}
-        </>
+        <div className="space-y-4 pb-4">
+
+            {/* Quick Actions */}
+            <section className="grid grid-cols-4 gap-2">
+                {[
+                    { href: "/driver/parcels", icon: Package, label: "Parcels", count: parcelRequests.length, active: true },
+                    { href: "/driver/earnings", icon: Wallet, label: "Earnings" },
+                    { href: "/driver/vehicles", icon: CarFront, label: "Vehicles" },
+                    { href: "/driver/documents", icon: FileCheck2, label: "Documents" },
+                ].map(({ href, icon: Icon, label, count, active }) => (
+                    <Link
+                        key={href}
+                        href={href}
+                        className="relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl border border-pd-line bg-pd-surface text-pd-text shadow-sm"
+                    >
+                        <Icon size={20} />
+                        <span className="text-[10px] font-bold">{label}</span>
+                        {active && (
+                            <span className="flex items-center gap-1 text-[10px] font-extrabold text-pd-accent-text">
+                                <ParcelActivityBar token={token} role="DRIVER" variant="badge" />
+                            </span>
+                        )}
+                        {count > 0 && (
+                            <span className="absolute right-1 top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-pd-accent px-1 text-[10px] font-extrabold text-pd-accent-ink">
+                                {count}
+                            </span>
+                        )}
+                    </Link>
+                ))}
+            </section>
+
+            {/* Incoming Requests */}
+            <section className="space-y-3">
+                {requestsView}
+            </section>
+
+            {/* Active Vehicle */}
+            <section className="rounded-2xl border border-pd-line bg-pd-surface p-3 text-pd-text">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <CarFront size={20} className="shrink-0 text-pd-accent-text" />
+                        <div className="min-w-0">
+                            <p className="text-xs font-bold text-pd-muted">Active vehicle</p>
+                            <p className="truncate text-sm font-extrabold">
+                                {activeVehicle
+                                    ? `${vehicleNames[activeVehicle.vehicleType] || activeVehicle.vehicleType} · ${activeVehicle.registrationNumber}`
+                                    : "No vehicle selected"}
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setTab(tab === "vehicle" ? "requests" : "vehicle")}
+                        className="shrink-0 rounded-xl bg-pd-surface-2 px-3 py-2 text-xs font-bold"
+                    >
+                        {tab === "vehicle" ? "Close" : "Change"}
+                    </button>
+                </div>
+                {tab === "vehicle" && (
+                    <div className="mt-4 border-t border-pd-line pt-4">
+                        {vehicleView}
+                    </div>
+                )}
+            </section>
+        </div>
     );
     const primaryAction = selectedRide && ACTIONS[selectedRide.status] && (
         pendingStop ? (
@@ -925,7 +997,6 @@ function DriverDashboard() {
     return (
         <main className="driver-live-home dx-home" data-ride={rideInProgress ? "active" : "idle"}>
             <div className="absolute inset-0">
-                <ParcelActivityBar token={token} role="DRIVER" />
                 {parcelAssignment?.parcelId && (
                     <Link
                         href={`/driver/parcels/details?parcelId=${parcelAssignment.parcelId}`}
@@ -970,7 +1041,15 @@ function DriverDashboard() {
                         <Link href="/driver/account" onClick={() => setMapMenuOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-[#F4F5F7]">
                             <UserRound size={19} /> My account
                         </Link>
-                        <ParcelShortcut />
+                        <Link
+                            href="/driver/parcels"
+                            onClick={() => setMapMenuOpen(false)}
+                            className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-[#F4F5F7]"
+                        >
+                            <Package size={19} />
+                            <span className="flex-1">Parcel Deliveries</span>
+                            <ParcelActivityBar token={token} role="DRIVER" variant="badge" />
+                        </Link>
                         <button type="button" onClick={notifications.toggleSound} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold hover:bg-[#F4F5F7]">
                             {notifications.soundEnabled ? <Volume2 size={19} /> : <VolumeX size={19} />}
                             {notifications.soundEnabled ? "Mute ride alerts" : "Enable ride alert sounds"}
