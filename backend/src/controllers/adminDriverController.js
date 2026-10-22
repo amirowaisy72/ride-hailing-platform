@@ -43,7 +43,18 @@ const getAllDrivers = async (req, res) => {
 
 const updateDriverStatus = async (req, res) => {
     try {
-        const { status } = req.body;
+        const { status, rejectionReason } = req.body;
+
+        if (
+            status === "REJECTED" &&
+            (typeof rejectionReason !== "string" ||
+                !rejectionReason.trim())
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Rejection reason required",
+            });
+        }
 
         if (!["APPROVED", "REJECTED"].includes(status)) {
             return res.status(400).json({
@@ -75,7 +86,12 @@ const updateDriverStatus = async (req, res) => {
             });
 
             const uploadedTypes = new Set(
-                documents.map((doc) => doc.documentType)
+                documents
+                    .filter((doc) =>
+                        !doc.expiryDate ||
+                        doc.expiryDate > new Date()
+                    )
+                    .map((doc) => doc.documentType)
             );
 
             const missing = requiredDocuments.filter(
@@ -92,6 +108,8 @@ const updateDriverStatus = async (req, res) => {
         }
 
         driver.verificationStatus = status;
+        driver.rejectionReason =
+            status === "REJECTED" ? rejectionReason.trim() : null;
 
         if (status === "REJECTED") {
             driver.isOnline = false;
@@ -149,6 +167,17 @@ const reviewDriverDocument = async (req, res) => {
             });
         }
 
+        if (
+            status === "APPROVED" &&
+            document.expiryDate &&
+            document.expiryDate <= new Date()
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Expired document cannot be approved",
+            });
+        }
+
         document.verificationStatus = status;
         document.rejectionReason =
             status === "REJECTED" ? rejectionReason.trim() : null;
@@ -187,7 +216,7 @@ const getDriverDocuments = async (req, res) => {
         const documents = await DriverDocument.find({
             driverId: driver._id,
         }).select(
-            "_id documentType verificationStatus rejectionReason createdAt"
+            "_id documentType verificationStatus rejectionReason expiryDate createdAt"
         );
 
         return res.json({

@@ -137,6 +137,23 @@ export function AuthProvider({ children }) {
         connectRealtime(accessToken);
     };
 
+    const switchMode = async (mode) => {
+        if (!token) throw new Error("Login required");
+
+        const result = await apiRequest("/account/me/mode", {
+            method: "PATCH",
+            token,
+            body: JSON.stringify({ mode }),
+        });
+
+        setUser((previous) => ({
+            ...previous,
+            activeMode: result.activeMode,
+        }));
+
+        return result;
+    };
+
     const logout = async () => {
         invalidateSession();
         let refreshToken = null;
@@ -165,7 +182,7 @@ export function AuthProvider({ children }) {
 
     return (
         <AuthContext.Provider
-            value={{ user, token, loading, login, logout }}
+            value={{ user, token, loading, login, logout, switchMode }}
         >
             {children}
         </AuthContext.Provider>

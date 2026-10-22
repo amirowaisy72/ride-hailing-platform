@@ -11,7 +11,7 @@ const { selectActiveVehicle } = require("../controllers/activeVehicleController"
 
 const router = express.Router();
 
-router.use(protect, authorize("DRIVER"));
+router.use(protect, authorize("PASSENGER", "DRIVER"));
 
 router.post("/", registerVehicle);
 router.get("/", getMyVehicles);

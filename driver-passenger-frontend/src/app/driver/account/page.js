@@ -24,7 +24,9 @@ export default function DriverAccountPage() {
 }
 
 function DriverAccount() {
-    const { user, token, logout } = useAuth();
+    const { user, token, logout, switchMode } = useAuth();
+    const [switchingMode, setSwitchingMode] = useState(false);
+    const [modeError, setModeError] = useState("");
     const [accountUser, setAccountUser] = useState(null);
     const [rides, setRides] = useState([]);
     const [page, setPage] = useState(1);
@@ -198,6 +200,46 @@ function DriverAccount() {
                         </span>
                         <span className="text-xs text-[#087F5B]">Edit →</span>
                     </Link>
+                </section>
+
+                <section className="rounded-2xl bg-white p-5 shadow-sm">
+                    <h3 className="font-extrabold">Account Mode</h3>
+
+                    {modeError && (
+                        <div
+                            role="alert"
+                            className="fixed left-1/2 top-6 z-[9999] w-max max-w-[90vw] -translate-x-1/2 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-xl"
+                        >
+                            {modeError}
+                        </div>
+                    )}
+
+                    <button
+                        type="button"
+                        disabled={switchingMode}
+                        onClick={async () => {
+                            if (driver?.isOnline) {
+                                setModeError("⚠️ Go Offline First");
+                                return;
+                            }
+
+                            setSwitchingMode(true);
+                            setSwitchingMode(true);
+                            setModeError("");
+                            try {
+                                await switchMode("PASSENGER");
+                                window.location.replace("/passenger");
+                            } catch (error) {
+                                setModeError(error.message);
+                                setSwitchingMode(false);
+                            }
+                        }}
+                        className="mt-4 w-full rounded-xl bg-[#087F5B] p-3 font-bold text-white disabled:opacity-50"
+                    >
+                        {switchingMode
+                            ? "Switching..."
+                            : "Switch to Passenger"}
+                    </button>
                 </section>
 
                 <ThemeSelector />

@@ -199,7 +199,7 @@ function VehicleScreen() {
                 </div>
             </header>
 
-            <div className="mx-auto -mt-16 max-w-xl space-y-5 px-4">
+            <div className="relative z-10 mx-auto mt-5 max-w-xl space-y-5 px-4">
                 <section className="rounded-[26px] bg-white p-5 shadow-lg shadow-slate-900/5">
                     <div className="flex items-center justify-between gap-4">
                         <div>
@@ -268,8 +268,8 @@ function VehicleScreen() {
                                             updateField("vehicleType", type.id)
                                         }
                                         className={`rounded-2xl border-2 p-4 text-left ${form.vehicleType === type.id
-                                                ? "border-[#087F5B] bg-emerald-50"
-                                                : "border-slate-200"
+                                            ? "border-[#087F5B] bg-emerald-50"
+                                            : "border-slate-200"
                                             }`}
                                     >
                                         <span className="text-2xl">{type.emoji}</span>

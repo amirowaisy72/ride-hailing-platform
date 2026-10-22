@@ -21,6 +21,7 @@ const registerVehicle = async (req, res) => {
             model,
             color,
             modelYear,
+            registrationExpiryDate,
         } = req.body || {};
 
         if (
@@ -38,6 +39,20 @@ const registerVehicle = async (req, res) => {
             });
         }
 
+        const expiry = new Date(registrationExpiryDate);
+
+        if (
+            typeof registrationExpiryDate !== "string" ||
+            !/^\d{4}-\d{2}-\d{2}$/.test(registrationExpiryDate) ||
+            !Number.isFinite(expiry.getTime()) ||
+            expiry <= new Date()
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid future vehicle registration expiry date required",
+            });
+        }
+
         const vehicle = await Vehicle.create({
             driverId: driver._id,
             vehicleType,
@@ -46,6 +61,7 @@ const registerVehicle = async (req, res) => {
             model,
             color,
             modelYear,
+            registrationExpiryDate: expiry,
             verificationStatus: "PENDING",
         });
 

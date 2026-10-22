@@ -31,6 +31,7 @@ const registerValidator = [
         .isLength({ min: 8, max: 128 }),
 
     body("role")
+        .optional()
         .isIn(["PASSENGER", "DRIVER"]),
 ];
 

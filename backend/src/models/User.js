@@ -29,6 +29,11 @@ const userSchema = new mongoose.Schema(
             enum: ["PASSENGER", "DRIVER", "ADMIN"],
             required: true,
         },
+        activeMode: {
+            type: String,
+            enum: ["PASSENGER", "DRIVER"],
+            default: "PASSENGER",
+        },
         emailVerified: {
             type: Boolean,
             default: false,

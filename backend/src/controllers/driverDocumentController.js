@@ -21,7 +21,24 @@ const uploadDocument = async (req, res) => {
         }
 
         const allowedTypes = DriverDocument.schema.path("documentType").enumValues;
-        const { documentType } = req.body;
+        const { documentType, expiryDate } = req.body;
+
+        const requiresExpiry = [
+            "DRIVING_LICENSE",
+            "VEHICLE_REGISTRATION",
+        ].includes(documentType);
+
+        if (requiresExpiry && (
+            typeof expiryDate !== "string" ||
+            !/^\d{4}-\d{2}-\d{2}$/.test(expiryDate) ||
+            !Number.isFinite(Date.parse(expiryDate)) ||
+            new Date(expiryDate) <= new Date()
+        )) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid future document expiry date required",
+            });
+        }
 
         if (!allowedTypes.includes(documentType)) {
             return res.status(400).json({
@@ -40,6 +57,7 @@ const uploadDocument = async (req, res) => {
             documentType,
             imageUrl: uploaded.imageUrl,
             cloudinaryPublicId: uploaded.publicId,
+            expiryDate: requiresExpiry ? new Date(expiryDate) : null,
         });
 
         return res.status(201).json({

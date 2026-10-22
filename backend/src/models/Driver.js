@@ -19,6 +19,11 @@ const driverSchema = new mongoose.Schema(
             ],
             default: "PENDING",
         },
+        rejectionReason: {
+            type: String,
+            default: null,
+            trim: true,
+        },
         isOnline: {
             type: Boolean,
             default: false,

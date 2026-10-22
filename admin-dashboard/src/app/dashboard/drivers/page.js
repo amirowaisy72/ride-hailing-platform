@@ -68,7 +68,13 @@ export default function DriversPage() {
 
         const label = action === "approve" ? "approve" : "reject";
 
-        if (!window.confirm(`Are you sure you want to ${label} this driver?`)) {
+        let rejectionReason = "";
+
+        if (action === "reject") {
+            const reason = window.prompt("Enter rejection reason:");
+            if (!reason?.trim()) return;
+            rejectionReason = reason.trim();
+        } else if (!window.confirm(`Are you sure you want to ${label} this driver?`)) {
             return;
         }
 
@@ -85,6 +91,7 @@ export default function DriversPage() {
                 method: "PATCH",
                 body: JSON.stringify({
                     status: action === "approve" ? "APPROVED" : "REJECTED",
+                    ...(action === "reject" ? { rejectionReason } : {}),
                 }),
             });
 

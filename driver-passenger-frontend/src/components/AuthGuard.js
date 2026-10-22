@@ -9,12 +9,12 @@ export default function AuthGuard({ role, children }) {
     const router = useRouter();
 
     useEffect(() => {
-        if (!loading && (!user || user.role !== role)) {
+        if (!loading && (!user || (user.activeMode || "PASSENGER") !== role)) {
             router.replace("/login");
         }
     }, [user, loading, role, router]);
 
-    if (loading || !user || user.role !== role) {
+    if (loading || !user || (user.activeMode || "PASSENGER") !== role) {
         return (
             <div className="flex min-h-screen items-center justify-center">
                 Loading...

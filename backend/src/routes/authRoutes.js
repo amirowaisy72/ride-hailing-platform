@@ -40,6 +40,7 @@ router.get("/me", protect, (req, res) => {
             lastName: req.user.lastName,
             email: req.user.email,
             role: req.user.role,
+            activeMode: req.user.activeMode || "PASSENGER",
         },
     });
 });

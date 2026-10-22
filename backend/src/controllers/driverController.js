@@ -1,13 +1,14 @@
 
 const Driver = require("../models/Driver");
 const Vehicle = require("../models/Vehicle");
+const DriverDocument = require("../models/DriverDocument");
 const Ride = require("../models/Ride");
 const ParcelOrder = require("../models/ParcelOrder");
 const { publishEvent } = require("../services/socketService");
 
 const registerDriver = async (req, res) => {
     try {
-        if (req.user.role !== "DRIVER") {
+        if (!["PASSENGER", "DRIVER"].includes(req.user.role)) {
             return res.status(403).json({
                 success: false,
                 message: "Only driver accounts can register",
@@ -55,6 +56,20 @@ const updateOnlineStatus = async (req, res) => {
     try {
         const { isOnline } = req.body;
 
+        if (isOnline && req.user.activeMode !== "DRIVER") {
+            return res.status(403).json({
+                success: false,
+                message: "Switch to Driver mode first",
+            });
+        }
+
+        if (isOnline && req.user.activeMode !== "DRIVER") {
+            return res.status(403).json({
+                success: false,
+                message: "Switch to Driver mode first",
+            });
+        }
+
         if (typeof isOnline !== "boolean") {
             return res.status(400).json({
                 success: false,
@@ -94,6 +109,36 @@ const updateOnlineStatus = async (req, res) => {
                     message: "Select an approved vehicle before going online",
                 });
             }
+
+            const expiredDocument = await DriverDocument.exists({
+                driverId: driver._id,
+                documentType: { $in: ["DRIVING_LICENSE", "VEHICLE_REGISTRATION"] },
+                verificationStatus: "APPROVED",
+                expiryDate: { $lte: new Date() },
+            });
+
+            if (expiredDocument) {
+                driver.isOnline = false;
+                driver.isAvailable = false;
+                await driver.save();
+
+                return res.status(403).json({
+                    success: false,
+                    message: "Document expired. Renewal and Admin Approval required.",
+                });
+            }
+
+            if (vehicle.registrationExpiryDate &&
+                vehicle.registrationExpiryDate <= new Date()) {
+                driver.isOnline = false;
+                driver.isAvailable = false;
+                await driver.save();
+
+                return res.status(403).json({
+                    success: false,
+                    message: "Vehicle registration expired. Renew and obtain Admin Approval.",
+                });
+            }
         }
 
         const activeTrip = await Ride.exists({
@@ -108,8 +153,28 @@ const updateOnlineStatus = async (req, res) => {
             },
         });
 
+        const activeParcel = await ParcelOrder.exists({
+            driverId: driver._id,
+            status: {
+                $in: [
+                    "DRIVER_ASSIGNED",
+                    "DRIVER_EN_ROUTE",
+                    "ARRIVED_AT_PICKUP",
+                    "PICKED_UP",
+                    "OUT_FOR_DELIVERY",
+                ],
+            },
+        });
+
+        if (!isOnline && (activeTrip || activeParcel)) {
+            return res.status(409).json({
+                success: false,
+                message: "Complete active Ride/Parcel before going offline",
+            });
+        }
+
         driver.isOnline = isOnline;
-        driver.isAvailable = isOnline && !activeTrip;
+        driver.isAvailable = isOnline && !activeTrip && !activeParcel;
 
         await driver.save();
 
@@ -226,7 +291,7 @@ const getMyDriverStatus = async (req, res) => {
         const driver = await Driver.findOne({
             userId: req.user._id,
         }).select(
-            "verificationStatus isOnline isAvailable currentVehicleId currentLocation rating ratingCount"
+            "verificationStatus rejectionReason isOnline isAvailable currentVehicleId currentLocation rating ratingCount"
         );
 
         if (!driver) {

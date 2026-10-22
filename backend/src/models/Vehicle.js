@@ -28,6 +28,10 @@ const vehicleSchema = new mongoose.Schema({
         default: "PENDING",
     },
     isActive: { type: Boolean, default: true },
+    registrationExpiryDate: {
+        type: Date,
+        default: null,
+    },
 }, { timestamps: true });
 
 vehicleSchema.index({ registrationNumber: 1 }, { unique: true });

@@ -31,6 +31,27 @@ const reviewVehicle = async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid request" });
         }
 
+        if (status === "APPROVED") {
+            const existingVehicle = await Vehicle.findById(vehicleId);
+
+            if (!existingVehicle) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Vehicle not found",
+                });
+            }
+
+            if (
+                existingVehicle.registrationExpiryDate &&
+                existingVehicle.registrationExpiryDate <= new Date()
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Renew expired registration before approval",
+                });
+            }
+        }
+
         const vehicle = await Vehicle.findByIdAndUpdate(
             vehicleId,
             { $set: { verificationStatus: status } },
@@ -41,7 +62,11 @@ const reviewVehicle = async (req, res) => {
             return res.status(404).json({ success: false, message: "Vehicle not found" });
         }
 
-        if (status === "REJECTED") {
+        if (
+            status === "REJECTED" ||
+            (vehicle.registrationExpiryDate &&
+                vehicle.registrationExpiryDate <= new Date())
+        ) {
             await Driver.updateOne(
                 { _id: vehicle.driverId, currentVehicleId: vehicle._id },
                 { $set: { currentVehicleId: null, isOnline: false, isAvailable: false } }

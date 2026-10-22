@@ -38,6 +38,10 @@ const driverDocumentSchema = new mongoose.Schema(
             type: String,
             default: null,
         },
+        expiryDate: {
+            type: Date,
+            default: null,
+        },
     },
     { timestamps: true }
 );

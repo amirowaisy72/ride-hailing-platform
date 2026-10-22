@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { BRAND } from "@/config/brand";
+import Link from "next/link";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -45,7 +46,7 @@ export default function LoginPage() {
             );
 
             router.replace(
-                profile.user.role === "DRIVER"
+                profile.user.activeMode === "DRIVER"
                     ? "/driver"
                     : "/passenger"
             );
@@ -119,7 +120,10 @@ export default function LoginPage() {
                     </button>
 
                     <p className="text-center text-sm text-gray-500">
-                        Secure access for passengers and drivers
+                        Don't have an account?{" "}
+                        <Link href="/signup" className="font-bold text-[#087F5B]">
+                            Create Account
+                        </Link>
                     </p>
                 </form>
             </section>

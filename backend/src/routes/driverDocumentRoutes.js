@@ -9,7 +9,7 @@ const router = express.Router();
 router.post(
     "/",
     protect,
-    authorize("DRIVER"),
+    authorize("PASSENGER", "DRIVER"),
     upload.single("document"),
     uploadDocument
 );

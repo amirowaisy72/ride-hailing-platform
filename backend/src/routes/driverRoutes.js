@@ -26,28 +26,28 @@ const router = express.Router();
 router.post(
     "/register",
     protect,
-    authorize("DRIVER"),
+    authorize("PASSENGER", "DRIVER"),
     registerDriver
 );
 
 router.get(
     "/me/status",
     protect,
-    authorize("DRIVER"),
+    authorize("PASSENGER", "DRIVER"),
     getMyDriverStatus
 );
 
 router.patch(
     "/me/online-status",
     protect,
-    authorize("DRIVER"),
+    authorize("PASSENGER", "DRIVER"),
     updateOnlineStatus
 );
 
 router.patch(
     "/me/location",
     protect,
-    authorize("DRIVER"),
+    authorize("PASSENGER", "DRIVER"),
     updateDriverLocation
 );
 
@@ -64,21 +64,21 @@ router.get(
 router.get(
     "/me/available-rides",
     protect,
-    authorize("DRIVER"),
+    authorize("PASSENGER", "DRIVER"),
     getAvailableRides
 );
 
 router.get(
     "/me/active-ride",
     protect,
-    authorize("DRIVER"),
+    authorize("PASSENGER", "DRIVER"),
     getMyActiveRide
 );
 
 router.get(
     "/me/history",
     protect,
-    authorize("DRIVER"),
+    authorize("PASSENGER", "DRIVER"),
     getDriverHistory
 );
 
@@ -92,14 +92,14 @@ router.get(
 router.get(
     "/me/wallet",
     protect,
-    authorize("DRIVER"),
+    authorize("PASSENGER", "DRIVER"),
     getMyWallet
 );
 
 router.get(
     "/me/earnings",
     protect,
-    authorize("DRIVER"),
+    authorize("PASSENGER", "DRIVER"),
     getMyEarnings
 );
 

@@ -27,7 +27,7 @@ const API_ORIGIN =
 
 export default function DriverDocumentsPage() {
     return (
-        <AuthGuard role="DRIVER">
+        <AuthGuard role="PASSENGER">
             <DocumentUploadScreen />
         </AuthGuard>
     );
@@ -37,6 +37,7 @@ function DocumentUploadScreen() {
     const { token } = useAuth();
 
     const [files, setFiles] = useState({});
+    const [expiryDates, setExpiryDates] = useState({});
     const [uploaded, setUploaded] = useState({});
     const [busy, setBusy] = useState("");
     const [error, setError] = useState("");
@@ -75,8 +76,18 @@ function DocumentUploadScreen() {
         try {
             const formData = new FormData();
             formData.append("documentType", type);
-            formData.append("document", file);
 
+            if (["DRIVING_LICENSE", "VEHICLE_REGISTRATION"].includes(type)) {
+                const expiryDate = expiryDates[type];
+
+                if (!expiryDate) {
+                    throw new Error("Please select document expiry date");
+                }
+
+                formData.append("expiryDate", expiryDate);
+            }
+
+            formData.append("document", file);
             const response = await fetch(
                 `${API_ORIGIN}/api/v1/drivers/me/documents`,
                 {
@@ -213,6 +224,28 @@ function DocumentUploadScreen() {
                                 }
                             />
                         </label>
+
+                        {["DRIVING_LICENSE", "VEHICLE_REGISTRATION"].includes(doc.type) && (
+                            <label className="mt-4 block">
+                                <span className="text-sm font-semibold">
+                                    Document Expiry Date
+                                </span>
+                                <input
+                                    type="date"
+                                    required
+                                    min={new Date(Date.now() + 86400000)
+                                        .toLocaleDateString("en-CA")}
+                                    value={expiryDates[doc.type] || ""}
+                                    onChange={(e) =>
+                                        setExpiryDates((previous) => ({
+                                            ...previous,
+                                            [doc.type]: e.target.value,
+                                        }))
+                                    }
+                                    className="mt-2 h-12 w-full rounded-xl border px-4"
+                                />
+                            </label>
+                        )}
 
                         <button
                             type="button"

@@ -13,7 +13,7 @@ const register = async (req, res) => {
     try {
         const { firstName, lastName, email, password, role } = req.body;
 
-        if (!["PASSENGER", "DRIVER"].includes(role)) {
+        if (role !== undefined && !["PASSENGER", "DRIVER"].includes(role)) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid registration role",
@@ -52,7 +52,8 @@ const register = async (req, res) => {
             lastName,
             email: normalizedEmail,
             passwordHash,
-            role: role === "DRIVER" ? "DRIVER" : "PASSENGER",
+            role: "PASSENGER",
+            activeMode: "PASSENGER",
         });
 
         return res.status(201).json({
@@ -134,6 +135,7 @@ const login = async (req, res) => {
                 lastName: user.lastName,
                 email: user.email,
                 role: user.role,
+                activeMode: user.activeMode || "PASSENGER",
             },
         });
     } catch (error) {

@@ -35,7 +35,10 @@ export default function PassengerAccountPage() {
 }
 
 function AccountScreen() {
-    const { user, token, logout } = useAuth();
+    const { user, token, logout, switchMode } = useAuth();
+    const [driver, setDriver] = useState(null);
+    const [switching, setSwitching] = useState(false);
+    const [driverError, setDriverError] = useState("");
     const [accountUser, setAccountUser] = useState(null);
 
     useEffect(() => {
@@ -55,6 +58,40 @@ function AccountScreen() {
             cancelled = true;
         };
     }, [token]);
+
+    useEffect(() => {
+        if (!token) return;
+
+        apiRequest("/drivers/me/status", { token })
+            .then((data) => setDriver(data.driver))
+            .catch((error) => {
+                if (error.status !== 404) {
+                    console.error("Driver status:", error.message);
+                }
+            });
+    }, [token]);
+
+    async function handleDriverAction() {
+        setSwitching(true);
+        setDriverError("");
+
+        try {
+            if (!driver) {
+                const data = await apiRequest("/drivers/register", {
+                    method: "POST",
+                    token,
+                });
+                setDriver(data.driver);
+            } else if (driver.verificationStatus === "APPROVED") {
+                await switchMode("DRIVER");
+                window.location.replace("/driver");
+            }
+        } catch (error) {
+            setDriverError(error.message);
+        } finally {
+            setSwitching(false);
+        }
+    }
 
     const [rides, setRides] = useState([]);
     const [page, setPage] = useState(1);
@@ -151,6 +188,51 @@ function AccountScreen() {
                             </div>
                         </div>
                     </div>
+                </section>
+
+                <section className="rounded-2xl bg-white p-5 shadow-sm">
+                    <h3 className="font-bold">Driver Account</h3>
+                    <p className="mt-2 text-sm text-slate-500">
+                        {driver
+                            ? `Status: ${driver.verificationStatus}`
+                            : "Earn by becoming a driver."}
+                    </p>
+
+                    {driver?.rejectionReason && (
+                        <p className="mt-2 text-sm text-red-600">
+                            {driver.rejectionReason}
+                        </p>
+                    )}
+
+                    {driverError && (
+                        <p className="mt-2 text-sm text-red-600">
+                            {driverError}
+                        </p>
+                    )}
+
+                    {(!driver || driver.verificationStatus === "APPROVED") && (
+                        <button
+                            type="button"
+                            disabled={switching}
+                            onClick={handleDriverAction}
+                            className="mt-4 w-full rounded-xl bg-[#087F5B] p-3 font-bold text-white disabled:opacity-50"
+                        >
+                            {switching
+                                ? "Please wait..."
+                                : driver
+                                    ? "Switch to Driver"
+                                    : "Become a Driver"}
+                        </button>
+                    )}
+
+                    {driver && driver.verificationStatus !== "APPROVED" && (
+                        <Link
+                            href="/driver/documents"
+                            className="mt-4 block rounded-xl bg-emerald-50 p-3 text-center font-bold text-[#087F5B]"
+                        >
+                            Manage Driver Documents
+                        </Link>
+                    )}
                 </section>
 
                 <section className="rounded-[24px] bg-white p-5 shadow-sm">
