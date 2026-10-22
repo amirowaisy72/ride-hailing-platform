@@ -15,4 +15,10 @@ router.patch("/me/mode", protect, switchMode);
 router.patch("/me", protect, updateAccount);
 router.patch("/me/picture", protect, upload.single("picture"), updateProfilePicture);
 
+const {
+    registerDevice,
+} = require("../controllers/pushDeviceController");
+
+router.post("/push-device", protect, registerDevice);
+
 module.exports = router;

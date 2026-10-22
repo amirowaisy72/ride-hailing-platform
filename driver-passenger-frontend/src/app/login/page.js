@@ -15,13 +15,16 @@ export default function LoginPage() {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const [loginStage, setLoginStage] = useState("");
 
     async function handleSubmit(event) {
         event.preventDefault();
         setError("");
         setSubmitting(true);
+        setLoginStage("Connecting to server...");
 
         try {
+            setLoginStage("Authenticating...");
             const data = await apiRequest("/auth/login", {
                 method: "POST",
                 body: JSON.stringify({ email, password }),
@@ -31,9 +34,12 @@ export default function LoginPage() {
                 throw new Error("Invalid authentication response");
             }
 
+            setLoginStage("Loading profile...");
             const profile = await apiRequest("/auth/me", {
                 token: data.accessToken,
             });
+
+            setLoginStage("Saving secure session...");
 
             if (!["PASSENGER", "DRIVER"].includes(profile.user?.role)) {
                 throw new Error("This account cannot access the mobile app");
@@ -116,7 +122,7 @@ export default function LoginPage() {
                         disabled={submitting}
                         className="flex h-14 w-full items-center justify-center rounded-2xl bg-[#087F5B] font-bold text-white shadow-lg shadow-emerald-900/10 disabled:opacity-50"
                     >
-                        {submitting ? "Signing in..." : "Sign In →"}
+                        {submitting ? (loginStage || "Signing in...") : "Sign In →"}
                     </button>
 
                     <p className="text-center text-sm text-gray-500">

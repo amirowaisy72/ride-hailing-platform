@@ -3,6 +3,7 @@ const Ride = require("../models/Ride");
 const Driver = require("../models/Driver");
 const CommissionSettings = require("../models/CommissionSettings");
 const { publishEvent } = require("../services/socketService");
+const { sendPushToUser } = require("../services/pushService");
 
 const transitions = {
     DRIVER_SELECTED: ["DRIVER_EN_ROUTE"],
@@ -205,6 +206,24 @@ const updateTripStatus = async (req, res) => {
                 stopWaitingSince: ride.stopWaitingSince || null,
             }
         );
+
+        const pushMessages = {
+            DRIVER_EN_ROUTE: ["Driver On The Way", "Your driver is heading to pickup."],
+            DRIVER_ARRIVED: ["Driver Arrived", "Your driver has reached your pickup location."],
+            TRIP_STARTED: ["Trip Started", "Your ride has started."],
+            TRIP_COMPLETED: ["Trip Completed", "Your ride has been completed."],
+        };
+
+        if (pushMessages[status]) {
+            const [title, body] = pushMessages[status];
+
+            void sendPushToUser(
+                ride.passengerId,
+                title,
+                body,
+                { type: status, rideId: String(ride._id) }
+            );
+        }
 
         return res.json({ success: true, ride });
     } catch (error) {

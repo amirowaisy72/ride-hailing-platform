@@ -1,9 +1,35 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import { BRAND } from "@/config/brand";
 
 export default function Home() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (loading || !user) return;
+
+    router.replace(
+      user.activeMode === "DRIVER"
+        ? "/driver"
+        : "/passenger"
+    );
+  }, [user, loading, router]);
+
+  if (loading || user) {
+    return (
+      <main className="flex min-h-dvh items-center justify-center bg-[#F8FAF9]">
+        <p className="text-sm font-semibold text-[#087F5B]">
+          Loading account...
+        </p>
+      </main>
+    );
+  }
+
   return (
     <main className="relative flex min-h-dvh flex-col overflow-hidden bg-[#F8FAF9] text-[#111827]">
       <header className="flex items-center gap-3 px-6 pt-8">

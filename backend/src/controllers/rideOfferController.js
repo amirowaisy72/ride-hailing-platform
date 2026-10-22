@@ -5,6 +5,7 @@ const Driver = require("../models/Driver");
 const RideOffer = require("../models/RideOffer");
 const Vehicle = require("../models/Vehicle");
 const { publishEvent } = require("../services/socketService");
+const { sendPushToUser } = require("../services/pushService");
 
 const OPEN = ["REQUESTED", "SEARCHING", "BIDDING"];
 const OFFER_DURATION_MS = 5 * 60 * 1000;
@@ -209,6 +210,13 @@ async function submitOffer(req, res) {
             event,
             `passenger:${ride.passengerId}`,
             payload
+        );
+
+        void sendPushToUser(
+            ride.passengerId,
+            "New Driver Offer",
+            `A driver offered PKR ${offer.price} for your ride.`,
+            { type: "RIDE_OFFER", rideId: String(ride._id) }
         );
 
         // Keep existing listeners compatible with rebids.

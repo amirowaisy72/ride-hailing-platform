@@ -14,6 +14,7 @@ import {
 } from "@/lib/tokenManager";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
+import { registerPushNotifications } from "@/lib/pushNotifications";
 import {
     saveRefreshToken,
     getRefreshToken,
@@ -123,6 +124,29 @@ export function AuthProvider({ children }) {
             listener?.remove();
         };
     }, []);
+
+    useEffect(() => {
+        if (!token || !Capacitor.isNativePlatform()) return;
+
+        registerPushNotifications(async (fcmToken) => {
+            try {
+                await apiRequest("/account/push-device", {
+                    method: "POST",
+                    token,
+                    body: JSON.stringify({
+                        token: fcmToken,
+                        platform: Capacitor.getPlatform(),
+                    }),
+                });
+
+                console.log("FCM device registered with backend");
+            } catch (error) {
+                console.error("FCM device save failed:", error);
+            }
+        }).catch((error) => {
+            console.error("Push registration:", error.message);
+        });
+    }, [token]);
 
     const login = async (accessToken, userData, refreshToken) => {
         invalidateSession();

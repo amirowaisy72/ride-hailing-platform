@@ -1,6 +1,7 @@
 
 const Ride = require("../models/Ride");
 const { publishEvent } = require("../services/socketService");
+const { sendPushToUser } = require("../services/pushService");
 const { findDriversWithExpandedRadius } = require("../services/driverMatchingService");
 const { isLocationSupported } = require("../services/serviceAreaService");
 const { getRoute } = require("../integrations/maps/mapService");
@@ -196,6 +197,13 @@ const createRide = async (req, res) => {
             );
 
             for (const driver of drivers) {
+                void sendPushToUser(
+                    driver.userId,
+                    "New Ride Request",
+                    "A passenger is requesting a ride nearby.",
+                    { type: "RIDE_REQUEST", rideId: String(ride._id) }
+                );
+
                 publishEvent(
                     "ride:created",
                     `driver:${driver.userId.toString()}`,

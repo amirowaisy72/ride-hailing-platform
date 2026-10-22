@@ -1,7 +1,9 @@
 const ParcelOrder = require("../models/ParcelOrder");
 const { publishEvent } = require("../services/socketService");
+const { sendPushToUser } = require("../services/pushService");
 const ParcelOffer = require("../models/ParcelOffer");
 const Driver = require("../models/Driver");
+const Vehicle = require("../models/Vehicle");
 const crypto = require("node:crypto");
 
 const hashParcelOtp = (otp) => crypto.createHash("sha256").update(String(otp)).digest("hex");
@@ -107,6 +109,46 @@ const createParcel = async (req, res) => {
             paymentBy,
             instructions,
         });
+
+        void (async () => {
+            try {
+                const drivers = await Driver.find({
+                    verificationStatus: "APPROVED",
+                    isOnline: true,
+                    isAvailable: true,
+                    currentLocation: {
+                        $near: {
+                            $geometry: {
+                                type: "Point",
+                                coordinates: [pickup.longitude, pickup.latitude],
+                            },
+                            $maxDistance: 15000,
+                        },
+                    },
+                }).select("userId currentVehicleId").limit(100).lean();
+
+                for (const driver of drivers) {
+                    const eligible = await Vehicle.exists({
+                        _id: driver.currentVehicleId,
+                        driverId: driver._id,
+                        vehicleType,
+                        verificationStatus: "APPROVED",
+                        isActive: true,
+                    });
+
+                    if (eligible) {
+                        await sendPushToUser(
+                            driver.userId,
+                            "New Parcel Request",
+                            "A parcel delivery is available nearby.",
+                            { type: "PARCEL_REQUEST", parcelId: String(order._id) }
+                        );
+                    }
+                }
+            } catch (error) {
+                console.error("Parcel push error:", error.message);
+            }
+        })();
 
         return res.status(201).json({ success: true, order });
     } catch (error) {
@@ -257,6 +299,13 @@ const submitParcelOffer = async (req, res) => {
                 expiresAt: new Date(Date.now() + 60000),
             });
 
+            void sendPushToUser(
+                order.customerId,
+                "New Parcel Offer",
+                `Driver offered PKR ${created.price} for your parcel.`,
+                { type: "PARCEL_OFFER", parcelId: String(order._id) }
+            );
+
             publishEvent("parcel:offer:new", `passenger:${order.customerId}`, {
                 parcelId: String(order._id),
                 offerId: String(created._id),
@@ -269,6 +318,13 @@ const submitParcelOffer = async (req, res) => {
                 offer: created,
             });
         }
+
+        void sendPushToUser(
+            order.customerId,
+            "Parcel Offer Updated",
+            `Driver updated offer to PKR ${offer.price}.`,
+            { type: "PARCEL_OFFER", parcelId: String(order._id) }
+        );
 
         publishEvent("parcel:offer:new", `passenger:${order.customerId}`, {
             parcelId: String(order._id),
@@ -384,6 +440,13 @@ const acceptParcelOffer = async (req, res) => {
             .lean();
 
         if (assignedDriver?.userId) {
+            void sendPushToUser(
+                assignedDriver.userId,
+                "Parcel Offer Accepted",
+                "Your parcel offer was accepted.",
+                { type: "PARCEL_ASSIGNED", parcelId: String(order._id) }
+            );
+
             publishEvent(
                 "parcel:assigned",
                 `driver:${assignedDriver.userId}`,
@@ -394,6 +457,13 @@ const acceptParcelOffer = async (req, res) => {
                 }
             );
         }
+
+        void sendPushToUser(
+            order.customerId,
+            "Driver Assigned",
+            "A driver has been assigned to your parcel.",
+            { type: "PARCEL_ASSIGNED", parcelId: String(order._id) }
+        );
 
         publishEvent(
             "parcel:status:updated",
@@ -558,6 +628,16 @@ const updateParcelStatus = async (req, res) => {
                 parcelId: String(order._id),
                 status: nextStatus,
                 message: `Parcel status: ${nextStatus.replaceAll("_", " ")}`,
+            }
+        );
+
+        void sendPushToUser(
+            order.customerId,
+            "Parcel Update",
+            `Parcel status: ${nextStatus.replaceAll("_", " ")}`,
+            {
+                type: nextStatus,
+                parcelId: String(order._id),
             }
         );
 

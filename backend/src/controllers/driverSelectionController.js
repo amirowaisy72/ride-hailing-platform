@@ -5,6 +5,7 @@ const RideOffer = require("../models/RideOffer");
 const Driver = require("../models/Driver");
 const Vehicle = require("../models/Vehicle");
 const { publishEvent } = require("../services/socketService");
+const { sendPushToUser } = require("../services/pushService");
 
 const selectDriver = async (req, res) => {
     const { rideId } = req.params;
@@ -106,6 +107,16 @@ const selectDriver = async (req, res) => {
             {
                 rideId: result.rideId.toString(),
                 driverId: result.driverId.toString(),
+            }
+        );
+
+        void sendPushToUser(
+            result.driverUserId,
+            "Ride Confirmed",
+            "Passenger accepted your offer. Head to pickup.",
+            {
+                type: "RIDE_SELECTED",
+                rideId: result.rideId.toString(),
             }
         );
 
