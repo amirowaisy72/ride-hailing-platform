@@ -5,7 +5,9 @@ function getFirebaseMessaging() {
     if (!getApps().length) {
         initializeApp({
             credential: cert(
-                require("../../secrets/firebase-service-account.json")
+                require(process.env.RENDER
+                    ? "/etc/secrets/firebase-service-account.json"
+                    : "../../secrets/firebase-service-account.json")
             ),
         });
     }
