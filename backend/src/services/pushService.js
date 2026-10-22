@@ -4,7 +4,11 @@ const { getFirebaseMessaging } = require("./firebaseService");
 async function sendPushToUser(userId, title, body, data = {}) {
     try {
         const devices = await PushDevice.find({ userId }).lean();
-        if (!devices.length) return;
+        if (!devices.length) {
+            console.log("FCM: No registered device for user", String(userId));
+            return;
+        }
+        console.log("FCM: Registered devices found:", devices.length);
 
         const tokens = devices.map((device) => device.token);
 
