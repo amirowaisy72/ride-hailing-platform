@@ -54,11 +54,13 @@ const register = async (req, res) => {
             passwordHash,
             role: "PASSENGER",
             activeMode: "PASSENGER",
+            emailVerified: true,
+            status: "ACTIVE",
         });
 
         return res.status(201).json({
             success: true,
-            message: "Registration successful. Email verification pending.",
+            message: "Registration successful. You can now sign in.",
             user: {
                 id: user._id,
                 firstName: user.firstName,
@@ -105,6 +107,15 @@ const login = async (req, res) => {
                 success: false,
                 message: "Invalid email or password",
             });
+        }
+
+        if (
+            user.role === "PASSENGER" &&
+            user.status === "PENDING"
+        ) {
+            user.emailVerified = true;
+            user.status = "ACTIVE";
+            await user.save();
         }
 
         if (!user.emailVerified || user.status !== "ACTIVE") {
