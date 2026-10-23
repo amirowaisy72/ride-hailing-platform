@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Driver = require("../models/Driver");
 const Vehicle = require("../models/Vehicle");
+const User = require("../models/User");
 const DriverReview = require("../models/DriverReview");
 
 const getDriverPublicProfile = async (req, res) => {
@@ -15,7 +16,7 @@ const getDriverPublicProfile = async (req, res) => {
         }
 
         const driver = await Driver.findById(driverId)
-            .select("verificationStatus rating ratingCount currentVehicleId")
+            .select("verificationStatus rating ratingCount currentVehicleId userId")
             .lean();
 
         if (!driver || driver.verificationStatus !== "APPROVED") {
@@ -24,6 +25,10 @@ const getDriverPublicProfile = async (req, res) => {
                 message: "Verified driver not found",
             });
         }
+
+        const driverUser = await User.findById(driver.userId)
+            .select("firstName lastName profileImage")
+            .lean();
 
         const vehicle = driver.currentVehicleId
             ? await Vehicle.findOne({
@@ -49,6 +54,8 @@ const getDriverPublicProfile = async (req, res) => {
             success: true,
             driver: {
                 id: driver._id,
+                name: [driverUser?.firstName, driverUser?.lastName].filter(Boolean).join(" "),
+                profileImage: driverUser?.profileImage || "",
                 verified: true,
                 rating: driver.ratingCount ? driver.rating : null,
                 ratingCount: driver.ratingCount || 0,

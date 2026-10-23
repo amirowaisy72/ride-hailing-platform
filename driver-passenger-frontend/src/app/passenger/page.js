@@ -1026,17 +1026,19 @@ function PassengerDashboard() {
                 </>
             )}
 
-            <div className="absolute right-4 bottom-[calc(250px+env(safe-area-inset-bottom))] z-20">
-                <button
-                    type="button"
-                    aria-label={activeRide ? "Recenter map" : "Locate me"}
-                    onClick={activeRide ? () => setMapLocateRequest((n) => n + 1) : locateMe}
-                    disabled={locating}
-                    className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-white transition-transform active:scale-95 disabled:opacity-60 ${FLOATING_SHADOW}`}
-                >
-                    <LocateFixed size={21} className={locating ? "animate-pulse" : ""} />
-                </button>
-            </div>
+            {!activeRide && (
+                <div className="absolute right-4 bottom-[calc(250px+env(safe-area-inset-bottom))] z-20">
+                    <button
+                        type="button"
+                        aria-label={activeRide ? "Recenter map" : "Locate me"}
+                        onClick={activeRide ? () => setMapLocateRequest((n) => n + 1) : locateMe}
+                        disabled={locating}
+                        className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-white transition-transform active:scale-95 disabled:opacity-60 ${FLOATING_SHADOW}`}
+                    >
+                        <LocateFixed size={21} className={locating ? "animate-pulse" : ""} />
+                    </button>
+                </div>
+            )}
 
             {toast && !mapPickTarget && (
                 <div

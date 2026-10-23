@@ -5,6 +5,7 @@ import {
     Banknote, Car, Check, ChevronDown, Clock3, Flag, Map as MapIcon, MapPin, Navigation, Phone, Star, X,
 } from "lucide-react";
 import DriverProfileCard from "@/components/DriverProfileCard";
+import { apiRequest } from "@/lib/api";
 import {
     describeDriver, formatArrival, formatPKR, getInitials, getVehicle, placeLabel,
 } from "@/lib/rideDisplay";
@@ -42,6 +43,24 @@ export default function RideJourneyExperience({
 }) {
     const [now, setNow] = useState(Date.now());
     const [showProfile, setShowProfile] = useState(false);
+    const [driverProfile, setDriverProfile] = useState(null);
+    const driverId = ride?.driverId?._id || ride?.driverId?.id || ride?.driverId;
+
+    useEffect(() => {
+        let cancelled = false;
+        setDriverProfile(null);
+
+        if (driverId && token) {
+            apiRequest(`/drivers/profile/${driverId}`, { token })
+                .then((data) => {
+                    if (!cancelled) setDriverProfile(data.driver);
+                })
+                .catch(() => { });
+        }
+
+        return () => { cancelled = true; };
+    }, [driverId, token]);
+
     useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
     useEffect(() => { setShowProfile(false); }, [ride?._id]);
     if (!ride) return null;
@@ -165,15 +184,25 @@ export default function RideJourneyExperience({
                     <div className="mt-4 rounded-2xl border border-[#EEF0F2] p-3.5">
                         <div className="flex items-center gap-3">
                             <span className="relative flex h-13 w-13 shrink-0 items-center justify-center" aria-hidden="true">
-                                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#111111] text-sm font-extrabold text-[#C1F11D]">
-                                    {getInitials(driver.name)}
+                                <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#111111] text-sm font-extrabold text-[#C1F11D]">
+                                    {driverProfile?.profileImage ? (
+                                        <img
+                                            src={driverProfile.profileImage}
+                                            alt="Driver"
+                                            className="h-full w-full object-cover"
+                                        />
+                                    ) : (
+                                        getInitials(driverProfile?.name || driver.name)
+                                    )}
                                 </span>
                                 <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-[#C1F11D]">
                                     <VehicleIcon size={12} />
                                 </span>
                             </span>
                             <div className="min-w-0 flex-1">
-                                <p className="truncate font-bold">{driver.name || "Your driver"}</p>
+                                <p className="truncate font-bold">
+                                    {driverProfile?.name || driver.name || "Your driver"}
+                                </p>
                                 <p className="mt-0.5 flex items-center gap-1.5 text-xs text-[#6B7280]">
                                     <span className="flex items-center gap-0.5 font-semibold text-[#111111]">
                                         <Star size={12} className="fill-[#F5A524] text-[#F5A524]" aria-hidden="true" />
@@ -181,7 +210,13 @@ export default function RideJourneyExperience({
                                     </span>
                                     {driver.trips != null && <span>· {driver.trips} trips</span>}
                                 </p>
-                                <p className="truncate text-xs font-medium text-[#374151]">{vehicleLine}</p>
+                                <p className="truncate text-xs font-medium text-[#374151]">
+                                    {vehicleLine}
+                                    {driverProfile?.vehicle?.color &&
+                                        !vehicleLine.toLowerCase().includes(driverProfile.vehicle.color.toLowerCase())
+                                        ? ` · ${driverProfile.vehicle.color}`
+                                        : ""}
+                                </p>
                             </div>
                             {driver.plate && (
                                 <span className="shrink-0 rounded-lg border border-[#E3E5E8] bg-[#F7F8F9] px-2 py-1 font-mono text-xs font-bold tracking-wider">
