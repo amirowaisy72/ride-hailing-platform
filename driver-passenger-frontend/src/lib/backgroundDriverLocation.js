@@ -34,7 +34,7 @@ export async function startDriverBackgroundGPS(token) {
             {
                 backgroundTitle: "Ride Hailing - Driver Online",
                 backgroundMessage: "Location active to receive nearby ride requests",
-                requestPermissions: true,
+                requestPermissions: false,
                 stale: false,
                 distanceFilter: 0,
                 minIntervalMs: 30000,

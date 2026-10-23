@@ -53,6 +53,12 @@ router.patch(
 
 router.post(
     "/me/location",
+    (req, res, next) => {
+        res.on("finish", () => {
+            console.log("[NATIVE GPS]", "POST", res.statusCode);
+        });
+        next();
+    },
     protect,
     authorize("DRIVER"),
     (req, res, next) => {
