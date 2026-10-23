@@ -51,8 +51,15 @@ export default function SignupPage() {
     return (
         <main className="min-h-dvh bg-[#F8FAF9] text-[#111827]">
             <header className="px-6 pb-8 pt-12">
-                <div className="mb-8 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#087F5B] text-xl font-bold text-white">
-                    {BRAND.shortName}
+                <div className="mb-8 flex items-center gap-2">
+                    <img
+                        src="/safar-icon.png"
+                        alt="Safar logo"
+                        className="h-15 w-15 rounded-2xl object-cover"
+                    />
+                    <span className="text-2xl font-extrabold tracking-tight text-[#111827] dark:text-white">
+                        {BRAND.name}
+                    </span>
                 </div>
                 <h1 className="text-4xl font-extrabold">
                     Create Account

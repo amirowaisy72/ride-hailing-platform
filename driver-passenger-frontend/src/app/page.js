@@ -32,10 +32,12 @@ export default function Home() {
 
   return (
     <main className="relative flex h-dvh flex-col overflow-hidden bg-[#F8FAF9] text-[#111827]">
-      <header className="flex items-center gap-3 px-6 pt-8">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#087F5B] text-xl font-bold text-white shadow-lg shadow-emerald-900/15">
-          {BRAND.shortName}
-        </div>
+      <header className="flex items-center gap-1.5 px-6 pt-8">
+        <img
+          src="/safar-icon.png"
+          alt="Safar"
+          className="h-15 w-15 shrink-0 rounded-2xl object-cover"
+        />
         <span className="text-xl font-bold tracking-tight">
           {BRAND.name}
         </span>

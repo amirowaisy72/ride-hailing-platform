@@ -1,6 +1,6 @@
 export const BRAND = {
-    name: "Ride-Hailing",
+    name: "Safar",
     tagline: "Your Ride, Your Choice",
-    shortName: "RH",
+    shortName: "S",
     description: "A reliable platform for passengers and drivers.",
 };

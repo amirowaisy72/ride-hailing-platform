@@ -158,8 +158,8 @@ export default function RideJourneyExperience({
                                 return (
                                     <li key={step.status} aria-current={current ? "step" : undefined}>
                                         <div className="h-1.5 overflow-hidden rounded-full bg-[#F1F2F4]">
-                                            {done && <div className="h-full w-full bg-[#111111]" />}
-                                            {current && <div className="rj-indeterminate h-full w-1/2 rounded-full bg-[#111111]" />}
+                                            {done && <div className="h-full w-full bg-[#C1F11D]" />}
+                                            {current && <div className="rj-indeterminate h-full w-1/2 rounded-full bg-[#C1F11D]" />}
                                         </div>
                                         <p className={`mt-1.5 text-[11px] font-bold ${done || current ? "text-[#111111]" : "text-[#9CA3AF]"}`}>{step.label}</p>
                                     </li>

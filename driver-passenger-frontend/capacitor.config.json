@@ -1,6 +1,6 @@
 ﻿{
   "appId": "com.ridehailing.app",
-  "appName": "Ride Hailing",
+  "appName": "Safar",
   "webDir": "out",
   "android": {
     "useLegacyBridge": true

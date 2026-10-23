@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ArrowLeft, MessageCircle, Send, Phone, CheckCheck, UserRound } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { getRealtimeSocket } from "@/lib/socket";
@@ -102,7 +103,7 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                 </span>
             )}
         </button>}
-        {isOpen && <div className="fixed inset-0 z-[100] flex h-dvh flex-col overflow-hidden bg-white text-[#111111] dark:!bg-[#101216] dark:!text-[#F5F7FA]" role="dialog" aria-modal="true" aria-label="Ride messages">
+        {isOpen && createPortal(<div className="fixed inset-0 z-[100] flex h-dvh flex-col overflow-hidden bg-white text-[#111111] dark:!bg-[#101216] dark:!text-[#F5F7FA]" role="dialog" aria-modal="true" aria-label="Ride messages">
             <header className="flex shrink-0 items-center gap-3 border-b border-[#EEF0F2] bg-white px-4 pb-3 pt-[max(12px,env(safe-area-inset-top))] shadow-sm">
                 <button
                     type="button"
@@ -259,6 +260,6 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                     <Send size={19} />
                 </button>
             </form>
-        </div>}
+        </div>, document.body)}
     </>;
 }
