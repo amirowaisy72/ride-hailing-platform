@@ -1,0 +1,25 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Owaisy Science Academy",
+                "city": "Khanpur",
+                "category": "Education",
+                "aliases": [
+                    "Owaisy Academy",
+                    "Owaisy Science",
+                    "Owaisy School"
+                ]
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    70.6847811,
+                    28.6524006
+                ]
+            }
+        }
+    ]
+}

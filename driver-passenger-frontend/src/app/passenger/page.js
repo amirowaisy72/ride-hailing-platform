@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
-    ArrowRight, Banknote, Bell, Check, ChevronDown, ChevronUp, Clock, Crosshair, LocateFixed,
+    ArrowRight, Banknote, Bell, Check, ChevronDown,
+    Trash2, ChevronUp, Clock, Crosshair, LocateFixed,
     Map as MapIcon, MapPin, Minimize2, Minus, Navigation, Plus, Radio, Route as RouteIcon,
     ShieldCheck, Star, UserRound, Users, Volume2, VolumeX, X, Car, Menu, MessageCircle,
 } from "lucide-react";
@@ -262,7 +263,27 @@ function PassengerDashboard() {
         token,
         manualPickup,
     ]);
+    const [savedPlaces, setSavedPlaces] = useState([]);
+    const [showSavedPlaces, setShowSavedPlaces] = useState(false);
+    const [editingPlace, setEditingPlace] = useState(null);
+    const [editPlaceName, setEditPlaceName] = useState("");
+    const [savingPlace, setSavingPlace] = useState(false);
+    const [deletingPlace, setDeletingPlace] = useState(null);
+    const [deleteBusy, setDeleteBusy] = useState(false);
     const [destination, setDestination] = useState(null);
+
+    useEffect(() => {
+        if (!token) return;
+        let cancelled = false;
+
+        apiRequest("/saved-places", { token })
+            .then((data) => {
+                if (!cancelled) setSavedPlaces(data.places || []);
+            })
+            .catch(console.error);
+
+        return () => { cancelled = true; };
+    }, [token]);
     const [stops, setStops] = useState([]);
     const [destinationQuery, setDestinationQuery] = useState("");
     const [searchResults, setSearchResults] = useState([]);
@@ -350,6 +371,14 @@ function PassengerDashboard() {
     const { driverLocation, driverLocationUpdatedAt, driverLocationFresh } = useLiveDriverLocation(activeRideId, token, Boolean(activeRide?.driverId || ASSIGNED_STATUSES.includes(activeRide?.status)));
     const searchingForDriver = Boolean(activeRide && SEARCHING_STATUSES.includes(activeRide.status));
     const rideAssigned = Boolean(activeRide && ASSIGNED_STATUSES.includes(activeRide.status));
+
+    useEffect(() => {
+        if (searchingForDriver && validOffers.length > 0) {
+            setFullScreenMap(false);
+            setBookingOpen(false);
+            setMapChatOpen(false);
+        }
+    }, [searchingForDriver, validOffers.length]);
     const { unread: unreadMessages, markRead: markMessagesRead } = useRideUnreadMessages(
         rideAssigned ? activeRideId : null, token, user?._id || user?.id, mapChatOpen
     );
@@ -945,6 +974,181 @@ function PassengerDashboard() {
     return (
         <main className="relative h-dvh w-full overflow-hidden bg-[#F4F5F7] text-[#111111]">
             <style>{MOTION_STYLES}</style>
+
+            {deletingPlace && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 px-5 backdrop-blur-sm">
+                    <div
+                        role="alertdialog"
+                        aria-modal="true"
+                        aria-labelledby="delete-place-title"
+                        aria-describedby="delete-place-description"
+                        className="w-full max-w-sm rounded-[28px] border border-[#373B44] bg-[#202329] p-6 text-white shadow-2xl"
+                    >
+                        <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10">
+                            <Trash2 size={26} className="text-red-400" />
+                        </div>
+
+                        <h2 id="delete-place-title" className="text-xl font-extrabold">
+                            Remove saved place?
+                        </h2>
+
+                        <p id="delete-place-description" className="mt-2 text-sm leading-6 text-[#AEB4BF]">
+                            Are you sure you want to remove{" "}
+                            <span className="font-bold text-white">
+                                {deletingPlace.name}
+                            </span>
+                            ? You can save it again later.
+                        </p>
+
+                        <div className="mt-7 flex gap-3">
+                            <button
+                                type="button"
+                                disabled={deleteBusy}
+                                onClick={() => setDeletingPlace(null)}
+                                className="flex-1 rounded-xl bg-[#343941] py-3.5 text-sm font-bold text-white disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                type="button"
+                                disabled={deleteBusy}
+                                onClick={async () => {
+                                    if (deleteBusy) return;
+                                    setDeleteBusy(true);
+
+                                    try {
+                                        await apiRequest(
+                                            `/saved-places/${deletingPlace._id}`,
+                                            {
+                                                method: "DELETE",
+                                                token,
+                                            }
+                                        );
+
+                                        setSavedPlaces((previous) =>
+                                            previous.filter(
+                                                (item) => item._id !== deletingPlace._id
+                                            )
+                                        );
+
+                                        setDeletingPlace(null);
+                                        setNotification("Saved place removed.");
+                                    } catch (error) {
+                                        setNotification(error.message);
+                                    } finally {
+                                        setDeleteBusy(false);
+                                    }
+                                }}
+                                className="flex-1 rounded-xl bg-red-500 py-3.5 text-sm font-extrabold text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+                            >
+                                {deleteBusy ? "Removing..." : "Remove"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {editingPlace && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 px-5 backdrop-blur-sm">
+                    <form
+                        onSubmit={async (e) => {
+                            e.preventDefault();
+
+                            const name = editPlaceName.trim();
+                            if (!name || savingPlace) return;
+
+                            if (name === editingPlace.name) {
+                                setEditingPlace(null);
+                                return;
+                            }
+
+                            setSavingPlace(true);
+
+                            try {
+                                const result = await apiRequest(
+                                    `/saved-places/${editingPlace._id}`,
+                                    {
+                                        method: "PATCH",
+                                        token,
+                                        body: JSON.stringify({ name }),
+                                    }
+                                );
+
+                                setSavedPlaces((previous) =>
+                                    previous.map((place) =>
+                                        place._id === editingPlace._id
+                                            ? result.place
+                                            : place
+                                    )
+                                );
+
+                                setEditingPlace(null);
+                                setNotification("Location updated successfully.");
+                            } catch (error) {
+                                setNotification(error.message);
+                            } finally {
+                                setSavingPlace(false);
+                            }
+                        }}
+                        className="w-full max-w-sm rounded-[28px] border border-[#363B45] bg-[#202329] p-5 text-white shadow-2xl"
+                    >
+                        <div className="mb-5 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-extrabold">
+                                    Edit Location
+                                </h2>
+                                <p className="mt-1 text-xs text-[#9CA3AF]">
+                                    Update your saved place name
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => setEditingPlace(null)}
+                                disabled={savingPlace}
+                                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#343941] text-xl text-white"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <label className="mb-2 block text-xs font-semibold text-[#B4BBC6]">
+                            LOCATION NAME
+                        </label>
+
+                        <input
+                            autoFocus
+                            type="text"
+                            maxLength={100}
+                            required
+                            value={editPlaceName}
+                            onChange={(e) => setEditPlaceName(e.target.value)}
+                            placeholder="Enter location name"
+                            className="h-13 w-full rounded-xl border border-[#454B55] bg-[#15171C] px-4 py-3 text-sm font-semibold text-white outline-none transition-colors focus:border-[#C1F11D]"
+                        />
+
+                        <div className="mt-6 flex gap-3">
+                            <button
+                                type="button"
+                                disabled={savingPlace}
+                                onClick={() => setEditingPlace(null)}
+                                className="flex-1 rounded-xl bg-[#343941] py-3.5 text-sm font-bold text-white"
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                type="submit"
+                                disabled={savingPlace || !editPlaceName.trim()}
+                                className="flex-1 rounded-xl bg-[#C1F11D] py-3.5 text-sm font-extrabold text-black disabled:opacity-50"
+                            >
+                                {savingPlace ? "Saving..." : "Save Changes"}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
             <div className="absolute inset-0">
                 <RideMap
                     userLocation={activeRide?.pickup || userLocation}
@@ -971,6 +1175,62 @@ function PassengerDashboard() {
                     } : null}
                     onRouteUpdate={rideAssigned ? setLiveRoute : null}
                     onMapClick={mapPickTarget ? handleMapPick : null}
+                    onPlaceSelect={activeRide ? null : async (place) => {
+                        if (place.mode === "save") {
+                            try {
+                                const result = await apiRequest("/saved-places", {
+                                    method: "POST",
+                                    token,
+                                    body: JSON.stringify({
+                                        type: place.type,
+                                        name: place.name,
+                                        address: place.name,
+                                        latitude: place.latitude,
+                                        longitude: place.longitude,
+                                    }),
+                                });
+
+                                setSavedPlaces((previous) => [
+                                    ...previous.filter((p) =>
+                                        p._id !== result.place._id &&
+                                        !(place.type !== "FAVORITE" && p.type === place.type)
+                                    ),
+                                    result.place,
+                                ]);
+
+                                setNotification("Location saved successfully.");
+                            } catch (error) {
+                                setNotification(error.message);
+                            }
+                            return;
+                        }
+
+                        const point = {
+                            latitude: place.latitude,
+                            longitude: place.longitude,
+                            name: place.name,
+                            display_name: place.name,
+                        };
+
+                        setMapPickTarget(null);
+                        setFullScreenMap(false);
+                        setBookingOpen(true);
+
+                        if (place.mode === "pickup") {
+                            setManualPickup(true);
+                            setUserLocation(point);
+                            setPickupAddress(place.name);
+                            setRoute(null);
+                            setFare(null);
+                        } else {
+                            setDestination(point);
+                            setDestinationQuery(place.name);
+                            setDestinationSelected(true);
+                            setSearchResults([]);
+                            setRoute(null);
+                            setFare(null);
+                        }
+                    }}
                     passengerView
                     searching={searchingForDriver}
                     vehicleType={activeRide?.vehicleType || vehicleType}
@@ -1097,9 +1357,145 @@ function PassengerDashboard() {
 
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-3 sm:px-6">
                     <div className="mx-auto max-w-lg">
-                        <p className="mb-3 text-xs font-medium text-[#6B7280]">
-                            Choose your pickup and destination. Search real places nearby.
-                        </p>
+
+                        {savedPlaces.length > 0 && (
+                            <div className="mb-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowSavedPlaces((value) => !value)}
+                                    className="flex w-full items-center gap-2.5 rounded-xl border border-[#343741] bg-[#202228] px-3.5 py-2.5 text-left text-white transition-colors hover:bg-[#2A2D35]"
+                                >
+                                    <span className="text-lg">☆</span>
+                                    <span className="flex-1 text-sm font-semibold">
+                                        Saved Places
+                                    </span>
+                                    <span className="rounded-md bg-[#343741] px-2 py-0.5 text-[11px] font-bold text-[#C9CDD5]">
+                                        {savedPlaces.length}
+                                    </span>
+                                    <ChevronDown
+                                        size={17}
+                                        className={`shrink-0 text-[#AEB4BF] transition-transform duration-200 ${showSavedPlaces ? "rotate-180" : ""
+                                            }`}
+                                    />
+                                </button>
+
+                                {showSavedPlaces && (
+                                    <div className="mt-2 overflow-hidden rounded-xl border border-[#343741]">
+                                        {savedPlaces.map((place, index) => (
+                                            <div
+                                                key={place._id}
+                                                className={`flex items-center gap-3 bg-[#1C1E24] px-3 py-3 ${index ? "border-t border-[#343741]" : ""
+                                                    }`}
+                                            >
+                                                <span className="text-lg">
+                                                    {place.type === "HOME" ? "🏠" :
+                                                        place.type === "WORK" ? "💼" : "⭐"}
+                                                </span>
+
+                                                <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
+                                                    {place.name}
+                                                </span>
+
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Delete ${place.name}`}
+                                                    onClick={async () => {
+                                                        setDeletingPlace(place);
+                                                        return;
+
+                                                        try {
+                                                            await apiRequest(`/saved-places/${place._id}`, {
+                                                                method: "DELETE",
+                                                                token,
+                                                            });
+
+                                                            setSavedPlaces((previous) =>
+                                                                previous.filter((item) => item._id !== place._id)
+                                                            );
+                                                            setNotification("Saved place deleted.");
+                                                        } catch (error) {
+                                                            setNotification(error.message);
+                                                        }
+                                                    }}
+                                                    className="shrink-0 text-xs font-semibold text-red-400"
+                                                >
+                                                    Delete
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Rename ${place.name}`}
+                                                    onClick={async () => {
+                                                        setEditingPlace(place);
+                                                        setEditPlaceName(place.name);
+                                                        return;
+
+                                                        try {
+                                                            const result = await apiRequest(`/saved-places/${place._id}`, {
+                                                                method: "PATCH",
+                                                                token,
+                                                                body: JSON.stringify({ name }),
+                                                            });
+
+                                                            setSavedPlaces((previous) =>
+                                                                previous.map((item) =>
+                                                                    item._id === place._id ? result.place : item
+                                                                )
+                                                            );
+                                                            setNotification("Saved place updated.");
+                                                        } catch (error) {
+                                                            setNotification(error.message);
+                                                        }
+                                                    }}
+                                                    className="shrink-0 text-xs font-semibold text-[#C1F11D]"
+                                                >
+                                                    Edit
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setManualPickup(true);
+                                                        setUserLocation({
+                                                            latitude: place.latitude,
+                                                            longitude: place.longitude,
+                                                        });
+                                                        setPickupAddress(place.name);
+                                                        setRoute(null);
+                                                        setFare(null);
+                                                        setShowSavedPlaces(false);
+                                                    }}
+                                                    className="rounded-lg bg-[#343741] px-2.5 py-2 text-xs font-semibold text-white"
+                                                >
+                                                    Pickup
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setDestination({
+                                                            latitude: place.latitude,
+                                                            longitude: place.longitude,
+                                                            name: place.name,
+                                                            display_name: place.name,
+                                                        });
+                                                        setDestinationQuery(place.name);
+                                                        setDestinationSelected(true);
+                                                        setSearchResults([]);
+                                                        setRoute(null);
+                                                        setFare(null);
+                                                        setShowSavedPlaces(false);
+                                                    }}
+                                                    className="rounded-lg bg-[#C1F11D] px-2.5 py-2 text-xs font-bold text-black"
+                                                >
+                                                    Drop
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         <div className="rounded-2xl border border-[#EEF0F2] bg-white shadow-[0_4px_18px_rgba(17,17,17,0.05)]">
                             <div className="px-3.5 py-3">
@@ -1216,7 +1612,7 @@ function PassengerDashboard() {
                             </div>
                         )}
 
-                        <div className="mt-3 flex flex-wrap items-start gap-2">
+                        <div className="mt-3">
                             <RideStopsEditor
                                 stops={stops}
                                 onChange={(nextStops) => {
@@ -1229,24 +1625,7 @@ function PassengerDashboard() {
                                 disabled={Boolean(activeRide) || booking}
                             />
                         </div>
-                        {!destinationQuery && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => startMapPick("destination")}
-                                    className="flex h-10 items-center gap-2 rounded-full bg-[#F4F5F7] px-3.5 text-xs font-bold transition-colors hover:bg-[#E9EBEE]"
-                                >
-                                    <MapIcon size={15} aria-hidden="true" /> Choose destination on map
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => startMapPick("pickup")}
-                                    className="flex h-10 items-center gap-2 rounded-full bg-[#F4F5F7] px-3.5 text-xs font-bold transition-colors hover:bg-[#E9EBEE]"
-                                >
-                                    <Navigation size={15} aria-hidden="true" /> Set pickup on map
-                                </button>
-                            </div>
-                        )}
+
 
                         {citySupported === false && (
                             <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
@@ -1429,7 +1808,7 @@ function PassengerDashboard() {
                             type="button"
                             onClick={bookRide}
                             disabled={!canBook}
-                            className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#C1F11D] text-base font-extrabold text-[#111111] shadow-[0_8px_24px_rgba(140,180,0,0.35)] transition-all active:scale-[0.98] disabled:bg-[#E9EBEE] disabled:text-[#9CA3AF] disabled:shadow-none"
+                            className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#C1F11D] text-base font-extrabold text-[#111111] shadow-[0_8px_24px_rgba(140,180,0,0.35)] transition-all active:scale-[0.98] disabled:bg-[#C1F11D]/60 disabled:text-[#111111]/60 disabled:shadow-none"
                         >
                             {booking
                                 ? "Requesting ride..."

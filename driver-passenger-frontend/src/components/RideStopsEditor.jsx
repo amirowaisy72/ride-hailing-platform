@@ -124,7 +124,7 @@ export default function RideStopsEditor({
                 <button
                     type="button"
                     onClick={() => setAdding(true)}
-                    className="flex h-10 items-center gap-2 rounded-full bg-[#F4F5F7] px-3.5 text-xs font-bold text-[#111111] transition-colors hover:bg-[#E9EBEE]"
+                    className="flex h-12 w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-inherit transition-colors hover:bg-white/10"
                 >
                     <Plus size={15} aria-hidden="true" />
                     {stops.length ? "Add another stop" : "Add a stop"}

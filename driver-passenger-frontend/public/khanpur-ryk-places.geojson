@@ -1,0 +1,3170 @@
+{
+  "type": "FeatureCollection",
+  "generator": "overpass-turbo",
+  "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.",
+  "timestamp": "2026-10-23T16:28:36Z",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/89526336",
+        "is_in": "Pakistan, Punjab",
+        "name": "ظاہر پیر",
+        "name:ar": "ظاهر بير",
+        "name:bn": "জহীর পীর",
+        "name:en": "Zahir Pir",
+        "name:fa": "ظاهر پیر",
+        "name:hi": "ज़ाहिर पीर",
+        "name:ml": "സാഹിർ പീർ",
+        "place": "city",
+        "population": "48554",
+        "wikidata": "Q8076090"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.5177963,
+          28.8126927
+        ]
+      },
+      "id": "node/89526336"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/251189337",
+        "alt_name:fr": "Rahimyar Khan",
+        "name": "رحیم یار خان",
+        "name:ar": "رحيم يار خان",
+        "name:bn": "রহীম ইয়ার খান",
+        "name:de": "Rahim Yar Khan",
+        "name:en": "Rahim Yar Khan",
+        "name:es": "Rahim Yar Khan",
+        "name:eu": "Rahimyar Khan",
+        "name:fa": "رحیم یار خان",
+        "name:fr": "Rahim Yar Khan",
+        "name:hi": "रहीम यार खान",
+        "name:ja": "ラヒームヤール・ハーン",
+        "name:kn": "ರಹಿಮರ್ ಖಾನ್",
+        "name:ml": "റഹീം യാർ ഖാൻ",
+        "name:pa": "ਰਹੀਮ ਯਾਰ ਖਾਨ",
+        "name:pnb": "رحیم یار خاں",
+        "name:ps": "رحيميار خان",
+        "name:ru": "Рахимъярхан",
+        "name:sd": "رحيم يار خان",
+        "name:sr": "Рахијар Хан",
+        "name:ur": "رحیم یار خان",
+        "name:zh": "拉希姆亚尔汗",
+        "place": "city",
+        "population": "420419",
+        "wikidata": "Q989297",
+        "wikipedia": "ur:رحیم یار خان"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3036512,
+          28.417607
+        ]
+      },
+      "id": "node/251189337"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/281405781",
+        "is_in": "Rahim Yar Khan District, Punjab, Pakistan",
+        "name": "خانپور",
+        "name:ar": "جانبور",
+        "name:bn": "খানপুর",
+        "name:en": "Khanpur",
+        "name:es": "Khanpur",
+        "name:et": "Khānpur",
+        "name:fa": "خانپور",
+        "name:fr": "Khanpur",
+        "name:hi": "खानपुर",
+        "name:ja": "ハーンプル",
+        "name:kn": "ಖಾನ್ಪೂರ್",
+        "name:ml": "ഖാൻപൂർ",
+        "name:pa": "خانپور",
+        "name:pnb": "خانپور کٹورا",
+        "name:ru": "Ханпур",
+        "name:sr": "Ханпур",
+        "name:ur": "خان پور",
+        "place": "city",
+        "population": "184793",
+        "source:population": "French Wikipedia",
+        "wikidata": "Q1250097",
+        "wikipedia": "en:Khanpur"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.656008,
+          28.6477403
+        ]
+      },
+      "id": "node/281405781"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/316440874",
+        "alt_name": "Rahim Yar Khan",
+        "gns:dsg": "ADM3",
+        "gns:uni": "-3848802",
+        "is_in:country": "Pakistan",
+        "is_in:country_code": "PK",
+        "is_in:state": "Punjab",
+        "name": "Rahīmyār Khān District",
+        "name:ja": "ラヒームヤール・ハーン",
+        "place": "county",
+        "source": "GNS",
+        "state_capital": "Rahim Yar Khan"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.5,
+          28.416667
+        ]
+      },
+      "id": "node/316440874"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/861798977",
+        "name": "رکن پور",
+        "name:en": "Rukanpur",
+        "name:ru": "Рукнпур",
+        "place": "village",
+        "population": "21785",
+        "source": "DMA NH42-15, Jan 1982"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3908498,
+          28.7854659
+        ]
+      },
+      "id": "node/861798977"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/861799029",
+        "name": "Mababbatpur",
+        "name:en": "Mababbatpur",
+        "place": "village",
+        "source": "Yahoo",
+        "source:name": "DMA NH42-15, Jan 1982"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.4000749,
+          28.6606785
+        ]
+      },
+      "id": "node/861799029"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/868754609",
+        "name": "Shāngarh",
+        "place": "village",
+        "source": "DMA map 1982"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.4430661,
+          28.443897
+        ]
+      },
+      "id": "node/868754609"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/868754621",
+        "addr:city": "رحیم یار خان",
+        "addr:postcode": "64200",
+        "name": "امان گڑھ",
+        "name:de": "Amangarh",
+        "name:en": "Amangarh",
+        "name:es": "Amangarh",
+        "name:fr": "Amangarh",
+        "name:ur": "امان گڑھ",
+        "place": "village"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3627251,
+          28.3821167
+        ]
+      },
+      "id": "node/868754621"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/878256625",
+        "name": "وسی شاھ محمد",
+        "name:de": "Wahi Shah Muhammad",
+        "name:en": "Wahi Shah Muhammad",
+        "name:es": "Wahi Shah Muhammad",
+        "name:fr": "Wahi Shah Muhammad",
+        "name:ur": "وسی شاھ محمد",
+        "place": "village"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2478937,
+          28.4541918
+        ]
+      },
+      "id": "node/878256625"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939291810",
+        "GNS:modify_date": "2009/12/08",
+        "name": "Qaiser Chauhan",
+        "place": "village",
+        "source:imagery": "Landsat",
+        "source:name": "GNS"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2019821,
+          28.571212
+        ]
+      },
+      "id": "node/939291810"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939291819",
+        "GNS:modify_date": "2009/12/08",
+        "alt_name": "Pala Shah",
+        "name": "Pallu Shāh",
+        "place": "village",
+        "source:imagery": "Landsat",
+        "source:name": "GNS"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2723573,
+          28.6235926
+        ]
+      },
+      "id": "node/939291819"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939291830",
+        "GNS:modify_date": "2009/12/08",
+        "name": "Hāji Yūnis",
+        "place": "village",
+        "source:imagery": "Landsat",
+        "source:name": "GNS"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2614164,
+          28.6146096
+        ]
+      },
+      "id": "node/939291830"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939291910",
+        "GNS:modify_date": "2009/12/08",
+        "name": "Pīr Wali Muhammad Sultān",
+        "place": "village",
+        "source:imagery": "Landsat",
+        "source:name": "GNS"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.1676777,
+          28.5327499
+        ]
+      },
+      "id": "node/939291910"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939291926",
+        "GNS:modify_date": "2009/12/09",
+        "name": "Badli",
+        "place": "village",
+        "source:imagery": "Landsat",
+        "source:name": "GNS"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.1939382,
+          28.5490892
+        ]
+      },
+      "id": "node/939291926"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939342710",
+        "GNS:modify_date": "2001/05/09",
+        "name": "Allāh Bakhsh Jhabil",
+        "place": "village",
+        "source:imagery": "Spot, CNES - Spot Image, 2008",
+        "source:name": "GNS"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.252742,
+          28.7097569
+        ]
+      },
+      "id": "node/939342710"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939342739",
+        "GNS:modify_date": "2009/12/08",
+        "name": "Hāmidpur",
+        "place": "village",
+        "source:imagery": "Landsat",
+        "source:name": "GNS"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.4507205,
+          28.8437092
+        ]
+      },
+      "id": "node/939342739"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939342766",
+        "name": "Makaure da Wāhan",
+        "place": "village"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.214368,
+          28.6716841
+        ]
+      },
+      "id": "node/939342766"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939342847",
+        "name": "Jiūnde di Basti",
+        "place": "village"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2247281,
+          28.7048401
+        ]
+      },
+      "id": "node/939342847"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939342895",
+        "GNS:modify_date": "2009/12/08",
+        "name": "Basti Jām Lālu",
+        "place": "village",
+        "source:imagery": "Spot, CNES - Spot Image, 2008",
+        "source:name": "GNS"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2375921,
+          28.6998757
+        ]
+      },
+      "id": "node/939342895"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939342934",
+        "GNS:modify_date": "2009/12/08",
+        "name": "Basti Bannu Hot",
+        "place": "village",
+        "source:imagery": "Spot, CNES - Spot Image, 2008",
+        "source:name": "GNS"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.4008613,
+          28.8180756
+        ]
+      },
+      "id": "node/939342934"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939342958",
+        "GNS:modify_date": "2009/12/08",
+        "name": "Khai",
+        "place": "village",
+        "source:imagery": "Spot, CNES - Spot Image, 2008",
+        "source:name": "GNS"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.367789,
+          28.7961987
+        ]
+      },
+      "id": "node/939342958"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939343019",
+        "GNS:modify_date": "2009/12/08",
+        "name": "Mustafa Mondra",
+        "place": "village",
+        "source:imagery": "Spot, CNES - Spot Image, 2008",
+        "source:name": "GNS"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.25878,
+          28.7111249
+        ]
+      },
+      "id": "node/939343019"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939343046",
+        "GNS:modify_date": "2009/12/08",
+        "name": "Hājjipur",
+        "place": "village",
+        "source:imagery": "Landsat",
+        "source:name": "GNS"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.4440766,
+          28.8231179
+        ]
+      },
+      "id": "node/939343046"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939343207",
+        "GNS:modify_date": "2009/12/08",
+        "name": "Ābād Minor",
+        "place": "village",
+        "source:imagery": "Spot, CNES - Spot Image, 2008",
+        "source:name": "GNS"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2538831,
+          28.6990926
+        ]
+      },
+      "id": "node/939343207"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939343215",
+        "name": "Ilāhu",
+        "place": "village"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2295582,
+          28.6735456
+        ]
+      },
+      "id": "node/939343215"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939343283",
+        "name": "Dāndu da Hat",
+        "place": "village"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2184952,
+          28.6854662
+        ]
+      },
+      "id": "node/939343283"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939811615",
+        "GNS:modify_date": "2009/12/08",
+        "name": "Basti Saiyidān",
+        "place": "village",
+        "source:imagery": "Spot, CNES - Spot Image, 2008",
+        "source:name": "GNS"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.1528944,
+          28.6375435
+        ]
+      },
+      "id": "node/939811615"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939811713",
+        "name": "Mad Manthār",
+        "place": "village",
+        "source:imagery": "Landsat",
+        "source:name": "GNS"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.1944046,
+          28.639863
+        ]
+      },
+      "id": "node/939811713"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939811787",
+        "GNS:modify_date": "2009/12/08",
+        "name": "Basti Chander",
+        "place": "village",
+        "source:imagery": "Spot, CNES - Spot Image, 2008",
+        "source:name": "GNS"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.1921986,
+          28.6690642
+        ]
+      },
+      "id": "node/939811787"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/939811819",
+        "GNS:modify_date": "2001/05/09",
+        "name": "Budha Chāchar",
+        "place": "village",
+        "source:imagery": "Spot, CNES - Spot Image, 2008",
+        "source:name": "GNS"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.1827815,
+          28.6762372
+        ]
+      },
+      "id": "node/939811819"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/945077781",
+        "name": "Bhāgsar",
+        "place": "village",
+        "source:imagery": "Spot, CNES - Spot Image, 2008",
+        "source:map": "DMA map NH 42-15, 1982",
+        "source:name": "GNS"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2077902,
+          28.836061
+        ]
+      },
+      "id": "node/945077781"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/1145891542",
+        "amenity": "fuel",
+        "brand": "شیل",
+        "brand:ar": "شل",
+        "brand:ur": "شیل",
+        "brand:wikidata": "Q154950",
+        "brand:wikipedia": "ur:رائل دٹچ شیل",
+        "brand:wikipedia:ar": "رويال داتش شل",
+        "brand:wikipedia:ur": "رائل دٹچ شیل",
+        "name": "شیل",
+        "name:ar": "شل",
+        "name:en": "Shell",
+        "name:fa": "شل",
+        "name:pa": "ਸ਼ੈਲ",
+        "name:ur": "شیل"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2638872,
+          28.4294432
+        ]
+      },
+      "id": "node/1145891542"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/1145891578",
+        "amenity": "restaurant",
+        "name": "Lamis Restaurant"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3126283,
+          28.4219327
+        ]
+      },
+      "id": "node/1145891578"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/1145891633",
+        "name": "Lamis Hotel",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3123923,
+          28.4219233
+        ]
+      },
+      "id": "node/1145891633"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3337198314",
+        "name": "فیروزہ",
+        "name:en": "Firoza",
+        "name:ml": "ഫിറോസ",
+        "name:ru": "Фироза",
+        "place": "town"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.8138221,
+          28.7644686
+        ]
+      },
+      "id": "node/3337198314"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3339013699",
+        "name": "Nawankot",
+        "place": "village"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6772543,
+          28.810273
+        ]
+      },
+      "id": "node/3339013699"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3339031086",
+        "name": "Satellite Town",
+        "place": "suburb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6469795,
+          28.6544029
+        ]
+      },
+      "id": "node/3339031086"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3339031087",
+        "name": "Madina Town",
+        "name:ar": "تون المدينة",
+        "place": "neighbourhood"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6395449,
+          28.6534194
+        ]
+      },
+      "id": "node/3339031087"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3339031088",
+        "name": "Riaz Town",
+        "place": "neighbourhood"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6539472,
+          28.6573699
+        ]
+      },
+      "id": "node/3339031088"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3339031089",
+        "name": "Model Town",
+        "place": "suburb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6586732,
+          28.6525014
+        ]
+      },
+      "id": "node/3339031089"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3343101780",
+        "name": "بہادر پور",
+        "name:en": "Bahadarpur",
+        "place": "village"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2189821,
+          28.4429945
+        ]
+      },
+      "id": "node/3343101780"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3347029857",
+        "name": "عباسیہ ٹاؤن",
+        "name:en": "Abassia Town",
+        "name:ur": "عباسیہ ٹاؤن",
+        "place": "neighbourhood"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3072233,
+          28.4305475
+        ]
+      },
+      "id": "node/3347029857"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3347039671",
+        "amenity": "school",
+        "name": "Government Comprehensive School"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3168469,
+          28.4245274
+        ]
+      },
+      "id": "node/3347039671"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3347095138",
+        "name": "ماڈل ٹاؤن",
+        "name:en": "Model Town",
+        "name:ur": "ماڈل ٹاؤن",
+        "place": "neighbourhood"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3134039,
+          28.4254399
+        ]
+      },
+      "id": "node/3347095138"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3347095148",
+        "addr:city": "رحیم یار خان",
+        "amenity": "hospital",
+        "healthcare": "hospital",
+        "name": "شیخ زید ہسپتال",
+        "name:en": "Sheikh Zayid Hospital",
+        "name:ur": "شیخ زید ہسپتال"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3136675,
+          28.417583
+        ]
+      },
+      "id": "node/3347095148"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4155964689",
+        "name": "Ehsan pur",
+        "tourism": "viewpoint"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2914694,
+          28.727548
+        ]
+      },
+      "id": "node/4155964689"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4250009791",
+        "amenity": "bank",
+        "name": "Bank of khyber "
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3137832,
+          28.4219525
+        ]
+      },
+      "id": "node/4250009791"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4344552960",
+        "alt_name:en": "Tarinda",
+        "name": "ترنڈا",
+        "name:en": "Tarinda Saway Khan",
+        "name:hi": "तरिंडा",
+        "place": "town",
+        "population": "31721"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.4021981,
+          28.4806701
+        ]
+      },
+      "id": "node/4344552960"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4344601490",
+        "amenity": "place_of_worship",
+        "name": "Rahman Pur",
+        "religion": "muslim"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3638076,
+          28.4484292
+        ]
+      },
+      "id": "node/4344601490"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4344605512",
+        "amenity": "school",
+        "name": "Govt. Girls Secondary"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.4010018,
+          28.4767158
+        ]
+      },
+      "id": "node/4344605512"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4344606115",
+        "amenity": "school",
+        "name": "Govt. Boys Secondary"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.4016267,
+          28.4768148
+        ]
+      },
+      "id": "node/4344606115"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4475431794",
+        "amenity": "place_of_worship",
+        "denomination": "sunni",
+        "name": "Tablighi Markaz Rahim Yar khan",
+        "religion": "muslim"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2946264,
+          28.424353
+        ]
+      },
+      "id": "node/4475431794"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4486722699",
+        "addr:street": "Zahirpir-Khanpur Road",
+        "name": "Asif jatoi computerized Weightlift",
+        "opening_hours": "24/7",
+        "shop": "photo"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.5952555,
+          28.7208479
+        ]
+      },
+      "id": "node/4486722699"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4488681990",
+        "addr:street": "Zahirpir-Khanpur Road",
+        "amenity": "bureau_de_change",
+        "email": "shahabjatoi@yahoo.com",
+        "name": "Asif Jatoi Computerized WeightLift",
+        "opening_hours": "24/7",
+        "operator": "Asif Jamal",
+        "phone": "03008671140"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.5953541,
+          28.7210178
+        ]
+      },
+      "id": "node/4488681990"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4520352290",
+        "addr:street": "Chak 99/P",
+        "amenity": "school",
+        "name": "Chak 99/P",
+        "name:en": "Chak 99/P"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3830894,
+          28.4455191
+        ]
+      },
+      "id": "node/4520352290"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4544815690",
+        "addr:street": "Zamindara colony",
+        "internet_access": "wlan",
+        "name": "Desert Palm Hotel  $$$",
+        "opening_hours": "24/7",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.314952,
+          28.4287393
+        ]
+      },
+      "id": "node/4544815690"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4744568121",
+        "amenity": "community_centre",
+        "name": "Haji Sb House",
+        "name:en": "Haji Sb House"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3301363,
+          28.3954589
+        ]
+      },
+      "id": "node/4744568121"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4772678922",
+        "addr:street": "street # 5",
+        "name": "Khwaja Bungalows",
+        "name:en": "Khwaja Bungalows",
+        "tourism": "attraction"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3029832,
+          28.4251852
+        ]
+      },
+      "id": "node/4772678922"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4968584324",
+        "amenity": "police",
+        "name": "Police station",
+        "name:ar": "مركز شرطة",
+        "opening_hours": "24/7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6574472,
+          28.6474041
+        ]
+      },
+      "id": "node/4968584324"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4968855422",
+        "name": "Lavish Hotel",
+        "name:ar": "فندق لافيش",
+        "name:en": "Lavish Hotel",
+        "phone": "0685577244",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6582699,
+          28.654451
+        ]
+      },
+      "id": "node/4968855422"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5035466150",
+        "addr:city": "رحیم یار خان",
+        "name": "برین وے کمپیوٹر",
+        "name:en": "Brain Way Computer",
+        "name:ur": "برین وے کمپیوٹر",
+        "shop": "computer"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.30696,
+          28.42306
+        ]
+      },
+      "id": "node/5035466150"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5355594717",
+        "addr:city": "Sadiqabad",
+        "addr:country": "PK",
+        "addr:street": "Rahim Yar Khan-Saddiqabad Road",
+        "amenity": "fuel",
+        "facebook": "https://www.facebook.com/Moon.petroleum/",
+        "name": "Moon Petroleum Service & Ghousia Oil Mill"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2258141,
+          28.3571871
+        ]
+      },
+      "id": "node/5355594717"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5502032222",
+        "addr:postcode": "64200",
+        "addr:street": "Basti Yaran Khan Chandiya, Moza Rajan Pur Khurd, Rahim Yar Khan",
+        "amenity": "school",
+        "email": "gpsyarankhanchandia@gmail.com",
+        "name": "Government Primary School Yaran Khan Chandiya",
+        "opening_hours": "Mo-Sa 08:30-14:30",
+        "operator": "Education Department, Punjab",
+        "phone": "+923136635136"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2095718,
+          28.6332848
+        ]
+      },
+      "id": "node/5502032222"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5502039522",
+        "addr:postcode": "64200",
+        "addr:street": "Basti Hassan Abad",
+        "amenity": "school",
+        "name": "Hassan Abad",
+        "opening_hours": "24/7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2072177,
+          28.6006305
+        ]
+      },
+      "id": "node/5502039522"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5528937172",
+        "amenity": "bus_station",
+        "facebook": "https://www.facebook.com/Warraich.express/",
+        "name": "Warraich Express"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6574626,
+          28.6552016
+        ]
+      },
+      "id": "node/5528937172"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5688817087",
+        "addr:street": "Khanpur Bypass",
+        "name": "Babar Town Khanpur",
+        "tourism": "apartment"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6563727,
+          28.6606486
+        ]
+      },
+      "id": "node/5688817087"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5696017921",
+        "addr:street": "Rahim Yar Khan Road",
+        "name": "sajid house",
+        "tourism": "guest_house"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6381194,
+          28.6394468
+        ]
+      },
+      "id": "node/5696017921"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5792630703",
+        "name": "Uniworth Shirt n Tie Shop",
+        "shop": "clothes"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3151156,
+          28.4252459
+        ]
+      },
+      "id": "node/5792630703"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5792633278",
+        "amenity": "cafe",
+        "name": "Cafe D'Bono"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3159443,
+          28.4255038
+        ]
+      },
+      "id": "node/5792633278"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5996606706",
+        "addr:city": "Khanpur",
+        "addr:street": "Khanpur Bypass",
+        "amenity": "fuel",
+        "fuel:cng": "yes",
+        "fuel:diesel": "yes",
+        "fuel:gasoline": "yes",
+        "fuel:octane_98": "yes",
+        "name": "Pakistan Filling Station",
+        "opening_hours": "24/7",
+        "payment:cash": "yes"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6796698,
+          28.650453
+        ]
+      },
+      "id": "node/5996606706"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5996615185",
+        "addr:street": "Khanpur Bypass",
+        "amenity": "fuel",
+        "name": "Pakistan Filling Station",
+        "opening_hours": "24/7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6798174,
+          28.6505362
+        ]
+      },
+      "id": "node/5996615185"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5996615286",
+        "addr:street": "Khanpur Bypass",
+        "amenity": "fuel",
+        "name": "Qazi Filling Station"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6780952,
+          28.6567727
+        ]
+      },
+      "id": "node/5996615286"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/6185849685",
+        "highway": "bus_stop",
+        "name": "Daulat Pur"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2792297,
+          28.691403
+        ]
+      },
+      "id": "node/6185849685"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/6209419688",
+        "name": "Link Rd to Rahim Yar khan 8.5 km",
+        "tourism": "information"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.215141,
+          28.4420428
+        ]
+      },
+      "id": "node/6209419688"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/6209453385",
+        "name": "Link Rd to KHANPUR 20 KM",
+        "tourism": "information"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.5377835,
+          28.7945912
+        ]
+      },
+      "id": "node/6209453385"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/6452767006",
+        "name": "Rathore Rice Traders",
+        "phone": "+92 0313 8676801",
+        "shop": "agrarian"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3033061,
+          28.4183305
+        ]
+      },
+      "id": "node/6452767006"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/6582345536",
+        "amenity": "clinic",
+        "name": "Rural Health Center Bagh O Bahar"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6096378,
+          28.5010975
+        ]
+      },
+      "id": "node/6582345536"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/6834318786",
+        "name": "Hakeem Imam Buksh",
+        "tourism": "guest_house"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3228827,
+          28.4915311
+        ]
+      },
+      "id": "node/6834318786"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/6835242485",
+        "name": "Sajjad House",
+        "tourism": "guest_house"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.4906931,
+          28.524648
+        ]
+      },
+      "id": "node/6835242485"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7110503178",
+        "addr:city": "Rahim Yar Khan",
+        "addr:street": "Dari Sangi Bridge",
+        "amenity": "fast_food",
+        "brand": "کینٹکی فرائیڈ چکن",
+        "brand:ar": "دجاج كنتاكي",
+        "brand:en": "KFC",
+        "brand:fa": "کی‌اف‌سی",
+        "brand:ur": "کینٹکی فرائیڈ چکن",
+        "brand:wikidata": "Q524757",
+        "brand:wikipedia": "ur:کینٹکی فرائیڈ چکن",
+        "brand:wikipedia:ar": "دجاج كنتاكي",
+        "brand:wikipedia:fa": "کی‌اف‌سی",
+        "brand:wikipedia:ur": "کینٹکی فرائیڈ چکن",
+        "cuisine": "chicken",
+        "drive_through": "yes",
+        "name": "کینٹکی فرائیڈ چکن",
+        "name:ar": "دجاج كنتاكي",
+        "name:en": "KFC",
+        "name:fa": "کی‌اف‌سی",
+        "name:ur": "کینٹکی فرائیڈ چکن",
+        "takeaway": "yes"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3325766,
+          28.3931369
+        ]
+      },
+      "id": "node/7110503178"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7114615251",
+        "name": "Outfitters",
+        "shop": "clothes",
+        "website": "https://outfitters.com.pk/"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3152367,
+          28.4270509
+        ]
+      },
+      "id": "node/7114615251"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7118815172",
+        "amenity": "car_wash",
+        "name": "U2 Automatic Carwash"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3269377,
+          28.42665
+        ]
+      },
+      "id": "node/7118815172"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7119796388",
+        "name": "Q’RASS",
+        "phone": "+92 68 5877587",
+        "shop": "supermarket"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3118511,
+          28.4219883
+        ]
+      },
+      "id": "node/7119796388"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7124764575",
+        "amenity": "bank",
+        "atm": "yes",
+        "brand": "ایم سی بی بینک",
+        "brand:ar": "إم سي بي بنك",
+        "brand:en": "MCB Bank",
+        "brand:ur": "ایم سی بی بینک",
+        "brand:website": "https://www.mcb.com.pk/urdu",
+        "brand:wikidata": "Q15982510",
+        "brand:wikipedia": "ur:ایم سی بی بینک لمیٹڈ",
+        "brand:wikipedia:ar": "إم سي بي بنك المحدود",
+        "brand:wikipedia:ur": "ایم سی بی بینک لمیٹڈ",
+        "name": "ایم سی بی بینک",
+        "name:ar": "إم سي بي بنك",
+        "name:de": "MCB Bank",
+        "name:en": "MCB Bank",
+        "name:ur": "ایم سی بی بینک"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2906477,
+          28.4228061
+        ]
+      },
+      "id": "node/7124764575"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7124789147",
+        "name": "Rehmat Aziz Medicine",
+        "payment:cash": "yes",
+        "payment:credit_cards": "yes",
+        "shop": "medical_supply"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3150258,
+          28.4224833
+        ]
+      },
+      "id": "node/7124789147"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7128142392",
+        "name": "Mr. Autos",
+        "operator": "Muhammad ali",
+        "phone": "+9268 58 71628",
+        "shop": "car_parts"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3250034,
+          28.4274283
+        ]
+      },
+      "id": "node/7128142392"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7129003709",
+        "amenity": "fast_food",
+        "brand": "مکڈونلڈز",
+        "brand:ar": "مكدونالدز",
+        "brand:de": "McDonald’s",
+        "brand:en": "McDonald's",
+        "brand:fa": "مکدونالدز",
+        "brand:pnb": "میکڈونلڈز",
+        "brand:ps": "مکډونالډز",
+        "brand:ur": "مکڈونلڈز",
+        "brand:wikidata": "Q38076",
+        "brand:wikipedia": "ur:مکڈونلڈز",
+        "brand:wikipedia:ar": "مكدونالدز",
+        "brand:wikipedia:fa": "مکدونالدز",
+        "brand:wikipedia:pnb": "میکڈونلڈز",
+        "brand:wikipedia:ps": "مکډونالډز",
+        "brand:wikipedia:ur": "مکڈونلڈز",
+        "cuisine": "burger",
+        "drive_through": "yes",
+        "name": "مکڈونلڈز",
+        "name:ar": "مكدونالدز",
+        "name:de": "McDonald’s",
+        "name:en": "McDonald's",
+        "name:fa": "مکدونالدز",
+        "name:pnb": "میکڈونلڈز",
+        "name:ps": "مکډونالډز",
+        "name:ur": "مکڈونلڈز",
+        "takeaway": "yes"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.328505,
+          28.390695
+        ]
+      },
+      "id": "node/7129003709"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7129007578",
+        "name": "Bake House",
+        "shop": "bakery"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3147485,
+          28.4290454
+        ]
+      },
+      "id": "node/7129007578"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7133632844",
+        "name": "شاہد اسپرے مرکز",
+        "name:en": "Shahid Spray Centre",
+        "name:ur": "شاہد اسپرے مرکز",
+        "shop": "agrarian"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3045098,
+          28.4202484
+        ]
+      },
+      "id": "node/7133632844"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7133632850",
+        "amenity": "marketplace",
+        "name": "Fish And Meat Market"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3054627,
+          28.4199113
+        ]
+      },
+      "id": "node/7133632850"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7137418818",
+        "amenity": "bank",
+        "atm": "yes",
+        "brand": "ایم سی بی بینک",
+        "brand:ar": "إم سي بي بنك",
+        "brand:en": "MCB Bank",
+        "brand:ur": "ایم سی بی بینک",
+        "brand:website": "https://www.mcb.com.pk/urdu",
+        "brand:wikidata": "Q15982510",
+        "brand:wikipedia": "ur:ایم سی بی بینک لمیٹڈ",
+        "brand:wikipedia:ar": "إم سي بي بنك المحدود",
+        "brand:wikipedia:ur": "ایم سی بی بینک لمیٹڈ",
+        "name": "ایم سی بی بینک",
+        "name:ar": "إم سي بي بنك",
+        "name:de": "MCB Bank",
+        "name:en": "MCB Bank",
+        "name:ur": "ایم سی بی بینک"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.301245,
+          28.4198043
+        ]
+      },
+      "id": "node/7137418818"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7146943569",
+        "amenity": "bank",
+        "atm": "yes",
+        "brand": "یونائیٹڈ بینک لمیٹڈ",
+        "brand:ar": "البنك المتحد المحدود الباكستاني",
+        "brand:ur": "یونائیٹڈ بینک لمیٹڈ",
+        "brand:wikidata": "Q7887504",
+        "brand:wikipedia": "ur:یونائیٹڈ بینک (پاکستان)",
+        "brand:wikipedia:ar": "البنك المتحد المحدود الباكستاني",
+        "brand:wikipedia:ur": "یونائیٹڈ بینک (پاکستان)",
+        "name": "یونائیٹڈ بینک لمیٹڈ",
+        "name:ar": "البنك المتحد المحدود الباكستاني",
+        "name:en": "United Bank Limited",
+        "name:fa": "یونایتد بنک",
+        "name:pnb": "یونائیٹڈ بینک لمیٹڈ",
+        "name:ur": "یونائیٹڈ بینک لمیٹڈ",
+        "short_name": "یو بی ایل",
+        "short_name:ur": "یو بی ایل"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3149924,
+          28.4272046
+        ]
+      },
+      "id": "node/7146943569"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7146943571",
+        "amenity": "bank",
+        "atm": "yes",
+        "brand": "ایم سی بی بینک",
+        "brand:ar": "إم سي بي بنك",
+        "brand:en": "MCB Bank",
+        "brand:ur": "ایم سی بی بینک",
+        "brand:website": "https://www.mcb.com.pk/urdu",
+        "brand:wikidata": "Q15982510",
+        "brand:wikipedia": "ur:ایم سی بی بینک لمیٹڈ",
+        "brand:wikipedia:ar": "إم سي بي بنك المحدود",
+        "brand:wikipedia:ur": "ایم سی بی بینک لمیٹڈ",
+        "name": "ایم سی بی بینک",
+        "name:ar": "إم سي بي بنك",
+        "name:de": "MCB Bank",
+        "name:en": "MCB Bank",
+        "name:ur": "ایم سی بی بینک"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3150361,
+          28.4219772
+        ]
+      },
+      "id": "node/7146943571"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7158192582",
+        "amenity": "restaurant",
+        "name": "Cafe De brando/Eithad Club/Rest House"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2959405,
+          28.391732
+        ]
+      },
+      "id": "node/7158192582"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7188000426",
+        "amenity": "restaurant",
+        "cuisine": "desi",
+        "name": "The Food Track",
+        "outdoor_seating": "no"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3085509,
+          28.4220842
+        ]
+      },
+      "id": "node/7188000426"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7188035556",
+        "name": "Ahmed Bakers",
+        "shop": "bakery"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3084908,
+          28.4221789
+        ]
+      },
+      "id": "node/7188035556"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7208043575",
+        "name": "Al-Fateh Auto Care",
+        "shop": "car_repair"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3319338,
+          28.4290793
+        ]
+      },
+      "id": "node/7208043575"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7208059147",
+        "amenity": "pharmacy",
+        "dispensing": "yes",
+        "healthcare": "pharmacy",
+        "name": "Al Shifa Medical Store"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2948635,
+          28.4223159
+        ]
+      },
+      "id": "node/7208059147"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7244237289",
+        "addr:street": "Near Coca Cola Factory Qasimpur",
+        "amenity": "school",
+        "name": "GCT - TEVTA Rahim Yar Khan"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2564026,
+          28.4247509
+        ]
+      },
+      "id": "node/7244237289"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7244237386",
+        "name": "Zellburry",
+        "shop": "clothes"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3127373,
+          28.4255726
+        ]
+      },
+      "id": "node/7244237386"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7258311844",
+        "amenity": "bank",
+        "atm": "yes",
+        "brand": "بينک الحبيب",
+        "brand:ar": "بنك الحبيب",
+        "brand:en": "Bank Al Habib",
+        "brand:ur": "بينک الحبيب",
+        "brand:website": "https://www.bankalhabib.com/?_locale=ur",
+        "brand:wikidata": "Q4034833",
+        "brand:wikipedia": "ur:بينک الحبيب لمیٹڈ",
+        "brand:wikipedia:ar": "بنك الحبيب",
+        "brand:wikipedia:ur": "بينک الحبيب لمیٹڈ",
+        "name": "بينک الحبيب",
+        "name:ar": "بنك الحبيب",
+        "name:en": "Bank Al Habib",
+        "name:ur": "بينک الحبيب"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3054788,
+          28.4220186
+        ]
+      },
+      "id": "node/7258311844"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7462911452",
+        "amenity": "hospital",
+        "healthcare": "hospital",
+        "name": "Rahim yar khan hospital",
+        "operator": "hospital",
+        "operator:type": "private"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3334144,
+          28.3939519
+        ]
+      },
+      "id": "node/7462911452"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/7462989215",
+        "addr:city": "Rabin Yar Khan",
+        "addr:street": "Abu Dhabi Road",
+        "amenity": "university",
+        "internet_access": "yes",
+        "internet_access:fee": "no",
+        "name": "Khwaja Fareed University of Engineering  & IT",
+        "operator": "university",
+        "operator:type": "government",
+        "website": "https://www.kfueit.edu.pk"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3514876,
+          28.3899371
+        ]
+      },
+      "id": "node/7462989215"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/8166401041",
+        "amenity": "hospital",
+        "emergency": "yes",
+        "healthcare": "hospital",
+        "healthcare:speciality": "gynaecology",
+        "name": "Rehab general Hospital",
+        "operator": "Dr Shakeela Ashraf",
+        "operator:type": "private"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3051855,
+          28.4367182
+        ]
+      },
+      "id": "node/8166401041"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/8173035643",
+        "name": "Fazal Din's Pharma Plus",
+        "phone": "+923004222797",
+        "shop": "chemist"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3150925,
+          28.4227555
+        ]
+      },
+      "id": "node/8173035643"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/8227094701",
+        "addr:city": "Rahim Yar Khan",
+        "addr:housenumber": "Belgium Chowk",
+        "addr:street": "Shahi Road",
+        "amenity": "pharmacy",
+        "dispensing": "yes",
+        "healthcare": "pharmacy",
+        "name": "Labaik Pharmacy"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3013321,
+          28.4198092
+        ]
+      },
+      "id": "node/8227094701"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/8236764432",
+        "brand": "bridgestone,Misc",
+        "name": "Rahim Yar Khan Tyre Shop",
+        "operator": "M Awais",
+        "shop": "tyres"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3006981,
+          28.4192279
+        ]
+      },
+      "id": "node/8236764432"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/8337116316",
+        "name": "STOREBROS",
+        "opening_hours": "10:00-22:00",
+        "operator": "Qutab Brothers",
+        "payment:cash": "yes",
+        "phone": "+92685955552",
+        "shop": "supermarket"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6588232,
+          28.6551338
+        ]
+      },
+      "id": "node/8337116316"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/8337167273",
+        "amenity": "fast_food",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "name": "Smoke House",
+        "opening_hours": "Mo-Su 17:00-23:00",
+        "operator": "Qutab Brothers",
+        "phone": "+923007035376"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6588643,
+          28.6551611
+        ]
+      },
+      "id": "node/8337167273"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/8454118301",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Trust Colony Chowk",
+        "amenity": "restaurant",
+        "cuisine": "coffee_shop;salad;juice;ice_cream;burger;fries",
+        "diet:halal": "yes",
+        "diet:healthy": "yes",
+        "diet:vegetarian": "yes",
+        "name": "Angrezi Dhaba",
+        "phone": "+92 321 6727211",
+        "website": "https://www.forefingr.com/restaurant/angrezi-dhaba-rahimyar-khan/"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3143951,
+          28.4286998
+        ]
+      },
+      "id": "node/8454118301"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/8956635793",
+        "addr:city": "khanpur",
+        "addr:postcode": "64100",
+        "addr:street": "Khanpur Bypass",
+        "amenity": "restaurant",
+        "cuisine": "regional",
+        "description": "Family Resturant",
+        "diet:halal": "yes",
+        "image": "https://www.facebook.com/109656664647918/posts/116078220672429/?d=n",
+        "name": "Hot Grill Bar B.Q & karahi - Khanpur",
+        "opening_hours": "Mo-Su 11:00-23:00",
+        "phone": "+923083102000"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6499897,
+          28.6504944
+        ]
+      },
+      "id": "node/8956635793"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/9024844588",
+        "addr:city": "Rahim Yar Khan",
+        "addr:housenumber": "14-15",
+        "addr:postcode": "64200",
+        "addr:street": "Businessman Colony",
+        "amenity": "events_venue",
+        "internet_access": "yes",
+        "internet_access:fee": "customers",
+        "internet_access:ssid": "GoldenSand",
+        "name": "Kohistan Marrige Hall",
+        "operator": "Moiez Zaman",
+        "website": "https://www.thegoldensand.com"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3152232,
+          28.4278087
+        ]
+      },
+      "id": "node/9024844588"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/9024888899",
+        "addr:city": "Rahim Yar Khan",
+        "addr:housenumber": "14-15",
+        "addr:postcode": "64200",
+        "addr:street": "Businessman Colony",
+        "description": "Golden Sand Hotel three star Hotel in the city contact number is 03218670071",
+        "internet_access": "yes",
+        "internet_access:fee": "customers",
+        "name": "Golden Sand Hotel",
+        "name:ur": "گولڈن سینڈ ھوٹل",
+        "rooms": "30",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3152152,
+          28.4278948
+        ]
+      },
+      "id": "node/9024888899"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/9694279952",
+        "amenity": "marketplace",
+        "name": "Fruit & Vegetable Market"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3107583,
+          28.4185473
+        ]
+      },
+      "id": "node/9694279952"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/9694282158",
+        "amenity": "marketplace",
+        "name": "Fruit & Vegetable Market"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2906889,
+          28.4238978
+        ]
+      },
+      "id": "node/9694282158"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/9694284886",
+        "amenity": "marketplace",
+        "name": "Fruit & Vegetable Market"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6560552,
+          28.6418827
+        ]
+      },
+      "id": "node/9694284886"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/9694284887",
+        "amenity": "marketplace",
+        "name": "Grain Market"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6725298,
+          28.6466393
+        ]
+      },
+      "id": "node/9694284887"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/10580931362",
+        "addr:city": "Rahim Yar Khan",
+        "addr:housenumber": "Near New Grain Market",
+        "addr:state": "Punjab",
+        "addr:street": "Bypass Raod",
+        "air_conditioning": "yes",
+        "amenity": "bank",
+        "atm": "yes",
+        "brand": "Meezan Bank",
+        "brand:wikidata": "Q6807934",
+        "brand:wikipedia": "en:Meezan Bank",
+        "name": "Meezan Bank"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2739512,
+          28.4342382
+        ]
+      },
+      "id": "node/10580931362"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/10580946323",
+        "amenity": "place_of_worship",
+        "name": "New Tablighi Markaz",
+        "religion": "muslim"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2757315,
+          28.446634
+        ]
+      },
+      "id": "node/10580946323"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/10768174697",
+        "addr:place": "Rahimyar Khan",
+        "amenity": "weighbridge",
+        "name": "Zahir Pir SB",
+        "operator": "National Highway Authority Pakistan",
+        "ref": "M-5"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.5079237,
+          28.846395
+        ]
+      },
+      "id": "node/10768174697"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/10768174700",
+        "addr:place": "Rahimyar Khan",
+        "amenity": "weighbridge",
+        "name": "Rahimyar Khan SB",
+        "operator": "National Highway Authority Pakistan",
+        "ref": "M-5"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2374039,
+          28.629491
+        ]
+      },
+      "id": "node/10768174700"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/10768192038",
+        "addr:place": "Rahimyar Khan",
+        "amenity": "weighbridge",
+        "name": "Zahir Pir NB",
+        "operator": "National Highway Authority Pakistan",
+        "ref": "M-5"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.5055344,
+          28.8496736
+        ]
+      },
+      "id": "node/10768192038"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/10768192041",
+        "addr:place": "Rahimyar Khan",
+        "amenity": "weighbridge",
+        "name": "Rahimyar Khan NB",
+        "operator": "National Highway Authority Pakistan",
+        "ref": "M-5"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.235824,
+          28.6376246
+        ]
+      },
+      "id": "node/10768192041"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/10768192050",
+        "addr:place": "Rahimyar Khan",
+        "amenity": "weighbridge",
+        "name": "Iqbalabad NB",
+        "operator": "National Highway Authority Pakistan",
+        "ref": "N-5"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.27432,
+          28.5501
+        ]
+      },
+      "id": "node/10768192050"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/10879481457",
+        "contact:facebook": "https://www.facebook.com/people/Sun-city-hotel-banquet-hall/100057133583522/",
+        "name": "Sun City Hotel & Banquet Hall",
+        "tourism": "hotel"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3216193,
+          28.4216851
+        ]
+      },
+      "id": "node/10879481457"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/11336159370",
+        "addr:housenumber": "786",
+        "addr:street": "ریلوے روڈ",
+        "amenity": "doctors",
+        "email": "shiraz.niaz123@gmail.com",
+        "internet_access": "wlan",
+        "name": "dr shiraz house",
+        "opening_hours": "24/7",
+        "phone": "03136722784"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.651082,
+          28.6453872
+        ]
+      },
+      "id": "node/11336159370"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/11405812461",
+        "name": "Tib Chohan",
+        "place": "village"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2347224,
+          28.5666757
+        ]
+      },
+      "id": "node/11405812461"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/11631852201",
+        "name": "چاند رامی",
+        "name:en": "Chandrami",
+        "name:ur": "چاند رامی",
+        "place": "village",
+        "wikidata": "Q5071408",
+        "wikipedia": "en:Chandrami"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.1716046,
+          28.329927
+        ]
+      },
+      "id": "node/11631852201"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/11631852202",
+        "name": "Chak 146 P",
+        "place": "village"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2065949,
+          28.3113651
+        ]
+      },
+      "id": "node/11631852202"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/11631852203",
+        "name": "Chak 119 P",
+        "place": "village"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2269082,
+          28.3147906
+        ]
+      },
+      "id": "node/11631852203"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12670754601",
+        "addr:housenumber": "1",
+        "addr:postcode": "54000",
+        "addr:street": "Khanpur Bypass",
+        "internet_access": "wlan",
+        "name": "Khan House Khanpur",
+        "opening_hours": "Su-Th 00:00-24:00",
+        "phone": "03056036063",
+        "tourism": "apartment"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6782078,
+          28.6529163
+        ]
+      },
+      "id": "node/12670754601"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12811155796",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Gulshan e Usman Rahim Yar Khan,",
+        "amenity": "place_of_worship",
+        "denomination": "sunni",
+        "name": "Madina Jamia Masjid",
+        "religion": "muslim",
+        "service_times": "24/7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.285335,
+          28.42415
+        ]
+      },
+      "id": "node/12811155796"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12811200325",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Block V, Gulshan e Usman",
+        "amenity": "place_of_worship",
+        "denomination": "sunni",
+        "name": "Jamia Masjid Al Amin",
+        "religion": "muslim",
+        "service_times": "24/7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2873746,
+          28.4241184
+        ]
+      },
+      "id": "node/12811200325"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12811200336",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Bahadarpur Road",
+        "amenity": "car_wash",
+        "automated": "no",
+        "name": "Al Haram Car Wash",
+        "opening_hours": "08:00-22:00",
+        "payment:cash": "yes",
+        "self_service": "no"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2872952,
+          28.4243053
+        ]
+      },
+      "id": "node/12811200336"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12811262716",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Bahadarpur Road (Shehbaz Pur Road)",
+        "brand": "Honda Dealer",
+        "name": "Muslim Motors",
+        "opening_hours": "09:00-20:00",
+        "shop": "motorcycle"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2872429,
+          28.4247227
+        ]
+      },
+      "id": "node/12811262716"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12811641883",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Basti Mad Darari",
+        "amenity": "place_of_worship",
+        "denomination": "sunni",
+        "name": "Jamia Masjid Gulzar e Madina",
+        "religion": "muslim",
+        "service_times": "24/7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2870962,
+          28.425545
+        ]
+      },
+      "id": "node/12811641883"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12811648381",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Bahadarpur Road (Shehbaz Pur Road)",
+        "amenity": "place_of_worship",
+        "denomination": "sunni",
+        "name": "Jamia Masjid Khizra",
+        "religion": "muslim"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.285154,
+          28.4255125
+        ]
+      },
+      "id": "node/12811648381"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12811667171",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Chowk Pathanistan",
+        "amenity": "place_of_worship",
+        "denomination": "sunni",
+        "name": "Jamia Hussainia Rabbania Makki Masjid",
+        "religion": "muslim"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2948756,
+          28.4226653
+        ]
+      },
+      "id": "node/12811667171"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12811704653",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Link Railway Road",
+        "amenity": "fuel",
+        "brand": "PSO",
+        "fuel:Hi_octane": "yes",
+        "fuel:diesel": "yes",
+        "fuel:petrol": "yes",
+        "name": "Ahmad 2 PSO Petrol Pump",
+        "operator": "Ahmad 2"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.301804,
+          28.4211093
+        ]
+      },
+      "id": "node/12811704653"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12811710204",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Uni-Lever Avenue",
+        "amenity": "place_of_worship",
+        "denomination": "sunni",
+        "name": "Jamia Masjid",
+        "religion": "muslim"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2987528,
+          28.4214286
+        ]
+      },
+      "id": "node/12811710204"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12814115251",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Bahadarpur Road (Shehbaz Pur Road)",
+        "amenity": "bank",
+        "atm": "yes",
+        "branch": "(ABL)   Industrial Area Br Code 0333",
+        "brand": "Allied Bank Limited",
+        "brand:en": "Allied Bank Limited",
+        "brand:ur": "الائیڈ بینک لمیٹڈ",
+        "brand:wikidata": "Q4732553",
+        "drive_through": "no",
+        "name": "Allied Bank",
+        "name:en": "Allied Bank",
+        "name:ur": "الائیڈ بینک",
+        "opening_hours": "Mo-Fr 09:00-17:00",
+        "operator": "Allied Bank Ltd. (ABL) - Industrial Area Br. Code 0333"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2853729,
+          28.4254536
+        ]
+      },
+      "id": "node/12814115251"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12814146397",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "18/C Main St, Gulshan e Usman Rahim Yar Khan,",
+        "amenity": "place_of_worship",
+        "denomination": "sunni",
+        "name": "Jamia Masjid Usmania",
+        "religion": "muslim",
+        "service_times": "24/7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2880516,
+          28.42282
+        ]
+      },
+      "id": "node/12814146397"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12814203671",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Bahadarpur Road (Shehbaz Pur Road)",
+        "amenity": "car_wash",
+        "name": "Mashallah Car Wash"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2833002,
+          28.4256437
+        ]
+      },
+      "id": "node/12814203671"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12814232705",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Bahadarpur Road (Shehbaz Pur Road)",
+        "amenity": "events_venue",
+        "name": "Mumtaz Mahal Marquee"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2810872,
+          28.4262357
+        ]
+      },
+      "id": "node/12814232705"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12814242928",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Bahadarpur Road (Shehbaz Pur Road)",
+        "amenity": "bank",
+        "atm": "yes",
+        "drive_through": "no",
+        "name": "The Bank of Punjab",
+        "opening_hours": "Mo-Fr 09:00-17:00",
+        "operator": "The Bank of Punjab"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2874748,
+          28.4245809
+        ]
+      },
+      "id": "node/12814242928"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12814287039",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Bahadarpur Road (Shehbaz Pur Road)",
+        "brand": "Suzuki",
+        "brand:wikidata": "Q181642",
+        "name": "Suzuki Rahim Yar Khan Motors",
+        "opening_hours": "Mo-Sa 09:00-18:00",
+        "operator": "Suzuki",
+        "shop": "car"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2916177,
+          28.4225332
+        ]
+      },
+      "id": "node/12814287039"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12814291223",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Bahadarpur Road (Shehbaz Pur Road)",
+        "amenity": "bank",
+        "atm": "yes",
+        "brand": "Bank Alfalah",
+        "brand:en": "Bank Alfalah",
+        "brand:ur": "بینک الفلاح",
+        "brand:wikidata": "Q4855895",
+        "drive_through": "no",
+        "name": "Bank Al Falah Fectory Area",
+        "name:en": "Bank Alfalah",
+        "name:ur": "بینک الفلاح",
+        "opening_hours": "Mo-Fr 09:00-17:00",
+        "operator": "Bank Al Falah"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2919473,
+          28.4224757
+        ]
+      },
+      "id": "node/12814291223"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12814292920",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Bahadarpur Road (Shehbaz Pur Road)",
+        "amenity": "bank",
+        "atm": "yes",
+        "brand": "Bank Al Habib",
+        "brand:en": "Bank Al Habib",
+        "brand:ur": "بينک الحبيب",
+        "brand:wikidata": "Q4034833",
+        "drive_through": "no",
+        "name": "Bank Al Habib",
+        "name:en": "Bank Al Habib",
+        "name:ur": "بينک الحبيب",
+        "opening_hours": "Mo-Fr 09:00-17:00",
+        "operator": "Bank Al Habib"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2910507,
+          28.4229263
+        ]
+      },
+      "id": "node/12814292920"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12814297030",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Bahadarpur Road (Shehbaz Pur Road)",
+        "amenity": "bank",
+        "atm": "yes",
+        "brand": "Meezan Bank",
+        "brand:en": "Meezan Bank",
+        "brand:ur": "میزان بینک",
+        "brand:wikidata": "Q6807934",
+        "drive_through": "no",
+        "name": "Meezan Bank",
+        "name:en": "Meezan Bank",
+        "name:ur": "میزان بینک",
+        "opening_hours": "Mo-Fr 09:00-17:00",
+        "operator": "Meezan Bank"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2918051,
+          28.4227729
+        ]
+      },
+      "id": "node/12814297030"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12814316204",
+        "addr:city": "Rahim Yar Khan",
+        "addr:postcode": "64200",
+        "addr:street": "Bahadarpur Road (Shehbaz Pur Road)",
+        "amenity": "pharmacy",
+        "dispensing": "yes",
+        "drive_through": "no",
+        "healthcare": "pharmacy",
+        "name": "7 Pharmacy",
+        "opening_hours": "24/7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.2940589,
+          28.422604
+        ]
+      },
+      "id": "node/12814316204"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12814393196",
+        "addr:city": "رحیم یار خان",
+        "addr:postcode": "64200",
+        "addr:street": "Railway Service Road",
+        "amenity": "place_of_worship",
+        "denomination": "sunni",
+        "name": "Jamia Masjid Railway Road",
+        "religion": "muslim",
+        "service_times": "24/7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.303898,
+          28.4220492
+        ]
+      },
+      "id": "node/12814393196"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12814440842",
+        "addr:city": "رحیم یار خان",
+        "addr:postcode": "64200",
+        "addr:street": "Bano Bazar",
+        "amenity": "place_of_worship",
+        "denomination": "sunni",
+        "name": "Jamia Moti Masjid",
+        "religion": "muslim",
+        "service_times": "24/7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3058538,
+          28.4212693
+        ]
+      },
+      "id": "node/12814440842"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12817041174",
+        "addr:city": "رحیم یار خان",
+        "addr:postcode": "64200",
+        "addr:street": "شاہی روڈ",
+        "amenity": "post_office",
+        "name": "GPO",
+        "opening_hours": "24/7",
+        "operator": "GPO"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3101934,
+          28.4228868
+        ]
+      },
+      "id": "node/12817041174"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12817043077",
+        "addr:city": "رحیم یار خان",
+        "addr:postcode": "64200",
+        "addr:street": "Jamia Qadria Road",
+        "amenity": "place_of_worship",
+        "denomination": "sunni",
+        "name": "Jamia Qadria Masjid o Madrassa",
+        "religion": "muslim",
+        "service_times": "24/7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3076526,
+          28.4200066
+        ]
+      },
+      "id": "node/12817043077"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12817070477",
+        "addr:city": "رحیم یار خان",
+        "addr:postcode": "64200",
+        "addr:street": "شاہی روڈ",
+        "amenity": "police",
+        "name": "Police Station City A Division",
+        "opening_hours": "24/7",
+        "operator": "Punjab Police",
+        "operator:wikidata": "Q7260282"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3089166,
+          28.4230615
+        ]
+      },
+      "id": "node/12817070477"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12817089710",
+        "addr:city": "رحیم یار خان",
+        "addr:postcode": "64200",
+        "addr:street": "Town Hall Road",
+        "amenity": "townhall",
+        "name": "RYK Town Hall",
+        "operator": "Government",
+        "townhall:type": "district"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.3125407,
+          28.4226712
+        ]
+      },
+      "id": "node/12817089710"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/13906330424",
+        "addr:city": "rahim yar khan",
+        "addr:housenumber": "1234",
+        "addr:street": "basti gheel pur",
+        "name": "jam zahid house",
+        "operator": "zahid",
+        "shop": "houseware"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.4127371,
+          28.4230928
+        ]
+      },
+      "id": "node/13906330424"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/14122110058",
+        "name": "Chak 56p Rahimyar khan",
+        "place": "village"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.4270276,
+          28.3181031
+        ]
+      },
+      "id": "node/14122110058"
+    }
+  ]
+}

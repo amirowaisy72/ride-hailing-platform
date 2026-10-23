@@ -2,9 +2,12 @@
 import { useEffect, useRef, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as maplibregl from "maplibre-gl";
+import { apiRequest } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Car, UserRound } from "lucide-react";
 import { getVehicle } from "@/lib/rideDisplay";
+import { useTheme } from "@/components/theme/ThemeProvider";
 maplibregl.setWorkerUrl("/maplibre-worker.mjs");
 
 const DARK = "#111111";
@@ -52,6 +55,29 @@ const MAP_STYLES = `
 @keyframes rx-map-fade{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion: reduce){.rx-map-radar,.rx-map-driver-pulse,.rx-map-cell{animation:none!important}.rx-map-radar{opacity:.35;transform:scale(.6)}}
 `;
+const PLACE_POPUP_STYLES = `
+.safar-place-popup-dark .maplibregl-popup-content {
+    background: #242830;
+    color: #F8FAFC;
+    border: 1px solid #3B414B;
+    border-radius: 16px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.45);
+}
+.safar-place-popup-dark .maplibregl-popup-tip {
+    border-top-color: #242830;
+    border-bottom-color: #242830;
+}
+.safar-place-popup-dark .maplibregl-popup-close-button {
+    color: #CBD5E1;
+    font-size: 20px;
+    padding: 4px 8px;
+}
+.safar-place-popup-dark .maplibregl-popup-close-button:hover {
+    background: #353B45;
+    border-radius: 8px;
+}
+`;
+
 const getPoint = (point) => {
     if (!point) return null;
     const longitude = Array.isArray(point.coordinates) ? Number(point.coordinates[0]) : Number(point.longitude);
@@ -146,6 +172,29 @@ function pickupOffsetPx(height, sheetRatio) {
         : Math.round(Math.min(height * DEFAULT_OFFSET_RATIO, 300));
 }
 
+function addressGeoJSON(addresses) {
+    return {
+        type: "FeatureCollection",
+        features: addresses
+            .filter((a) =>
+                a.name?.trim() &&
+                Number.isFinite(Number(a.latitude)) &&
+                Number.isFinite(Number(a.longitude))
+            )
+            .map((a) => ({
+                type: "Feature",
+                geometry: {
+                    type: "Point",
+                    coordinates: [
+                        Number(a.longitude),
+                        Number(a.latitude),
+                    ],
+                },
+                properties: { name: a.name },
+            })),
+    };
+}
+
 export default function RideMap({
     center = [69.3451, 30.3753], userLocation = null, locateRequest = 0,
     destination = null, stops = [], onPickupChange = null,
@@ -158,9 +207,12 @@ export default function RideMap({
     searching = false,
     vehicleType = null,
     onMapClick = null,
+    onPlaceSelect = null,
     sheetRatio = null,
     showNavigationControl = true,
 }) {
+    const { resolvedTheme } = useTheme();
+    const { token } = useAuth();
     const node = useRef(null);
     const mapRef = useRef(null);
     const pickupRef = useRef(null);
@@ -186,21 +238,66 @@ export default function RideMap({
     dragHandler.current = onPickupChange;
     routeUpdateRef.current = onRouteUpdate;
     clickRef.current = onMapClick;
+    const placeSelectRef = useRef(null);
+    placeSelectRef.current = onPlaceSelect;
     sheetRatioRef.current = sheetRatio;
     useEffect(() => {
         if (!node.current || mapRef.current) return;
         const map = new maplibregl.Map({
             container: node.current,
-            style: "https://tiles.openfreemap.org/styles/liberty",
+            style: resolvedTheme === "dark"
+                ? "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+                : "https://tiles.openfreemap.org/styles/liberty",
             center,
             zoom: 12,
             attributionControl: true,
         });
         mapRef.current = map;
+
+        map.on("load", () => {
+            for (const layer of map.getStyle().layers || []) {
+                if (layer.type === "background" && resolvedTheme === "dark") {
+                    map.setPaintProperty(
+                        layer.id,
+                        "background-color",
+                        "#292C32"
+                    );
+                }
+            }
+        });
         if (showNavigationControl) {
             map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "bottom-right");
         }
-        const ready = () => setMapReady(true);
+        const ready = async () => {
+            setMapReady(true);
+
+            try {
+                const response = await fetch("/khanpur-streets.geojson");
+                if (!response.ok) return;
+
+                const streets = await response.json();
+                if (!mapRef.current || map.getSource("khanpur-streets")) return;
+
+                map.addSource("khanpur-streets", {
+                    type: "geojson",
+                    data: streets,
+                });
+
+                map.addLayer({
+                    id: "khanpur-streets-layer",
+                    type: "line",
+                    source: "khanpur-streets",
+                    minzoom: 13,
+                    paint: {
+                        "line-color": "#626A70",
+                        "line-width": 1,
+                        "line-opacity": 0.25,
+                    },
+                });
+            } catch (error) {
+                console.warn("Khanpur streets loading failed:", error);
+            }
+        };
         const handleClick = (event) => clickRef.current?.({ latitude: event.lngLat.lat, longitude: event.lngLat.lng });
         map.on("load", ready);
         map.on("click", handleClick);
@@ -226,7 +323,280 @@ export default function RideMap({
             map.remove();
             mapRef.current = null;
         };
-    }, []);
+    }, [resolvedTheme]);
+
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !mapReady || !token) return;
+
+        let cancelled = false;
+
+        if (!map.getSource("safar-local-places")) {
+            map.addSource("safar-local-places", {
+                type: "geojson",
+                data: addressGeoJSON([]),
+                cluster: false,
+            });
+            map.addLayer({
+                id: "safar-local-clusters",
+                type: "circle",
+                source: "safar-local-places",
+                filter: ["has", "point_count"],
+                paint: {
+                    "circle-color": "#C1F11D",
+                    "circle-radius": 16,
+                    "circle-stroke-color": "#16181D",
+                    "circle-stroke-width": 3,
+                },
+            });
+
+            map.addLayer({
+                id: "safar-local-cluster-count",
+                type: "symbol",
+                source: "safar-local-places",
+                filter: ["has", "point_count"],
+                layout: {
+                    "text-field": ["get", "point_count_abbreviated"],
+                    "text-size": 12,
+                },
+                paint: {
+                    "text-color": "#111111",
+                },
+            });
+
+            map.addLayer({
+                id: "safar-local-dots",
+                type: "circle",
+                source: "safar-local-places",
+                filter: ["!", ["has", "point_count"]],
+                minzoom: 15,
+                paint: {
+                    "circle-radius": 4,
+                    "circle-color": "#B7F41E",
+                    "circle-stroke-width": 2,
+                    "circle-stroke-color": "#0F1116",
+                },
+            });
+
+            map.addLayer({
+                id: "safar-local-labels",
+                type: "symbol",
+                source: "safar-local-places",
+                filter: ["!", ["has", "point_count"]],
+                minzoom: 16,
+                layout: {
+                    "text-field": [
+                        "case",
+                        [">", ["length", ["get", "name"]], 22],
+                        ["concat", ["slice", ["get", "name"], 0, 22], "…"],
+                        ["get", "name"]
+                    ],
+                    "text-size": [
+                        "interpolate",
+                        ["linear"],
+                        ["zoom"],
+                        16, 10,
+                        18, 11
+                    ],
+                    "text-font": ["Open Sans Semibold"],
+                    "text-variable-anchor": ["top", "bottom", "left", "right"],
+                    "text-radial-offset": 1.5,
+                    "text-justify": "auto",
+                    "text-max-width": 16,
+                    "text-padding": 12,
+                    "text-optional": true,
+                    "text-letter-spacing": 0.02,
+                    "text-allow-overlap": false,
+                    "text-ignore-placement": false,
+                    "symbol-sort-key": 1
+                },
+                paint: {
+                    "text-color": resolvedTheme === "dark" ? "#F8FAFC" : "#263238",
+                    "text-halo-color": resolvedTheme === "dark" ? "#16181D" : "#FFFFFF",
+                    "text-halo-width": 2,
+                    "text-halo-blur": 0.5
+                },
+            });
+        }
+
+        async function loadVisiblePlaces() {
+            if (map.getZoom() < 14) return;
+
+            const bounds = map.getBounds();
+            const params = new URLSearchParams({
+                west: String(bounds.getWest()),
+                south: String(bounds.getSouth()),
+                east: String(bounds.getEast()),
+                north: String(bounds.getNorth()),
+            });
+
+            try {
+                const data = await apiRequest(
+                    `/service-areas/local-addresses/map?${params}`,
+                    { token }
+                );
+
+                if (!cancelled && map.getSource("safar-local-places")) {
+                    map.getSource("safar-local-places").setData(
+                        addressGeoJSON(data.addresses || [])
+                    );
+                }
+            } catch (error) {
+                console.warn("Local map labels:", error.message);
+            }
+        }
+
+        const handleClusterClick = (event) => {
+            const feature = event.features?.[0];
+            if (!feature) return;
+
+            map.easeTo({
+                center: feature.geometry.coordinates,
+                zoom: Math.min(map.getZoom() + 2, 20),
+                duration: 500,
+            });
+        };
+
+        map.on("click", "safar-local-clusters", handleClusterClick);
+        const handlePlaceClick = (event) => {
+            const feature = event.features?.[0];
+            if (!feature) return;
+
+            const popup = document.createElement("div");
+            popup.style.cssText = `
+    padding: 6px 8px;
+    min-width: 170px;
+    font-family: system-ui, sans-serif;
+    color: ${resolvedTheme === "dark" ? "#F8FAFC" : "#111827"};
+`;
+
+            const title = document.createElement("div");
+            title.textContent = feature.properties.name;
+            title.style.cssText = `
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.4;
+`;
+
+            const subtitle = document.createElement("div");
+            subtitle.textContent = "Safar Local Place";
+            subtitle.style.cssText = `
+    margin-top: 5px;
+    font-size: 11px;
+    color: #6B7280;
+`;
+
+            const actions = document.createElement("div");
+            actions.style.cssText = "display:flex;gap:8px;margin-top:12px;";
+
+            if (passengerView && placeSelectRef.current) {
+                for (const [mode, label] of [
+                    ["pickup", "Pickup"],
+                    ["dropoff", "Drop-off"],
+                ]) {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.textContent = label;
+                    button.style.cssText = `
+            flex:1;
+            padding:10px 8px;
+            border:0;
+            border-radius:10px;
+            font-size:12px;
+            font-weight:700;
+            cursor:pointer;
+            background:${mode === "pickup" ? "#C1F11D" : "#20242C"};
+            color:${mode === "pickup" ? "#111111" : "#FFFFFF"};
+        `;
+
+                    button.onclick = () => {
+                        placeSelectRef.current?.({
+                            mode,
+                            name: feature.properties.name,
+                            latitude: feature.geometry.coordinates[1],
+                            longitude: feature.geometry.coordinates[0],
+                        });
+                        document.querySelector(".safar-place-popup .maplibregl-popup-close-button")?.click();
+                    };
+
+                    actions.appendChild(button);
+                }
+            }
+
+            popup.append(title, actions);
+
+            if (passengerView && placeSelectRef.current) {
+                const saveRow = document.createElement("div");
+                saveRow.style.cssText =
+                    "display:flex;gap:6px;margin-top:10px;";
+
+                for (const [type, label] of [
+                    ["HOME", "🏠 Home"],
+                    ["WORK", "💼 Work"],
+                    ["FAVORITE", "⭐ Save"],
+                ]) {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.textContent = label;
+                    button.style.cssText = `
+            flex:1;padding:9px 4px;border-radius:9px;
+            border:1px solid #7775;background:#ffffff12;
+            color:inherit;font-size:11px;font-weight:700;
+            cursor:pointer;
+        `;
+
+                    button.onclick = () => {
+                        placeSelectRef.current?.({
+                            mode: "save",
+                            type,
+                            name: feature.properties.name,
+                            latitude: feature.geometry.coordinates[1],
+                            longitude: feature.geometry.coordinates[0],
+                        });
+                    };
+
+                    saveRow.appendChild(button);
+                }
+
+                popup.appendChild(saveRow);
+            }
+
+            new maplibregl.Popup({
+                closeButton: true,
+                offset: 16,
+                maxWidth: "260px",
+                className: resolvedTheme === "dark"
+                    ? "safar-place-popup safar-place-popup-dark"
+                    : "safar-place-popup",
+            })
+                .setLngLat(feature.geometry.coordinates)
+                .setDOMContent(popup)
+                .addTo(map);
+        };
+
+        map.on("click", "safar-local-dots", handlePlaceClick);
+        map.on("click", "safar-local-labels", handlePlaceClick);
+
+        for (const layer of ["safar-local-dots", "safar-local-labels"]) {
+            map.on("mouseenter", layer, () => {
+                map.getCanvas().style.cursor = "pointer";
+            });
+            map.on("mouseleave", layer, () => {
+                map.getCanvas().style.cursor = "";
+            });
+        }
+        map.on("moveend", loadVisiblePlaces);
+        loadVisiblePlaces();
+
+        return () => {
+            cancelled = true;
+            map.off("moveend", loadVisiblePlaces);
+            map.off("click", "safar-local-dots", handlePlaceClick);
+            map.off("click", "safar-local-labels", handlePlaceClick);
+            map.off("click", "safar-local-clusters", handleClusterClick);
+        };
+    }, [mapReady, token, resolvedTheme]);
+
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !mapReady) return;
@@ -517,7 +887,7 @@ export default function RideMap({
         : "absolute bottom-28 left-3 rounded-xl bg-white/90 px-3 py-2 text-xs shadow";
     return (
         <div className="relative h-full w-full">
-            <style>{MAP_STYLES}</style>
+            <style>{MAP_STYLES + PLACE_POPUP_STYLES}</style>
             <div ref={node} className="h-full w-full" />
             {routing && !error && <div className={statusPillClass}>Loading road route…</div>}
             {error && <div role="status" className={`${statusPillClass} text-amber-700`}>{error}</div>}

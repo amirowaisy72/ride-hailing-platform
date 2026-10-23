@@ -28,6 +28,7 @@ app.use(express.json());
 
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/account", require("./routes/accountRoutes"));
+app.use("/api/v1/saved-places", require("./routes/savedPlaceRoutes"));
 app.use(
     "/api/v1/admin/commission",
     require("./routes/adminCommissionRoutes")
@@ -44,6 +45,7 @@ app.use("/api/v1/drivers", driverRoutes);
 app.use("/api/v1/drivers/me/documents", driverDocumentRoutes);
 app.use("/api/v1/admin/drivers", adminDriverRoutes);
 app.use("/api/v1/locations", locationRoutes);
+app.use("/api/v1/service-areas", serviceAreaRoutes);
 app.use("/api/v1/admin/service-areas", serviceAreaRoutes);
 app.use("/api/v1/rides", rideRoutes);
 app.use("/api/v1/parcels", require("./routes/parcelRoutes"));

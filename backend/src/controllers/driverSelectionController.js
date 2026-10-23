@@ -5,6 +5,7 @@ const RideOffer = require("../models/RideOffer");
 const Driver = require("../models/Driver");
 const Vehicle = require("../models/Vehicle");
 const { publishEvent } = require("../services/socketService");
+const { findNearbyDrivers } = require("../services/driverMatchingService");
 const { sendPushToUser } = require("../services/pushService");
 
 const selectDriver = async (req, res) => {
@@ -119,6 +120,65 @@ const selectDriver = async (req, res) => {
                 rideId: result.rideId.toString(),
             }
         );
+
+        try {
+            const ride = await Ride.findById(result.rideId)
+                .select("pickup vehicleType");
+
+            const allOffers = await RideOffer.find({
+                rideId: result.rideId,
+            }).select("driverId");
+
+            const offeredDriverIds = allOffers.map(
+                (offer) => offer.driverId
+            );
+
+            const pickupCoords = ride?.pickup?.coordinates;
+            const nearbyDrivers = pickupCoords?.length === 2
+                ? await findNearbyDrivers(
+                    pickupCoords[0],
+                    pickupCoords[1],
+                    15,
+                    ride.vehicleType
+                )
+                : [];
+
+            const drivers = await Driver.find({
+                _id: {
+                    $in: [
+                        ...offeredDriverIds,
+                        ...nearbyDrivers.map((driver) => driver._id),
+                    ],
+                },
+            }).select("userId");
+
+            const notified = new Set();
+
+            for (const driver of drivers) {
+                const userId = String(driver.userId);
+
+                if (
+                    userId === result.driverUserId ||
+                    notified.has(userId)
+                ) continue;
+
+                notified.add(userId);
+
+                publishEvent(
+                    "ride:request:closed",
+                    `driver:${userId}`,
+                    {
+                        rideId: String(result.rideId),
+                        reason: "DRIVER_SELECTED",
+                    }
+                );
+            }
+        } catch (error) {
+            console.error(
+                "Ride closure notification failed:",
+                error.message
+            );
+        }
 
         return res.json({
             success: true,

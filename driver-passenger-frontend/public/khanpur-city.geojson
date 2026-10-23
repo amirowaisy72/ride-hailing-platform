@@ -1,0 +1,1164 @@
+{
+  "type": "FeatureCollection",
+  "generator": "overpass-turbo",
+  "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.",
+  "timestamp": "2026-10-23T16:34:36Z",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "relation/16108349",
+        "admin_level": "7",
+        "boundary": "administrative",
+        "boundary_type": "subdistrict",
+        "name": "تحصیل خان پور",
+        "name:en": "Khan Pur Tehsil",
+        "name:pnb": "تحصیل خانپور کٹورا",
+        "name:ur": "تحصیل خان پور",
+        "place": "subdistrict",
+        "type": "boundary",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.5983335,
+          28.5050953
+        ]
+      },
+      "id": "relation/16108349"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/281405781",
+        "is_in": "Rahim Yar Khan District, Punjab, Pakistan",
+        "name": "خانپور",
+        "name:ar": "جانبور",
+        "name:bn": "খানপুর",
+        "name:en": "Khanpur",
+        "name:es": "Khanpur",
+        "name:et": "Khānpur",
+        "name:fa": "خانپور",
+        "name:fr": "Khanpur",
+        "name:hi": "खानपुर",
+        "name:ja": "ハーンプル",
+        "name:kn": "ಖಾನ್ಪೂರ್",
+        "name:ml": "ഖാൻപൂർ",
+        "name:pa": "خانپور",
+        "name:pnb": "خانپور کٹورا",
+        "name:ru": "Ханпур",
+        "name:sr": "Ханпур",
+        "name:ur": "خان پور",
+        "place": "city",
+        "population": "184793",
+        "source:population": "French Wikipedia",
+        "wikidata": "Q1250097",
+        "wikipedia": "en:Khanpur",
+        "@relations": [
+          {
+            "role": "admin_centre",
+            "rel": 16108349,
+            "reltags": {
+              "admin_level": "7",
+              "boundary": "administrative",
+              "boundary_type": "subdistrict",
+              "name": "تحصیل خان پور",
+              "name:en": "Khan Pur Tehsil",
+              "name:pnb": "تحصیل خانپور کٹورا",
+              "name:ur": "تحصیل خان پور",
+              "place": "subdistrict",
+              "type": "boundary"
+            }
+          }
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.656008,
+          28.6477403
+        ]
+      },
+      "id": "node/281405781"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/548452409",
+        "amenity": "place_of_worship",
+        "building": "mosque",
+        "name": "Darbar Jetha Butha",
+        "religion": "muslim",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6960914,
+          28.6667268
+        ]
+      },
+      "id": "way/548452409"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130961",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6767328,
+          28.6397759
+        ]
+      },
+      "id": "way/958130961"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130962",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6744806,
+          28.6397677
+        ]
+      },
+      "id": "way/958130962"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130963",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.673237,
+          28.6381415
+        ]
+      },
+      "id": "way/958130963"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130964",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6920928,
+          28.6282732
+        ]
+      },
+      "id": "way/958130964"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130965",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6915504,
+          28.619375
+        ]
+      },
+      "id": "way/958130965"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130966",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6848685,
+          28.6137279
+        ]
+      },
+      "id": "way/958130966"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130967",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6847223,
+          28.6165574
+        ]
+      },
+      "id": "way/958130967"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130968",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6545679,
+          28.6281059
+        ]
+      },
+      "id": "way/958130968"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130969",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6567075,
+          28.6238588
+        ]
+      },
+      "id": "way/958130969"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130970",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6567059,
+          28.6231281
+        ]
+      },
+      "id": "way/958130970"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130971",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6568677,
+          28.6093283
+        ]
+      },
+      "id": "way/958130971"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130972",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6572762,
+          28.5906967
+        ]
+      },
+      "id": "way/958130972"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130973",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6567495,
+          28.6185435
+        ]
+      },
+      "id": "way/958130973"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130974",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6579944,
+          28.6152322
+        ]
+      },
+      "id": "way/958130974"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130975",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.660244,
+          28.6151158
+        ]
+      },
+      "id": "way/958130975"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130976",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6568305,
+          28.6036341
+        ]
+      },
+      "id": "way/958130976"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130977",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6415153,
+          28.6196566
+        ]
+      },
+      "id": "way/958130977"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130978",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6449159,
+          28.6211091
+        ]
+      },
+      "id": "way/958130978"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130979",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.640885,
+          28.6216358
+        ]
+      },
+      "id": "way/958130979"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130980",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6320782,
+          28.6140666
+        ]
+      },
+      "id": "way/958130980"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130981",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6322351,
+          28.6051373
+        ]
+      },
+      "id": "way/958130981"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130982",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6262762,
+          28.6762534
+        ]
+      },
+      "id": "way/958130982"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130983",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6204702,
+          28.6893437
+        ]
+      },
+      "id": "way/958130983"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130984",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6245014,
+          28.6901237
+        ]
+      },
+      "id": "way/958130984"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130985",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6179825,
+          28.6903828
+        ]
+      },
+      "id": "way/958130985"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130986",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6200683,
+          28.6871527
+        ]
+      },
+      "id": "way/958130986"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130987",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6585527,
+          28.6814812
+        ]
+      },
+      "id": "way/958130987"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130988",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.658782,
+          28.6990026
+        ]
+      },
+      "id": "way/958130988"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/958130989",
+        "building": "industrial",
+        "industrial": "brickyard",
+        "landuse": "industrial",
+        "name": "اینٹوں کا بھٹا",
+        "name:en": "Brick Kiln",
+        "name:es": "Horno de Ladrillos",
+        "name:ur": "اینٹوں کا بھٹا",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6600994,
+          28.7023231
+        ]
+      },
+      "id": "way/958130989"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1128129427",
+        "addr:city": "Khanpur",
+        "addr:postcode": "64100",
+        "addr:street": "Shahi Road",
+        "amenity": "hospital",
+        "description": "Tehsil Head Quarter Hospital Khanpur is executed by District Health Authority Rahim Yar Khan.",
+        "emergency": "yes",
+        "healthcare": "hospital",
+        "healthcare:speciality": "general;cardiology;dermatology;radiology;orthopaedics;blood_check;psychiatry;allergology;clinical_pathology;emergency;maternity;vaccination;paediatrics;intensive;dentistry;ear;nose_&_throat;surgery;pathology;urology",
+        "internet_access": "wlan",
+        "name": "Tehsil Head Quarter Hospital KhanPur",
+        "operator": "Shaheen Islam",
+        "operator:type": "private",
+        "phone": "+920685574822",
+        "wheelchair": "yes",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6613844,
+          28.6482677
+        ]
+      },
+      "id": "way/1128129427"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1131472648",
+        "addr:city": "Khanpur",
+        "addr:postcode": "64100",
+        "addr:street": "Shahi Road",
+        "amenity": "hospital",
+        "description": "Rescue 1122 Office Khanpur is executed by Punjab Emergency Services Department.",
+        "emergency": "yes",
+        "healthcare": "hospital",
+        "healthcare:speciality": "emergency;ambulance;fire_birgade",
+        "internet_access": "yes",
+        "internet_access:fee": "no",
+        "name": "Rescue 1122, Khanpur",
+        "operator": "Shaheen Islam",
+        "operator:type": "private",
+        "phone": "+920685571722",
+        "source": "local knowledge;survey;gps",
+        "wheelchair": "yes",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6634148,
+          28.6468183
+        ]
+      },
+      "id": "way/1131472648"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "way/1378671728",
+        "amenity": "pharmacy",
+        "branch": "3",
+        "building": "commercial",
+        "building:levels": "1",
+        "dispensing": "yes",
+        "drive_through": "yes",
+        "healthcare": "pharmacy",
+        "name": "EMAN PHARMACY",
+        "official_name": "EMAN PHARMACY",
+        "opening_hours": "06:00-23:00",
+        "operator": "umar",
+        "smoking": "no",
+        "@geometry": "center"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6587222,
+          28.6504177
+        ]
+      },
+      "id": "way/1378671728"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3339031086",
+        "name": "Satellite Town",
+        "place": "suburb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6469795,
+          28.6544029
+        ]
+      },
+      "id": "node/3339031086"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3339031087",
+        "name": "Madina Town",
+        "name:ar": "تون المدينة",
+        "place": "neighbourhood"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6395449,
+          28.6534194
+        ]
+      },
+      "id": "node/3339031087"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3339031088",
+        "name": "Riaz Town",
+        "place": "neighbourhood"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6539472,
+          28.6573699
+        ]
+      },
+      "id": "node/3339031088"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/3339031089",
+        "name": "Model Town",
+        "place": "suburb"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6586732,
+          28.6525014
+        ]
+      },
+      "id": "node/3339031089"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/4968584324",
+        "amenity": "police",
+        "name": "Police station",
+        "name:ar": "مركز شرطة",
+        "opening_hours": "24/7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6574472,
+          28.6474041
+        ]
+      },
+      "id": "node/4968584324"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5528937172",
+        "amenity": "bus_station",
+        "facebook": "https://www.facebook.com/Warraich.express/",
+        "name": "Warraich Express"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6574626,
+          28.6552016
+        ]
+      },
+      "id": "node/5528937172"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5996606706",
+        "addr:city": "Khanpur",
+        "addr:street": "Khanpur Bypass",
+        "amenity": "fuel",
+        "fuel:cng": "yes",
+        "fuel:diesel": "yes",
+        "fuel:gasoline": "yes",
+        "fuel:octane_98": "yes",
+        "name": "Pakistan Filling Station",
+        "opening_hours": "24/7",
+        "payment:cash": "yes"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6796698,
+          28.650453
+        ]
+      },
+      "id": "node/5996606706"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5996615185",
+        "addr:street": "Khanpur Bypass",
+        "amenity": "fuel",
+        "name": "Pakistan Filling Station",
+        "opening_hours": "24/7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6798174,
+          28.6505362
+        ]
+      },
+      "id": "node/5996615185"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5996615285",
+        "addr:street": "Khanpur Bypass",
+        "name": "Wapda Scarp Colony",
+        "office": "government"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6795138,
+          28.6517878
+        ]
+      },
+      "id": "node/5996615285"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/5996615286",
+        "addr:street": "Khanpur Bypass",
+        "amenity": "fuel",
+        "name": "Qazi Filling Station"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6780952,
+          28.6567727
+        ]
+      },
+      "id": "node/5996615286"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/8337116316",
+        "name": "STOREBROS",
+        "opening_hours": "10:00-22:00",
+        "operator": "Qutab Brothers",
+        "payment:cash": "yes",
+        "phone": "+92685955552",
+        "shop": "supermarket"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6588232,
+          28.6551338
+        ]
+      },
+      "id": "node/8337116316"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/8337167273",
+        "amenity": "fast_food",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "name": "Smoke House",
+        "opening_hours": "Mo-Su 17:00-23:00",
+        "operator": "Qutab Brothers",
+        "phone": "+923007035376"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6588643,
+          28.6551611
+        ]
+      },
+      "id": "node/8337167273"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/8956635793",
+        "addr:city": "khanpur",
+        "addr:postcode": "64100",
+        "addr:street": "Khanpur Bypass",
+        "amenity": "restaurant",
+        "cuisine": "regional",
+        "description": "Family Resturant",
+        "diet:halal": "yes",
+        "image": "https://www.facebook.com/109656664647918/posts/116078220672429/?d=n",
+        "name": "Hot Grill Bar B.Q & karahi - Khanpur",
+        "opening_hours": "Mo-Su 11:00-23:00",
+        "phone": "+923083102000"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6499897,
+          28.6504944
+        ]
+      },
+      "id": "node/8956635793"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/9694284886",
+        "amenity": "marketplace",
+        "name": "Fruit & Vegetable Market"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6560552,
+          28.6418827
+        ]
+      },
+      "id": "node/9694284886"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/9694284887",
+        "amenity": "marketplace",
+        "name": "Grain Market"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6725298,
+          28.6466393
+        ]
+      },
+      "id": "node/9694284887"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/11030285928",
+        "addr:city": "Khanpur",
+        "addr:housenumber": "By Pass Road",
+        "addr:postcode": "64100",
+        "name": "Meadows Grammar School",
+        "office": "educational_institution",
+        "phone": "+92685955212",
+        "website": "https://www.mgskpr.com"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6666922,
+          28.655822
+        ]
+      },
+      "id": "node/11030285928"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/11336159370",
+        "addr:housenumber": "786",
+        "addr:street": "ریلوے روڈ",
+        "amenity": "doctors",
+        "email": "shiraz.niaz123@gmail.com",
+        "internet_access": "wlan",
+        "name": "dr shiraz house",
+        "opening_hours": "24/7",
+        "phone": "03136722784"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.651082,
+          28.6453872
+        ]
+      },
+      "id": "node/11336159370"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "@id": "node/12766231374",
+        "healthcare": "laboratory",
+        "name": "Saeed Lab",
+        "opening_hours": "24/7"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          70.6591329,
+          28.6504109
+        ]
+      },
+      "id": "node/12766231374"
+    }
+  ]
+}

@@ -35,6 +35,75 @@ export default function CitiesPage() {
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
 
+    const [addressName, setAddressName] = useState("");
+    const [addressStreet, setAddressStreet] = useState("");
+    const [addressMohalla, setAddressMohalla] = useState("");
+    const [addressLandmark, setAddressLandmark] = useState("");
+    const [addressLat, setAddressLat] = useState("");
+    const [addressLng, setAddressLng] = useState("");
+    const [addressBusy, setAddressBusy] = useState(false);
+    const [googleMapsLink, setGoogleMapsLink] = useState("");
+    const [resolvingMapsLink, setResolvingMapsLink] = useState(false);
+    const [localAddresses, setLocalAddresses] = useState([]);
+    const [addressPage, setAddressPage] = useState(1);
+    const addressesPerPage = 5;
+
+    async function loadLocalAddresses() {
+        try {
+            const data = await authenticatedAdminRequest(
+                "/admin/service-areas/local-addresses"
+            );
+            setLocalAddresses(data.addresses || []);
+        } catch (err) {
+            console.error("Unable to load addresses:", err);
+        }
+    }
+
+    useEffect(() => {
+        loadLocalAddresses();
+    }, []);
+
+    async function saveLocalAddress() {
+        if (addressBusy) return;
+
+        setAddressBusy(true);
+        setError("");
+        setMessage("");
+
+        try {
+            const data = await authenticatedAdminRequest(
+                "/admin/service-areas/local-addresses",
+                {
+                    method: "POST",
+                    body: JSON.stringify({
+                        name: addressName.trim(),
+                        city: city.trim() || "Khanpur",
+                        street: addressStreet.trim(),
+                        mohalla: addressMohalla.trim(),
+                        landmark: addressLandmark.trim(),
+                        latitude: addressLat.trim(),
+                        longitude: addressLng.trim(),
+                    }),
+                }
+            );
+
+            if (!data.success) throw new Error("Address save failed");
+
+            setMessage("Local address saved successfully");
+            await loadLocalAddresses();
+            setAddressName("");
+            setAddressStreet("");
+            setAddressMohalla("");
+            setAddressLandmark("");
+            setAddressLat("");
+            setAddressLng("");
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setAddressBusy(false);
+        }
+    }
+
     useEffect(() => {
         if (city.trim().length < 3) {
             setCityResults([]);
@@ -214,8 +283,22 @@ export default function CitiesPage() {
             updateMapPoints(map, pointsRef.current);
         });
 
+        let addressMarker = null;
+
         map.on("click", (event) => {
-            if (!drawingRef.current) return;
+            if (!drawingRef.current) {
+                setAddressLat(event.lngLat.lat.toFixed(7));
+                setAddressLng(event.lngLat.lng.toFixed(7));
+
+                addressMarker?.remove();
+                addressMarker = new maplibregl.Marker({
+                    color: "#087F5B",
+                })
+                    .setLngLat(event.lngLat)
+                    .addTo(map);
+
+                return;
+            }
 
             const coordinate = [
                 event.lngLat.lng,
@@ -229,6 +312,7 @@ export default function CitiesPage() {
 
         return () => {
             observer.disconnect();
+            addressMarker?.remove();
             map.remove();
             mapRef.current = null;
         };
@@ -367,6 +451,180 @@ export default function CitiesPage() {
         <AdminShell title="Cities & Service Areas">
             <div className="space-y-5">
                 <section className="rounded-2xl bg-white p-5 shadow-sm">
+                    <h2 className="mb-2 text-lg font-bold">Add Local Address</h2>
+
+                    <div className="mb-4">
+                        <label className="mb-2 block text-sm font-semibold text-slate-700">
+                            Google Maps Link
+                        </label>
+                        <input
+                            type="url"
+                            value={googleMapsLink}
+                            onChange={(e) => setGoogleMapsLink(e.target.value)}
+                            placeholder="Paste Google Maps location link"
+                            className="w-full rounded-xl border border-slate-200 p-3 text-sm"
+                        />
+                        <button
+                            type="button"
+                            disabled={resolvingMapsLink || !googleMapsLink.trim()}
+                            onClick={async () => {
+                                setResolvingMapsLink(true);
+                                setError("");
+                                try {
+                                    const data = await authenticatedAdminRequest(
+                                        "/admin/service-areas/local-addresses/resolve-link",
+                                        {
+                                            method: "POST",
+                                            body: JSON.stringify({ url: googleMapsLink.trim() }),
+                                        }
+                                    );
+                                    setAddressLat(String(data.latitude));
+                                    setAddressLng(String(data.longitude));
+
+                                    if (data.name) {
+                                        setAddressName(data.name);
+                                    }
+                                    mapRef.current?.flyTo({
+                                        center: [data.longitude, data.latitude],
+                                        zoom: 16,
+                                    });
+                                } catch (err) {
+                                    setError(err.message);
+                                } finally {
+                                    setResolvingMapsLink(false);
+                                }
+                            }}
+                            className="mt-2 rounded-xl bg-[#087F5B] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                        >
+                            {resolvingMapsLink ? "Finding location..." : "Get Location from Link"}
+                        </button>
+                    </div>
+                    <p className="mb-4 text-sm text-slate-500">
+                        Click on the map to select a location. The latitude and longitude will be filled automatically. Make sure Boundary Drawing Mode is turned off.
+                    </p>
+
+                    <div className="grid gap-3 md:grid-cols-2">
+                        {[
+                            ["Location Name", addressName, setAddressName],
+                            ["Street", addressStreet, setAddressStreet],
+                            ["Mohalla", addressMohalla, setAddressMohalla],
+                            ["Nearby Landmark", addressLandmark, setAddressLandmark],
+                            ["Latitude", addressLat, setAddressLat],
+                            ["Longitude", addressLng, setAddressLng],
+                        ].map(([placeholder, value, setter]) => (
+                            <input
+                                key={placeholder}
+                                value={value}
+                                onChange={(e) => setter(e.target.value)}
+                                placeholder={placeholder}
+                                className="w-full rounded-xl border border-slate-200 p-3 text-sm"
+                            />
+                        ))}
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={saveLocalAddress}
+                        disabled={addressBusy || !addressName.trim() || !addressLat.trim() || !addressLng.trim()}
+                        className="mt-4 rounded-xl bg-[#087F5B] px-6 py-3 font-semibold text-white disabled:opacity-50"
+                    >
+                        {addressBusy ? "Saving..." : "Save Local Address"}
+                    </button>
+
+                    {error && (
+                        <p role="alert" className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+                            {error}
+                        </p>
+                    )}
+
+                    <div className="mt-6 space-y-2">
+                        <h3 className="text-sm font-bold text-slate-700">
+                            Saved Local Addresses ({localAddresses.length})
+                        </h3>
+
+                        <div className="flex items-center justify-between gap-3 py-3">
+                            <button
+                                type="button"
+                                disabled={addressPage <= 1}
+                                onClick={() => setAddressPage((p) => Math.max(1, p - 1))}
+                                className="rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-40"
+                            >
+                                Previous
+                            </button>
+
+                            <span className="text-sm text-slate-600">
+                                Page {Math.min(addressPage, Math.max(1, Math.ceil(localAddresses.length / addressesPerPage)))}
+                                {" / "}
+                                {Math.max(1, Math.ceil(localAddresses.length / addressesPerPage))}
+                            </span>
+
+                            <button
+                                type="button"
+                                disabled={addressPage >= Math.ceil(localAddresses.length / addressesPerPage)}
+                                onClick={() => setAddressPage((p) => p + 1)}
+                                className="rounded-lg border px-4 py-2 text-sm font-semibold disabled:opacity-40"
+                            >
+                                Next
+                            </button>
+                        </div>
+
+                        {localAddresses.slice(
+                            (Math.min(addressPage, Math.max(1, Math.ceil(localAddresses.length / addressesPerPage))) - 1) * addressesPerPage,
+                            Math.min(addressPage, Math.max(1, Math.ceil(localAddresses.length / addressesPerPage))) * addressesPerPage
+                        ).map((address) => (
+                            <div
+                                key={address._id}
+                                className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 p-3"
+                            >
+                                <div>
+                                    <p className="text-sm font-semibold">
+                                        {address.name}
+                                    </p>
+                                    <p className="text-xs text-slate-500">
+                                        {[address.street, address.mohalla, address.city]
+                                            .filter(Boolean).join(", ")}
+                                        <span className="block text-[11px] text-slate-400">
+                                            {Number(address.latitude).toFixed(6)},
+                                            {" "}
+                                            {Number(address.longitude).toFixed(6)}
+                                        </span>
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => mapRef.current?.flyTo({
+                                        center: [address.longitude, address.latitude],
+                                        zoom: 16,
+                                    })}
+                                    className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-[#087F5B]"
+                                >
+                                    View
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        if (!window.confirm(`Delete ${address.name}?`)) return;
+                                        try {
+                                            await authenticatedAdminRequest(
+                                                `/admin/service-areas/local-addresses/${address._id}`,
+                                                { method: "DELETE" }
+                                            );
+                                            await loadLocalAddresses();
+                                        } catch (err) {
+                                            setError(err.message);
+                                        }
+                                    }}
+                                    className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600"
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+                <section className="rounded-2xl bg-white p-5 shadow-sm">
                     <h2 className="text-xl font-extrabold">
                         City & Service Area Management
                     </h2>
@@ -375,12 +633,6 @@ export default function CitiesPage() {
                         Only active areas accept ride requests.
                     </p>
                 </section>
-
-                {error && (
-                    <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-600">
-                        {error}
-                    </p>
-                )}
 
                 {message && (
                     <p role="status" className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-700">

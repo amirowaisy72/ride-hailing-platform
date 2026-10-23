@@ -118,6 +118,15 @@ export default function LoginPage() {
                         />
                     </div>
 
+                    <div className="text-right">
+                        <Link
+                            href="/forgot-password"
+                            className="text-sm font-semibold text-[#087F5B]"
+                        >
+                            Forgot Password?
+                        </Link>
+                    </div>
+
                     {error && (
                         <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-600">
                             {error}

@@ -392,6 +392,37 @@ function DriverDashboard() {
                 reportError(error);
             }
         };
+        const onRideClosed = ({ rideId } = {}) => {
+            const id = String(rideId || "");
+            if (!id) return;
+
+            setRequests((previous) =>
+                previous.filter(
+                    (ride) => String(ride.rideId) !== id
+                )
+            );
+
+            notifyRef.current({
+                kind: "info",
+                key: `ride:closed:${id}`,
+                title: "Ride no longer available",
+                body: "Passenger selected another driver.",
+                sound: false,
+            });
+        };
+
+        const onOfferRejected = ({ rideId, offerId } = {}) => {
+            if (!rideId || !offerId) return;
+
+            notifyRef.current({
+                kind: "info",
+                tone: "warning",
+                key: `offer:rejected:${offerId}`,
+                title: "Your offer was declined",
+                body: "You can submit a new lower fare while the ride is available. A 15-second cooldown applies.",
+            });
+        };
+
         const onParcelAssigned = (data) => {
             if (!data?.parcelId) return;
             setParcelAssignment(data);
@@ -416,6 +447,8 @@ function DriverDashboard() {
         socket.on("ride:created", onNewRide);
         socket.on("ride:cancelled", onCancelled);
         socket.on("ride:driver:selected", onSelected);
+        socket.on("ride:request:closed", onRideClosed);
+        socket.on("ride:offer:rejected", onOfferRejected);
         socket.on("ride:chat:new", onChat);
         socket.on("parcel:assigned", onParcelAssigned);
         return () => {
@@ -424,6 +457,8 @@ function DriverDashboard() {
             socket.off("ride:created", onNewRide);
             socket.off("ride:cancelled", onCancelled);
             socket.off("ride:driver:selected", onSelected);
+            socket.off("ride:request:closed", onRideClosed);
+            socket.off("ride:offer:rejected", onOfferRejected);
             socket.off("ride:chat:new", onChat);
             socket.off("parcel:assigned", onParcelAssigned);
         };
