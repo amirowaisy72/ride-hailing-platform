@@ -6,6 +6,10 @@ import {
     WifiOff, XCircle, Menu, X, Bell, BellRing, Volume2, VolumeX, LocateFixed, Wallet,
 } from "lucide-react";
 import { Geolocation } from "@capacitor/geolocation";
+import {
+    startDriverBackgroundGPS,
+    stopDriverBackgroundGPS
+} from "@/lib/backgroundDriverLocation";
 import AuthGuard from "@/components/AuthGuard";
 import RideMap from "@/components/RideMap";
 import { reverseGeocode } from "@/lib/locationService";
@@ -424,6 +428,19 @@ function DriverDashboard() {
             socket.off("parcel:assigned", onParcelAssigned);
         };
     }, [token, loadRequests, isOnline, isAvailable, refreshActiveRide, reportError, user?._id, user?.id]);
+    // Native background GPS follows driver Online/Offline status.
+    useEffect(() => {
+        if (!token) return;
+
+        const syncGPS = isOnline
+            ? startDriverBackgroundGPS(token)
+            : stopDriverBackgroundGPS();
+
+        void syncGPS.catch((error) => {
+            console.error("Background GPS:", error.message);
+        });
+    }, [isOnline, token]);
+
     // GPS tracking: map shows any fix; backend only receives fixes within 100 m accuracy.
     useEffect(() => {
         if (!isOnline || !token) return;
@@ -1079,13 +1096,31 @@ function DriverDashboard() {
             <DriverToast toast={notifications.toast} onDismiss={notifications.dismissToast} />
             {rideInProgress && chatOpen && (
                 <RideChat rideId={selectedRide._id} token={token} userId={userId}
-                    directOpen onClose={() => setChatOpen(false)} participantLabel="passenger" />
+                    directOpen onClose={() => setChatOpen(false)}
+                    participantLabel={selectedRide.passengerId?.firstName || "passenger"}
+                    participantPhoto={selectedRide.passengerId?.profileImage || ""}
+                    participantFullName={[
+                        selectedRide.passengerId?.firstName,
+                        selectedRide.passengerId?.lastName
+                    ].filter(Boolean).join(" ")} />
             )}
             {rideInProgress && (
                 <div className="dx-quick" style={{ bottom: `calc(${heights[sheet]} + 12px)` }}>
                     <button type="button" className="dx-fab relative" aria-label="Open chat with passenger"
                         onClick={() => { markMessagesRead(); setChatOpen(true); }}>
                         <MessageCircle size={18} />
+
+                        {selectedRide.passengerId?.profileImage && (
+                            <img
+                                src={selectedRide.passengerId.profileImage}
+                                alt="Passenger"
+                                className="absolute inset-0 h-full w-full rounded-2xl object-cover"
+                                onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                }}
+                            />
+                        )}
+
                         {unreadMessages > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#C1F11D] px-1 text-[11px] font-extrabold text-[#111111] ring-2 ring-white">{unreadMessages === 99 ? "99+" : unreadMessages}</span>}
                     </button>
                     <span className="dx-target-chip"><MapPin size={13} /> {targetTitle}</span>

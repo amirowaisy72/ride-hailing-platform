@@ -2,6 +2,9 @@
   "appId": "com.ridehailing.app",
   "appName": "Ride Hailing",
   "webDir": "out",
+  "android": {
+    "useLegacyBridge": true
+  },
   "plugins": {
     "PushNotifications": {
       "presentationOptions": []

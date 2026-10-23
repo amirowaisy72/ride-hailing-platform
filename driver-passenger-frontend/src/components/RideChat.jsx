@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, MessageCircle, Send, Phone, CheckCheck } from "lucide-react";
+import { ArrowLeft, MessageCircle, Send, Phone, CheckCheck, UserRound } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { getRealtimeSocket } from "@/lib/socket";
 const QUICK = ["I'm at the pickup", "Please wait 2 minutes", "Where are you?", "Please call me"];
@@ -10,8 +10,9 @@ const merge = (old, incoming) => {
     for (const item of [...old, ...incoming]) if (item?._id) map.set(String(item._id), item);
     return Array.from(map.values()).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 };
-export default function RideChat({ rideId, token, userId, directOpen = false, onClose, driverPhone, participantLabel = "driver" }) {
+export default function RideChat({ rideId, token, userId, directOpen = false, onClose, driverPhone, participantLabel = "driver", participantPhoto = "", participantFullName = "" }) {
     const [open, setOpen] = useState(false);
+    const [profileOpen, setProfileOpen] = useState(false);
     const isOpen = Boolean(directOpen || open);
     const closeChat = () => { if (directOpen) onClose?.(); else setOpen(false); };
     const callNumber = typeof driverPhone === "string" && /^[+\d ()-]{7,20}$/.test(driverPhone.trim()) ? driverPhone.trim() : "";
@@ -101,7 +102,7 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                 </span>
             )}
         </button>}
-        {isOpen && <div className="fixed inset-0 z-[100] flex h-dvh flex-col overflow-hidden bg-white text-[#111111]" role="dialog" aria-modal="true" aria-label="Ride messages">
+        {isOpen && <div className="fixed inset-0 z-[100] flex h-dvh flex-col overflow-hidden bg-white text-[#111111] dark:!bg-[#101216] dark:!text-[#F5F7FA]" role="dialog" aria-modal="true" aria-label="Ride messages">
             <header className="flex shrink-0 items-center gap-3 border-b border-[#EEF0F2] bg-white px-4 pb-3 pt-[max(12px,env(safe-area-inset-top))] shadow-sm">
                 <button
                     type="button"
@@ -111,13 +112,35 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                 >
                     <ArrowLeft size={20} />
                 </button>
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#C1F11D]">
-                    <MessageCircle size={20} aria-hidden="true" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#C1F11D] text-[#111111]">
+                    {participantPhoto ? (
+                        <img
+                            src={participantPhoto}
+                            alt={participantLabel}
+                            className="h-full w-full object-cover"
+                            onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                e.currentTarget.nextElementSibling.style.display = "block";
+                            }}
+                        />
+                    ) : null}
+                    <UserRound
+                        size={22}
+                        style={{ display: participantPhoto ? "none" : "block" }}
+                    />
                 </div>
-                <div className="min-w-0 flex-1">
-                    <p className="truncate font-extrabold tracking-tight">Chat with {participantLabel}</p>
-                    <p className="text-xs text-[#6B7280]">Private trip conversation</p>
-                </div>
+                <button
+                    type="button"
+                    onClick={() => setProfileOpen(true)}
+                    className="min-w-0 flex-1 text-left"
+                >
+                    <p className="truncate font-extrabold tracking-tight">
+                        Chat with {participantLabel}
+                    </p>
+                    <p className="text-xs text-[#9CA3AF]">
+                        Tap to view passenger profile
+                    </p>
+                </button>
                 {callNumber ? (
                     <a href={`tel:${callNumber.replace(/[^+\d]/g, "")}`} aria-label={`Call ${participantLabel}`} title={`Call ${participantLabel}`}
                         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#C1F11D]">
@@ -130,6 +153,52 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                     </button>
                 )}
             </header>
+            {profileOpen && (
+                <div className="absolute inset-0 z-[110] flex flex-col bg-[#101216] text-white">
+                    <div className="flex items-center gap-3 px-5 py-4">
+                        <button
+                            type="button"
+                            onClick={() => setProfileOpen(false)}
+                            aria-label="Back to chat"
+                            className="rounded-full bg-[#252B34] p-3"
+                        >
+                            <ArrowLeft size={21} />
+                        </button>
+                        <span className="font-bold">Passenger Profile</span>
+                    </div>
+
+                    <div className="flex flex-1 flex-col items-center justify-center gap-6 px-5">
+                        <div className="flex h-64 w-64 max-w-full items-center justify-center overflow-hidden rounded-full border-4 border-[#C1F11D] bg-[#252B34]">
+                            {participantPhoto ? (
+                                <img
+                                    src={participantPhoto}
+                                    alt={participantFullName || participantLabel}
+                                    className="h-full w-full object-cover"
+                                    onError={(e) => {
+                                        e.currentTarget.style.display = "none";
+                                    }}
+                                />
+                            ) : (
+                                <UserRound size={100} className="text-[#C1F11D]" />
+                            )}
+                        </div>
+
+                        <div className="text-center">
+                            <h2 className="text-2xl font-extrabold">
+                                {participantFullName || participantLabel}
+                            </h2>
+                            <p className="mt-2 text-sm text-[#AAB4C2]">
+                                Your passenger for this trip
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="px-5 pb-8 text-center text-xs text-[#AAB4C2]">
+                        Profile photo is user-uploaded and does not confirm identity.
+                    </div>
+                </div>
+            )}
+
             <main className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-[#F4F5F7] p-4 pb-6" aria-live="polite">
                 {loadingMessages && messages.length === 0 ? (
                     <div role="status" aria-label="Loading messages" className="mx-auto mt-12 flex flex-col items-center gap-3 text-sm font-semibold text-[#6B7280]">
@@ -165,7 +234,7 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                         type="button"
                         disabled={sending}
                         onClick={() => send(q)}
-                        className="shrink-0 rounded-full border border-[#E9EBEE] bg-[#F9FAFB] px-3.5 py-2 text-xs font-semibold transition-colors hover:bg-[#E9EBEE] disabled:opacity-50"
+                        className="shrink-0 whitespace-nowrap rounded-full border border-[#E9EBEE] bg-[#F9FAFB] px-3.5 py-2 text-xs font-semibold text-[#111111] transition-colors hover:bg-[#E9EBEE] disabled:opacity-50 dark:!border-[#434B57] dark:!bg-[#252B34] dark:!text-[#F5F7FA] dark:hover:!bg-[#343D49]"
                     >
                         {q}
                     </button>
@@ -178,14 +247,14 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                     maxLength={1000}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Write a message..."
-                    className="min-h-12 min-w-0 flex-1 rounded-2xl border border-[#E5E7EB] bg-[#F4F5F7] px-4 text-base outline-none placeholder:text-[#9CA3AF] focus:border-[#C1F11D] focus:ring-2 focus:ring-[#C1F11D]/30"
+                    className="min-h-12 min-w-0 flex-1 rounded-2xl border border-[#E5E7EB] bg-[#F4F5F7] px-4 text-base text-[#111111] outline-none placeholder:text-[#9CA3AF] focus:border-[#C1F11D] focus:ring-2 focus:ring-[#C1F11D]/30 dark:!border-[#505968] dark:!bg-[#222831] dark:!text-white dark:placeholder:!text-[#AAB4C2] dark:focus:!border-[#C1F11D]"
                     aria-label="Message"
                 />
                 <button
                     type="submit"
                     disabled={sending || !text.trim()}
                     aria-label="Send message"
-                    className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#C1F11D] text-[#111111] transition-transform active:scale-95 disabled:bg-[#E9EBEE] disabled:text-[#9CA3AF]"
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#C1F11D] text-[#111111] transition-transform active:scale-95 disabled:bg-[#E9EBEE] disabled:text-[#9CA3AF] dark:!bg-[#C1F11D] dark:!text-[#111111] dark:disabled:!bg-[#303741] dark:disabled:!text-[#8793A3]"
                 >
                     <Send size={19} />
                 </button>

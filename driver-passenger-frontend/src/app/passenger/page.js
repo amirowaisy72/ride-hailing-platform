@@ -1026,7 +1026,7 @@ function PassengerDashboard() {
                 </>
             )}
 
-            <div className="absolute right-4 bottom-[calc(170px+env(safe-area-inset-bottom))] z-20">
+            <div className="absolute right-4 bottom-[calc(250px+env(safe-area-inset-bottom))] z-20">
                 <button
                     type="button"
                     aria-label={activeRide ? "Recenter map" : "Locate me"}
@@ -1065,7 +1065,6 @@ function PassengerDashboard() {
                                 📦 Parcel Delivery
                                 <ParcelActivityBar token={token} role="PASSENGER" variant="badge" />
                             </Link>
-                            <span className="shrink-0 rounded-xl bg-[#F4F5F7] px-4 py-2.5 text-sm font-semibold text-[#6B7280]">Cash payments</span>
                         </div>
                         <button type="button" onClick={() => setBookingOpen(true)}
                             className="flex w-full items-center gap-3 rounded-2xl bg-[#F4F5F7] px-4 py-4 text-left shadow-sm transition-transform active:scale-[0.98]"

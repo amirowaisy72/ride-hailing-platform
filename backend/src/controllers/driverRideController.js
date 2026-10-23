@@ -97,7 +97,8 @@ const getMyActiveRide = async (req, res) => {
                     "TRIP_STARTED",
                 ],
             },
-        }).sort({ createdAt: -1 });
+        }).sort({ createdAt: -1 })
+            .populate("passengerId", "firstName lastName profileImage");
 
         return res.json({ success: true, ride });
     } catch (error) {

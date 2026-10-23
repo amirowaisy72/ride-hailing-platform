@@ -47,7 +47,40 @@ router.patch(
 router.patch(
     "/me/location",
     protect,
-    authorize("PASSENGER", "DRIVER"),
+    authorize("DRIVER"),
+    updateDriverLocation
+);
+
+router.post(
+    "/me/location",
+    protect,
+    authorize("DRIVER"),
+    (req, res, next) => {
+        const accuracy = Number(req.body?.accuracy);
+        if (!Number.isFinite(accuracy) || accuracy > 100 || accuracy < 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Accurate GPS fix required"
+            });
+        }
+        if (req.body?.simulated === true) {
+            return res.status(400).json({
+                success: false,
+                message: "Mock GPS location rejected"
+            });
+        }
+
+        const time = Number(req.body?.time);
+        if (!Number.isFinite(time) ||
+            Math.abs(Date.now() - time) > 120000) {
+            return res.status(400).json({
+                success: false,
+                message: "Stale GPS location rejected"
+            });
+        }
+
+        next();
+    },
     updateDriverLocation
 );
 

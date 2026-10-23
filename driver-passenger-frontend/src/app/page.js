@@ -31,7 +31,7 @@ export default function Home() {
   }
 
   return (
-    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-[#F8FAF9] text-[#111827]">
+    <main className="relative flex h-dvh flex-col overflow-hidden bg-[#F8FAF9] text-[#111827]">
       <header className="flex items-center gap-3 px-6 pt-8">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#087F5B] text-xl font-bold text-white shadow-lg shadow-emerald-900/15">
           {BRAND.shortName}
@@ -41,8 +41,8 @@ export default function Home() {
         </span>
       </header>
 
-      <section className="flex flex-1 flex-col justify-center px-7 py-10">
-        <div className="relative mx-auto mb-12 flex h-72 w-full max-w-sm items-center justify-center overflow-hidden rounded-[36px] bg-gradient-to-br from-[#D1FAE5] via-[#E8F7EF] to-white">
+      <section className="flex min-h-0 flex-1 flex-col justify-evenly px-7 py-3">
+        <div className="relative mx-auto mb-3 flex h-[clamp(140px,30dvh,260px)] w-full max-w-sm shrink items-center justify-center overflow-hidden rounded-[36px] bg-gradient-to-br from-[#D1FAE5] via-[#E8F7EF] to-white">
           <div className="absolute left-[-20%] top-[30%] h-24 w-[150%] rotate-[-28deg] border-y-[14px] border-white/80" />
           <div className="absolute left-[40%] top-[-20%] h-[150%] w-20 rotate-[33deg] border-x-[12px] border-white/80" />
 
@@ -64,7 +64,7 @@ export default function Home() {
           </div>
         </div>
 
-        <span className="mb-4 w-fit rounded-full bg-[#D1FAE5] px-4 py-2 text-xs font-bold tracking-wide text-[#065F46]">
+        <span className="mb-2 w-fit rounded-full !bg-[#D1FAE5] px-4 py-2 text-xs font-bold tracking-wide !text-[#065F46]">
           MOVE SMARTER
         </span>
 

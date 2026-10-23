@@ -11,12 +11,12 @@ export async function registerPushNotifications(onToken) {
     }
 
     await PushNotifications.createChannel({
-        id: "ride_alerts",
+        id: "ride_alerts_v2",
         name: "Ride & Parcel Alerts",
         description: "Ride requests, offers and trip updates",
         importance: 5,
         visibility: 1,
-        sound: "default",
+        sound: "ride_alert.wav",
         vibration: true,
     });
 

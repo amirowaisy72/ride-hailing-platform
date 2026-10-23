@@ -13,6 +13,7 @@ dependencies {
     implementation project(':capacitor-geolocation')
     implementation project(':capacitor-preferences')
     implementation project(':capacitor-push-notifications')
+    implementation project(':capgo-background-geolocation')
     implementation project(':capacitor-secure-storage-plugin')
 
 }
