@@ -21,7 +21,11 @@ const {
 } = require("../validators/authValidators");
 const { validateRequest } = require("../middleware/validateRequest");
 
+const { googleLogin } = require("../controllers/googleAuthController");
+
 const router = express.Router();
+
+router.post("/google", authLimiter, googleLogin);
 
 router.post(
     "/register",

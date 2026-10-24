@@ -21,7 +21,15 @@ const userSchema = new mongoose.Schema(
         },
         passwordHash: {
             type: String,
-            required: true,
+            required: function () {
+                return !this.googleUid;
+            },
+            select: false,
+        },
+        googleUid: {
+            type: String,
+            unique: true,
+            sparse: true,
             select: false,
         },
         role: {

@@ -5,9 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api";
 import { BRAND } from "@/config/brand";
+import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
+import { useAuth } from "@/context/AuthContext";
+import "@/lib/firebase";
 
 export default function SignupPage() {
     const router = useRouter();
+    const { login } = useAuth();
     const [form, setForm] = useState({
         firstName: "",
         lastName: "",
@@ -16,6 +20,7 @@ export default function SignupPage() {
     });
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [signupStep, setSignupStep] = useState("");
 
     async function submit(e) {
         e.preventDefault();
@@ -25,6 +30,49 @@ export default function SignupPage() {
 
         try {
             const email = form.email.trim().toLowerCase();
+
+            const withTimeout = (promise, step) =>
+                Promise.race([
+                    promise,
+                    new Promise((_, reject) =>
+                        setTimeout(
+                            () => reject(new Error(`${step} failed: Server did not respond within 20 seconds.`)),
+                            20000
+                        )
+                    ),
+                ]);
+
+            setSignupStep("Checking email...");
+
+            await withTimeout(
+                apiRequest("/auth/register", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        ...form,
+                        email,
+                        role: "PASSENGER",
+                    }),
+                }),
+                "Email Check"
+            );
+
+            setSignupStep("Sending OTP...");
+
+            await withTimeout(
+                apiRequest("/auth/signup/send-otp", {
+                    method: "POST",
+                    body: JSON.stringify({ email }),
+                }),
+                "OTP Sending"
+            );
+
+            sessionStorage.setItem(
+                "safar-pending-signup",
+                JSON.stringify({ ...form, email, role: "PASSENGER" })
+            );
+
+            router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
+            return;
 
             await apiRequest("/auth/register", {
                 method: "POST",
@@ -56,6 +104,57 @@ export default function SignupPage() {
             setLoading(false);
         }
     }
+
+
+    async function handleGoogleSignup() {
+        if (loading) return;
+
+        setError("");
+        setLoading(true);
+        setSignupStep("Signing in with Google...");
+
+        try {
+            await FirebaseAuthentication.signInWithGoogle();
+
+            const { token: idToken } =
+                await FirebaseAuthentication.getIdToken();
+
+            if (!idToken) {
+                throw new Error("Google ID token missing");
+            }
+
+            const data = await apiRequest("/auth/google", {
+                method: "POST",
+                body: JSON.stringify({ idToken }),
+            });
+
+            if (!data.accessToken || !data.refreshToken) {
+                throw new Error("Invalid authentication response");
+            }
+
+            const profile = await apiRequest("/auth/me", {
+                token: data.accessToken,
+            });
+
+            await login(
+                data.accessToken,
+                profile.user,
+                data.refreshToken
+            );
+
+            router.replace(
+                profile.user.activeMode === "DRIVER"
+                    ? "/driver"
+                    : "/passenger"
+            );
+        } catch (err) {
+            setError(err.message || "Google Sign-In failed");
+        } finally {
+            setLoading(false);
+            setSignupStep("");
+        }
+    }
+
 
     return (
         <main className="min-h-dvh bg-[#F8FAF9] text-[#111827]">
@@ -116,7 +215,17 @@ export default function SignupPage() {
                         disabled={loading}
                         className="h-14 w-full rounded-2xl bg-[#087F5B] font-bold text-white disabled:opacity-50"
                     >
-                        {loading ? "Creating Account..." : "Create Account →"}
+                        {loading ? (signupStep || "Checking...") : "Create Account →"}
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={handleGoogleSignup}
+                        disabled={loading}
+                        className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white font-semibold text-gray-800 disabled:opacity-50"
+                    >
+                        <span className="text-xl font-bold text-[#4285F4]">G</span>
+                        Continue with Google
                     </button>
 
                     <p className="text-center text-sm">

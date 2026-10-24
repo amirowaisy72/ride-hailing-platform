@@ -8,6 +8,12 @@
   "plugins": {
     "PushNotifications": {
       "presentationOptions": []
+    },
+    "FirebaseAuthentication": {
+      "skipNativeAuth": false,
+      "providers": [
+        "google.com"
+      ]
     }
   }
 }

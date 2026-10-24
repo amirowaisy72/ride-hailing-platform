@@ -6,6 +6,8 @@ import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { BRAND } from "@/config/brand";
 import Link from "next/link";
+import "@/lib/firebase";
+import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -58,6 +60,53 @@ export default function LoginPage() {
             );
         } catch (err) {
             setError(err.message);
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
+
+    async function handleGoogleLogin() {
+        setError("");
+        setSubmitting(true);
+        setLoginStage("Signing in with Google...");
+
+        try {
+            await FirebaseAuthentication.signInWithGoogle();
+
+            const { token: idToken } =
+                await FirebaseAuthentication.getIdToken();
+
+            const data = await apiRequest("/auth/google", {
+                method: "POST",
+                body: JSON.stringify({ idToken }),
+            });
+
+            if (!data.accessToken || !data.refreshToken) {
+                throw new Error("Invalid authentication response");
+            }
+
+            const profile = await apiRequest("/auth/me", {
+                token: data.accessToken,
+            });
+
+            if (!["PASSENGER", "DRIVER"].includes(profile.user?.role)) {
+                throw new Error("This account cannot access the app");
+            }
+
+            await login(
+                data.accessToken,
+                profile.user,
+                data.refreshToken
+            );
+
+            router.replace(
+                profile.user.activeMode === "DRIVER"
+                    ? "/driver"
+                    : "/passenger"
+            );
+        } catch (err) {
+            setError(err.message || "Google Sign-In failed");
         } finally {
             setSubmitting(false);
         }
@@ -139,6 +188,15 @@ export default function LoginPage() {
                         className="flex h-14 w-full items-center justify-center rounded-2xl bg-[#087F5B] font-bold text-white shadow-lg shadow-emerald-900/10 disabled:opacity-50"
                     >
                         {submitting ? (loginStage || "Signing in...") : "Sign In →"}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleGoogleLogin}
+                        disabled={submitting}
+                        className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white font-semibold text-gray-800 disabled:opacity-50"
+                    >
+                        <span className="text-xl font-bold text-[#4285F4]">G</span>
+                        Continue with Google
                     </button>
 
                     <p className="text-center text-sm text-gray-500">

@@ -12,7 +12,20 @@
           "package_name": "com.ridehailing.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "366309218630-59gj80b7aogth8dkarqkgrimavafmpaf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ridehailing.app",
+            "certificate_hash": "cc344211d135dbc2866202537e95465efee21ae5"
+          }
+        },
+        {
+          "client_id": "366309218630-2fkagaabvoodvtvocabiqhqbnerrilnu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDhF49QwnbtwCIZWEDeTH1s2IcL7z72TNs"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "366309218630-2fkagaabvoodvtvocabiqhqbnerrilnu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

@@ -82,7 +82,7 @@ const login = async (req, res) => {
             email: email.trim().toLowerCase(),
         }).select("+passwordHash");
 
-        if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+        if (!user || !user.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
             return res.status(401).json({
                 success: false,
                 message: "Invalid email or password",

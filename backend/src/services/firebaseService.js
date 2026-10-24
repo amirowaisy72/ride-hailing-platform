@@ -1,5 +1,6 @@
 const { getApps, initializeApp, cert } = require("firebase-admin/app");
 const { getMessaging } = require("firebase-admin/messaging");
+const { getAuth } = require("firebase-admin/auth");
 
 function getFirebaseMessaging() {
     if (!getApps().length) {
@@ -15,4 +16,9 @@ function getFirebaseMessaging() {
     return getMessaging();
 }
 
-module.exports = { getFirebaseMessaging };
+function getFirebaseAuth() {
+    getFirebaseMessaging();
+    return getAuth();
+}
+
+module.exports = { getFirebaseMessaging, getFirebaseAuth };
