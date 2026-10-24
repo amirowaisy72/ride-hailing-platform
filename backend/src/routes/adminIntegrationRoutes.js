@@ -1,9 +1,13 @@
 
 const express = require("express");
 const mongoose = require("mongoose");
+const { getSocket } = require("../services/socketService");
 const IntegrationSetting = require("../models/IntegrationSetting");
 const IntegrationAuditLog = require("../models/IntegrationAuditLog");
-const { getFirebaseAuth } = require("../services/firebaseService");
+const {
+    getFirebaseAuth,
+    getFirebaseMessaging,
+} = require("../services/firebaseService");
 const fs = require("fs");
 const path = require("path");
 const { protect } = require("../middleware/authMiddleware");
@@ -27,6 +31,22 @@ router.get("/", (req, res) => {
         keys.some((key) => Boolean(process.env[key]));
 
     const integrations = [
+        {
+            id: "socketio",
+            name: "Socket.IO / WebSockets",
+            category: "Real-time Communication",
+            configured: true,
+            healthy: null,
+            healthNote: "Local WebSocket server; test connection to verify",
+        },
+        {
+            id: "background-geolocation",
+            name: "Background Geolocation",
+            category: "Android Location",
+            configured: null,
+            healthy: null,
+            healthNote: "Native plugin; device-level test required",
+        },
         {
             id: "github",
             name: "GitHub",
@@ -76,6 +96,17 @@ router.get("/", (req, res) => {
             healthNote: "External connectivity not tested",
         },
         {
+            id: "fcm",
+            name: "Firebase Cloud Messaging",
+            category: "Push Notifications",
+            configured: firebaseReady,
+            initialized: firebaseReady,
+            healthy: null,
+            healthNote: firebaseReady
+                ? "Firebase initialized; message delivery not tested"
+                : firebaseError,
+        },
+        {
             id: "firebase",
             initialized: firebaseReady,
             healthy: null,
@@ -101,18 +132,21 @@ router.get("/", (req, res) => {
             id: "smtp",
             name: "SMTP Email",
             category: "Email & OTP",
-            configured: configured(
-                "SMTP_HOST",
-                "SMTP_USER",
-                "EMAIL_USER"
+            configured: Boolean(
+                process.env.SMTP_HOST &&
+                process.env.SMTP_USER &&
+                process.env.SMTP_PASS &&
+                process.env.SMTP_FROM
             ),
         },
         {
             id: "cloudinary",
             name: "Cloudinary",
             category: "File Storage",
-            configured: configured(
-                "CLOUDINARY_CLOUD_NAME"
+            configured: Boolean(
+                process.env.CLOUDINARY_CLOUD_NAME &&
+                process.env.CLOUDINARY_API_KEY &&
+                process.env.CLOUDINARY_API_SECRET
             ),
         },
         {
@@ -149,6 +183,8 @@ router.get("/settings", async (req, res) => {
             "google-login",
             "push-notifications",
             "otp-email",
+            "maps-routing",
+            "cloudinary-uploads",
         ];
 
         const settings = keys.map((key) => {
@@ -175,6 +211,8 @@ router.patch("/settings/:key", async (req, res) => {
             "google-login",
             "push-notifications",
             "otp-email",
+            "maps-routing",
+            "cloudinary-uploads",
         ];
 
         const { key } = req.params;
@@ -252,6 +290,108 @@ router.get("/audit-logs", async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Unable to load integration audit logs",
+        });
+    }
+});
+
+router.post("/:id/test", async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        let healthy = null;
+        let message = "Manual verification required";
+
+        if (id === "mongodb") {
+            healthy = mongoose.connection.readyState === 1;
+            message = healthy ? "MongoDB connected" : "MongoDB disconnected";
+        } else if (id === "fcm") {
+            getFirebaseMessaging();
+            healthy = null;
+            message = "Firebase Messaging initialized; actual delivery not tested";
+        } else if (id === "firebase" || id === "google-oauth") {
+            await getFirebaseAuth().listUsers(1);
+            healthy = true;
+            message = "Firebase Authentication API reachable";
+        } else if (id === "smtp") {
+            const nodemailer = require("nodemailer");
+            const transporter = nodemailer.createTransport({
+                host: process.env.SMTP_HOST,
+                port: Number(process.env.SMTP_PORT || 587),
+                secure: process.env.SMTP_PORT === "465",
+                auth: {
+                    user: process.env.SMTP_USER,
+                    pass: process.env.SMTP_PASS,
+                },
+            });
+
+            await transporter.verify();
+            healthy = true;
+            message = "SMTP connection successful";
+        } else if (id === "cloudinary") {
+            const cloudinary = require("../integrations/cloudinary/cloudinary");
+            await cloudinary.api.ping();
+            healthy = true;
+            message = "Cloudinary API reachable";
+        } else if (id === "nominatim") {
+            const response = await fetch(
+                "https://nominatim.openstreetmap.org/status.php",
+                { signal: AbortSignal.timeout(10000) }
+            );
+
+            healthy = response.ok;
+            message = healthy
+                ? "Nominatim service reachable"
+                : "Nominatim connection failed";
+        } else if (id === "osrm") {
+            const response = await fetch(
+                "https://router.project-osrm.org/route/v1/driving/75.8577,30.9000;75.8600,30.9100?overview=false",
+                { signal: AbortSignal.timeout(10000) }
+            );
+            const data = await response.json();
+            healthy = response.ok && data.code === "Ok";
+            message = healthy ? "Routing service reachable" : "Routing test failed";
+        } else if (id === "render") {
+            healthy = true;
+            message = "Backend API responding";
+        } else if (id === "background-geolocation" || id === "capacitor") {
+            healthy = null;
+            message = "Requires testing on a real Android device";
+        } else if (id === "socketio") {
+            healthy = Boolean(getSocket());
+            message = healthy
+                ? "Socket.IO server initialized"
+                : "Socket.IO server unavailable";
+        } else if (id === "github") {
+            const response = await fetch("https://api.github.com", {
+                signal: AbortSignal.timeout(10000),
+            });
+            healthy = response.ok;
+            message = healthy
+                ? "GitHub public API reachable; repository access not verified"
+                : "GitHub API unavailable";
+        } else if (id === "maplibre") {
+            const response = await fetch("https://unpkg.com/maplibre-gl/dist/maplibre-gl.js", {
+                method: "HEAD",
+                signal: AbortSignal.timeout(10000),
+            });
+            healthy = response.ok;
+            message = healthy ? "MapLibre CDN reachable" : "MapLibre CDN unavailable";
+        }
+
+        return res.json({
+            success: true,
+            id,
+            healthy,
+            message,
+            checkedAt: new Date().toISOString(),
+        });
+    } catch (error) {
+        return res.status(200).json({
+            success: true,
+            id,
+            healthy: false,
+            message: "Connection test failed",
+            checkedAt: new Date().toISOString(),
         });
     }
 });

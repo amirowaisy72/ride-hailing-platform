@@ -20,11 +20,13 @@ const calculateRoute = async (req, res) => {
     } catch (error) {
         const invalidInput = error.message === "Invalid coordinates";
 
-        return res.status(invalidInput ? 400 : 502).json({
+        return res.status(error.statusCode || (invalidInput ? 400 : 502)).json({
             success: false,
-            message: invalidInput
-                ? "Invalid pickup or destination coordinates"
-                : "Route calculation temporarily unavailable",
+            message: error.statusCode === 503
+                ? error.message
+                : invalidInput
+                    ? "Invalid pickup or destination coordinates"
+                    : "Route calculation temporarily unavailable",
         });
     }
 };
@@ -65,11 +67,13 @@ const searchLocations = async (req, res) => {
 
         const invalid = error.message === "Invalid search query";
 
-        return res.status(invalid ? 400 : 502).json({
+        return res.status(error.statusCode || (invalid ? 400 : 502)).json({
             success: false,
-            message: invalid
-                ? "Search query must contain at least 3 characters"
-                : "Address search temporarily unavailable",
+            message: error.statusCode === 503
+                ? error.message
+                : invalid
+                    ? "Search query must contain at least 3 characters"
+                    : "Address search temporarily unavailable",
         });
     }
 };
@@ -101,11 +105,13 @@ const getAddressFromCoordinates = async (req, res) => {
     } catch (error) {
         const invalid = error.message === "Invalid coordinates";
 
-        return res.status(invalid ? 400 : 502).json({
+        return res.status(error.statusCode || (invalid ? 400 : 502)).json({
             success: false,
-            message: invalid
-                ? "Invalid coordinates"
-                : "Reverse geocoding unavailable",
+            message: error.statusCode === 503
+                ? error.message
+                : invalid
+                    ? "Invalid coordinates"
+                    : "Reverse geocoding unavailable",
         });
     }
 };

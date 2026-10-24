@@ -45,9 +45,11 @@ const sendResetOTP = async (req, res) => {
         return res.json({ success: true, message });
     } catch (error) {
         console.error("Password reset OTP error:", error.message);
-        return res.status(500).json({
+        return res.status(error.statusCode || 500).json({
             success: false,
-            message: "Unable to process reset request",
+            message: error.statusCode === 503
+                ? "OTP email service is disabled by Admin. Please try again later."
+                : "Unable to process reset request",
         });
     }
 };

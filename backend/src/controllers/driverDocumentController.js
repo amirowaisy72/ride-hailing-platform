@@ -72,9 +72,11 @@ const uploadDocument = async (req, res) => {
     } catch (error) {
         console.error("Document upload error:", error.message);
 
-        return res.status(500).json({
+        return res.status(error.statusCode || 500).json({
             success: false,
-            message: "Document upload failed",
+            message: error.statusCode === 503
+                ? error.message
+                : "Document upload failed",
         });
     }
 };

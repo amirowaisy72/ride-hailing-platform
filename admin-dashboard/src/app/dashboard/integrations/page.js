@@ -7,10 +7,22 @@ import { authenticatedAdminRequest } from "@/lib/adminSession";
 import {
     Plug, ExternalLink, ShieldCheck, Server,
     Database, Mail, Map, GitBranch, Smartphone,
-    Bell, Cloud, KeyRound,
+    Bell, Cloud, KeyRound, Radio, LocateFixed,
 } from "lucide-react";
 
 const integrations = [
+    {
+        name: "Socket.IO / WebSockets",
+        purpose: "Real-time rides, driver location and status updates",
+        icon: Radio,
+        url: "https://socket.io/",
+    },
+    {
+        name: "Background Geolocation",
+        purpose: "Driver location tracking in background",
+        icon: LocateFixed,
+        url: "https://github.com/Cap-go/capacitor-background-geolocation",
+    },
     {
         name: "OSRM Routing",
         purpose: "Driving routes, distance and ETA calculation",
@@ -98,6 +110,26 @@ export default function IntegrationsPage() {
     const [settings, setSettings] = useState([]);
     const [savingKey, setSavingKey] = useState(null);
     const [auditLogs, setAuditLogs] = useState([]);
+    const [testResults, setTestResults] = useState({});
+    const [testingId, setTestingId] = useState(null);
+
+    async function testIntegration(id) {
+        setTestingId(id);
+        try {
+            const data = await authenticatedAdminRequest(
+                `/admin/integrations/${id}/test`,
+                { method: "POST" }
+            );
+            setTestResults((prev) => ({ ...prev, [id]: data }));
+        } catch (err) {
+            setTestResults((prev) => ({
+                ...prev,
+                [id]: { healthy: false, message: err.message },
+            }));
+        } finally {
+            setTestingId(null);
+        }
+    }
 
     async function loadAuditLogs() {
         try {
@@ -180,7 +212,7 @@ export default function IntegrationsPage() {
 
     const ids = {
         "Firebase Authentication": "firebase",
-        "Firebase Cloud Messaging": "firebase",
+        "Firebase Cloud Messaging": "fcm",
         "Google Cloud Console": "google-oauth",
         "Google Search Console": "search-console",
         "Render": "render",
@@ -192,6 +224,10 @@ export default function IntegrationsPage() {
         "MapLibre / Map Services": "maplibre",
         "GitHub": "github",
         "Capacitor / Android": "capacitor",
+        "Socket.IO / WebSockets": "socketio",
+        "Background Geolocation": "background-geolocation",
+        "Background Geolocation": "background-geolocation",
+        "Socket.IO / WebSockets": "socketio",
     };
 
     return (
@@ -252,11 +288,13 @@ export default function IntegrationsPage() {
                                         {setting.key.replaceAll("-", " ")}
                                     </p>
                                     <p className="text-xs text-slate-500">
-                                        {setting.key === "google-login"
-                                            ? "Controls Google Sign-In"
-                                            : setting.key === "push-notifications"
-                                                ? "Controls Firebase push notifications"
-                                                : "Controls OTP email delivery"}
+                                        {({
+                                            "google-login": "Controls Google Sign-In",
+                                            "push-notifications": "Controls Firebase push notifications",
+                                            "otp-email": "Controls OTP email delivery",
+                                            "maps-routing": "Controls maps and route requests",
+                                            "cloudinary-uploads": "Controls Cloudinary uploads",
+                                        })[setting.key]}
                                     </p>
                                 </div>
 
@@ -337,17 +375,21 @@ export default function IntegrationsPage() {
                                     <span className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
                                         {loading
                                             ? "Checking..."
-                                            : !statuses[ids[item.name]]
-                                                ? "Not checked"
-                                                : statuses[ids[item.name]].healthy === false
-                                                    ? "Disconnected"
-                                                    : statuses[ids[item.name]].healthy === true
-                                                        ? "Connected"
-                                                        : statuses[ids[item.name]].initialized
-                                                            ? "Initialized"
-                                                            : statuses[ids[item.name]].configured
-                                                                ? "Configured"
-                                                                : "Not configured"}
+                                            : testResults[ids[item.name]]?.healthy === true
+                                                ? "Connected"
+                                                : testResults[ids[item.name]]?.healthy === false
+                                                    ? "Connection failed"
+                                                    : !statuses[ids[item.name]]
+                                                        ? "Not checked"
+                                                        : statuses[ids[item.name]].healthy === false
+                                                            ? "Disconnected"
+                                                            : statuses[ids[item.name]].healthy === true
+                                                                ? "Connected"
+                                                                : statuses[ids[item.name]].initialized
+                                                                    ? "Initialized"
+                                                                    : statuses[ids[item.name]].configured
+                                                                        ? "Configured"
+                                                                        : "Not checked"}
                                     </span>
                                 </div>
 
@@ -364,6 +406,37 @@ export default function IntegrationsPage() {
                                 <p className="mt-2 min-h-12 text-sm text-slate-500">
                                     {item.purpose}
                                 </p>
+
+                                {ids[item.name] && (
+                                    <button
+                                        type="button"
+                                        disabled={testingId !== null}
+                                        onClick={() => testIntegration(ids[item.name])}
+                                        className="mt-4 mr-3 rounded-lg border px-3 py-2 text-sm font-semibold disabled:opacity-50"
+                                    >
+                                        {testingId === ids[item.name] ? "Testing..." : "Test Connection"}
+                                    </button>
+                                )}
+
+                                {testResults[ids[item.name]] && (
+                                    <p className={`mt-2 text-xs ${testResults[ids[item.name]].healthy === true
+                                        ? "text-green-700"
+                                        : testResults[ids[item.name]].healthy === false
+                                            ? "text-red-600"
+                                            : "text-slate-500"
+                                        }`}>
+                                        <>
+                                            {testResults[ids[item.name]].message}
+                                            {testResults[ids[item.name]].checkedAt && (
+                                                <span className="mt-1 block text-slate-500">
+                                                    Checked: {new Date(
+                                                        testResults[ids[item.name]].checkedAt
+                                                    ).toLocaleString()}
+                                                </span>
+                                            )}
+                                        </>
+                                    </p>
+                                )}
 
                                 <a
                                     href={item.url}

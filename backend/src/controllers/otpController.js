@@ -45,7 +45,12 @@ const sendOTP = async (req, res) => {
         return res.json({ success: true, message: "OTP sent successfully" });
     } catch (error) {
         console.error("Send OTP error:", error.message);
-        return res.status(500).json({ success: false, message: "Failed to send OTP" });
+        return res.status(error.statusCode || 500).json({
+            success: false,
+            message: error.statusCode === 503
+                ? "OTP email service is disabled by Admin. Please try again later."
+                : "Failed to send OTP",
+        });
     }
 };
 

@@ -1,4 +1,19 @@
+const IntegrationSetting = require("../../models/IntegrationSetting");
+
+async function ensureMapsEnabled() {
+    const setting = await IntegrationSetting.findOne({
+        key: "maps-routing",
+    }).lean();
+
+    if (setting?.enabled === false) {
+        const error = new Error("Maps and routing are temporarily disabled by Admin");
+        error.statusCode = 503;
+        throw error;
+    }
+}
+
 const getRoute = async (pickup, destination) => {
+    await ensureMapsEnabled();
     const values = [
         pickup?.latitude,
         pickup?.longitude,
@@ -52,6 +67,7 @@ const getRoute = async (pickup, destination) => {
 };
 
 const searchAddress = async (query, latitude, longitude) => {
+    await ensureMapsEnabled();
     if (typeof query !== "string" || query.trim().length < 3) {
         throw new Error("Invalid search query");
     }
@@ -104,6 +120,7 @@ const searchAddress = async (query, latitude, longitude) => {
 };
 
 const reverseGeocode = async (latitude, longitude) => {
+    await ensureMapsEnabled();
     const lat = Number(latitude);
     const lon = Number(longitude);
 

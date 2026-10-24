@@ -7,7 +7,13 @@ const integrationSettingSchema = new mongoose.Schema(
             type: String,
             required: true,
             unique: true,
-            enum: ["google-login", "push-notifications", "otp-email"],
+            enum: [
+                "google-login",
+                "push-notifications",
+                "otp-email",
+                "maps-routing",
+                "cloudinary-uploads",
+            ],
         },
         enabled: {
             type: Boolean,

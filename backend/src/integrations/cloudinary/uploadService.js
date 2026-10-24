@@ -1,7 +1,22 @@
 const cloudinary = require("./cloudinary");
+const IntegrationSetting = require("../../models/IntegrationSetting");
+
+async function ensureCloudinaryEnabled() {
+    const setting = await IntegrationSetting.findOne({
+        key: "cloudinary-uploads",
+    }).lean();
+
+    if (setting?.enabled === false) {
+        const error = new Error("Cloudinary uploads are temporarily disabled by Admin");
+        error.statusCode = 503;
+        throw error;
+    }
+}
 const { Readable } = require("stream");
 
 const uploadToCloudinary = async (buffer, driverId) => {
+    await ensureCloudinaryEnabled();
+
     return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
             {
@@ -25,6 +40,8 @@ const uploadToCloudinary = async (buffer, driverId) => {
 };
 
 const uploadProfileImage = async (buffer, userId) => {
+    await ensureCloudinaryEnabled();
+
     return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
             {
