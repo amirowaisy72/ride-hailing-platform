@@ -5,18 +5,33 @@ export async function apiRequest(path, options = {}) {
     const { token, headers, ...requestOptions } = options;
 
     const send = async (accessToken) => {
-        const response = await fetch(`${API_URL}${path}`, {
-            ...requestOptions,
-            headers: {
-                ...(requestOptions.body && !(requestOptions.body instanceof FormData)
-                    ? { "Content-Type": "application/json" }
-                    : {}),
-                ...(accessToken
-                    ? { Authorization: `Bearer ${accessToken}` }
-                    : {}),
-                ...headers,
-            },
-        });
+        let response;
+
+        try {
+            response = await fetch(`${API_URL}${path}`, {
+                ...requestOptions,
+                signal: AbortSignal.timeout(45000),
+                headers: {
+                    ...(requestOptions.body && !(requestOptions.body instanceof FormData)
+                        ? { "Content-Type": "application/json" }
+                        : {}),
+                    ...(accessToken
+                        ? { Authorization: `Bearer ${accessToken}` }
+                        : {}),
+                    ...headers,
+                },
+            });
+        } catch (error) {
+            if (error.name === "TimeoutError" || error.name === "AbortError") {
+                throw new Error(
+                    `Server response timeout: ${path}. Please try again.`
+                );
+            }
+
+            throw new Error(
+                `Connection failed (${path}): ${error.message}`
+            );
+        }
 
         const data = await response.json().catch(() => ({}));
         return { response, data };
