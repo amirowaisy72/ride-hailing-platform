@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">Safar</string>
-    <string name="title_activity_main">Ride Hailing</string>
+    <string name="title_activity_main">Safar</string>
     <string name="package_name">com.ridehailing.app</string>
     <string name="custom_url_scheme">com.ridehailing.app</string>
 </resources>

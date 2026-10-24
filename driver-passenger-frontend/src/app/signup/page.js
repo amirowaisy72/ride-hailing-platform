@@ -35,7 +35,16 @@ export default function SignupPage() {
                 }),
             });
 
-            await apiRequest("/auth/send-otp", {
+            sessionStorage.setItem(
+                "safar-pending-signup",
+                JSON.stringify({
+                    ...form,
+                    email,
+                    role: "PASSENGER",
+                })
+            );
+
+            await apiRequest("/auth/signup/send-otp", {
                 method: "POST",
                 body: JSON.stringify({ email }),
             });

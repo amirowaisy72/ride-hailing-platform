@@ -20,11 +20,24 @@ function VerifyOTPForm() {
         setError("");
 
         try {
-            await apiRequest("/auth/verify-otp", {
+            const saved = sessionStorage.getItem("safar-pending-signup");
+
+            if (!saved) {
+                throw new Error("Signup session expired. Please register again.");
+            }
+
+            const form = JSON.parse(saved);
+
+            if (form.email !== email) {
+                throw new Error("Signup email mismatch.");
+            }
+
+            await apiRequest("/auth/signup/verify-otp", {
                 method: "POST",
-                body: JSON.stringify({ email, otp }),
+                body: JSON.stringify({ ...form, email, otp }),
             });
 
+            sessionStorage.removeItem("safar-pending-signup");
             router.replace("/login");
         } catch (err) {
             setError(err.message);
@@ -37,7 +50,7 @@ function VerifyOTPForm() {
         setError("");
         setMessage("");
         try {
-            await apiRequest("/auth/send-otp", {
+            await apiRequest("/auth/signup/send-otp", {
                 method: "POST",
                 body: JSON.stringify({ email }),
             });

@@ -32,7 +32,7 @@ export async function startDriverBackgroundGPS(token) {
 
         await BackgroundGeolocation.start(
             {
-                backgroundTitle: "Ride Hailing - Driver Online",
+                backgroundTitle: "Safar - Driver Online",
                 backgroundMessage: "Location active to receive nearby ride requests",
                 requestPermissions: false,
                 stale: false,

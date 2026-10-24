@@ -2,6 +2,8 @@ const express = require("express");
 const { register, login } = require("../controllers/authController");
 
 const { sendOTP, verifyOTP } = require("../controllers/otpController");
+const { sendSignupOTP, verifySignupOTP } =
+    require("../controllers/signupOTPController");
 const { sendResetOTP, resetPassword } = require("../controllers/passwordResetController");
 
 const { protect } = require("../middleware/authMiddleware");
@@ -29,6 +31,8 @@ router.post(
     register
 );
 router.post("/login", authLimiter, loginValidator, validateRequest, login);
+router.post("/signup/send-otp", authLimiter, sendSignupOTP);
+router.post("/signup/verify-otp", authLimiter, verifySignupOTP);
 
 router.post("/forgot-password", authLimiter, sendResetOTP);
 router.post("/reset-password", authLimiter, resetPassword);

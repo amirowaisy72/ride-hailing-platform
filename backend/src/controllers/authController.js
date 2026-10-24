@@ -45,30 +45,10 @@ const register = async (req, res) => {
             });
         }
 
-        const passwordHash = await bcrypt.hash(password, 12);
-
-        const user = await User.create({
-            firstName,
-            lastName,
-            email: normalizedEmail,
-            passwordHash,
-            role: "PASSENGER",
-            activeMode: "PASSENGER",
-            emailVerified: false,
-            status: "PENDING",
-        });
-
-        return res.status(201).json({
+        return res.status(200).json({
             success: true,
-            message: "Registration successful. Email verification pending.",
-            user: {
-                id: user._id,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                role: user.role,
-                emailVerified: user.emailVerified,
-            },
+            available: true,
+            message: "Email available",
         });
     } catch (error) {
         if (error.code === 11000) {
