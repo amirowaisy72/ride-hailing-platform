@@ -17,6 +17,8 @@ const rideRoutes = require("./routes/rideRoutes");
 const vehiclePricingRoutes = require("./routes/vehiclePricingRoutes");
 const vehicleRoutes = require("./routes/vehicleRoutes");
 const adminVehicleRoutes = require("./routes/adminVehicleRoutes");
+const http = require("http");
+const { initializeRealtime } = require("./realtime");
 
 const app = express();
 
@@ -67,12 +69,16 @@ app.get("/api/v1/health", (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
+const httpServer = http.createServer(app);
+
+const io = initializeRealtime(httpServer);
+
 const startServer = async () => {
     await connectDB();
 
-    app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
-        connectSocket();
+    httpServer.listen(PORT, () => {
+        console.log(`API + WebSocket running on port ${PORT}`);
+        connectSocket(io);
     });
 };
 

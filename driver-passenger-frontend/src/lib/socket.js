@@ -10,7 +10,9 @@ export function connectRealtime(accessToken) {
     }
 
     socket = io(
-        process.env.NEXT_PUBLIC_WEBSOCKET_URL || "http://localhost:5001",
+        process.env.NEXT_PUBLIC_WEBSOCKET_URL ||
+        process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, "") ||
+        "http://localhost:5000",
         {
             auth: { token: accessToken },
             transports: ["websocket"],
