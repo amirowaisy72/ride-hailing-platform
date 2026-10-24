@@ -8,7 +8,7 @@ import {
     LayoutDashboard, Users, CarFront, Route, Wallet,
     SlidersHorizontal, ShieldCheck, Menu, X,
     LogOut, ChevronRight, PanelLeftClose,
-    Bell, CircleDollarSign,
+    Bell, CircleDollarSign, Plug,
 } from "lucide-react";
 
 import {
@@ -29,6 +29,7 @@ const navigation = [
     { label: "Wallets", href: "/dashboard/wallets", icon: Wallet },
     { label: "Settlements", href: "/dashboard/settlements", icon: CircleDollarSign },
     { label: "Commission Settings", href: "/dashboard/commission", icon: SlidersHorizontal },
+    { label: "Integrations", href: "/dashboard/integrations", icon: Plug },
 ];
 
 export default function AdminShell({ children, title = "Dashboard" }) {

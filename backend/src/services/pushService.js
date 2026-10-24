@@ -1,8 +1,18 @@
 const PushDevice = require("../models/PushDevice");
+const IntegrationSetting = require("../models/IntegrationSetting");
 const { getFirebaseMessaging } = require("./firebaseService");
 
 async function sendPushToUser(userId, title, body, data = {}) {
     try {
+        const setting = await IntegrationSetting.findOne({
+            key: "push-notifications",
+        }).lean();
+
+        if (setting?.enabled === false) {
+            console.log("FCM: Disabled by Admin");
+            return;
+        }
+
         const devices = await PushDevice.find({ userId }).lean();
         if (!devices.length) {
             console.log("FCM: No registered device for user", String(userId));

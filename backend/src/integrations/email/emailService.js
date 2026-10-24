@@ -1,6 +1,17 @@
 const nodemailer = require("nodemailer");
+const IntegrationSetting = require("../../models/IntegrationSetting");
 
 const sendOTPEmail = async (email, otp) => {
+    const setting = await IntegrationSetting.findOne({
+        key: "otp-email",
+    }).lean();
+
+    if (setting?.enabled === false) {
+        const error = new Error("OTP email service is disabled by Admin");
+        error.statusCode = 503;
+        throw error;
+    }
+
     const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
         port: Number(process.env.SMTP_PORT || 587),

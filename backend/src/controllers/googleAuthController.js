@@ -1,6 +1,7 @@
 
 const crypto = require("crypto");
 const User = require("../models/User");
+const IntegrationSetting = require("../models/IntegrationSetting");
 const RefreshToken = require("../models/RefreshToken");
 const { getFirebaseAuth } = require("../services/firebaseService");
 const {
@@ -20,6 +21,17 @@ const googleLogin = async (req, res) => {
     }
 
     try {
+        const googleSetting = await IntegrationSetting.findOne({
+            key: "google-login",
+        }).lean();
+
+        if (googleSetting?.enabled === false) {
+            return res.status(503).json({
+                success: false,
+                message: "Google Sign-In is temporarily disabled",
+            });
+        }
+
         const decoded = await getFirebaseAuth().verifyIdToken(idToken);
 
         if (
