@@ -1,4 +1,4 @@
-package com.ridehailing.app;
+package com.safar.ridehailing;
 
 import com.getcapacitor.BridgeActivity;
 

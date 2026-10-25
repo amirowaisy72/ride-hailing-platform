@@ -41,6 +41,35 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:366309218630:android:61ff68fd48e7115283ad47",
+        "android_client_info": {
+          "package_name": "com.safar.ridehailing"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "366309218630-2fkagaabvoodvtvocabiqhqbnerrilnu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDhF49QwnbtwCIZWEDeTH1s2IcL7z72TNs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "366309218630-2fkagaabvoodvtvocabiqhqbnerrilnu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"
