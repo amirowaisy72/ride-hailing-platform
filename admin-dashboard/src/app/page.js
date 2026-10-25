@@ -68,7 +68,7 @@ export default function AdminLogin() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#F4F8F6] px-5 py-12">
-      <div className="w-full max-w-md">
+      <div className="text-slate-900 placeholder:text-slate-400 w-full max-w-md">
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#087F5B] text-white shadow-lg shadow-emerald-900/20">
             <ShieldCheck size={34} />
