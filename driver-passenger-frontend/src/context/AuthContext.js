@@ -6,6 +6,7 @@ import {
     useEffect,
     useState,
 } from "react";
+import { useRouter } from "next/navigation";
 
 import { apiRequest } from "@/lib/api";
 import {
@@ -30,6 +31,7 @@ const AuthContext = createContext(null);
 
 
 export function AuthProvider({ children }) {
+    const router = useRouter();
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -42,10 +44,16 @@ export function AuthProvider({ children }) {
             if (!url || !active) return;
 
             try {
+                console.log("[PAYMENT DEEP LINK] Received:", url);
                 const incoming = new URL(url);
+                console.log("[PAYMENT DEEP LINK] Parsed:", {
+                    protocol: incoming.protocol,
+                    hostname: incoming.hostname,
+                    pathname: incoming.pathname,
+                });
 
                 if (
-                    incoming.protocol !== "com.ridehailing.app:" ||
+                    incoming.protocol !== "com.safar.ridehailing:" ||
                     incoming.hostname !== "driver" ||
                     incoming.pathname !== "/earnings"
                 ) return;
@@ -58,8 +66,9 @@ export function AuthProvider({ children }) {
                     !/^[a-f0-9]{24}$/i.test(orderId || "")
                 ) return;
 
-                window.location.href =
-                    `/driver/earnings?paymentStatus=${encodeURIComponent(status)}&paymentOrderId=${encodeURIComponent(orderId)}`;
+                router.push(
+                    `/driver/earnings?paymentStatus=${encodeURIComponent(status)}&paymentOrderId=${encodeURIComponent(orderId)}`
+                );
             } catch {
                 // Ignore malformed external URLs.
             }

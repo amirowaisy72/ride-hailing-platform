@@ -80,6 +80,7 @@ async function runFinancialCommissionTests() {
             key: "GLOBAL",
             percentage: 10,
             minimumWalletBalance: 0,
+            topUpRequired: true,
             isActive: true,
         });
 

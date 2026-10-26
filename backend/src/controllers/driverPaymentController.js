@@ -67,7 +67,6 @@ async function createTopUpOrder(req, res) {
             provider: "JAZZCASH",
             enabled: true,
             environment,
-            ...(environment === "LIVE" ? { verified: true } : {}),
         }).select("+encryptedCredentials").lean();
 
         if (!config) {
@@ -238,7 +237,6 @@ async function getAvailableTopUpMethods(req, res) {
             provider: "JAZZCASH",
             enabled: true,
             environment,
-            ...(environment === "LIVE" ? { verified: true } : {}),
         })
             .select("provider environment")
             .lean();
