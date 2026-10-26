@@ -60,6 +60,10 @@ app.use(
 app.use("/api/v1/drivers", driverRoutes);
 app.use("/api/v1/drivers/me/documents", driverDocumentRoutes);
 app.use("/api/v1/admin/drivers", adminDriverRoutes);
+app.use(
+    "/api/v1/admin/notifications",
+    require("./routes/adminNotificationRoutes")
+);
 app.use("/api/v1/locations", locationRoutes);
 app.use("/api/v1/service-areas", serviceAreaRoutes);
 app.use("/api/v1/admin/service-areas", serviceAreaRoutes);

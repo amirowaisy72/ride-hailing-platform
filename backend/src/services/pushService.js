@@ -10,13 +10,13 @@ async function sendPushToUser(userId, title, body, data = {}) {
 
         if (setting?.enabled === false) {
             console.log("FCM: Disabled by Admin");
-            return;
+            return { successCount: 0, failureCount: 0, skipped: "disabled" };
         }
 
         const devices = await PushDevice.find({ userId }).lean();
         if (!devices.length) {
             console.log("FCM: No registered device for user", String(userId));
-            return;
+            return { successCount: 0, failureCount: 0, skipped: "no_devices" };
         }
         console.log("FCM: Registered devices found:", devices.length);
 
@@ -62,8 +62,14 @@ async function sendPushToUser(userId, title, body, data = {}) {
                 token: { $in: invalidTokens },
             });
         }
+
+        return {
+            successCount: result.successCount,
+            failureCount: result.failureCount,
+        };
     } catch (error) {
         console.error("Push notification error:", error.message);
+        return { successCount: 0, failureCount: 0, error: true };
     }
 }
 

@@ -275,71 +275,73 @@ function EarningsScreen() {
                     </div>
                 </section>
 
-                <section className="rounded-2xl bg-white p-5 shadow-sm">
-                    <h2 className="text-lg font-extrabold">Top Up Wallet</h2>
-                    <p className="mt-2 text-sm text-slate-500">
-                        Top-up amount future ride commissions ke liye wallet balance mein add hogi.
-                    </p>
+                {paymentMethods.length > 0 && (
+                    <section className="rounded-2xl bg-white p-5 shadow-sm">
+                        <h2 className="text-lg font-extrabold">Top Up Wallet</h2>
+                        <p className="mt-2 text-sm text-slate-500">
+                            Top-up amount future ride commissions ke liye wallet balance mein add hogi.
+                        </p>
 
-                    <form onSubmit={submitTopUp} className="mt-4 space-y-3">
-                        <label className="block text-sm font-semibold">
-                            Amount (PKR)
-                            <input
-                                type="number"
-                                min="100"
-                                max="1000000"
-                                step="1"
-                                required
-                                value={topUpAmount}
-                                onChange={(e) => setTopUpAmount(e.target.value)}
-                                className="mt-1 w-full rounded-xl border p-3"
-                            />
-                        </label>
+                        <form onSubmit={submitTopUp} className="mt-4 space-y-3">
+                            <label className="block text-sm font-semibold">
+                                Amount (PKR)
+                                <input
+                                    type="number"
+                                    min="100"
+                                    max="1000000"
+                                    step="1"
+                                    required
+                                    value={topUpAmount}
+                                    onChange={(e) => setTopUpAmount(e.target.value)}
+                                    className="mt-1 w-full rounded-xl border p-3"
+                                />
+                            </label>
 
-                        <label className="block text-sm font-semibold">
-                            Payment Method
-                            <select
-                                required
-                                value={selectedPaymentMethod}
-                                onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                                className="mt-1 w-full rounded-xl border p-3"
+                            <label className="block text-sm font-semibold">
+                                Payment Method
+                                <select
+                                    required
+                                    value={selectedPaymentMethod}
+                                    onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+                                    className="mt-1 w-full rounded-xl border p-3"
+                                >
+                                    <option value="">Select method</option>
+                                    {paymentMethods.map((item) => (
+                                        <option key={item.provider} value={item.provider}>
+                                            {item.provider.replaceAll("_", " ")}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+
+                            {paymentMethods.length === 0 && (
+                                <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+                                    Online payments abhi configure aur verify nahi huin.
+                                </p>
+                            )}
+
+                            {paymentNotice && (
+                                <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
+                                    {paymentNotice}
+                                </p>
+                            )}
+
+                            {topUpMessage && (
+                                <p role="status" className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+                                    {topUpMessage}
+                                </p>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={topUpLoading || paymentMethods.length === 0}
+                                className="w-full rounded-xl bg-[#087F5B] p-3 font-bold text-white disabled:opacity-50"
                             >
-                                <option value="">Select method</option>
-                                {paymentMethods.map((item) => (
-                                    <option key={item.provider} value={item.provider}>
-                                        {item.provider.replaceAll("_", " ")}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-
-                        {paymentMethods.length === 0 && (
-                            <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
-                                Online payments abhi configure aur verify nahi huin.
-                            </p>
-                        )}
-
-                        {paymentNotice && (
-                            <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
-                                {paymentNotice}
-                            </p>
-                        )}
-
-                        {topUpMessage && (
-                            <p role="status" className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
-                                {topUpMessage}
-                            </p>
-                        )}
-
-                        <button
-                            type="submit"
-                            disabled={topUpLoading || paymentMethods.length === 0}
-                            className="w-full rounded-xl bg-[#087F5B] p-3 font-bold text-white disabled:opacity-50"
-                        >
-                            {topUpLoading ? "Creating..." : "Continue to Top Up"}
-                        </button>
-                    </form>
-                </section>
+                                {topUpLoading ? "Creating..." : "Continue to Top Up"}
+                            </button>
+                        </form>
+                    </section>
+                )}
 
                 {error && (
                     <div
