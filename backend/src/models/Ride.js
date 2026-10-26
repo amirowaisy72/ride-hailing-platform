@@ -115,6 +115,11 @@ const rideSchema = new mongoose.Schema(
             type: Date,
             default: null,
         },
+        settlementError: {
+            type: String,
+            default: "",
+            maxlength: 500,
+        },
         currency: { type: String, default: "PKR", enum: ["PKR"] },
         distance: { type: Number, required: true },
         estimatedDuration: { type: Number, required: true },

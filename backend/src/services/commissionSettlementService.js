@@ -7,6 +7,7 @@ const WalletTransaction = require("../models/WalletTransaction");
 const CommissionSettings = require("../models/CommissionSettings");
 const RideSettlement = require("../models/RideSettlement");
 const { ensureDriverWallet } = require("./driverWalletService");
+const { paymentsConfigured } = require("./paymentsConfigService");
 
 async function settleRideCommission(rideId) {
     if (!mongoose.isValidObjectId(rideId)) {
@@ -56,13 +57,23 @@ async function settleRideCommission(rideId) {
             key: "GLOBAL",
         }).session(session);
 
-        if (settings?.topUpRequired === true && settings.isActive !== true) {
+        // Auto Free Mode: until a payment method is configured in the
+        // dashboard, top-ups are impossible, so commission is not
+        // enforced and settlements complete with zero commission
+        // instead of failing. Once a gateway is configured, the normal
+        // rules below apply unchanged.
+        const configured = await paymentsConfigured(settings, session);
+
+        const topUpEnforced =
+            settings?.topUpRequired === true && configured;
+
+        if (topUpEnforced && settings.isActive !== true) {
             throw new Error("Active commission settings unavailable");
         }
 
         // Free Mode: no commission; Paid Mode: configured commission.
         const basisPoints =
-            settings?.topUpRequired === true && settings.isActive === true
+            topUpEnforced && settings.isActive === true
                 ? Math.round(settings.percentage * 100)
                 : 0;
 
@@ -196,6 +207,7 @@ async function settleRideCommission(rideId) {
             {
                 $set: {
                     settlementStatus: "SETTLED",
+                    settlementError: "",
                     settledAt,
                 },
                 $inc: {

@@ -77,6 +77,17 @@ const parcelOrderSchema = new mongoose.Schema({
     instructions: { type: String, maxlength: 500, default: "" },
     pickedUpAt: { type: Date, default: null },
     deliveredAt: { type: Date, default: null },
+    // Commission settlement (mirrors Ride): parcels settle on
+    // DELIVERED via services/parcelSettlementService.
+    settlementStatus: {
+        type: String,
+        enum: ["NOT_REQUIRED", "PENDING", "SETTLED", "FAILED"],
+        default: "NOT_REQUIRED",
+        index: true,
+    },
+    settlementAttempts: { type: Number, default: 0 },
+    settledAt: { type: Date, default: null },
+    settlementError: { type: String, default: "", maxlength: 500 },
     pickupOtpHash: { type: String, default: null, select: false },
     deliveryOtpHash: { type: String, default: null, select: false },
     pickupOtpVerifiedAt: { type: Date, default: null },

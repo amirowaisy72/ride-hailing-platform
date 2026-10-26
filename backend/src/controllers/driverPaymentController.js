@@ -5,6 +5,12 @@ const PaymentGatewayConfig = require("../models/PaymentGatewayConfig");
 const CommissionSettings = require("../models/CommissionSettings");
 const { decryptCredentials } = require("../services/paymentCredentialEncryption");
 const { createJazzCashCheckout } = require("../services/jazzCashPaymentService");
+const { createEasyPaisaCheckout } = require("../services/easyPaisaPaymentService");
+const { createUblCheckout } = require("../services/ublPaymentService");
+const {
+    getGatewayCallbackUrl,
+    bankTransferConfigured,
+} = require("../services/paymentsConfigService");
 
 const PROVIDERS = [
     "JAZZCASH",
@@ -12,6 +18,12 @@ const PROVIDERS = [
     "UBL",
     "BANK_TRANSFER",
 ];
+
+const CHECKOUT_BUILDERS = {
+    JAZZCASH: createJazzCashCheckout,
+    EASYPAISA: createEasyPaisaCheckout,
+    UBL: createUblCheckout,
+};
 
 async function createTopUpOrder(req, res) {
     try {
@@ -53,29 +65,6 @@ async function createTopUpOrder(req, res) {
             });
         }
 
-        if (provider !== "JAZZCASH") {
-            return res.status(501).json({
-                success: false,
-                message: "This payment provider is not integrated yet.",
-            });
-        }
-
-        const environment =
-            settings.paymentEnvironment === "LIVE" ? "LIVE" : "TEST";
-
-        const config = await PaymentGatewayConfig.findOne({
-            provider: "JAZZCASH",
-            enabled: true,
-            environment,
-        }).select("+encryptedCredentials").lean();
-
-        if (!config) {
-            return res.status(503).json({
-                success: false,
-                message: "Yeh payment method abhi available nahi hai.",
-            });
-        }
-
         const driver = await Driver.findOne({
             userId: req.user._id,
             verificationStatus: "APPROVED",
@@ -88,20 +77,92 @@ async function createTopUpOrder(req, res) {
             });
         }
 
-        if (
-            typeof process.env.PAYMENT_RETURN_URL !== "string" ||
-            !process.env.PAYMENT_RETURN_URL.trim() ||
-            typeof process.env.PAYMENT_RESULT_URL !== "string" ||
-            !process.env.PAYMENT_RESULT_URL.trim()
-        ) {
-            return res.status(503).json({
-                success: false,
-                message: "Payment return URLs are not configured.",
+        const environment =
+            settings.paymentEnvironment === "LIVE" ? "LIVE" : "TEST";
+
+        // Bank transfer: no gateway checkout. The order stays PENDING
+        // with the platform's receiving-bank details; the driver
+        // transfers manually and an admin verifies + credits it from
+        // the dashboard (adminPaymentOrderController.verifyBankTransfer).
+        if (provider === "BANK_TRANSFER") {
+            if (!bankTransferConfigured(settings)) {
+                return res.status(503).json({
+                    success: false,
+                    message: "Bank transfer abhi available nahi hai.",
+                });
+            }
+
+            const existingBankOrder = await PaymentOrder.findOne({
+                driverId: driver._id,
+                gateway: "BANK_TRANSFER",
+                status: { $in: ["PENDING", "VERIFIED"] },
+                expiresAt: { $gt: new Date() },
+            }).select("_id").lean();
+
+            if (existingBankOrder) {
+                return res.status(409).json({
+                    success: false,
+                    message: "Aapki ek payment pehle se pending hai. Pehle uska status check karein.",
+                    orderId: existingBankOrder._id,
+                });
+            }
+
+            const bankMerchantTxnReference =
+                `SF${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+
+            const bankOrder = await PaymentOrder.create({
+                merchantTxnReference: bankMerchantTxnReference,
+                driverId: driver._id,
+                gateway: "BANK_TRANSFER",
+                environment,
+                amount,
+                currency: "PKR",
+                status: "PENDING",
+                expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000),
+            });
+
+            return res.status(201).json({
+                success: true,
+                message: "Bank transfer order create ho gaya hai. Amount neeche diye gaye account mein transfer karein — admin verification ke baad wallet credit ho jayega.",
+                order: {
+                    id: bankOrder._id,
+                    provider: bankOrder.gateway,
+                    amount: bankOrder.amount,
+                    currency: bankOrder.currency,
+                    status: bankOrder.status,
+                    expiresAt: bankOrder.expiresAt,
+                },
+                bankTransfer: {
+                    bankName: settings.bankName,
+                    accountTitle: settings.bankAccountTitle,
+                    accountNumber: settings.bankAccountNumber,
+                    note: settings.bankTransferNote || "",
+                    reference: bankMerchantTxnReference,
+                },
             });
         }
 
+        const config = await PaymentGatewayConfig.findOne({
+            provider,
+            enabled: true,
+            environment,
+        }).select("+encryptedCredentials").lean();
+
+        if (!config) {
+            return res.status(503).json({
+                success: false,
+                message: "Yeh payment method abhi available nahi hai.",
+            });
+        }
+
+        // Return URL is dashboard-managed (commission settings),
+        // with PAYMENT_RETURN_URL and the production callback route
+        // as fallbacks — see services/paymentsConfigService.
+        const returnUrl = getGatewayCallbackUrl(settings, provider);
+
         const existingOrder = await PaymentOrder.findOne({
             driverId: driver._id,
+            gateway: provider,
             status: { $in: ["PENDING", "VERIFIED"] },
             expiresAt: { $gt: new Date() },
         }).select("_id").lean();
@@ -135,10 +196,10 @@ async function createTopUpOrder(req, res) {
                 config.encryptedCredentials
             );
 
-            checkout = createJazzCashCheckout({
+            checkout = CHECKOUT_BUILDERS[provider]({
                 order,
                 credentials,
-                returnUrl: process.env.PAYMENT_RETURN_URL,
+                returnUrl,
             });
         } catch (error) {
             await PaymentOrder.updateOne(
@@ -220,35 +281,56 @@ async function getAvailableTopUpMethods(req, res) {
         const settings = await CommissionSettings.findOne({
             key: "GLOBAL",
         })
-            .select("onlineTopUpEnabled paymentGateway paymentEnvironment")
+            .select("onlineTopUpEnabled paymentGateway paymentEnvironment bankName bankAccountTitle bankAccountNumber")
             .lean();
 
-        if (
-            settings?.onlineTopUpEnabled !== true ||
-            !["JAZZCASH", "SANDBOX"].includes(settings.paymentGateway)
-        ) {
+        if (settings?.onlineTopUpEnabled !== true) {
             return res.json({ success: true, methods: [] });
         }
 
         const environment =
             settings.paymentEnvironment === "LIVE" ? "LIVE" : "TEST";
 
-        const gateway = await PaymentGatewayConfig.findOne({
-            provider: "JAZZCASH",
-            enabled: true,
-            environment,
-        })
-            .select("provider environment")
-            .lean();
+        const selectedGateway = settings.paymentGateway;
+
+        const providerAllowed = (provider) =>
+            selectedGateway === provider ||
+            (selectedGateway === "SANDBOX" && provider === "JAZZCASH");
+
+        const methods = [];
+
+        for (const provider of ["JAZZCASH", "EASYPAISA", "UBL"]) {
+            if (!providerAllowed(provider)) continue;
+
+            const gateway = await PaymentGatewayConfig.findOne({
+                provider,
+                enabled: true,
+                environment,
+            })
+                .select("provider environment")
+                .lean();
+
+            if (gateway) {
+                methods.push({
+                    provider: gateway.provider,
+                    environment: gateway.environment,
+                });
+            }
+        }
+
+        if (
+            providerAllowed("BANK_TRANSFER") &&
+            bankTransferConfigured(settings)
+        ) {
+            methods.push({
+                provider: "BANK_TRANSFER",
+                environment,
+            });
+        }
 
         return res.json({
             success: true,
-            methods: gateway
-                ? [{
-                    provider: gateway.provider,
-                    environment: gateway.environment,
-                }]
-                : [],
+            methods,
         });
     } catch (error) {
         console.error("Payment methods error:", error.message);

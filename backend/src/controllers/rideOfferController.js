@@ -8,6 +8,7 @@ const CommissionSettings = require("../models/CommissionSettings");
 const DriverWallet = require("../models/DriverWallet");
 const { publishEvent } = require("../services/socketService");
 const { sendPushToUser } = require("../services/pushService");
+const { paymentsConfigured } = require("../services/paymentsConfigService");
 
 const OPEN = ["REQUESTED", "SEARCHING", "BIDDING"];
 const OFFER_DURATION_MS = 5 * 60 * 1000;
@@ -64,7 +65,13 @@ async function submitOffer(req, res) {
             key: "GLOBAL",
         }).select("topUpRequired minimumWalletBalance").lean();
 
-        if (commissionSettings?.topUpRequired === true) {
+        // Auto Free Mode: no top-up enforcement until a payment
+        // method is configured in the dashboard.
+        const topUpEnforced =
+            commissionSettings?.topUpRequired === true &&
+            (await paymentsConfigured());
+
+        if (topUpEnforced) {
             const wallet = await DriverWallet.findOne({
                 driverId: driver._id,
             }).select("balance").lean();
@@ -115,7 +122,10 @@ async function submitOffer(req, res) {
             key: "GLOBAL",
         }).lean();
 
-        if (settings?.topUpRequired === true) {
+        if (
+            settings?.topUpRequired === true &&
+            (await paymentsConfigured(settings))
+        ) {
             if (settings.isActive !== true) {
                 return res.status(503).json({
                     success: false,

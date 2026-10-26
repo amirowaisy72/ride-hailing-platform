@@ -13,6 +13,7 @@ export default function PaymentGatewaysPage() {
     const [gateways, setGateways] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [togglingKey, setTogglingKey] = useState("");
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
 
@@ -32,6 +33,29 @@ export default function PaymentGatewaysPage() {
     useEffect(() => {
         loadGateways();
     }, []);
+
+    async function toggleGateway(item) {
+        const key = `${item.provider}-${item.environment}`;
+        const action = item.enabled ? "disable" : "enable";
+
+        setTogglingKey(key);
+        setError("");
+        setMessage("");
+
+        try {
+            const result = await authenticatedAdminRequest(
+                `/admin/payment-gateways/${item.provider}/${item.environment}/${action}`,
+                { method: "POST" }
+            );
+
+            setMessage(result.message || "Gateway status updated.");
+            await loadGateways();
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setTogglingKey("");
+        }
+    }
 
     async function saveGateway(event) {
         event.preventDefault();
@@ -117,7 +141,9 @@ export default function PaymentGatewaysPage() {
                         <p className="text-xs text-amber-700">
                             Enter only real credentials issued by your payment provider.
                             Live activation requires successful provider verification.
-                            Easypaisa and UBL checkout integration is not complete yet.
+                            JazzCash, EasyPaisa aur UBL — teeno ke driver wallet
+                            top-up checkouts integrated hain; credentials save
+                            karne ke baad gateway ko Enable karein.
                         </p>
 
                         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
@@ -148,16 +174,33 @@ export default function PaymentGatewaysPage() {
                     ) : (
                         <div className="mt-4 divide-y">
                             {gateways.map((item) => (
-                                <div key={item.provider} className="flex flex-wrap items-center justify-between gap-3 py-4">
+                                <div key={`${item.provider}-${item.environment}`} className="flex flex-wrap items-center justify-between gap-3 py-4">
                                     <div>
                                         <p className="font-bold">{item.provider.replaceAll("_", " ")}</p>
                                         <p className="text-xs text-slate-500">
                                             {item.environment} · {item.configured ? "Credentials saved" : "Not configured"}
                                         </p>
                                     </div>
-                                    <span className={`rounded-lg px-3 py-1 text-xs font-bold ${item.verified ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-                                        {item.verified ? "Verified" : "Not verified"}
-                                    </span>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className={`rounded-lg px-3 py-1 text-xs font-bold ${item.enabled ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+                                            {item.enabled ? "Enabled" : "Disabled"}
+                                        </span>
+                                        <span className={`rounded-lg px-3 py-1 text-xs font-bold ${item.verified ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                                            {item.verified ? "Verified" : "Not verified"}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleGateway(item)}
+                                            disabled={togglingKey === `${item.provider}-${item.environment}`}
+                                            className={`rounded-lg px-3 py-2 text-xs font-bold text-white disabled:opacity-50 ${item.enabled ? "bg-red-600" : "bg-[#087F5B]"}`}
+                                        >
+                                            {togglingKey === `${item.provider}-${item.environment}`
+                                                ? "Working..."
+                                                : item.enabled
+                                                    ? "Disable"
+                                                    : "Enable"}
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>

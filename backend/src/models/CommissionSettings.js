@@ -51,6 +51,55 @@ const commissionSettingsSchema = new mongoose.Schema(
             default: "TEST",
         },
 
+        // Dashboard-managed gateway callback URLs. Both fall back to
+        // the PAYMENT_RETURN_URL / PAYMENT_RESULT_URL environment
+        // variables when empty (see services/paymentsConfigService).
+        paymentReturnUrl: {
+            type: String,
+            default: "",
+            trim: true,
+            maxlength: 500,
+        },
+
+        paymentResultUrl: {
+            type: String,
+            default: "",
+            trim: true,
+            maxlength: 500,
+        },
+
+        // Receiving bank account for manual BANK_TRANSFER top-ups.
+        // Drivers transfer to this account; an admin verifies the
+        // transfer and the wallet is credited. All three fields must
+        // be set for bank transfer to count as "configured".
+        bankName: {
+            type: String,
+            default: "",
+            trim: true,
+            maxlength: 120,
+        },
+
+        bankAccountTitle: {
+            type: String,
+            default: "",
+            trim: true,
+            maxlength: 120,
+        },
+
+        bankAccountNumber: {
+            type: String,
+            default: "",
+            trim: true,
+            maxlength: 64,
+        },
+
+        bankTransferNote: {
+            type: String,
+            default: "",
+            trim: true,
+            maxlength: 500,
+        },
+
         merchantPaymentsConfigured: {
             type: Boolean,
             default: false,

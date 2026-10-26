@@ -4,6 +4,10 @@ const {
     getSettlementOverview,
     runSettlementBatch,
     getFinancialReconciliation,
+    resetRideSettlement,
+    resetFailedSettlements,
+    resetParcelSettlement,
+    resetFailedParcelSettlements,
 } = require("../controllers/adminSettlementController");
 
 const router = express.Router();
@@ -24,5 +28,9 @@ router.use((req, res, next) => {
 router.get("/", getSettlementOverview);
 router.get("/reconciliation", getFinancialReconciliation);
 router.post("/process", runSettlementBatch);
+router.post("/rides/:rideId/reset", resetRideSettlement);
+router.post("/reset-failed", resetFailedSettlements);
+router.post("/parcels/:parcelOrderId/reset", resetParcelSettlement);
+router.post("/parcels/reset-failed", resetFailedParcelSettlements);
 
 module.exports = router;

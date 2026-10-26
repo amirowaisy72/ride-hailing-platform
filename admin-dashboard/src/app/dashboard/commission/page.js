@@ -25,6 +25,13 @@ export default function CommissionPage() {
     const [topUpRequired, setTopUpRequired] = useState(false);
     const [onlineTopUpEnabled, setOnlineTopUpEnabled] = useState(false);
     const [paymentGateway, setPaymentGateway] = useState("DISABLED");
+    const [paymentEnvironment, setPaymentEnvironment] = useState("TEST");
+    const [paymentReturnUrl, setPaymentReturnUrl] = useState("");
+    const [paymentResultUrl, setPaymentResultUrl] = useState("");
+    const [bankName, setBankName] = useState("");
+    const [bankAccountTitle, setBankAccountTitle] = useState("");
+    const [bankAccountNumber, setBankAccountNumber] = useState("");
+    const [bankTransferNote, setBankTransferNote] = useState("");
     const [freeWaitingMinutes, setFreeWaitingMinutes] = useState("5");
     const [waitingChargePerMinute, setWaitingChargePerMinute] = useState("0");
 
@@ -54,6 +61,13 @@ export default function CommissionPage() {
                 setTopUpRequired(settings.topUpRequired === true);
                 setOnlineTopUpEnabled(settings.onlineTopUpEnabled === true);
                 setPaymentGateway(settings.paymentGateway || "DISABLED");
+                setPaymentEnvironment(settings.paymentEnvironment || "TEST");
+                setPaymentReturnUrl(settings.paymentReturnUrl || "");
+                setPaymentResultUrl(settings.paymentResultUrl || "");
+                setBankName(settings.bankName || "");
+                setBankAccountTitle(settings.bankAccountTitle || "");
+                setBankAccountNumber(settings.bankAccountNumber || "");
+                setBankTransferNote(settings.bankTransferNote || "");
                 setFreeWaitingMinutes(String(settings.freeWaitingMinutes ?? 5));
                 setWaitingChargePerMinute(String(settings.waitingChargePerMinute ?? 0));
                 setConfigured(true);
@@ -64,6 +78,13 @@ export default function CommissionPage() {
                 setTopUpRequired(false);
                 setOnlineTopUpEnabled(false);
                 setPaymentGateway("DISABLED");
+                setPaymentEnvironment("TEST");
+                setPaymentReturnUrl("");
+                setPaymentResultUrl("");
+                setBankName("");
+                setBankAccountTitle("");
+                setBankAccountNumber("");
+                setBankTransferNote("");
                 setFreeWaitingMinutes("5");
                 setWaitingChargePerMinute("0");
                 setConfigured(false);
@@ -141,7 +162,13 @@ export default function CommissionPage() {
                         topUpRequired,
                         onlineTopUpEnabled,
                         paymentGateway,
-                        paymentEnvironment: "TEST",
+                        paymentEnvironment,
+                        paymentReturnUrl,
+                        paymentResultUrl,
+                        bankName,
+                        bankAccountTitle,
+                        bankAccountNumber,
+                        bankTransferNote,
                     }),
                 }
             );
@@ -154,6 +181,13 @@ export default function CommissionPage() {
             setTopUpRequired(data.settings.topUpRequired === true);
             setOnlineTopUpEnabled(data.settings.onlineTopUpEnabled === true);
             setPaymentGateway(data.settings.paymentGateway || "DISABLED");
+            setPaymentEnvironment(data.settings.paymentEnvironment || "TEST");
+            setPaymentReturnUrl(data.settings.paymentReturnUrl || "");
+            setPaymentResultUrl(data.settings.paymentResultUrl || "");
+            setBankName(data.settings.bankName || "");
+            setBankAccountTitle(data.settings.bankAccountTitle || "");
+            setBankAccountNumber(data.settings.bankAccountNumber || "");
+            setBankTransferNote(data.settings.bankTransferNote || "");
             setFreeWaitingMinutes(String(data.settings.freeWaitingMinutes ?? 5));
             setWaitingChargePerMinute(String(data.settings.waitingChargePerMinute ?? 0));
             setConfigured(true);
@@ -192,6 +226,140 @@ export default function CommissionPage() {
                     <p className="mt-2 text-xs text-slate-500">
                         Online top-up is disabled until secure payment verification is configured.
                     </p>
+                </div>
+                <div className="mb-5">
+                    <label
+                        htmlFor="paymentEnvironment"
+                        className="mb-2 block text-sm font-bold text-slate-900"
+                    >
+                        Payment Environment
+                    </label>
+                    <select
+                        id="paymentEnvironment"
+                        value={paymentEnvironment}
+                        onChange={(e) => setPaymentEnvironment(e.target.value)}
+                        disabled={loading || saving}
+                        className="w-full rounded-xl border border-slate-300 bg-white p-3"
+                    >
+                        <option value="TEST">Test / Sandbox</option>
+                        <option value="LIVE">Live / Production</option>
+                    </select>
+                    <p className="mt-2 text-xs text-slate-500">
+                        TEST sandbox credentials use hote hain. LIVE par switch
+                        karne se pehle us environment ki credentials save aur
+                        gateway enable karna zaroori hai — koi redeploy nahi chahiye.
+                    </p>
+                </div>
+                <div className="mb-5">
+                    <label
+                        htmlFor="paymentReturnUrl"
+                        className="mb-2 block text-sm font-bold text-slate-900"
+                    >
+                        Payment Return URL (Gateway Callback)
+                    </label>
+                    <input
+                        id="paymentReturnUrl"
+                        type="url"
+                        value={paymentReturnUrl}
+                        onChange={(e) => setPaymentReturnUrl(e.target.value)}
+                        disabled={loading || saving}
+                        placeholder="https://ride-hailing-api-tezd.onrender.com/api/v1/payments/jazzcash/callback"
+                        className="w-full rounded-xl border border-slate-300 bg-white p-3"
+                    />
+                    <p className="mt-2 text-xs text-slate-500">
+                        Khali chhorne par production callback URL default use
+                        hota hai. EasyPaisa/UBL callbacks isi base se bante hain.
+                    </p>
+                </div>
+                <div className="mb-5">
+                    <label
+                        htmlFor="paymentResultUrl"
+                        className="mb-2 block text-sm font-bold text-slate-900"
+                    >
+                        Payment Result URL (Payment ke baad redirect)
+                    </label>
+                    <input
+                        id="paymentResultUrl"
+                        type="text"
+                        value={paymentResultUrl}
+                        onChange={(e) => setPaymentResultUrl(e.target.value)}
+                        disabled={loading || saving}
+                        placeholder="com.safar.ridehailing://driver/earnings"
+                        className="w-full rounded-xl border border-slate-300 bg-white p-3"
+                    />
+                    <p className="mt-2 text-xs text-slate-500">
+                        Driver app deep link ya HTTPS URL. Khali chhorne par
+                        callback JSON response deta hai.
+                    </p>
+                </div>
+                <div className="mb-5 rounded-xl border border-slate-200 p-4">
+                    <h3 className="mb-1 text-sm font-extrabold text-slate-900">
+                        Bank Transfer Receiving Account
+                    </h3>
+                    <p className="mb-4 text-xs text-slate-500">
+                        Driver bank-transfer top-up isi account mein bheje ga.
+                        Teeno fields (bank, title, number) bharne par hi bank
+                        transfer method driver ko nazar aayega aur top-up
+                        enforcement active count hoga.
+                    </p>
+                    <label
+                        htmlFor="bankName"
+                        className="mb-2 block text-sm font-bold text-slate-900"
+                    >
+                        Bank Name
+                    </label>
+                    <input
+                        id="bankName"
+                        type="text"
+                        value={bankName}
+                        onChange={(e) => setBankName(e.target.value)}
+                        disabled={loading || saving}
+                        placeholder="e.g. Meezan Bank"
+                        className="mb-4 w-full rounded-xl border border-slate-300 bg-white p-3"
+                    />
+                    <label
+                        htmlFor="bankAccountTitle"
+                        className="mb-2 block text-sm font-bold text-slate-900"
+                    >
+                        Account Title
+                    </label>
+                    <input
+                        id="bankAccountTitle"
+                        type="text"
+                        value={bankAccountTitle}
+                        onChange={(e) => setBankAccountTitle(e.target.value)}
+                        disabled={loading || saving}
+                        className="mb-4 w-full rounded-xl border border-slate-300 bg-white p-3"
+                    />
+                    <label
+                        htmlFor="bankAccountNumber"
+                        className="mb-2 block text-sm font-bold text-slate-900"
+                    >
+                        Account Number / IBAN
+                    </label>
+                    <input
+                        id="bankAccountNumber"
+                        type="text"
+                        value={bankAccountNumber}
+                        onChange={(e) => setBankAccountNumber(e.target.value)}
+                        disabled={loading || saving}
+                        className="mb-4 w-full rounded-xl border border-slate-300 bg-white p-3"
+                    />
+                    <label
+                        htmlFor="bankTransferNote"
+                        className="mb-2 block text-sm font-bold text-slate-900"
+                    >
+                        Driver ke liye Note (optional)
+                    </label>
+                    <input
+                        id="bankTransferNote"
+                        type="text"
+                        value={bankTransferNote}
+                        onChange={(e) => setBankTransferNote(e.target.value)}
+                        disabled={loading || saving}
+                        placeholder="Transfer karte waqt reference lazmi likhein"
+                        className="w-full rounded-xl border border-slate-300 bg-white p-3"
+                    />
                 </div>
                 <label className="flex items-center justify-between gap-4">
                     <span>

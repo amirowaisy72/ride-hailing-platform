@@ -7,6 +7,7 @@ const Vehicle = require("../models/Vehicle");
 const crypto = require("node:crypto");
 const CommissionSettings = require("../models/CommissionSettings");
 const DriverWallet = require("../models/DriverWallet");
+const { paymentsConfigured } = require("../services/paymentsConfigService");
 
 const hashParcelOtp = (otp) => crypto.createHash("sha256").update(String(otp)).digest("hex");
 
@@ -261,7 +262,13 @@ const submitParcelOffer = async (req, res) => {
             key: "GLOBAL",
         }).select("topUpRequired minimumWalletBalance").lean();
 
-        if (commissionSettings?.topUpRequired === true) {
+        // Auto Free Mode: no top-up enforcement until a payment
+        // method is configured in the dashboard.
+        const topUpEnforced =
+            commissionSettings?.topUpRequired === true &&
+            (await paymentsConfigured());
+
+        if (topUpEnforced) {
             const wallet = await DriverWallet.findOne({
                 driverId: driver._id,
             }).select("balance").lean();
@@ -624,6 +631,9 @@ const updateParcelStatus = async (req, res) => {
         if (nextStatus === "DELIVERED") {
             update.deliveryOtpVerifiedAt = now;
             update.deliveryOtpHash = null;
+            // Commission settlement picks the parcel up from here
+            // (services/parcelSettlementService).
+            update.settlementStatus = "PENDING";
         }
 
         if (nextStatus === "PICKED_UP") update.pickedUpAt = now;

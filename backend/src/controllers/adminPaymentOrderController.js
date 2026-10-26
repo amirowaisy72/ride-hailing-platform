@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const PaymentOrder = require("../models/PaymentOrder");
 const { creditVerifiedPayment } = require("../services/verifiedPaymentCreditService");
+const { refundTopUpOrder } = require("../services/refundService");
 
 async function listPendingBankTransfers(req, res) {
     try {
@@ -127,7 +128,78 @@ async function verifyBankTransfer(req, res) {
     }
 }
 
+// Admin-approved refund of a credited top-up. NOTE: this reverses
+// the wallet ledger only — the actual money return on the gateway
+// side is manual (merchant portal) and its reference is recorded on
+// the order. See services/refundService.
+async function refundPaymentOrder(req, res) {
+    const { orderId } = req.params;
+    const { reason, gatewayRefundReference } = req.body || {};
+
+    if (
+        !mongoose.isValidObjectId(orderId) ||
+        (reason !== undefined &&
+            (typeof reason !== "string" || reason.length > 500)) ||
+        (gatewayRefundReference !== undefined &&
+            (typeof gatewayRefundReference !== "string" ||
+                gatewayRefundReference.length > 150))
+    ) {
+        return res.status(400).json({
+            success: false,
+            message: "Valid order id, reason (max 500) and gateway refund reference (max 150) required",
+        });
+    }
+
+    try {
+        const order = await PaymentOrder.findById(orderId).select("status").lean();
+
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: "Payment order not found",
+            });
+        }
+
+        if (order.status === "REFUNDED") {
+            return res.status(409).json({
+                success: false,
+                message: "This order has already been refunded",
+            });
+        }
+
+        if (order.status !== "CREDITED") {
+            return res.status(409).json({
+                success: false,
+                message: "Only a credited top-up can be refunded",
+            });
+        }
+
+        const result = await refundTopUpOrder(orderId, req.user._id, {
+            reason: reason || "",
+            gatewayRefundReference: gatewayRefundReference || null,
+        });
+
+        return res.json({
+            success: true,
+            message: result.alreadyRefunded
+                ? "Order was already refunded"
+                : "Top-up refunded and wallet debited",
+            result: {
+                alreadyRefunded: result.alreadyRefunded,
+                balance: result.balance,
+            },
+        });
+    } catch (error) {
+        console.error("Top-up refund error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Refund failed",
+        });
+    }
+}
+
 module.exports = {
     listPendingBankTransfers,
     verifyBankTransfer,
+    refundPaymentOrder,
 };

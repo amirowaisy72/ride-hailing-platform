@@ -3,42 +3,12 @@ const PaymentGatewayConfig = require("../models/PaymentGatewayConfig");
 const { decryptCredentials } = require("../services/paymentCredentialEncryption");
 const { verifyJazzCashResponse } = require("../services/jazzCashPaymentService");
 const { creditVerifiedPayment } = require("../services/verifiedPaymentCreditService");
+const { redirectToPaymentResult } = require("../utils/paymentResultRedirect");
 
+// Post-payment redirect: the result URL is dashboard-managed
+// (commission settings) with PAYMENT_RESULT_URL as env fallback.
 function redirectToWallet(res, order, status, message) {
-    const target = process.env.PAYMENT_RESULT_URL;
-
-    if (!target) {
-        return res.json({
-            success: status === "success",
-            message,
-            orderId: String(order._id),
-            status,
-        });
-    }
-
-    const url = new URL(target);
-
-    const isLocalhost =
-        url.hostname === "localhost" &&
-        ["http:", "https:"].includes(url.protocol);
-
-    const isSafarAppReturn =
-        url.protocol === "com.safar.ridehailing:" &&
-        url.hostname === "driver" &&
-        url.pathname === "/earnings";
-
-    if (
-        url.protocol !== "https:" &&
-        !isLocalhost &&
-        !isSafarAppReturn
-    ) {
-        throw new Error("Invalid payment result URL");
-    }
-
-    url.searchParams.set("paymentStatus", status);
-    url.searchParams.set("paymentOrderId", String(order._id));
-
-    return res.redirect(303, url.toString());
+    return redirectToPaymentResult(res, order, status, message);
 }
 
 async function handleJazzCashCallback(req, res) {

@@ -58,6 +58,7 @@ function EarningsScreen() {
     const [topUpAmount, setTopUpAmount] = useState("500");
     const [topUpLoading, setTopUpLoading] = useState(false);
     const [topUpMessage, setTopUpMessage] = useState("");
+    const [bankTransfer, setBankTransfer] = useState(null);
     const [paymentNotice, setPaymentNotice] = useState("");
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
     const [walletMessage, setWalletMessage] = useState("");
@@ -154,6 +155,7 @@ function EarningsScreen() {
 
         setTopUpLoading(true);
         setTopUpMessage("");
+        setBankTransfer(null);
 
         try {
             const result = await apiRequest("/drivers/me/wallet/top-up", {
@@ -164,6 +166,14 @@ function EarningsScreen() {
                     provider: selectedPaymentMethod,
                 }),
             });
+
+            if (result.bankTransfer) {
+                setBankTransfer(result.bankTransfer);
+                setTopUpMessage(
+                    result.message || "Bank transfer details neeche diye gaye hain."
+                );
+                return;
+            }
 
             if (
                 result.checkout?.paymentUrl &&
@@ -330,6 +340,22 @@ function EarningsScreen() {
                                 <p role="status" className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
                                     {topUpMessage}
                                 </p>
+                            )}
+
+                            {bankTransfer && (
+                                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-slate-800">
+                                    <p className="mb-2 font-bold">Bank Transfer Details</p>
+                                    <p>Bank: <strong>{bankTransfer.bankName}</strong></p>
+                                    <p>Account Title: <strong>{bankTransfer.accountTitle}</strong></p>
+                                    <p>Account Number: <strong>{bankTransfer.accountNumber}</strong></p>
+                                    <p>Reference: <strong>{bankTransfer.reference}</strong></p>
+                                    {bankTransfer.note && <p className="mt-2">{bankTransfer.note}</p>}
+                                    <p className="mt-2 text-slate-600">
+                                        Isi amount ki transfer karein aur reference lazmi
+                                        likhein. Admin verification ke baad wallet credit
+                                        ho jayega.
+                                    </p>
+                                </div>
                             )}
 
                             <button

@@ -48,9 +48,12 @@ function SummaryCard({ icon: Icon, title, value, color }) {
 export default function SettlementPage() {
     const [summary, setSummary] = useState(null);
     const [settlements, setSettlements] = useState([]);
+    const [failedRides, setFailedRides] = useState([]);
     const [audit, setAudit] = useState(null);
     const [loading, setLoading] = useState(true);
     const [auditing, setAuditing] = useState(false);
+    const [resettingId, setResettingId] = useState("");
+    const [resettingAll, setResettingAll] = useState(false);
     const [error, setError] = useState("");
     const [auditError, setAuditError] = useState("");
 
@@ -65,6 +68,7 @@ export default function SettlementPage() {
 
             setSummary(data.summary);
             setSettlements(data.recentSettlements || []);
+            setFailedRides(data.failedRides || []);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -75,6 +79,51 @@ export default function SettlementPage() {
     useEffect(() => {
         loadSettlements();
     }, [loadSettlements]);
+
+    async function resetRide(rideId) {
+        if (resettingId) return;
+
+        setResettingId(rideId);
+        setError("");
+
+        try {
+            await authenticatedAdminRequest(
+                `/admin/settlements/rides/${rideId}/reset`,
+                { method: "POST" }
+            );
+
+            await loadSettlements();
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setResettingId("");
+        }
+    }
+
+    async function resetAllFailed() {
+        if (resettingAll) return;
+
+        setResettingAll(true);
+        setError("");
+
+        try {
+            await authenticatedAdminRequest(
+                "/admin/settlements/reset-failed",
+                { method: "POST" }
+            );
+
+            await authenticatedAdminRequest(
+                "/admin/settlements/process",
+                { method: "POST" }
+            );
+
+            await loadSettlements();
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setResettingAll(false);
+        }
+    }
 
     async function runAudit() {
         if (auditing) return;
@@ -200,6 +249,80 @@ export default function SettlementPage() {
                                             </td>
                                             <td className="px-5 py-4 text-slate-500">
                                                 {formatDate(item.settledAt)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </section>
+
+                <section className="overflow-hidden rounded-[24px] bg-white shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 p-6">
+                        <div>
+                            <h3 className="flex items-center gap-2 text-lg font-extrabold">
+                                <AlertTriangle size={21} className="text-red-600" />
+                                Failed Settlements
+                            </h3>
+                            <p className="mt-1 text-xs text-slate-500">
+                                Reason is saved with every failure. Fix the cause, then reset to retry.
+                                Rides that exhausted 5 attempts only retry after a reset.
+                            </p>
+                        </div>
+
+                        {failedRides.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={resetAllFailed}
+                                disabled={resettingAll}
+                                className="rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+                            >
+                                {resettingAll ? "Resetting..." : "Reset all failed & process"}
+                            </button>
+                        )}
+                    </div>
+
+                    {loading ? (
+                        <p className="p-10 text-center text-sm text-slate-500">
+                            Loading settlements...
+                        </p>
+                    ) : failedRides.length === 0 ? (
+                        <p className="p-10 text-center text-sm text-slate-500">
+                            No failed settlements.
+                        </p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[760px] text-left text-sm">
+                                <thead className="bg-slate-50 text-xs text-slate-500">
+                                    <tr>
+                                        <th className="px-5 py-4">Ride ID</th>
+                                        <th className="px-5 py-4">Cash Fare</th>
+                                        <th className="px-5 py-4">Attempts</th>
+                                        <th className="px-5 py-4">Failure Reason</th>
+                                        <th className="px-5 py-4">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {failedRides.map((item) => (
+                                        <tr key={item.rideId} className="border-t border-slate-100">
+                                            <td className="px-5 py-4 font-mono text-xs">
+                                                {String(item.rideId).slice(-10)}
+                                            </td>
+                                            <td className="px-5 py-4">{money(item.fare)}</td>
+                                            <td className="px-5 py-4">{item.settlementAttempts}</td>
+                                            <td className="px-5 py-4 text-red-600">
+                                                {item.lastError || "—"}
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => resetRide(item.rideId)}
+                                                    disabled={resettingId === item.rideId}
+                                                    className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-50"
+                                                >
+                                                    {resettingId === item.rideId ? "Resetting..." : "Reset & retry"}
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}

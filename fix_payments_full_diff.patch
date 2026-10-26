@@ -1,0 +1,4100 @@
+diff --git a/admin-dashboard/src/app/dashboard/commission/page.js b/admin-dashboard/src/app/dashboard/commission/page.js
+index 0ac3c83..4cdbd8f 100644
+--- a/admin-dashboard/src/app/dashboard/commission/page.js
++++ b/admin-dashboard/src/app/dashboard/commission/page.js
+@@ -25,6 +25,13 @@ export default function CommissionPage() {
+     const [topUpRequired, setTopUpRequired] = useState(false);
+     const [onlineTopUpEnabled, setOnlineTopUpEnabled] = useState(false);
+     const [paymentGateway, setPaymentGateway] = useState("DISABLED");
++    const [paymentEnvironment, setPaymentEnvironment] = useState("TEST");
++    const [paymentReturnUrl, setPaymentReturnUrl] = useState("");
++    const [paymentResultUrl, setPaymentResultUrl] = useState("");
++    const [bankName, setBankName] = useState("");
++    const [bankAccountTitle, setBankAccountTitle] = useState("");
++    const [bankAccountNumber, setBankAccountNumber] = useState("");
++    const [bankTransferNote, setBankTransferNote] = useState("");
+     const [freeWaitingMinutes, setFreeWaitingMinutes] = useState("5");
+     const [waitingChargePerMinute, setWaitingChargePerMinute] = useState("0");
+ 
+@@ -54,6 +61,13 @@ export default function CommissionPage() {
+                 setTopUpRequired(settings.topUpRequired === true);
+                 setOnlineTopUpEnabled(settings.onlineTopUpEnabled === true);
+                 setPaymentGateway(settings.paymentGateway || "DISABLED");
++                setPaymentEnvironment(settings.paymentEnvironment || "TEST");
++                setPaymentReturnUrl(settings.paymentReturnUrl || "");
++                setPaymentResultUrl(settings.paymentResultUrl || "");
++                setBankName(settings.bankName || "");
++                setBankAccountTitle(settings.bankAccountTitle || "");
++                setBankAccountNumber(settings.bankAccountNumber || "");
++                setBankTransferNote(settings.bankTransferNote || "");
+                 setFreeWaitingMinutes(String(settings.freeWaitingMinutes ?? 5));
+                 setWaitingChargePerMinute(String(settings.waitingChargePerMinute ?? 0));
+                 setConfigured(true);
+@@ -64,6 +78,13 @@ export default function CommissionPage() {
+                 setTopUpRequired(false);
+                 setOnlineTopUpEnabled(false);
+                 setPaymentGateway("DISABLED");
++                setPaymentEnvironment("TEST");
++                setPaymentReturnUrl("");
++                setPaymentResultUrl("");
++                setBankName("");
++                setBankAccountTitle("");
++                setBankAccountNumber("");
++                setBankTransferNote("");
+                 setFreeWaitingMinutes("5");
+                 setWaitingChargePerMinute("0");
+                 setConfigured(false);
+@@ -141,7 +162,13 @@ export default function CommissionPage() {
+                         topUpRequired,
+                         onlineTopUpEnabled,
+                         paymentGateway,
+-                        paymentEnvironment: "TEST",
++                        paymentEnvironment,
++                        paymentReturnUrl,
++                        paymentResultUrl,
++                        bankName,
++                        bankAccountTitle,
++                        bankAccountNumber,
++                        bankTransferNote,
+                     }),
+                 }
+             );
+@@ -154,6 +181,13 @@ export default function CommissionPage() {
+             setTopUpRequired(data.settings.topUpRequired === true);
+             setOnlineTopUpEnabled(data.settings.onlineTopUpEnabled === true);
+             setPaymentGateway(data.settings.paymentGateway || "DISABLED");
++            setPaymentEnvironment(data.settings.paymentEnvironment || "TEST");
++            setPaymentReturnUrl(data.settings.paymentReturnUrl || "");
++            setPaymentResultUrl(data.settings.paymentResultUrl || "");
++            setBankName(data.settings.bankName || "");
++            setBankAccountTitle(data.settings.bankAccountTitle || "");
++            setBankAccountNumber(data.settings.bankAccountNumber || "");
++            setBankTransferNote(data.settings.bankTransferNote || "");
+             setFreeWaitingMinutes(String(data.settings.freeWaitingMinutes ?? 5));
+             setWaitingChargePerMinute(String(data.settings.waitingChargePerMinute ?? 0));
+             setConfigured(true);
+@@ -193,6 +227,140 @@ export default function CommissionPage() {
+                         Online top-up is disabled until secure payment verification is configured.
+                     </p>
+                 </div>
++                <div className="mb-5">
++                    <label
++                        htmlFor="paymentEnvironment"
++                        className="mb-2 block text-sm font-bold text-slate-900"
++                    >
++                        Payment Environment
++                    </label>
++                    <select
++                        id="paymentEnvironment"
++                        value={paymentEnvironment}
++                        onChange={(e) => setPaymentEnvironment(e.target.value)}
++                        disabled={loading || saving}
++                        className="w-full rounded-xl border border-slate-300 bg-white p-3"
++                    >
++                        <option value="TEST">Test / Sandbox</option>
++                        <option value="LIVE">Live / Production</option>
++                    </select>
++                    <p className="mt-2 text-xs text-slate-500">
++                        TEST sandbox credentials use hote hain. LIVE par switch
++                        karne se pehle us environment ki credentials save aur
++                        gateway enable karna zaroori hai — koi redeploy nahi chahiye.
++                    </p>
++                </div>
++                <div className="mb-5">
++                    <label
++                        htmlFor="paymentReturnUrl"
++                        className="mb-2 block text-sm font-bold text-slate-900"
++                    >
++                        Payment Return URL (Gateway Callback)
++                    </label>
++                    <input
++                        id="paymentReturnUrl"
++                        type="url"
++                        value={paymentReturnUrl}
++                        onChange={(e) => setPaymentReturnUrl(e.target.value)}
++                        disabled={loading || saving}
++                        placeholder="https://ride-hailing-api-tezd.onrender.com/api/v1/payments/jazzcash/callback"
++                        className="w-full rounded-xl border border-slate-300 bg-white p-3"
++                    />
++                    <p className="mt-2 text-xs text-slate-500">
++                        Khali chhorne par production callback URL default use
++                        hota hai. EasyPaisa/UBL callbacks isi base se bante hain.
++                    </p>
++                </div>
++                <div className="mb-5">
++                    <label
++                        htmlFor="paymentResultUrl"
++                        className="mb-2 block text-sm font-bold text-slate-900"
++                    >
++                        Payment Result URL (Payment ke baad redirect)
++                    </label>
++                    <input
++                        id="paymentResultUrl"
++                        type="text"
++                        value={paymentResultUrl}
++                        onChange={(e) => setPaymentResultUrl(e.target.value)}
++                        disabled={loading || saving}
++                        placeholder="com.safar.ridehailing://driver/earnings"
++                        className="w-full rounded-xl border border-slate-300 bg-white p-3"
++                    />
++                    <p className="mt-2 text-xs text-slate-500">
++                        Driver app deep link ya HTTPS URL. Khali chhorne par
++                        callback JSON response deta hai.
++                    </p>
++                </div>
++                <div className="mb-5 rounded-xl border border-slate-200 p-4">
++                    <h3 className="mb-1 text-sm font-extrabold text-slate-900">
++                        Bank Transfer Receiving Account
++                    </h3>
++                    <p className="mb-4 text-xs text-slate-500">
++                        Driver bank-transfer top-up isi account mein bheje ga.
++                        Teeno fields (bank, title, number) bharne par hi bank
++                        transfer method driver ko nazar aayega aur top-up
++                        enforcement active count hoga.
++                    </p>
++                    <label
++                        htmlFor="bankName"
++                        className="mb-2 block text-sm font-bold text-slate-900"
++                    >
++                        Bank Name
++                    </label>
++                    <input
++                        id="bankName"
++                        type="text"
++                        value={bankName}
++                        onChange={(e) => setBankName(e.target.value)}
++                        disabled={loading || saving}
++                        placeholder="e.g. Meezan Bank"
++                        className="mb-4 w-full rounded-xl border border-slate-300 bg-white p-3"
++                    />
++                    <label
++                        htmlFor="bankAccountTitle"
++                        className="mb-2 block text-sm font-bold text-slate-900"
++                    >
++                        Account Title
++                    </label>
++                    <input
++                        id="bankAccountTitle"
++                        type="text"
++                        value={bankAccountTitle}
++                        onChange={(e) => setBankAccountTitle(e.target.value)}
++                        disabled={loading || saving}
++                        className="mb-4 w-full rounded-xl border border-slate-300 bg-white p-3"
++                    />
++                    <label
++                        htmlFor="bankAccountNumber"
++                        className="mb-2 block text-sm font-bold text-slate-900"
++                    >
++                        Account Number / IBAN
++                    </label>
++                    <input
++                        id="bankAccountNumber"
++                        type="text"
++                        value={bankAccountNumber}
++                        onChange={(e) => setBankAccountNumber(e.target.value)}
++                        disabled={loading || saving}
++                        className="mb-4 w-full rounded-xl border border-slate-300 bg-white p-3"
++                    />
++                    <label
++                        htmlFor="bankTransferNote"
++                        className="mb-2 block text-sm font-bold text-slate-900"
++                    >
++                        Driver ke liye Note (optional)
++                    </label>
++                    <input
++                        id="bankTransferNote"
++                        type="text"
++                        value={bankTransferNote}
++                        onChange={(e) => setBankTransferNote(e.target.value)}
++                        disabled={loading || saving}
++                        placeholder="Transfer karte waqt reference lazmi likhein"
++                        className="w-full rounded-xl border border-slate-300 bg-white p-3"
++                    />
++                </div>
+                 <label className="flex items-center justify-between gap-4">
+                     <span>
+                         <strong className="block text-slate-900">Top-up Required</strong>
+diff --git a/admin-dashboard/src/app/dashboard/payment-gateways/page.js b/admin-dashboard/src/app/dashboard/payment-gateways/page.js
+index 3a52c6b..30dab8b 100644
+--- a/admin-dashboard/src/app/dashboard/payment-gateways/page.js
++++ b/admin-dashboard/src/app/dashboard/payment-gateways/page.js
+@@ -13,6 +13,7 @@ export default function PaymentGatewaysPage() {
+     const [gateways, setGateways] = useState([]);
+     const [loading, setLoading] = useState(true);
+     const [saving, setSaving] = useState(false);
++    const [togglingKey, setTogglingKey] = useState("");
+     const [error, setError] = useState("");
+     const [message, setMessage] = useState("");
+ 
+@@ -33,6 +34,29 @@ export default function PaymentGatewaysPage() {
+         loadGateways();
+     }, []);
+ 
++    async function toggleGateway(item) {
++        const key = `${item.provider}-${item.environment}`;
++        const action = item.enabled ? "disable" : "enable";
++
++        setTogglingKey(key);
++        setError("");
++        setMessage("");
++
++        try {
++            const result = await authenticatedAdminRequest(
++                `/admin/payment-gateways/${item.provider}/${item.environment}/${action}`,
++                { method: "POST" }
++            );
++
++            setMessage(result.message || "Gateway status updated.");
++            await loadGateways();
++        } catch (err) {
++            setError(err.message);
++        } finally {
++            setTogglingKey("");
++        }
++    }
++
+     async function saveGateway(event) {
+         event.preventDefault();
+         setSaving(true);
+@@ -117,7 +141,9 @@ export default function PaymentGatewaysPage() {
+                         <p className="text-xs text-amber-700">
+                             Enter only real credentials issued by your payment provider.
+                             Live activation requires successful provider verification.
+-                            Easypaisa and UBL checkout integration is not complete yet.
++                            JazzCash, EasyPaisa aur UBL — teeno ke driver wallet
++                            top-up checkouts integrated hain; credentials save
++                            karne ke baad gateway ko Enable karein.
+                         </p>
+ 
+                         {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+@@ -148,16 +174,33 @@ export default function PaymentGatewaysPage() {
+                     ) : (
+                         <div className="mt-4 divide-y">
+                             {gateways.map((item) => (
+-                                <div key={item.provider} className="flex flex-wrap items-center justify-between gap-3 py-4">
++                                <div key={`${item.provider}-${item.environment}`} className="flex flex-wrap items-center justify-between gap-3 py-4">
+                                     <div>
+                                         <p className="font-bold">{item.provider.replaceAll("_", " ")}</p>
+                                         <p className="text-xs text-slate-500">
+                                             {item.environment} · {item.configured ? "Credentials saved" : "Not configured"}
+                                         </p>
+                                     </div>
+-                                    <span className={`rounded-lg px-3 py-1 text-xs font-bold ${item.verified ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+-                                        {item.verified ? "Verified" : "Not verified"}
+-                                    </span>
++                                    <div className="flex flex-wrap items-center gap-2">
++                                        <span className={`rounded-lg px-3 py-1 text-xs font-bold ${item.enabled ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
++                                            {item.enabled ? "Enabled" : "Disabled"}
++                                        </span>
++                                        <span className={`rounded-lg px-3 py-1 text-xs font-bold ${item.verified ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
++                                            {item.verified ? "Verified" : "Not verified"}
++                                        </span>
++                                        <button
++                                            type="button"
++                                            onClick={() => toggleGateway(item)}
++                                            disabled={togglingKey === `${item.provider}-${item.environment}`}
++                                            className={`rounded-lg px-3 py-2 text-xs font-bold text-white disabled:opacity-50 ${item.enabled ? "bg-red-600" : "bg-[#087F5B]"}`}
++                                        >
++                                            {togglingKey === `${item.provider}-${item.environment}`
++                                                ? "Working..."
++                                                : item.enabled
++                                                    ? "Disable"
++                                                    : "Enable"}
++                                        </button>
++                                    </div>
+                                 </div>
+                             ))}
+                         </div>
+diff --git a/admin-dashboard/src/app/dashboard/settlements/page.js b/admin-dashboard/src/app/dashboard/settlements/page.js
+index 047809e..9521954 100644
+--- a/admin-dashboard/src/app/dashboard/settlements/page.js
++++ b/admin-dashboard/src/app/dashboard/settlements/page.js
+@@ -48,9 +48,12 @@ function SummaryCard({ icon: Icon, title, value, color }) {
+ export default function SettlementPage() {
+     const [summary, setSummary] = useState(null);
+     const [settlements, setSettlements] = useState([]);
++    const [failedRides, setFailedRides] = useState([]);
+     const [audit, setAudit] = useState(null);
+     const [loading, setLoading] = useState(true);
+     const [auditing, setAuditing] = useState(false);
++    const [resettingId, setResettingId] = useState("");
++    const [resettingAll, setResettingAll] = useState(false);
+     const [error, setError] = useState("");
+     const [auditError, setAuditError] = useState("");
+ 
+@@ -65,6 +68,7 @@ export default function SettlementPage() {
+ 
+             setSummary(data.summary);
+             setSettlements(data.recentSettlements || []);
++            setFailedRides(data.failedRides || []);
+         } catch (err) {
+             setError(err.message);
+         } finally {
+@@ -76,6 +80,51 @@ export default function SettlementPage() {
+         loadSettlements();
+     }, [loadSettlements]);
+ 
++    async function resetRide(rideId) {
++        if (resettingId) return;
++
++        setResettingId(rideId);
++        setError("");
++
++        try {
++            await authenticatedAdminRequest(
++                `/admin/settlements/rides/${rideId}/reset`,
++                { method: "POST" }
++            );
++
++            await loadSettlements();
++        } catch (err) {
++            setError(err.message);
++        } finally {
++            setResettingId("");
++        }
++    }
++
++    async function resetAllFailed() {
++        if (resettingAll) return;
++
++        setResettingAll(true);
++        setError("");
++
++        try {
++            await authenticatedAdminRequest(
++                "/admin/settlements/reset-failed",
++                { method: "POST" }
++            );
++
++            await authenticatedAdminRequest(
++                "/admin/settlements/process",
++                { method: "POST" }
++            );
++
++            await loadSettlements();
++        } catch (err) {
++            setError(err.message);
++        } finally {
++            setResettingAll(false);
++        }
++    }
++
+     async function runAudit() {
+         if (auditing) return;
+ 
+@@ -209,6 +258,80 @@ export default function SettlementPage() {
+                     )}
+                 </section>
+ 
++                <section className="overflow-hidden rounded-[24px] bg-white shadow-sm">
++                    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 p-6">
++                        <div>
++                            <h3 className="flex items-center gap-2 text-lg font-extrabold">
++                                <AlertTriangle size={21} className="text-red-600" />
++                                Failed Settlements
++                            </h3>
++                            <p className="mt-1 text-xs text-slate-500">
++                                Reason is saved with every failure. Fix the cause, then reset to retry.
++                                Rides that exhausted 5 attempts only retry after a reset.
++                            </p>
++                        </div>
++
++                        {failedRides.length > 0 && (
++                            <button
++                                type="button"
++                                onClick={resetAllFailed}
++                                disabled={resettingAll}
++                                className="rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
++                            >
++                                {resettingAll ? "Resetting..." : "Reset all failed & process"}
++                            </button>
++                        )}
++                    </div>
++
++                    {loading ? (
++                        <p className="p-10 text-center text-sm text-slate-500">
++                            Loading settlements...
++                        </p>
++                    ) : failedRides.length === 0 ? (
++                        <p className="p-10 text-center text-sm text-slate-500">
++                            No failed settlements.
++                        </p>
++                    ) : (
++                        <div className="overflow-x-auto">
++                            <table className="w-full min-w-[760px] text-left text-sm">
++                                <thead className="bg-slate-50 text-xs text-slate-500">
++                                    <tr>
++                                        <th className="px-5 py-4">Ride ID</th>
++                                        <th className="px-5 py-4">Cash Fare</th>
++                                        <th className="px-5 py-4">Attempts</th>
++                                        <th className="px-5 py-4">Failure Reason</th>
++                                        <th className="px-5 py-4">Action</th>
++                                    </tr>
++                                </thead>
++                                <tbody>
++                                    {failedRides.map((item) => (
++                                        <tr key={item.rideId} className="border-t border-slate-100">
++                                            <td className="px-5 py-4 font-mono text-xs">
++                                                {String(item.rideId).slice(-10)}
++                                            </td>
++                                            <td className="px-5 py-4">{money(item.fare)}</td>
++                                            <td className="px-5 py-4">{item.settlementAttempts}</td>
++                                            <td className="px-5 py-4 text-red-600">
++                                                {item.lastError || "—"}
++                                            </td>
++                                            <td className="px-5 py-4">
++                                                <button
++                                                    type="button"
++                                                    onClick={() => resetRide(item.rideId)}
++                                                    disabled={resettingId === item.rideId}
++                                                    className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold disabled:opacity-50"
++                                                >
++                                                    {resettingId === item.rideId ? "Resetting..." : "Reset & retry"}
++                                                </button>
++                                            </td>
++                                        </tr>
++                                    ))}
++                                </tbody>
++                            </table>
++                        </div>
++                    )}
++                </section>
++
+                 <section className="rounded-[24px] bg-white p-6 shadow-sm">
+                     <div className="flex flex-wrap items-start justify-between gap-4">
+                         <div>
+diff --git a/backend/scripts/migrateGatewayConfigIndex.js b/backend/scripts/migrateGatewayConfigIndex.js
+new file mode 100644
+index 0000000..0ccab95
+--- /dev/null
++++ b/backend/scripts/migrateGatewayConfigIndex.js
+@@ -0,0 +1,115 @@
++require("dotenv").config();
++
++const mongoose = require("mongoose");
++
++// One-off migration for the PaymentGatewayConfig schema change:
++// the legacy model declared `provider` as globally unique, while every
++// lookup is by { provider, environment }. This script drops the legacy
++// single-field unique index (if present) and creates the compound
++// unique index { provider: 1, environment: 1 } from the updated model.
++//
++// Idempotent and safe to re-run. Dry-run by default; pass --apply to
++// perform the index changes:
++//   node scripts/migrateGatewayConfigIndex.js          (report only)
++//   node scripts/migrateGatewayConfigIndex.js --apply  (migrate)
++//
++// Run this BEFORE deploying the updated model.
++async function main() {
++    const apply = process.argv.includes("--apply");
++
++    const uri = process.env.MONGO_URI || process.env.MONGODB_URI;
++
++    if (!uri) {
++        throw new Error("MongoDB connection string not found");
++    }
++
++    await mongoose.connect(uri);
++
++    const PaymentGatewayConfig = require(
++        "../src/models/PaymentGatewayConfig"
++    );
++
++    const collection = PaymentGatewayConfig.collection;
++
++    const indexes = await collection.indexes();
++
++    console.log("\nCurrent indexes on paymentgatewayconfigs:");
++    for (const index of indexes) {
++        console.log(
++            `- ${index.name}: ${JSON.stringify(index.key)}${index.unique ? " (unique)" : ""}`
++        );
++    }
++
++    const counts = await PaymentGatewayConfig.aggregate([
++        {
++            $group: {
++                _id: {
++                    provider: "$provider",
++                    environment: "$environment",
++                },
++                count: { $sum: 1 },
++            },
++        },
++        { $sort: { "_id.provider": 1, "_id.environment": 1 } },
++    ]);
++
++    console.log("\nDocuments per provider/environment:");
++    for (const row of counts) {
++        console.log(
++            `- ${row._id.provider} / ${row._id.environment}: ${row.count}`
++        );
++    }
++
++    const legacyIndex = indexes.find(
++        (index) =>
++            index.unique &&
++            Object.keys(index.key).length === 1 &&
++            index.key.provider === 1
++    );
++
++    const compoundExists = indexes.some(
++        (index) =>
++            index.key.provider === 1 &&
++            index.key.environment === 1 &&
++            Object.keys(index.key).length === 2
++    );
++
++    if (!legacyIndex && compoundExists) {
++        console.log(
++            "\nAlready migrated: compound unique index exists and no legacy provider-only unique index remains. Nothing to do."
++        );
++        return;
++    }
++
++    if (!apply) {
++        console.log(
++            "\nDry run only. Re-run with --apply to drop the legacy index and create the compound index."
++        );
++        return;
++    }
++
++    if (legacyIndex) {
++        await collection.dropIndex(legacyIndex.name);
++        console.log(`\nDropped legacy index: ${legacyIndex.name}`);
++    }
++
++    await PaymentGatewayConfig.syncIndexes();
++    console.log("Compound index { provider: 1, environment: 1 } ensured.");
++
++    const after = await collection.indexes();
++    console.log("\nIndexes after migration:");
++    for (const index of after) {
++        console.log(
++            `- ${index.name}: ${JSON.stringify(index.key)}${index.unique ? " (unique)" : ""}`
++        );
++    }
++}
++
++main()
++    .catch((error) => {
++        console.error("Gateway config index migration failed:", error.message);
++        process.exitCode = 1;
++    })
++    .finally(async () => {
++        await mongoose.disconnect();
++    });
+diff --git a/backend/scripts/resetFailedSettlements.js b/backend/scripts/resetFailedSettlements.js
+new file mode 100644
+index 0000000..85152ab
+--- /dev/null
++++ b/backend/scripts/resetFailedSettlements.js
+@@ -0,0 +1,96 @@
++require("dotenv").config();
++
++const mongoose = require("mongoose");
++
++// One-off recovery for rides stuck in settlementStatus "FAILED" (e.g.
++// rides that burned all 5 attempts before a root cause was fixed).
++//
++// Dry-run by default: prints what would change and writes nothing.
++// Pass --apply to perform the reset:
++//   node scripts/resetFailedSettlements.js          (dry run)
++//   node scripts/resetFailedSettlements.js --apply  (writes)
++async function main() {
++    const apply = process.argv.includes("--apply");
++
++    const uri = process.env.MONGO_URI || process.env.MONGODB_URI;
++
++    if (!uri) {
++        throw new Error("MongoDB connection string not found");
++    }
++
++    await mongoose.connect(uri);
++
++    const Ride = require("../src/models/Ride");
++    const RideSettlement = require("../src/models/RideSettlement");
++
++    const failedRides = await Ride.find({
++        settlementStatus: "FAILED",
++    })
++        .sort({ completedAt: 1, createdAt: 1 })
++        .limit(500)
++        .select("_id settlementAttempts settlementError")
++        .lean();
++
++    console.log(
++        `\nFAILED rides found: ${failedRides.length} (cap 500)`
++    );
++
++    for (const ride of failedRides.slice(0, 20)) {
++        console.log(
++            `- ${ride._id} attempts=${ride.settlementAttempts ?? 0} error="${ride.settlementError || ""}"`
++        );
++    }
++
++    if (failedRides.length > 20) {
++        console.log(`  ... and ${failedRides.length - 20} more`);
++    }
++
++    if (!apply) {
++        console.log(
++            "\nDry run only. Re-run with --apply to reset these rides to PENDING with attempts 0."
++        );
++        return;
++    }
++
++    const rideIds = failedRides.map((ride) => ride._id);
++
++    if (rideIds.length) {
++        const rideResult = await Ride.updateMany(
++            { _id: { $in: rideIds } },
++            {
++                $set: {
++                    settlementAttempts: 0,
++                    settlementStatus: "PENDING",
++                    settlementError: "",
++                },
++            }
++        );
++
++        const settlementResult = await RideSettlement.updateMany(
++            { rideId: { $in: rideIds }, status: "FAILED" },
++            {
++                $set: {
++                    status: "PENDING",
++                    lastError: "",
++                },
++            }
++        );
++
++        console.log(
++            `\nReset rides: ${rideResult.modifiedCount}; settlement rows: ${settlementResult.modifiedCount}`
++        );
++    }
++
++    console.log(
++        "Done. The settlement processor will retry these rides on its next run."
++    );
++}
++
++main()
++    .catch((error) => {
++        console.error("Reset failed settlements failed:", error.message);
++        process.exitCode = 1;
++    })
++    .finally(async () => {
++        await mongoose.disconnect();
++    });
+diff --git a/backend/src/controllers/adminCommissionController.js b/backend/src/controllers/adminCommissionController.js
+index 72569f1..5515ce9 100644
+--- a/backend/src/controllers/adminCommissionController.js
++++ b/backend/src/controllers/adminCommissionController.js
+@@ -26,6 +26,13 @@ async function updateCommissionSettings(req, res) {
+             minimumWalletBalance,
+             topUpRequired,
+             paymentGateway,
++            paymentEnvironment,
++            paymentReturnUrl,
++            paymentResultUrl,
++            bankName,
++            bankAccountTitle,
++            bankAccountNumber,
++            bankTransferNote,
+             onlineTopUpEnabled,
+             isActive,
+             freeWaitingMinutes,
+@@ -44,7 +51,9 @@ async function updateCommissionSettings(req, res) {
+             (paymentGateway !== undefined &&
+                 !["DISABLED", "SANDBOX", "JAZZCASH", "EASYPAISA", "UBL", "BANK_TRANSFER"].includes(paymentGateway)) ||
+             (paymentGateway === "SANDBOX" &&
+-                req.body.paymentEnvironment === "LIVE") ||
++                paymentEnvironment === "LIVE") ||
++            (paymentEnvironment !== undefined &&
++                !["TEST", "LIVE"].includes(paymentEnvironment)) ||
+             (onlineTopUpEnabled !== undefined &&
+                 typeof onlineTopUpEnabled !== "boolean") ||
+             !Number.isInteger(freeWaitingMinutes) ||
+@@ -75,6 +84,89 @@ async function updateCommissionSettings(req, res) {
+             }
+         }
+ 
++        // Optional receiving-bank fields for manual bank-transfer
++        // top-ups. Empty string clears a field.
++        for (const [field, value, max] of [
++            ["bankName", bankName, 120],
++            ["bankAccountTitle", bankAccountTitle, 120],
++            ["bankAccountNumber", bankAccountNumber, 64],
++            ["bankTransferNote", bankTransferNote, 500],
++        ]) {
++            if (value === undefined) continue;
++
++            if (typeof value !== "string" || value.length > max) {
++                return res.status(400).json({
++                    success: false,
++                    message: `Invalid ${field}`,
++                });
++            }
++        }
++
++        // Optional dashboard-managed payment URLs. Empty string clears
++        // the value (consumers then fall back to the environment).
++        for (const [field, value] of [
++            ["paymentReturnUrl", paymentReturnUrl],
++            ["paymentResultUrl", paymentResultUrl],
++        ]) {
++            if (value === undefined) continue;
++
++            if (typeof value !== "string" || value.length > 500) {
++                return res.status(400).json({
++                    success: false,
++                    message: `Invalid ${field}`,
++                });
++            }
++
++            const trimmed = value.trim();
++
++            if (!trimmed) continue;
++
++            let parsed;
++
++            try {
++                parsed = new URL(trimmed);
++            } catch {
++                return res.status(400).json({
++                    success: false,
++                    message: `Invalid ${field}`,
++                });
++            }
++
++            if (field === "paymentReturnUrl") {
++                if (
++                    parsed.protocol !== "https:" ||
++                    parsed.pathname !==
++                        "/api/v1/payments/jazzcash/callback"
++                ) {
++                    return res.status(400).json({
++                        success: false,
++                        message:
++                            "Payment return URL must be the HTTPS JazzCash callback URL of this backend.",
++                    });
++                }
++            } else {
++                const isAppReturn =
++                    parsed.protocol === "com.safar.ridehailing:" &&
++                    parsed.hostname === "driver" &&
++                    parsed.pathname === "/earnings";
++
++                const isLocalhost =
++                    parsed.hostname === "localhost" &&
++                    ["http:", "https:"].includes(parsed.protocol);
++
++                if (
++                    parsed.protocol !== "https:" &&
++                    !isAppReturn &&
++                    !isLocalhost
++                ) {
++                    return res.status(400).json({
++                        success: false,
++                        message: "Invalid payment result URL",
++                    });
++                }
++            }
++        }
++
+         const settings = await CommissionSettings.findOneAndUpdate(
+             { key: "GLOBAL" },
+             {
+@@ -84,7 +176,28 @@ async function updateCommissionSettings(req, res) {
+                     ...(topUpRequired !== undefined ? { topUpRequired } : {}),
+                     ...(paymentGateway !== undefined ? { paymentGateway } : {}),
+                     onlineTopUpEnabled: onlineTopUpEnabled ?? false,
+-                    paymentEnvironment: "TEST",
++                    // Environment comes from the dashboard (TEST/LIVE).
++                    // It is only changed when the admin sends it; the
++                    // schema default keeps new settings at TEST.
++                    ...(paymentEnvironment !== undefined ? { paymentEnvironment } : {}),
++                    ...(paymentReturnUrl !== undefined
++                        ? { paymentReturnUrl: paymentReturnUrl.trim() }
++                        : {}),
++                    ...(paymentResultUrl !== undefined
++                        ? { paymentResultUrl: paymentResultUrl.trim() }
++                        : {}),
++                    ...(bankName !== undefined
++                        ? { bankName: bankName.trim() }
++                        : {}),
++                    ...(bankAccountTitle !== undefined
++                        ? { bankAccountTitle: bankAccountTitle.trim() }
++                        : {}),
++                    ...(bankAccountNumber !== undefined
++                        ? { bankAccountNumber: bankAccountNumber.trim() }
++                        : {}),
++                    ...(bankTransferNote !== undefined
++                        ? { bankTransferNote: bankTransferNote.trim() }
++                        : {}),
+                     isActive,
+                     freeWaitingMinutes,
+                     waitingChargePerMinute,
+diff --git a/backend/src/controllers/adminPaymentGatewayController.js b/backend/src/controllers/adminPaymentGatewayController.js
+index 5a45540..4d6ba5e 100644
+--- a/backend/src/controllers/adminPaymentGatewayController.js
++++ b/backend/src/controllers/adminPaymentGatewayController.js
+@@ -14,7 +14,7 @@ async function listPaymentGateways(req, res) {
+     try {
+         const configs = await PaymentGatewayConfig.find({})
+             .select("+encryptedCredentials")
+-            .sort({ provider: 1 })
++            .sort({ provider: 1, environment: 1 })
+             .lean();
+ 
+         return res.json({
+@@ -111,21 +111,113 @@ async function savePaymentGateway(req, res) {
+             }
+         }
+ 
++        if (provider === "EASYPAISA") {
++            const requiredFields = [
++                "storeId",
++                "hashKey",
++                "paymentUrl",
++            ];
++
++            if (
++                requiredFields.some(
++                    (key) =>
++                        typeof credentials[key] !== "string" ||
++                        !credentials[key].trim()
++                )
++            ) {
++                return res.status(400).json({
++                    success: false,
++                    message: "All EasyPaisa merchant credential fields are required.",
++                });
++            }
++
++            let gatewayUrl;
++
++            try {
++                gatewayUrl = new URL(credentials.paymentUrl);
++            } catch {
++                return res.status(400).json({
++                    success: false,
++                    message: "Invalid EasyPaisa payment URL.",
++                });
++            }
++
++            const allowedHosts = [
++                "easypay.easypaisa.com.pk",
++                "easypaystg.easypaisa.com.pk",
++            ];
++
++            if (
++                gatewayUrl.protocol !== "https:" ||
++                !allowedHosts.includes(gatewayUrl.hostname)
++            ) {
++                return res.status(400).json({
++                    success: false,
++                    message: "Invalid EasyPaisa URL.",
++                });
++            }
++        }
++
++        if (provider === "UBL") {
++            const requiredFields = [
++                "merchantId",
++                "password",
++                "hashKey",
++                "paymentUrl",
++            ];
++
++            if (
++                requiredFields.some(
++                    (key) =>
++                        typeof credentials[key] !== "string" ||
++                        !credentials[key].trim()
++                )
++            ) {
++                return res.status(400).json({
++                    success: false,
++                    message: "All UBL merchant credential fields are required.",
++                });
++            }
++
++            let gatewayUrl;
++
++            try {
++                gatewayUrl = new URL(credentials.paymentUrl);
++            } catch {
++                return res.status(400).json({
++                    success: false,
++                    message: "Invalid UBL payment URL.",
++                });
++            }
++
++            if (gatewayUrl.protocol !== "https:") {
++                return res.status(400).json({
++                    success: false,
++                    message: "Invalid UBL URL.",
++                });
++            }
++        }
++
+         const encryptedCredentials = encryptCredentials(credentials);
+ 
++        // One document per { provider, environment }: saving LIVE
++        // credentials never overwrites the TEST document (and vice
++        // versa). Saving always disables the gateway and clears its
++        // verification — credentials must be reviewed, then explicitly
++        // enabled, and are verified by the first successful callback.
+         const config = await PaymentGatewayConfig.findOneAndUpdate(
+-            { provider },
++            { provider, environment },
+             {
+                 $set: {
+-                    environment,
+                     encryptedCredentials,
+-                    enabled: provider === "JAZZCASH" && environment === "TEST",
++                    enabled: false,
+                     verified: false,
+                     verifiedAt: null,
+                     updatedBy: req.user._id,
+                 },
+                 $setOnInsert: {
+                     provider,
++                    environment,
+                 },
+             },
+             {
+@@ -137,7 +229,7 @@ async function savePaymentGateway(req, res) {
+ 
+         return res.json({
+             success: true,
+-            message: "Gateway credentials saved securely. Gateway remains disabled until verified.",
++            message: "Gateway credentials saved securely. Gateway is disabled — enable it from the configured gateways list; it is verified by the first successful payment.",
+             gateway: {
+                 provider: config.provider,
+                 environment: config.environment,
+@@ -154,7 +246,75 @@ async function savePaymentGateway(req, res) {
+     }
+ }
+ 
++async function setPaymentGatewayEnabled(req, res, enabled) {
++    try {
++        const { provider, environment } = req.params;
++
++        if (
++            !PROVIDERS.includes(provider) ||
++            !["TEST", "LIVE"].includes(environment)
++        ) {
++            return res.status(400).json({
++                success: false,
++                message: "Valid provider and environment are required",
++            });
++        }
++
++        const config = await PaymentGatewayConfig.findOne({
++            provider,
++            environment,
++        }).select("+encryptedCredentials");
++
++        if (!config) {
++            return res.status(404).json({
++                success: false,
++                message: "Gateway is not configured for this environment. Save its credentials first.",
++            });
++        }
++
++        if (enabled && !config.encryptedCredentials) {
++            return res.status(400).json({
++                success: false,
++                message: "Gateway credentials are missing. Save credentials before enabling.",
++            });
++        }
++
++        config.enabled = enabled;
++        config.updatedBy = req.user._id;
++        await config.save();
++
++        return res.json({
++            success: true,
++            message: enabled
++                ? "Gateway enabled. It will be marked verified after the first successful payment."
++                : "Gateway disabled.",
++            gateway: {
++                provider: config.provider,
++                environment: config.environment,
++                enabled: config.enabled,
++                verified: config.verified,
++                configured: true,
++            },
++        });
++    } catch (error) {
++        return res.status(500).json({
++            success: false,
++            message: "Unable to update gateway status",
++        });
++    }
++}
++
++function enablePaymentGateway(req, res) {
++    return setPaymentGatewayEnabled(req, res, true);
++}
++
++function disablePaymentGateway(req, res) {
++    return setPaymentGatewayEnabled(req, res, false);
++}
++
+ module.exports = {
+     listPaymentGateways,
+     savePaymentGateway,
++    enablePaymentGateway,
++    disablePaymentGateway,
+ };
+\ No newline at end of file
+diff --git a/backend/src/controllers/adminPaymentOrderController.js b/backend/src/controllers/adminPaymentOrderController.js
+index 24e2ba5..c160720 100644
+--- a/backend/src/controllers/adminPaymentOrderController.js
++++ b/backend/src/controllers/adminPaymentOrderController.js
+@@ -1,6 +1,7 @@
+ const mongoose = require("mongoose");
+ const PaymentOrder = require("../models/PaymentOrder");
+ const { creditVerifiedPayment } = require("../services/verifiedPaymentCreditService");
++const { refundTopUpOrder } = require("../services/refundService");
+ 
+ async function listPendingBankTransfers(req, res) {
+     try {
+@@ -127,7 +128,78 @@ async function verifyBankTransfer(req, res) {
+     }
+ }
+ 
++// Admin-approved refund of a credited top-up. NOTE: this reverses
++// the wallet ledger only — the actual money return on the gateway
++// side is manual (merchant portal) and its reference is recorded on
++// the order. See services/refundService.
++async function refundPaymentOrder(req, res) {
++    const { orderId } = req.params;
++    const { reason, gatewayRefundReference } = req.body || {};
++
++    if (
++        !mongoose.isValidObjectId(orderId) ||
++        (reason !== undefined &&
++            (typeof reason !== "string" || reason.length > 500)) ||
++        (gatewayRefundReference !== undefined &&
++            (typeof gatewayRefundReference !== "string" ||
++                gatewayRefundReference.length > 150))
++    ) {
++        return res.status(400).json({
++            success: false,
++            message: "Valid order id, reason (max 500) and gateway refund reference (max 150) required",
++        });
++    }
++
++    try {
++        const order = await PaymentOrder.findById(orderId).select("status").lean();
++
++        if (!order) {
++            return res.status(404).json({
++                success: false,
++                message: "Payment order not found",
++            });
++        }
++
++        if (order.status === "REFUNDED") {
++            return res.status(409).json({
++                success: false,
++                message: "This order has already been refunded",
++            });
++        }
++
++        if (order.status !== "CREDITED") {
++            return res.status(409).json({
++                success: false,
++                message: "Only a credited top-up can be refunded",
++            });
++        }
++
++        const result = await refundTopUpOrder(orderId, req.user._id, {
++            reason: reason || "",
++            gatewayRefundReference: gatewayRefundReference || null,
++        });
++
++        return res.json({
++            success: true,
++            message: result.alreadyRefunded
++                ? "Order was already refunded"
++                : "Top-up refunded and wallet debited",
++            result: {
++                alreadyRefunded: result.alreadyRefunded,
++                balance: result.balance,
++            },
++        });
++    } catch (error) {
++        console.error("Top-up refund error:", error.message);
++        return res.status(500).json({
++            success: false,
++            message: error.message || "Refund failed",
++        });
++    }
++}
++
+ module.exports = {
+     listPendingBankTransfers,
+     verifyBankTransfer,
++    refundPaymentOrder,
+ };
+\ No newline at end of file
+diff --git a/backend/src/controllers/adminSettlementController.js b/backend/src/controllers/adminSettlementController.js
+index 28a6036..96e0a24 100644
+--- a/backend/src/controllers/adminSettlementController.js
++++ b/backend/src/controllers/adminSettlementController.js
+@@ -1,15 +1,19 @@
++const mongoose = require("mongoose");
+ const Ride = require("../models/Ride");
+ const RideSettlement = require("../models/RideSettlement");
++const ParcelOrder = require("../models/ParcelOrder");
++const ParcelSettlement = require("../models/ParcelSettlement");
+ const {
+     reconcileFinancialRecords,
+ } = require("../services/financialReconciliationService");
+ const {
+     processPendingSettlements,
++    processPendingParcelSettlements,
+ } = require("../services/pendingSettlementService");
+ 
+ async function getSettlementOverview(req, res) {
+     try {
+-        const [pending, settled, failed, recentSettlements] =
++        const [pending, settled, failed, recentSettlements, failedDocs] =
+             await Promise.all([
+                 Ride.countDocuments({
+                     status: "TRIP_COMPLETED",
+@@ -28,12 +32,102 @@ async function getSettlementOverview(req, res) {
+                         "rideId driverId fare commission driverEarnings settledAt"
+                     )
+                     .lean(),
++                RideSettlement.find({ status: "FAILED" })
++                    .sort({ updatedAt: -1 })
++                    .limit(50)
++                    .select(
++                        "rideId driverId fare lastError updatedAt"
++                    )
++                    .lean(),
+             ]);
+ 
++        const failedRideIds = failedDocs.map((doc) => doc.rideId);
++
++        const failedRideRows = failedRideIds.length
++            ? await Ride.find({ _id: { $in: failedRideIds } })
++                .select("settlementAttempts settlementError")
++                .lean()
++            : [];
++
++        const attemptsByRide = new Map(
++            failedRideRows.map((ride) => [
++                String(ride._id),
++                ride.settlementAttempts ?? 0,
++            ])
++        );
++
++        const failedRides = failedDocs.map((doc) => ({
++            rideId: doc.rideId,
++            driverId: doc.driverId,
++            fare: doc.fare,
++            lastError: doc.lastError || "",
++            settlementAttempts: attemptsByRide.get(String(doc.rideId)) ?? 0,
++            updatedAt: doc.updatedAt,
++        }));
++
++        const [
++            parcelPending,
++            parcelSettled,
++            parcelFailed,
++            failedParcelDocs,
++        ] = await Promise.all([
++            ParcelOrder.countDocuments({
++                status: "DELIVERED",
++                settlementStatus: "PENDING",
++            }),
++            ParcelOrder.countDocuments({
++                settlementStatus: "SETTLED",
++            }),
++            ParcelOrder.countDocuments({
++                settlementStatus: "FAILED",
++            }),
++            ParcelSettlement.find({ status: "FAILED" })
++                .sort({ updatedAt: -1 })
++                .limit(50)
++                .select(
++                    "parcelOrderId driverId fare lastError updatedAt"
++                )
++                .lean(),
++        ]);
++
++        const failedParcelIds = failedParcelDocs.map(
++            (doc) => doc.parcelOrderId
++        );
++
++        const failedParcelRows = failedParcelIds.length
++            ? await ParcelOrder.find({ _id: { $in: failedParcelIds } })
++                .select("settlementAttempts settlementError")
++                .lean()
++            : [];
++
++        const attemptsByParcel = new Map(
++            failedParcelRows.map((parcel) => [
++                String(parcel._id),
++                parcel.settlementAttempts ?? 0,
++            ])
++        );
++
++        const failedParcels = failedParcelDocs.map((doc) => ({
++            parcelOrderId: doc.parcelOrderId,
++            driverId: doc.driverId,
++            fare: doc.fare,
++            lastError: doc.lastError || "",
++            settlementAttempts:
++                attemptsByParcel.get(String(doc.parcelOrderId)) ?? 0,
++            updatedAt: doc.updatedAt,
++        }));
++
+         return res.json({
+             success: true,
+             summary: { pending, settled, failed },
++            parcelSummary: {
++                pending: parcelPending,
++                settled: parcelSettled,
++                failed: parcelFailed,
++            },
+             recentSettlements,
++            failedRides,
++            failedParcels,
+         });
+     } catch (error) {
+         console.error("Settlement overview:", error.message);
+@@ -51,9 +145,14 @@ async function runSettlementBatch(req, res) {
+             limit: 20,
+         });
+ 
++        const parcels = await processPendingParcelSettlements({
++            limit: 20,
++        });
++
+         return res.json({
+             success: true,
+             result,
++            parcels,
+         });
+     } catch (error) {
+         console.error("Settlement batch:", error.message);
+@@ -83,8 +182,274 @@ async function getFinancialReconciliation(req, res) {
+     }
+ }
+ 
++async function resetRideSettlement(req, res) {
++    try {
++        const { rideId } = req.params;
++
++        if (!mongoose.isValidObjectId(rideId)) {
++            return res.status(400).json({
++                success: false,
++                message: "Invalid ride ID",
++            });
++        }
++
++        const ride = await Ride.findById(rideId)
++            .select("settlementStatus")
++            .lean();
++
++        if (!ride) {
++            return res.status(404).json({
++                success: false,
++                message: "Ride not found",
++            });
++        }
++
++        if (ride.settlementStatus === "SETTLED") {
++            return res.status(409).json({
++                success: false,
++                message: "Ride settlement is already settled",
++            });
++        }
++
++        await Ride.updateOne(
++            { _id: rideId },
++            {
++                $set: {
++                    settlementAttempts: 0,
++                    settlementStatus: "PENDING",
++                    settlementError: "",
++                },
++            }
++        );
++
++        await RideSettlement.updateOne(
++            { rideId, status: "FAILED" },
++            {
++                $set: {
++                    status: "PENDING",
++                    lastError: "",
++                },
++            }
++        );
++
++        return res.json({
++            success: true,
++            message: "Settlement reset. It will be retried on the next processing run.",
++        });
++    } catch (error) {
++        console.error("Settlement reset:", error.message);
++
++        return res.status(500).json({
++            success: false,
++            message: "Unable to reset settlement",
++        });
++    }
++}
++
++async function resetFailedSettlements(req, res) {
++    try {
++        const dryRun =
++            req.query.dryRun === "true" || req.query.dryRun === "1";
++
++        const failedRides = await Ride.find({
++            settlementStatus: "FAILED",
++        })
++            .sort({ completedAt: 1, createdAt: 1 })
++            .limit(500)
++            .select("_id")
++            .lean();
++
++        if (dryRun) {
++            return res.json({
++                success: true,
++                dryRun: true,
++                matched: failedRides.length,
++                modified: 0,
++            });
++        }
++
++        const rideIds = failedRides.map((ride) => ride._id);
++
++        let modified = 0;
++
++        if (rideIds.length) {
++            const result = await Ride.updateMany(
++                { _id: { $in: rideIds } },
++                {
++                    $set: {
++                        settlementAttempts: 0,
++                        settlementStatus: "PENDING",
++                        settlementError: "",
++                    },
++                }
++            );
++
++            modified = result.modifiedCount ?? 0;
++
++            await RideSettlement.updateMany(
++                { rideId: { $in: rideIds }, status: "FAILED" },
++                {
++                    $set: {
++                        status: "PENDING",
++                        lastError: "",
++                    },
++                }
++            );
++        }
++
++        return res.json({
++            success: true,
++            dryRun: false,
++            matched: rideIds.length,
++            modified,
++        });
++    } catch (error) {
++        console.error("Failed settlements reset:", error.message);
++
++        return res.status(500).json({
++            success: false,
++            message: "Unable to reset failed settlements",
++        });
++    }
++}
++
++async function resetParcelSettlement(req, res) {
++    try {
++        const { parcelOrderId } = req.params;
++
++        if (!mongoose.isValidObjectId(parcelOrderId)) {
++            return res.status(400).json({
++                success: false,
++                message: "Invalid parcel order ID",
++            });
++        }
++
++        const parcel = await ParcelOrder.findById(parcelOrderId)
++            .select("settlementStatus")
++            .lean();
++
++        if (!parcel) {
++            return res.status(404).json({
++                success: false,
++                message: "Parcel order not found",
++            });
++        }
++
++        if (parcel.settlementStatus === "SETTLED") {
++            return res.status(409).json({
++                success: false,
++                message: "Parcel settlement is already settled",
++            });
++        }
++
++        await ParcelOrder.updateOne(
++            { _id: parcelOrderId },
++            {
++                $set: {
++                    settlementAttempts: 0,
++                    settlementStatus: "PENDING",
++                    settlementError: "",
++                },
++            }
++        );
++
++        await ParcelSettlement.updateOne(
++            { parcelOrderId, status: "FAILED" },
++            {
++                $set: {
++                    status: "PENDING",
++                    lastError: "",
++                },
++            }
++        );
++
++        return res.json({
++            success: true,
++            message: "Parcel settlement reset. It will be retried on the next processing run.",
++        });
++    } catch (error) {
++        console.error("Parcel settlement reset:", error.message);
++
++        return res.status(500).json({
++            success: false,
++            message: "Unable to reset parcel settlement",
++        });
++    }
++}
++
++async function resetFailedParcelSettlements(req, res) {
++    try {
++        const dryRun =
++            req.query.dryRun === "true" || req.query.dryRun === "1";
++
++        const failedParcels = await ParcelOrder.find({
++            settlementStatus: "FAILED",
++        })
++            .sort({ deliveredAt: 1, createdAt: 1 })
++            .limit(500)
++            .select("_id")
++            .lean();
++
++        if (dryRun) {
++            return res.json({
++                success: true,
++                dryRun: true,
++                matched: failedParcels.length,
++                modified: 0,
++            });
++        }
++
++        const parcelIds = failedParcels.map((parcel) => parcel._id);
++
++        let modified = 0;
++
++        if (parcelIds.length) {
++            const result = await ParcelOrder.updateMany(
++                { _id: { $in: parcelIds } },
++                {
++                    $set: {
++                        settlementAttempts: 0,
++                        settlementStatus: "PENDING",
++                        settlementError: "",
++                    },
++                }
++            );
++
++            modified = result.modifiedCount ?? 0;
++
++            await ParcelSettlement.updateMany(
++                { parcelOrderId: { $in: parcelIds }, status: "FAILED" },
++                {
++                    $set: {
++                        status: "PENDING",
++                        lastError: "",
++                    },
++                }
++            );
++        }
++
++        return res.json({
++            success: true,
++            dryRun: false,
++            matched: parcelIds.length,
++            modified,
++        });
++    } catch (error) {
++        console.error("Failed parcel settlements reset:", error.message);
++
++        return res.status(500).json({
++            success: false,
++            message: "Unable to reset failed parcel settlements",
++        });
++    }
++}
++
+ module.exports = {
+     getSettlementOverview,
+     runSettlementBatch,
+     getFinancialReconciliation,
++    resetRideSettlement,
++    resetFailedSettlements,
++    resetParcelSettlement,
++    resetFailedParcelSettlements,
+ };
+\ No newline at end of file
+diff --git a/backend/src/controllers/driverEarningsController.js b/backend/src/controllers/driverEarningsController.js
+index 3e61d0a..127b69d 100644
+--- a/backend/src/controllers/driverEarningsController.js
++++ b/backend/src/controllers/driverEarningsController.js
+@@ -1,6 +1,8 @@
+ const Driver = require("../models/Driver");
+ const Ride = require("../models/Ride");
+ const RideSettlement = require("../models/RideSettlement");
++const ParcelOrder = require("../models/ParcelOrder");
++const ParcelSettlement = require("../models/ParcelSettlement");
+ 
+ async function getMyEarnings(req, res) {
+     try {
+@@ -33,7 +35,25 @@ async function getMyEarnings(req, res) {
+             },
+         ]);
+ 
+-        const recentTrips = await RideSettlement.find({
++        const [parcelSummary] = await ParcelSettlement.aggregate([
++            {
++                $match: {
++                    driverId: driver._id,
++                    status: "SETTLED",
++                },
++            },
++            {
++                $group: {
++                    _id: null,
++                    completedParcels: { $sum: 1 },
++                    totalFares: { $sum: "$fare" },
++                    totalCommission: { $sum: "$commission" },
++                    netEarnings: { $sum: "$driverEarnings" },
++                },
++            },
++        ]);
++
++        const rideRecent = await RideSettlement.find({
+             driverId: driver._id,
+             status: "SETTLED",
+         })
+@@ -44,28 +64,73 @@ async function getMyEarnings(req, res) {
+             )
+             .lean();
+ 
++        const parcelRecent = await ParcelSettlement.find({
++            driverId: driver._id,
++            status: "SETTLED",
++        })
++            .sort({ createdAt: -1 })
++            .limit(20)
++            .select(
++                "parcelOrderId fare commission driverEarnings createdAt"
++            )
++            .lean();
++
++        const recentTrips = [
++            ...rideRecent.map((trip) => ({ ...trip, type: "RIDE" })),
++            ...parcelRecent.map((trip) => ({ ...trip, type: "PARCEL" })),
++        ]
++            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
++            .slice(0, 20);
++
+         const completedTrips = await Ride.countDocuments({
+             driverId: driver._id,
+             status: "TRIP_COMPLETED",
+         });
+ 
+-        const settledSummary = summary || {
++        const completedParcels = await ParcelOrder.countDocuments({
++            driverId: driver._id,
++            status: "DELIVERED",
++        });
++
++        const rideSummary = summary || {
+             completedTrips: 0,
+             totalFares: 0,
+             totalCommission: 0,
+             netEarnings: 0,
+         };
+ 
++        const settledParcels = parcelSummary || {
++            completedParcels: 0,
++            totalFares: 0,
++            totalCommission: 0,
++            netEarnings: 0,
++        };
++
++        const settledSummary = {
++            completedTrips:
++                rideSummary.completedTrips +
++                settledParcels.completedParcels,
++            totalFares:
++                rideSummary.totalFares + settledParcels.totalFares,
++            totalCommission:
++                rideSummary.totalCommission +
++                settledParcels.totalCommission,
++            netEarnings:
++                rideSummary.netEarnings + settledParcels.netEarnings,
++        };
++
+         return res.json({
+             success: true,
+             currency: "PKR",
+             summary: {
+                 ...settledSummary,
+-                completedTrips,
++                completedTrips: completedTrips + completedParcels,
+                 settledTrips: settledSummary.completedTrips,
+                 unsettledTrips: Math.max(
+                     0,
+-                    completedTrips - settledSummary.completedTrips
++                    completedTrips +
++                        completedParcels -
++                        settledSummary.completedTrips
+                 ),
+             },
+             recentTrips,
+diff --git a/backend/src/controllers/driverPaymentController.js b/backend/src/controllers/driverPaymentController.js
+index d357734..3d8f3cc 100644
+--- a/backend/src/controllers/driverPaymentController.js
++++ b/backend/src/controllers/driverPaymentController.js
+@@ -5,6 +5,12 @@ const PaymentGatewayConfig = require("../models/PaymentGatewayConfig");
+ const CommissionSettings = require("../models/CommissionSettings");
+ const { decryptCredentials } = require("../services/paymentCredentialEncryption");
+ const { createJazzCashCheckout } = require("../services/jazzCashPaymentService");
++const { createEasyPaisaCheckout } = require("../services/easyPaisaPaymentService");
++const { createUblCheckout } = require("../services/ublPaymentService");
++const {
++    getGatewayCallbackUrl,
++    bankTransferConfigured,
++} = require("../services/paymentsConfigService");
+ 
+ const PROVIDERS = [
+     "JAZZCASH",
+@@ -13,6 +19,12 @@ const PROVIDERS = [
+     "BANK_TRANSFER",
+ ];
+ 
++const CHECKOUT_BUILDERS = {
++    JAZZCASH: createJazzCashCheckout,
++    EASYPAISA: createEasyPaisaCheckout,
++    UBL: createUblCheckout,
++};
++
+ async function createTopUpOrder(req, res) {
+     try {
+         const amount = req.body?.amount;
+@@ -53,18 +65,85 @@ async function createTopUpOrder(req, res) {
+             });
+         }
+ 
+-        if (provider !== "JAZZCASH") {
+-            return res.status(501).json({
++        const driver = await Driver.findOne({
++            userId: req.user._id,
++            verificationStatus: "APPROVED",
++        }).select("_id").lean();
++
++        if (!driver) {
++            return res.status(403).json({
+                 success: false,
+-                message: "This payment provider is not integrated yet.",
++                message: "Approved driver account required.",
+             });
+         }
+ 
+         const environment =
+             settings.paymentEnvironment === "LIVE" ? "LIVE" : "TEST";
+ 
++        // Bank transfer: no gateway checkout. The order stays PENDING
++        // with the platform's receiving-bank details; the driver
++        // transfers manually and an admin verifies + credits it from
++        // the dashboard (adminPaymentOrderController.verifyBankTransfer).
++        if (provider === "BANK_TRANSFER") {
++            if (!bankTransferConfigured(settings)) {
++                return res.status(503).json({
++                    success: false,
++                    message: "Bank transfer abhi available nahi hai.",
++                });
++            }
++
++            const existingBankOrder = await PaymentOrder.findOne({
++                driverId: driver._id,
++                gateway: "BANK_TRANSFER",
++                status: { $in: ["PENDING", "VERIFIED"] },
++                expiresAt: { $gt: new Date() },
++            }).select("_id").lean();
++
++            if (existingBankOrder) {
++                return res.status(409).json({
++                    success: false,
++                    message: "Aapki ek payment pehle se pending hai. Pehle uska status check karein.",
++                    orderId: existingBankOrder._id,
++                });
++            }
++
++            const bankMerchantTxnReference =
++                `SF${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
++
++            const bankOrder = await PaymentOrder.create({
++                merchantTxnReference: bankMerchantTxnReference,
++                driverId: driver._id,
++                gateway: "BANK_TRANSFER",
++                environment,
++                amount,
++                currency: "PKR",
++                status: "PENDING",
++                expiresAt: new Date(Date.now() + 72 * 60 * 60 * 1000),
++            });
++
++            return res.status(201).json({
++                success: true,
++                message: "Bank transfer order create ho gaya hai. Amount neeche diye gaye account mein transfer karein — admin verification ke baad wallet credit ho jayega.",
++                order: {
++                    id: bankOrder._id,
++                    provider: bankOrder.gateway,
++                    amount: bankOrder.amount,
++                    currency: bankOrder.currency,
++                    status: bankOrder.status,
++                    expiresAt: bankOrder.expiresAt,
++                },
++                bankTransfer: {
++                    bankName: settings.bankName,
++                    accountTitle: settings.bankAccountTitle,
++                    accountNumber: settings.bankAccountNumber,
++                    note: settings.bankTransferNote || "",
++                    reference: bankMerchantTxnReference,
++                },
++            });
++        }
++
+         const config = await PaymentGatewayConfig.findOne({
+-            provider: "JAZZCASH",
++            provider,
+             enabled: true,
+             environment,
+         }).select("+encryptedCredentials").lean();
+@@ -76,32 +155,14 @@ async function createTopUpOrder(req, res) {
+             });
+         }
+ 
+-        const driver = await Driver.findOne({
+-            userId: req.user._id,
+-            verificationStatus: "APPROVED",
+-        }).select("_id").lean();
+-
+-        if (!driver) {
+-            return res.status(403).json({
+-                success: false,
+-                message: "Approved driver account required.",
+-            });
+-        }
+-
+-        if (
+-            typeof process.env.PAYMENT_RETURN_URL !== "string" ||
+-            !process.env.PAYMENT_RETURN_URL.trim() ||
+-            typeof process.env.PAYMENT_RESULT_URL !== "string" ||
+-            !process.env.PAYMENT_RESULT_URL.trim()
+-        ) {
+-            return res.status(503).json({
+-                success: false,
+-                message: "Payment return URLs are not configured.",
+-            });
+-        }
++        // Return URL is dashboard-managed (commission settings),
++        // with PAYMENT_RETURN_URL and the production callback route
++        // as fallbacks — see services/paymentsConfigService.
++        const returnUrl = getGatewayCallbackUrl(settings, provider);
+ 
+         const existingOrder = await PaymentOrder.findOne({
+             driverId: driver._id,
++            gateway: provider,
+             status: { $in: ["PENDING", "VERIFIED"] },
+             expiresAt: { $gt: new Date() },
+         }).select("_id").lean();
+@@ -135,10 +196,10 @@ async function createTopUpOrder(req, res) {
+                 config.encryptedCredentials
+             );
+ 
+-            checkout = createJazzCashCheckout({
++            checkout = CHECKOUT_BUILDERS[provider]({
+                 order,
+                 credentials,
+-                returnUrl: process.env.PAYMENT_RETURN_URL,
++                returnUrl,
+             });
+         } catch (error) {
+             await PaymentOrder.updateOne(
+@@ -220,35 +281,56 @@ async function getAvailableTopUpMethods(req, res) {
+         const settings = await CommissionSettings.findOne({
+             key: "GLOBAL",
+         })
+-            .select("onlineTopUpEnabled paymentGateway paymentEnvironment")
++            .select("onlineTopUpEnabled paymentGateway paymentEnvironment bankName bankAccountTitle bankAccountNumber")
+             .lean();
+ 
+-        if (
+-            settings?.onlineTopUpEnabled !== true ||
+-            !["JAZZCASH", "SANDBOX"].includes(settings.paymentGateway)
+-        ) {
++        if (settings?.onlineTopUpEnabled !== true) {
+             return res.json({ success: true, methods: [] });
+         }
+ 
+         const environment =
+             settings.paymentEnvironment === "LIVE" ? "LIVE" : "TEST";
+ 
+-        const gateway = await PaymentGatewayConfig.findOne({
+-            provider: "JAZZCASH",
+-            enabled: true,
+-            environment,
+-        })
+-            .select("provider environment")
+-            .lean();
++        const selectedGateway = settings.paymentGateway;
+ 
+-        return res.json({
+-            success: true,
+-            methods: gateway
+-                ? [{
++        const providerAllowed = (provider) =>
++            selectedGateway === provider ||
++            (selectedGateway === "SANDBOX" && provider === "JAZZCASH");
++
++        const methods = [];
++
++        for (const provider of ["JAZZCASH", "EASYPAISA", "UBL"]) {
++            if (!providerAllowed(provider)) continue;
++
++            const gateway = await PaymentGatewayConfig.findOne({
++                provider,
++                enabled: true,
++                environment,
++            })
++                .select("provider environment")
++                .lean();
++
++            if (gateway) {
++                methods.push({
+                     provider: gateway.provider,
+                     environment: gateway.environment,
+-                }]
+-                : [],
++                });
++            }
++        }
++
++        if (
++            providerAllowed("BANK_TRANSFER") &&
++            bankTransferConfigured(settings)
++        ) {
++            methods.push({
++                provider: "BANK_TRANSFER",
++                environment,
++            });
++        }
++
++        return res.json({
++            success: true,
++            methods,
+         });
+     } catch (error) {
+         console.error("Payment methods error:", error.message);
+diff --git a/backend/src/controllers/easyPaisaCallbackController.js b/backend/src/controllers/easyPaisaCallbackController.js
+new file mode 100644
+index 0000000..2dc0552
+--- /dev/null
++++ b/backend/src/controllers/easyPaisaCallbackController.js
+@@ -0,0 +1,183 @@
++const PaymentOrder = require("../models/PaymentOrder");
++const PaymentGatewayConfig = require("../models/PaymentGatewayConfig");
++const { decryptCredentials } = require("../services/paymentCredentialEncryption");
++const { verifyEasyPaisaResponse } = require("../services/easyPaisaPaymentService");
++const { creditVerifiedPayment } = require("../services/verifiedPaymentCreditService");
++const { redirectToPaymentResult } = require("../utils/paymentResultRedirect");
++
++// EasyPaisa return handler for DRIVER WALLET TOP-UPS only. Mirrors
++// jazzCashCallbackController: the wallet is credited solely after the
++// signed gateway response verifies against the merchant credentials
++// saved in the admin dashboard for the order's environment, and the
++// amount is re-checked against the order.
++async function easyPaisaCallback(req, res) {
++    try {
++        const response = req.body || {};
++        const orderReference = response.orderRefNum;
++
++        if (
++            typeof orderReference !== "string" ||
++            typeof response.responseCode !== "string" ||
++            typeof response.merchantHashedReq !== "string"
++        ) {
++            return res.status(400).json({
++                success: false,
++                message: "Invalid payment response.",
++            });
++        }
++
++        const order = await PaymentOrder.findOne({
++            gateway: "EASYPAISA",
++            merchantTxnReference: orderReference,
++        });
++
++        if (!order) {
++            return res.status(404).json({
++                success: false,
++                message: "Payment order not found.",
++            });
++        }
++
++        if (order.status === "CREDITED") {
++            return redirectToPaymentResult(
++                res, order, "success", "Payment already processed."
++            );
++        }
++
++        if (
++            !["PENDING", "VERIFIED"].includes(order.status) ||
++            (order.status === "PENDING" && order.expiresAt <= new Date())
++        ) {
++            return res.status(409).json({
++                success: false,
++                message: "Payment order is expired or already processed.",
++            });
++        }
++
++        const config = await PaymentGatewayConfig.findOne({
++            provider: "EASYPAISA",
++            environment: order.environment || "TEST",
++        }).select("+encryptedCredentials");
++
++        if (!config) {
++            return res.status(503).json({
++                success: false,
++                message: "Payment gateway is unavailable.",
++            });
++        }
++
++        const credentials = decryptCredentials(config.encryptedCredentials);
++
++        if (
++            response.storeId !== credentials.storeId ||
++            !verifyEasyPaisaResponse(response, credentials.hashKey)
++        ) {
++            return res.status(400).json({
++                success: false,
++                message: "Payment response verification failed.",
++            });
++        }
++
++        if (
++            response.responseCode !== "0000" ||
++            Number(response.transactionAmount) !== order.amount
++        ) {
++            await PaymentOrder.updateOne(
++                { _id: order._id, status: "PENDING" },
++                {
++                    $set: {
++                        status: "FAILED",
++                        failureReason: "Payment failed or amount mismatch.",
++                    },
++                }
++            );
++
++            return redirectToPaymentResult(
++                res,
++                order,
++                "failed",
++                "Payment failed. Wallet balance has not been changed."
++            );
++        }
++
++        const reference =
++            response.authCodeRetrievalRefNo ||
++            response.transactionRefNum;
++
++        if (typeof reference !== "string" || !reference.trim()) {
++            return res.status(400).json({
++                success: false,
++                message: "Payment reference missing; verification required.",
++            });
++        }
++
++        let verifiedOrder = order;
++
++        if (order.status === "PENDING") {
++            verifiedOrder = await PaymentOrder.findOneAndUpdate(
++                {
++                    _id: order._id,
++                    status: "PENDING",
++                    expiresAt: { $gt: new Date() },
++                },
++                {
++                    $set: {
++                        status: "VERIFIED",
++                        gatewayReference: reference.trim(),
++                        verificationReference: reference.trim(),
++                        verificationSource: "SIGNED_WEBHOOK",
++                        verifiedAmount: order.amount,
++                        verifiedAt: new Date(),
++                    },
++                },
++                { new: true }
++            );
++
++            if (!verifiedOrder) {
++                return res.status(409).json({
++                    success: false,
++                    message: "Payment order changed; check payment status.",
++                });
++            }
++        } else if (
++            order.gatewayReference !== reference.trim() ||
++            order.verifiedAmount !== order.amount ||
++            order.verificationSource !== "SIGNED_WEBHOOK"
++        ) {
++            return res.status(409).json({
++                success: false,
++                message: "Payment verification details mismatch.",
++            });
++        }
++
++        const result = await creditVerifiedPayment(verifiedOrder._id);
++
++        void result;
++
++        await PaymentGatewayConfig.updateOne(
++            { _id: config._id },
++            {
++                $set: {
++                    verified: true,
++                    verifiedAt: new Date(),
++                },
++            }
++        );
++
++        return redirectToPaymentResult(
++            res,
++            verifiedOrder,
++            "success",
++            "Payment verified and wallet credited."
++        );
++    } catch (error) {
++        console.error("EasyPaisa callback error:", error.message);
++
++        return res.status(500).json({
++            success: false,
++            message: "Payment processing failed; check order status before retrying.",
++        });
++    }
++}
++
++module.exports = { easyPaisaCallback };
+diff --git a/backend/src/controllers/jazzCashCallbackController.js b/backend/src/controllers/jazzCashCallbackController.js
+index c97d4c8..a2f0a9b 100644
+--- a/backend/src/controllers/jazzCashCallbackController.js
++++ b/backend/src/controllers/jazzCashCallbackController.js
+@@ -3,42 +3,12 @@ const PaymentGatewayConfig = require("../models/PaymentGatewayConfig");
+ const { decryptCredentials } = require("../services/paymentCredentialEncryption");
+ const { verifyJazzCashResponse } = require("../services/jazzCashPaymentService");
+ const { creditVerifiedPayment } = require("../services/verifiedPaymentCreditService");
++const { redirectToPaymentResult } = require("../utils/paymentResultRedirect");
+ 
++// Post-payment redirect: the result URL is dashboard-managed
++// (commission settings) with PAYMENT_RESULT_URL as env fallback.
+ function redirectToWallet(res, order, status, message) {
+-    const target = process.env.PAYMENT_RESULT_URL;
+-
+-    if (!target) {
+-        return res.json({
+-            success: status === "success",
+-            message,
+-            orderId: String(order._id),
+-            status,
+-        });
+-    }
+-
+-    const url = new URL(target);
+-
+-    const isLocalhost =
+-        url.hostname === "localhost" &&
+-        ["http:", "https:"].includes(url.protocol);
+-
+-    const isSafarAppReturn =
+-        url.protocol === "com.safar.ridehailing:" &&
+-        url.hostname === "driver" &&
+-        url.pathname === "/earnings";
+-
+-    if (
+-        url.protocol !== "https:" &&
+-        !isLocalhost &&
+-        !isSafarAppReturn
+-    ) {
+-        throw new Error("Invalid payment result URL");
+-    }
+-
+-    url.searchParams.set("paymentStatus", status);
+-    url.searchParams.set("paymentOrderId", String(order._id));
+-
+-    return res.redirect(303, url.toString());
++    return redirectToPaymentResult(res, order, status, message);
+ }
+ 
+ async function handleJazzCashCallback(req, res) {
+diff --git a/backend/src/controllers/parcelController.js b/backend/src/controllers/parcelController.js
+index 26420c7..94fbede 100644
+--- a/backend/src/controllers/parcelController.js
++++ b/backend/src/controllers/parcelController.js
+@@ -7,6 +7,7 @@ const Vehicle = require("../models/Vehicle");
+ const crypto = require("node:crypto");
+ const CommissionSettings = require("../models/CommissionSettings");
+ const DriverWallet = require("../models/DriverWallet");
++const { paymentsConfigured } = require("../services/paymentsConfigService");
+ 
+ const hashParcelOtp = (otp) => crypto.createHash("sha256").update(String(otp)).digest("hex");
+ 
+@@ -261,7 +262,13 @@ const submitParcelOffer = async (req, res) => {
+             key: "GLOBAL",
+         }).select("topUpRequired minimumWalletBalance").lean();
+ 
+-        if (commissionSettings?.topUpRequired === true) {
++        // Auto Free Mode: no top-up enforcement until a payment
++        // method is configured in the dashboard.
++        const topUpEnforced =
++            commissionSettings?.topUpRequired === true &&
++            (await paymentsConfigured());
++
++        if (topUpEnforced) {
+             const wallet = await DriverWallet.findOne({
+                 driverId: driver._id,
+             }).select("balance").lean();
+@@ -624,6 +631,9 @@ const updateParcelStatus = async (req, res) => {
+         if (nextStatus === "DELIVERED") {
+             update.deliveryOtpVerifiedAt = now;
+             update.deliveryOtpHash = null;
++            // Commission settlement picks the parcel up from here
++            // (services/parcelSettlementService).
++            update.settlementStatus = "PENDING";
+         }
+ 
+         if (nextStatus === "PICKED_UP") update.pickedUpAt = now;
+diff --git a/backend/src/controllers/rideOfferController.js b/backend/src/controllers/rideOfferController.js
+index 6fb923f..1e77397 100644
+--- a/backend/src/controllers/rideOfferController.js
++++ b/backend/src/controllers/rideOfferController.js
+@@ -8,6 +8,7 @@ const CommissionSettings = require("../models/CommissionSettings");
+ const DriverWallet = require("../models/DriverWallet");
+ const { publishEvent } = require("../services/socketService");
+ const { sendPushToUser } = require("../services/pushService");
++const { paymentsConfigured } = require("../services/paymentsConfigService");
+ 
+ const OPEN = ["REQUESTED", "SEARCHING", "BIDDING"];
+ const OFFER_DURATION_MS = 5 * 60 * 1000;
+@@ -64,7 +65,13 @@ async function submitOffer(req, res) {
+             key: "GLOBAL",
+         }).select("topUpRequired minimumWalletBalance").lean();
+ 
+-        if (commissionSettings?.topUpRequired === true) {
++        // Auto Free Mode: no top-up enforcement until a payment
++        // method is configured in the dashboard.
++        const topUpEnforced =
++            commissionSettings?.topUpRequired === true &&
++            (await paymentsConfigured());
++
++        if (topUpEnforced) {
+             const wallet = await DriverWallet.findOne({
+                 driverId: driver._id,
+             }).select("balance").lean();
+@@ -115,7 +122,10 @@ async function submitOffer(req, res) {
+             key: "GLOBAL",
+         }).lean();
+ 
+-        if (settings?.topUpRequired === true) {
++        if (
++            settings?.topUpRequired === true &&
++            (await paymentsConfigured(settings))
++        ) {
+             if (settings.isActive !== true) {
+                 return res.status(503).json({
+                     success: false,
+diff --git a/backend/src/controllers/ublCallbackController.js b/backend/src/controllers/ublCallbackController.js
+new file mode 100644
+index 0000000..892370b
+--- /dev/null
++++ b/backend/src/controllers/ublCallbackController.js
+@@ -0,0 +1,185 @@
++const PaymentOrder = require("../models/PaymentOrder");
++const PaymentGatewayConfig = require("../models/PaymentGatewayConfig");
++const { decryptCredentials } = require("../services/paymentCredentialEncryption");
++const { verifyUblResponse } = require("../services/ublPaymentService");
++const { creditVerifiedPayment } = require("../services/verifiedPaymentCreditService");
++const { redirectToPaymentResult } = require("../utils/paymentResultRedirect");
++
++// UBL return handler for DRIVER WALLET TOP-UPS only. Mirrors
++// jazzCashCallbackController: the wallet is credited solely after the
++// signed gateway response verifies against the merchant credentials
++// saved in the admin dashboard for the order's environment, and the
++// amount (minor units) is re-checked against the order.
++async function ublCallback(req, res) {
++    try {
++        const response = req.body || {};
++        const txnRef = response.pp_TxnRefNo;
++
++        if (
++            typeof txnRef !== "string" ||
++            typeof response.pp_ResponseCode !== "string" ||
++            typeof response.pp_SecureHash !== "string"
++        ) {
++            return res.status(400).json({
++                success: false,
++                message: "Invalid payment response.",
++            });
++        }
++
++        const order = await PaymentOrder.findOne({
++            gateway: "UBL",
++            merchantTxnReference: txnRef,
++        });
++
++        if (!order) {
++            return res.status(404).json({
++                success: false,
++                message: "Payment order not found.",
++            });
++        }
++
++        if (order.status === "CREDITED") {
++            return redirectToPaymentResult(
++                res, order, "success", "Payment already processed."
++            );
++        }
++
++        if (
++            !["PENDING", "VERIFIED"].includes(order.status) ||
++            (order.status === "PENDING" && order.expiresAt <= new Date())
++        ) {
++            return res.status(409).json({
++                success: false,
++                message: "Payment order is expired or already processed.",
++            });
++        }
++
++        const config = await PaymentGatewayConfig.findOne({
++            provider: "UBL",
++            environment: order.environment || "TEST",
++        }).select("+encryptedCredentials");
++
++        if (!config) {
++            return res.status(503).json({
++                success: false,
++                message: "Payment gateway is unavailable.",
++            });
++        }
++
++        const credentials = decryptCredentials(config.encryptedCredentials);
++
++        if (
++            response.pp_MerchantID !== credentials.merchantId ||
++            !verifyUblResponse(response, credentials.hashKey)
++        ) {
++            return res.status(400).json({
++                success: false,
++                message: "Payment response verification failed.",
++            });
++        }
++
++        if (
++            response.pp_ResponseCode !== "000" ||
++            response.pp_TxnCurrency !== "PKR" ||
++            !Number.isSafeInteger(Number(response.pp_Amount)) ||
++            Number(response.pp_Amount) !== order.amount * 100
++        ) {
++            await PaymentOrder.updateOne(
++                { _id: order._id, status: "PENDING" },
++                {
++                    $set: {
++                        status: "FAILED",
++                        failureReason: "Payment failed or amount/currency mismatch.",
++                    },
++                }
++            );
++
++            return redirectToPaymentResult(
++                res,
++                order,
++                "failed",
++                "Payment failed. Wallet balance has not been changed."
++            );
++        }
++
++        const reference =
++            response.pp_RetreivalReferenceNo ||
++            response.pp_RetrievalReferenceNo;
++
++        if (typeof reference !== "string" || !reference.trim()) {
++            return res.status(400).json({
++                success: false,
++                message: "Payment reference missing; verification required.",
++            });
++        }
++
++        let verifiedOrder = order;
++
++        if (order.status === "PENDING") {
++            verifiedOrder = await PaymentOrder.findOneAndUpdate(
++                {
++                    _id: order._id,
++                    status: "PENDING",
++                    expiresAt: { $gt: new Date() },
++                },
++                {
++                    $set: {
++                        status: "VERIFIED",
++                        gatewayReference: reference.trim(),
++                        verificationReference: reference.trim(),
++                        verificationSource: "SIGNED_WEBHOOK",
++                        verifiedAmount: order.amount,
++                        verifiedAt: new Date(),
++                    },
++                },
++                { new: true }
++            );
++
++            if (!verifiedOrder) {
++                return res.status(409).json({
++                    success: false,
++                    message: "Payment order changed; check payment status.",
++                });
++            }
++        } else if (
++            order.gatewayReference !== reference.trim() ||
++            order.verifiedAmount !== order.amount ||
++            order.verificationSource !== "SIGNED_WEBHOOK"
++        ) {
++            return res.status(409).json({
++                success: false,
++                message: "Payment verification details mismatch.",
++            });
++        }
++
++        const result = await creditVerifiedPayment(verifiedOrder._id);
++
++        void result;
++
++        await PaymentGatewayConfig.updateOne(
++            { _id: config._id },
++            {
++                $set: {
++                    verified: true,
++                    verifiedAt: new Date(),
++                },
++            }
++        );
++
++        return redirectToPaymentResult(
++            res,
++            verifiedOrder,
++            "success",
++            "Payment verified and wallet credited."
++        );
++    } catch (error) {
++        console.error("UBL callback error:", error.message);
++
++        return res.status(500).json({
++            success: false,
++            message: "Payment processing failed; check order status before retrying.",
++        });
++    }
++}
++
++module.exports = { ublCallback };
+diff --git a/backend/src/models/CommissionSettings.js b/backend/src/models/CommissionSettings.js
+index d99400c..914d060 100644
+--- a/backend/src/models/CommissionSettings.js
++++ b/backend/src/models/CommissionSettings.js
+@@ -51,6 +51,55 @@ const commissionSettingsSchema = new mongoose.Schema(
+             default: "TEST",
+         },
+ 
++        // Dashboard-managed gateway callback URLs. Both fall back to
++        // the PAYMENT_RETURN_URL / PAYMENT_RESULT_URL environment
++        // variables when empty (see services/paymentsConfigService).
++        paymentReturnUrl: {
++            type: String,
++            default: "",
++            trim: true,
++            maxlength: 500,
++        },
++
++        paymentResultUrl: {
++            type: String,
++            default: "",
++            trim: true,
++            maxlength: 500,
++        },
++
++        // Receiving bank account for manual BANK_TRANSFER top-ups.
++        // Drivers transfer to this account; an admin verifies the
++        // transfer and the wallet is credited. All three fields must
++        // be set for bank transfer to count as "configured".
++        bankName: {
++            type: String,
++            default: "",
++            trim: true,
++            maxlength: 120,
++        },
++
++        bankAccountTitle: {
++            type: String,
++            default: "",
++            trim: true,
++            maxlength: 120,
++        },
++
++        bankAccountNumber: {
++            type: String,
++            default: "",
++            trim: true,
++            maxlength: 64,
++        },
++
++        bankTransferNote: {
++            type: String,
++            default: "",
++            trim: true,
++            maxlength: 500,
++        },
++
+         merchantPaymentsConfigured: {
+             type: Boolean,
+             default: false,
+diff --git a/backend/src/models/ParcelOrder.js b/backend/src/models/ParcelOrder.js
+index 35d886a..0110e51 100644
+--- a/backend/src/models/ParcelOrder.js
++++ b/backend/src/models/ParcelOrder.js
+@@ -77,6 +77,17 @@ const parcelOrderSchema = new mongoose.Schema({
+     instructions: { type: String, maxlength: 500, default: "" },
+     pickedUpAt: { type: Date, default: null },
+     deliveredAt: { type: Date, default: null },
++    // Commission settlement (mirrors Ride): parcels settle on
++    // DELIVERED via services/parcelSettlementService.
++    settlementStatus: {
++        type: String,
++        enum: ["NOT_REQUIRED", "PENDING", "SETTLED", "FAILED"],
++        default: "NOT_REQUIRED",
++        index: true,
++    },
++    settlementAttempts: { type: Number, default: 0 },
++    settledAt: { type: Date, default: null },
++    settlementError: { type: String, default: "", maxlength: 500 },
+     pickupOtpHash: { type: String, default: null, select: false },
+     deliveryOtpHash: { type: String, default: null, select: false },
+     pickupOtpVerifiedAt: { type: Date, default: null },
+diff --git a/backend/src/models/ParcelSettlement.js b/backend/src/models/ParcelSettlement.js
+new file mode 100644
+index 0000000..7f13445
+--- /dev/null
++++ b/backend/src/models/ParcelSettlement.js
+@@ -0,0 +1,65 @@
++const mongoose = require("mongoose");
++
++// Parcel-delivery commission settlement, mirroring RideSettlement.
++const parcelSettlementSchema = new mongoose.Schema(
++    {
++        parcelOrderId: {
++            type: mongoose.Schema.Types.ObjectId,
++            ref: "ParcelOrder",
++            required: true,
++            unique: true,
++        },
++        driverId: {
++            type: mongoose.Schema.Types.ObjectId,
++            ref: "Driver",
++            required: true,
++            index: true,
++        },
++        fare: {
++            type: Number,
++            required: true,
++            min: 1,
++        },
++        commission: {
++            type: Number,
++            required: true,
++            min: 0,
++        },
++        commissionPercentage: {
++            type: Number,
++            required: true,
++            min: 0,
++            max: 100,
++        },
++        driverEarnings: {
++            type: Number,
++            required: true,
++            min: 0,
++        },
++        currency: {
++            type: String,
++            default: "PKR",
++        },
++        status: {
++            type: String,
++            enum: ["PENDING", "SETTLED", "FAILED"],
++            default: "PENDING",
++            index: true,
++        },
++        settledAt: {
++            type: Date,
++            default: null,
++        },
++        lastError: {
++            type: String,
++            default: "",
++            maxlength: 500,
++        },
++    },
++    { timestamps: true }
++);
++
++module.exports = mongoose.model(
++    "ParcelSettlement",
++    parcelSettlementSchema
++);
+diff --git a/backend/src/models/PaymentGatewayConfig.js b/backend/src/models/PaymentGatewayConfig.js
+index c553399..7ea813d 100644
+--- a/backend/src/models/PaymentGatewayConfig.js
++++ b/backend/src/models/PaymentGatewayConfig.js
+@@ -6,7 +6,6 @@ const paymentGatewayConfigSchema = new mongoose.Schema(
+             type: String,
+             enum: ["JAZZCASH", "EASYPAISA", "UBL", "BANK_TRANSFER"],
+             required: true,
+-            unique: true,
+         },
+         environment: {
+             type: String,
+@@ -40,6 +39,13 @@ const paymentGatewayConfigSchema = new mongoose.Schema(
+     { timestamps: true }
+ );
+ 
++// One configuration per provider PER environment: TEST and LIVE
++// credentials coexist and never overwrite each other.
++paymentGatewayConfigSchema.index(
++    { provider: 1, environment: 1 },
++    { unique: true }
++);
++
+ module.exports = mongoose.model(
+     "PaymentGatewayConfig",
+     paymentGatewayConfigSchema
+diff --git a/backend/src/models/PaymentOrder.js b/backend/src/models/PaymentOrder.js
+index 8fdd6b8..e7c39ef 100644
+--- a/backend/src/models/PaymentOrder.js
++++ b/backend/src/models/PaymentOrder.js
+@@ -51,6 +51,7 @@ const paymentOrderSchema = new mongoose.Schema(
+                 "CREDITED",
+                 "FAILED",
+                 "EXPIRED",
++                "REFUNDED",
+             ],
+             default: "PENDING",
+             index: true,
+@@ -104,6 +105,30 @@ const paymentOrderSchema = new mongoose.Schema(
+             maxlength: 500,
+             default: "",
+         },
++        // Admin-approved top-up refund (see services/refundService).
++        // The gateway-side money return itself is MANUAL (merchant
++        // portal); gatewayRefundReference records its reference.
++        refundedAt: {
++            type: Date,
++            default: null,
++        },
++        refundedBy: {
++            type: mongoose.Schema.Types.ObjectId,
++            ref: "User",
++            default: null,
++        },
++        refundReason: {
++            type: String,
++            trim: true,
++            maxlength: 500,
++            default: "",
++        },
++        gatewayRefundReference: {
++            type: String,
++            trim: true,
++            maxlength: 150,
++            default: null,
++        },
+     },
+     { timestamps: true }
+ );
+diff --git a/backend/src/models/Ride.js b/backend/src/models/Ride.js
+index 00b0dd6..5c91176 100644
+--- a/backend/src/models/Ride.js
++++ b/backend/src/models/Ride.js
+@@ -115,6 +115,11 @@ const rideSchema = new mongoose.Schema(
+             type: Date,
+             default: null,
+         },
++        settlementError: {
++            type: String,
++            default: "",
++            maxlength: 500,
++        },
+         currency: { type: String, default: "PKR", enum: ["PKR"] },
+         distance: { type: Number, required: true },
+         estimatedDuration: { type: Number, required: true },
+diff --git a/backend/src/models/WalletTransaction.js b/backend/src/models/WalletTransaction.js
+index 0d21cd7..8a89077 100644
+--- a/backend/src/models/WalletTransaction.js
++++ b/backend/src/models/WalletTransaction.js
+@@ -20,6 +20,11 @@ const walletTransactionSchema = new mongoose.Schema(
+             ref: "Ride",
+             default: null,
+         },
++        parcelOrderId: {
++            type: mongoose.Schema.Types.ObjectId,
++            ref: "ParcelOrder",
++            default: null,
++        },
+         type: {
+             type: String,
+             enum: [
+diff --git a/backend/src/routes/adminPaymentGatewayRoutes.js b/backend/src/routes/adminPaymentGatewayRoutes.js
+index 6156620..738824e 100644
+--- a/backend/src/routes/adminPaymentGatewayRoutes.js
++++ b/backend/src/routes/adminPaymentGatewayRoutes.js
+@@ -5,6 +5,8 @@ const { authorize } = require("../middleware/roleMiddleware");
+ const {
+     listPaymentGateways,
+     savePaymentGateway,
++    enablePaymentGateway,
++    disablePaymentGateway,
+ } = require("../controllers/adminPaymentGatewayController");
+ 
+ const router = express.Router();
+@@ -12,6 +14,7 @@ const router = express.Router();
+ const {
+     listPendingBankTransfers,
+     verifyBankTransfer,
++    refundPaymentOrder,
+ } = require("../controllers/adminPaymentOrderController");
+ 
+ router.use(protect, authorize("ADMIN"));
+@@ -19,9 +22,12 @@ router.use(protect, authorize("ADMIN"));
+ router.get("/", listPaymentGateways);
+ router.get("/bank-transfers/pending", listPendingBankTransfers);
+ router.post("/bank-transfers/:orderId/verify", verifyBankTransfer);
++router.post("/orders/:orderId/refund", refundPaymentOrder);
+ router.put("/:provider", (req, res, next) => {
+     req.body = { ...req.body, provider: req.params.provider };
+     next();
+ }, savePaymentGateway);
++router.post("/:provider/:environment/enable", enablePaymentGateway);
++router.post("/:provider/:environment/disable", disablePaymentGateway);
+ 
+ module.exports = router;
+\ No newline at end of file
+diff --git a/backend/src/routes/adminSettlementRoutes.js b/backend/src/routes/adminSettlementRoutes.js
+index b28890b..ca8247e 100644
+--- a/backend/src/routes/adminSettlementRoutes.js
++++ b/backend/src/routes/adminSettlementRoutes.js
+@@ -4,6 +4,10 @@ const {
+     getSettlementOverview,
+     runSettlementBatch,
+     getFinancialReconciliation,
++    resetRideSettlement,
++    resetFailedSettlements,
++    resetParcelSettlement,
++    resetFailedParcelSettlements,
+ } = require("../controllers/adminSettlementController");
+ 
+ const router = express.Router();
+@@ -24,5 +28,9 @@ router.use((req, res, next) => {
+ router.get("/", getSettlementOverview);
+ router.get("/reconciliation", getFinancialReconciliation);
+ router.post("/process", runSettlementBatch);
++router.post("/rides/:rideId/reset", resetRideSettlement);
++router.post("/reset-failed", resetFailedSettlements);
++router.post("/parcels/:parcelOrderId/reset", resetParcelSettlement);
++router.post("/parcels/reset-failed", resetFailedParcelSettlements);
+ 
+ module.exports = router;
+\ No newline at end of file
+diff --git a/backend/src/routes/paymentCallbackRoutes.js b/backend/src/routes/paymentCallbackRoutes.js
+index d2f5806..bc9bcbf 100644
+--- a/backend/src/routes/paymentCallbackRoutes.js
++++ b/backend/src/routes/paymentCallbackRoutes.js
+@@ -1,5 +1,7 @@
+ const express = require("express");
+ const { handleJazzCashCallback } = require("../controllers/jazzCashCallbackController");
++const { easyPaisaCallback } = require("../controllers/easyPaisaCallbackController");
++const { ublCallback } = require("../controllers/ublCallbackController");
+ 
+ const router = express.Router();
+ 
+@@ -9,4 +11,16 @@ router.post(
+     handleJazzCashCallback
+ );
+ 
+-module.exports = router;
+\ No newline at end of file
++router.post(
++    "/easypaisa/callback",
++    express.urlencoded({ extended: false, limit: "20kb" }),
++    easyPaisaCallback
++);
++
++router.post(
++    "/ubl/callback",
++    express.urlencoded({ extended: false, limit: "20kb" }),
++    ublCallback
++);
++
++module.exports = router;
+diff --git a/backend/src/services/commissionSettlementService.js b/backend/src/services/commissionSettlementService.js
+index aa57247..2ec7cff 100644
+--- a/backend/src/services/commissionSettlementService.js
++++ b/backend/src/services/commissionSettlementService.js
+@@ -7,6 +7,7 @@ const WalletTransaction = require("../models/WalletTransaction");
+ const CommissionSettings = require("../models/CommissionSettings");
+ const RideSettlement = require("../models/RideSettlement");
+ const { ensureDriverWallet } = require("./driverWalletService");
++const { paymentsConfigured } = require("./paymentsConfigService");
+ 
+ async function settleRideCommission(rideId) {
+     if (!mongoose.isValidObjectId(rideId)) {
+@@ -56,13 +57,23 @@ async function settleRideCommission(rideId) {
+             key: "GLOBAL",
+         }).session(session);
+ 
+-        if (settings?.topUpRequired === true && settings.isActive !== true) {
++        // Auto Free Mode: until a payment method is configured in the
++        // dashboard, top-ups are impossible, so commission is not
++        // enforced and settlements complete with zero commission
++        // instead of failing. Once a gateway is configured, the normal
++        // rules below apply unchanged.
++        const configured = await paymentsConfigured(settings, session);
++
++        const topUpEnforced =
++            settings?.topUpRequired === true && configured;
++
++        if (topUpEnforced && settings.isActive !== true) {
+             throw new Error("Active commission settings unavailable");
+         }
+ 
+         // Free Mode: no commission; Paid Mode: configured commission.
+         const basisPoints =
+-            settings?.topUpRequired === true && settings.isActive === true
++            topUpEnforced && settings.isActive === true
+                 ? Math.round(settings.percentage * 100)
+                 : 0;
+ 
+@@ -196,6 +207,7 @@ async function settleRideCommission(rideId) {
+             {
+                 $set: {
+                     settlementStatus: "SETTLED",
++                    settlementError: "",
+                     settledAt,
+                 },
+                 $inc: {
+diff --git a/backend/src/services/easyPaisaPaymentService.js b/backend/src/services/easyPaisaPaymentService.js
+new file mode 100644
+index 0000000..f2f9657
+--- /dev/null
++++ b/backend/src/services/easyPaisaPaymentService.js
+@@ -0,0 +1,163 @@
++const crypto = require("crypto");
++
++// EasyPaisa hosted-checkout integration for DRIVER WALLET TOP-UPS,
++// mirroring services/jazzCashPaymentService.js: a signed checkout form
++// is built from the dashboard-saved merchant credentials, and the
++// gateway's signed response is verified (timing-safe) before the
++// callback controller credits the wallet.
++//
++// Credentials contract (admin dashboard, provider EASYPAISA):
++//   storeId    — EasyPaisa merchant store id
++//   hashKey    — merchant hash key issued with the store
++//   paymentUrl — hosted checkout URL (easypay / easypaystg hosts)
++
++const HASH_FIELD = "merchantHashedReq";
++
++function generateMerchantHash(fields, hashKey) {
++    if (typeof hashKey !== "string" || !hashKey.trim()) {
++        throw new Error("EasyPaisa hash key is required");
++    }
++
++    const values = Object.keys(fields)
++        .filter(
++            (key) =>
++                key !== HASH_FIELD &&
++                fields[key] !== undefined &&
++                fields[key] !== null &&
++                String(fields[key]) !== ""
++        )
++        .sort()
++        .map((key) => String(fields[key]));
++
++    const message = `${hashKey}&${values.join("&")}`;
++    const latin1Message = Buffer.from(
++        Buffer.from(message, "utf8").toString("latin1"),
++        "latin1"
++    );
++
++    return crypto
++        .createHmac("sha256", Buffer.from(hashKey, "utf8"))
++        .update(latin1Message)
++        .digest("hex");
++}
++
++function createEasyPaisaCheckout({ order, credentials, returnUrl }) {
++    if (!order || !credentials) {
++        throw new Error("Payment order and credentials are required");
++    }
++
++    if (
++        !Number.isSafeInteger(order.amount) ||
++        order.amount < 1 ||
++        order.amount > 1000000
++    ) {
++        throw new Error("Invalid payment amount");
++    }
++
++    const { storeId, hashKey, paymentUrl } = credentials;
++
++    if (!storeId || !hashKey || !paymentUrl) {
++        throw new Error("EasyPaisa merchant configuration is incomplete");
++    }
++
++    if (typeof returnUrl !== "string" || !returnUrl.trim()) {
++        throw new Error("Payment return URL is required");
++    }
++
++    const callbackUrl = new URL(returnUrl);
++
++    if (
++        callbackUrl.protocol !== "https:" ||
++        callbackUrl.pathname !== "/api/v1/payments/easypaisa/callback"
++    ) {
++        throw new Error("Invalid EasyPaisa callback URL");
++    }
++
++    const url = new URL(paymentUrl);
++
++    const allowedHosts = [
++        "easypay.easypaisa.com.pk",
++        "easypaystg.easypaisa.com.pk",
++    ];
++
++    if (
++        url.protocol !== "https:" ||
++        !allowedHosts.includes(url.hostname)
++    ) {
++        throw new Error("Unapproved EasyPaisa payment URL");
++    }
++
++    const now = new Date();
++    const expiry = new Date(now.getTime() + 15 * 60 * 1000);
++
++    const formatTimestamp = (date) =>
++        date.getFullYear().toString() +
++        String(date.getMonth() + 1).padStart(2, "0") +
++        String(date.getDate()).padStart(2, "0") +
++        String(date.getHours()).padStart(2, "0") +
++        String(date.getMinutes()).padStart(2, "0") +
++        String(date.getSeconds()).padStart(2, "0");
++
++    const fields = {
++        storeId,
++        orderRefNum: order.merchantTxnReference,
++        transactionAmount: order.amount.toFixed(2),
++        transactionCurrency: "PKR",
++        paymentMethod: credentials.paymentMethod || "MA",
++        postBackURL: returnUrl,
++        transactionDateTime: formatTimestamp(now),
++        expiryDateTime: formatTimestamp(expiry),
++        description: "Safar driver wallet top-up",
++    };
++
++    fields[HASH_FIELD] = generateMerchantHash(fields, hashKey);
++
++    return {
++        paymentUrl: url.toString(),
++        fields,
++    };
++}
++
++function verifyEasyPaisaResponse(response, hashKey) {
++    if (
++        !response ||
++        typeof response !== "object" ||
++        typeof response[HASH_FIELD] !== "string" ||
++        typeof response.orderRefNum !== "string" ||
++        typeof response.responseCode !== "string"
++    ) {
++        return false;
++    }
++
++    const fields = Object.fromEntries(
++        Object.entries(response).filter(
++            ([key, value]) =>
++                key !== HASH_FIELD &&
++                value !== undefined &&
++                value !== null &&
++                String(value) !== ""
++        )
++    );
++
++    const expected = generateMerchantHash(fields, hashKey).toUpperCase();
++    const received = response[HASH_FIELD].toUpperCase();
++
++    if (
++        !/^[A-F0-9]{64}$/.test(received) ||
++        !/^[A-F0-9]{64}$/.test(expected)
++    ) {
++        return false;
++    }
++
++    return crypto.timingSafeEqual(
++        Buffer.from(expected, "hex"),
++        Buffer.from(received, "hex")
++    );
++}
++
++module.exports = {
++    createEasyPaisaCheckout,
++    generateMerchantHash,
++    verifyEasyPaisaResponse,
++    EASYPAISA_HASH_FIELD: HASH_FIELD,
++};
+diff --git a/backend/src/services/parcelSettlementService.js b/backend/src/services/parcelSettlementService.js
+new file mode 100644
+index 0000000..8069732
+--- /dev/null
++++ b/backend/src/services/parcelSettlementService.js
+@@ -0,0 +1,236 @@
++const mongoose = require("mongoose");
++
++const ParcelOrder = require("../models/ParcelOrder");
++const DriverWallet = require("../models/DriverWallet");
++const WalletTransaction = require("../models/WalletTransaction");
++const CommissionSettings = require("../models/CommissionSettings");
++const ParcelSettlement = require("../models/ParcelSettlement");
++const { ensureDriverWallet } = require("./driverWalletService");
++const { paymentsConfigured } = require("./paymentsConfigService");
++
++// Parcel commission settlement, mirroring settleRideCommission for
++// rides: same GLOBAL settings, same auto free-mode rule, same wallet
++// CAS debit. Idempotency key: `commission:parcel:<parcelOrderId>`.
++// The fare is the accepted final price; the requested price is the
++// fallback when no final price was recorded.
++async function settleParcelCommission(parcelOrderId) {
++    if (!mongoose.isValidObjectId(parcelOrderId)) {
++        throw new Error("Invalid parcel order ID");
++    }
++
++    return mongoose.connection.transaction(async (session) => {
++        const existing = await ParcelSettlement.findOne({
++            parcelOrderId,
++        }).session(session);
++
++        if (existing?.status === "SETTLED") {
++            return {
++                alreadySettled: true,
++                settlement: existing,
++            };
++        }
++
++        if (existing && !["PENDING", "FAILED"].includes(existing.status)) {
++            throw new Error("Invalid settlement status");
++        }
++
++        const idempotencyKey = `commission:parcel:${parcelOrderId}`;
++
++        const previousDebit = await WalletTransaction.findOne({
++            idempotencyKey,
++        }).session(session);
++
++        if (previousDebit) {
++            throw new Error(
++                "Existing commission debit requires manual reconciliation"
++            );
++        }
++
++        const parcel = await ParcelOrder.findById(parcelOrderId)
++            .session(session);
++
++        const fare =
++            Number.isSafeInteger(parcel?.finalPrice) && parcel.finalPrice > 0
++                ? parcel.finalPrice
++                : Number.isSafeInteger(parcel?.requestedPrice) &&
++                    parcel.requestedPrice > 0
++                    ? parcel.requestedPrice
++                    : null;
++
++        if (
++            !parcel ||
++            parcel.status !== "DELIVERED" ||
++            !parcel.driverId ||
++            fare === null
++        ) {
++            throw new Error("Invalid delivered parcel");
++        }
++
++        const settings = await CommissionSettings.findOne({
++            key: "GLOBAL",
++        }).session(session);
++
++        // Auto Free Mode (same rule as rides): no configured payment
++        // method → zero commission, settle as free, never fail.
++        const configured = await paymentsConfigured(settings, session);
++
++        const topUpEnforced =
++            settings?.topUpRequired === true && configured;
++
++        if (topUpEnforced && settings.isActive !== true) {
++            throw new Error("Active commission settings unavailable");
++        }
++
++        const basisPoints =
++            topUpEnforced && settings.isActive === true
++                ? Math.round(settings.percentage * 100)
++                : 0;
++
++        if (
++            !Number.isSafeInteger(basisPoints) ||
++            basisPoints < 0 ||
++            basisPoints > 10000
++        ) {
++            throw new Error("Invalid commission rate");
++        }
++
++        const commission = Math.round((fare * basisPoints) / 10000);
++
++        if (
++            !Number.isSafeInteger(commission) ||
++            commission < 0 ||
++            commission > fare
++        ) {
++            throw new Error("Invalid calculated commission");
++        }
++
++        const wallet = await ensureDriverWallet(
++            parcel.driverId,
++            session
++        );
++
++        if (
++            !Number.isSafeInteger(wallet.balance) ||
++            wallet.balance < commission
++        ) {
++            throw new Error("Insufficient driver wallet balance");
++        }
++
++        let balanceAfter = wallet.balance;
++
++        if (commission > 0) {
++            const updatedWallet = await DriverWallet.findOneAndUpdate(
++                {
++                    _id: wallet._id,
++                    balance: wallet.balance,
++                },
++                {
++                    $inc: {
++                        balance: -commission,
++                        totalCommission: commission,
++                    },
++                },
++                {
++                    returnDocument: "after",
++                    session,
++                }
++            );
++
++            if (!updatedWallet) {
++                throw new Error("Wallet balance changed; retry required");
++            }
++
++            balanceAfter = updatedWallet.balance;
++
++            await WalletTransaction.create(
++                [
++                    {
++                        walletId: wallet._id,
++                        driverId: parcel.driverId,
++                        rideId: null,
++                        parcelOrderId: parcel._id,
++                        type: "COMMISSION_DEBIT",
++                        amount: commission,
++                        balanceBefore: wallet.balance,
++                        balanceAfter,
++                        description: `Commission for parcel ${parcel._id}`,
++                        idempotencyKey,
++                    },
++                ],
++                { session }
++            );
++        }
++
++        const settledAt = new Date();
++
++        const settlement = existing
++            ? await ParcelSettlement.findOneAndUpdate(
++                {
++                    _id: existing._id,
++                    status: existing.status,
++                },
++                {
++                    $set: {
++                        driverId: parcel.driverId,
++                        fare,
++                        commission,
++                        commissionPercentage: basisPoints / 100,
++                        driverEarnings: fare - commission,
++                        currency: "PKR",
++                        status: "SETTLED",
++                        settledAt,
++                        lastError: "",
++                    },
++                },
++                { session, returnDocument: "after" }
++            )
++            : null;
++
++        if (existing && !settlement) {
++            throw new Error("Settlement changed; retry required");
++        }
++
++        const [createdSettlement] = existing ? [null] : await ParcelSettlement.create(
++            [
++                {
++                    parcelOrderId: parcel._id,
++                    driverId: parcel.driverId,
++                    fare,
++                    commission,
++                    commissionPercentage: basisPoints / 100,
++                    driverEarnings: fare - commission,
++                    currency: "PKR",
++                    status: "SETTLED",
++                    settledAt,
++                },
++            ],
++            { session }
++        );
++
++        await ParcelOrder.updateOne(
++            {
++                _id: parcel._id,
++                status: "DELIVERED",
++            },
++            {
++                $set: {
++                    settlementStatus: "SETTLED",
++                    settlementError: "",
++                    settledAt,
++                },
++                $inc: {
++                    settlementAttempts: 1,
++                },
++            },
++            { session }
++        );
++
++        return {
++            alreadySettled: false,
++            settlement: settlement || createdSettlement,
++            balanceAfter,
++        };
++    });
++}
++
++module.exports = { settleParcelCommission };
+diff --git a/backend/src/services/paymentsConfigService.js b/backend/src/services/paymentsConfigService.js
+new file mode 100644
+index 0000000..6643b25
+--- /dev/null
++++ b/backend/src/services/paymentsConfigService.js
+@@ -0,0 +1,127 @@
++const CommissionSettings = require("../models/CommissionSettings");
++const PaymentGatewayConfig = require("../models/PaymentGatewayConfig");
++
++// Production callback route (deployed backend). Used as the default
++// return URL when neither the dashboard setting nor the environment
++// provides one, so a fresh deployment works without .env edits.
++const DEFAULT_PAYMENT_RETURN_URL =
++    "https://ride-hailing-api-tezd.onrender.com/api/v1/payments/jazzcash/callback";
++
++// Single source of truth for "can drivers actually pay online right
++// now?". Until at least one payment method is configured, the platform
++// runs in FREE mode: commission enforcement is skipped everywhere and
++// settlements complete with zero commission instead of failing.
++// The moment a gateway (or the bank-transfer receiving account) is
++// configured, normal commission behaviour resumes automatically —
++// no flags to flip, no redeploy.
++
++function getActiveEnvironment(settings) {
++    return settings?.paymentEnvironment === "LIVE" ? "LIVE" : "TEST";
++}
++
++function bankTransferConfigured(settings) {
++    return Boolean(
++        typeof settings?.bankName === "string" &&
++        settings.bankName.trim() &&
++        typeof settings?.bankAccountTitle === "string" &&
++        settings.bankAccountTitle.trim() &&
++        typeof settings?.bankAccountNumber === "string" &&
++        settings.bankAccountNumber.trim()
++    );
++}
++
++async function paymentsConfigured(settings = null, session = null) {
++    let globalSettings = settings;
++
++    if (!globalSettings) {
++        globalSettings = await CommissionSettings.findOne({
++            key: "GLOBAL",
++        }).lean();
++    }
++
++    if (bankTransferConfigured(globalSettings)) {
++        return true;
++    }
++
++    const environment = getActiveEnvironment(globalSettings);
++
++    let query = PaymentGatewayConfig.findOne({
++        provider: { $in: ["JAZZCASH", "EASYPAISA", "UBL"] },
++        enabled: true,
++        environment,
++        encryptedCredentials: {
++            $exists: true,
++            $nin: [null, ""],
++        },
++    }).select("_id");
++
++    if (session) {
++        query = query.session(session);
++    }
++
++    const config = await query.lean();
++
++    return Boolean(config);
++}
++
++// Dashboard setting first, environment as fallback, production route
++// as the final default.
++function getPaymentReturnUrl(settings) {
++    const fromSettings =
++        typeof settings?.paymentReturnUrl === "string"
++            ? settings.paymentReturnUrl.trim()
++            : "";
++
++    return (
++        fromSettings ||
++        process.env.PAYMENT_RETURN_URL ||
++        DEFAULT_PAYMENT_RETURN_URL
++    );
++}
++
++function getPaymentResultUrl(settings) {
++    const fromSettings =
++        typeof settings?.paymentResultUrl === "string"
++            ? settings.paymentResultUrl.trim()
++            : "";
++
++    return fromSettings || process.env.PAYMENT_RESULT_URL || "";
++}
++
++// Every gateway's callback lives under /api/v1/payments/<provider>/
++// callback on the same backend, so a provider callback URL is derived
++// from the configured JazzCash return URL by swapping the provider
++// path segment.
++function getGatewayCallbackUrl(settings, provider) {
++    const base = getPaymentReturnUrl(settings);
++
++    if (provider === "JAZZCASH") {
++        return base;
++    }
++
++    const segment = `/jazzcash/callback`;
++
++    if (base.includes(segment)) {
++        return base.replace(
++            segment,
++            `/${provider.toLowerCase()}/callback`
++        );
++    }
++
++    try {
++        const url = new URL(base);
++        return `${url.origin}/api/v1/payments/${provider.toLowerCase()}/callback`;
++    } catch {
++        return `https://ride-hailing-api-tezd.onrender.com/api/v1/payments/${provider.toLowerCase()}/callback`;
++    }
++}
++
++module.exports = {
++    getActiveEnvironment,
++    bankTransferConfigured,
++    paymentsConfigured,
++    getPaymentReturnUrl,
++    getPaymentResultUrl,
++    getGatewayCallbackUrl,
++    DEFAULT_PAYMENT_RETURN_URL,
++};
+diff --git a/backend/src/services/pendingSettlementService.js b/backend/src/services/pendingSettlementService.js
+index 3866e90..ace2602 100644
+--- a/backend/src/services/pendingSettlementService.js
++++ b/backend/src/services/pendingSettlementService.js
+@@ -1,7 +1,43 @@
+ 
+ const Ride = require("../models/Ride");
+ const RideSettlement = require("../models/RideSettlement");
++const ParcelOrder = require("../models/ParcelOrder");
++const ParcelSettlement = require("../models/ParcelSettlement");
+ const { settleRideCommission } = require("./commissionSettlementService");
++const { settleParcelCommission } = require("./parcelSettlementService");
++
++// Persist WHY a settlement did not complete, so the admin dashboard can
++// show the reason instead of a bare FAILED count. The settlement row is
++// upserted with the ride's real fare/driver data (the schema requires
++// them); placeholder amounts are overwritten when a settle succeeds.
++async function persistSettlementError(ride, status, message) {
++    const fare =
++        Number.isSafeInteger(ride.finalPrice) && ride.finalPrice > 0
++            ? ride.finalPrice
++            : 1;
++
++    await RideSettlement.findOneAndUpdate(
++        {
++            rideId: ride._id,
++            status: { $ne: "SETTLED" },
++        },
++        {
++            $set: {
++                status,
++                lastError: String(message || "").slice(0, 500),
++            },
++            $setOnInsert: {
++                rideId: ride._id,
++                driverId: ride.driverId,
++                fare,
++                commission: 0,
++                commissionPercentage: 0,
++                driverEarnings: 0,
++            },
++        },
++        { upsert: true }
++    );
++}
+ 
+ async function processPendingSettlements({ limit = 20 } = {}) {
+     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+@@ -15,7 +51,7 @@ async function processPendingSettlements({ limit = 20 } = {}) {
+     })
+         .sort({ completedAt: 1, createdAt: 1 })
+         .limit(limit)
+-        .select("_id")
++        .select("_id driverId finalPrice")
+         .lean();
+ 
+     const results = {
+@@ -39,7 +75,34 @@ async function processPendingSettlements({ limit = 20 } = {}) {
+             results.failed++;
+ 
+             if (error.message === "Insufficient driver wallet balance") {
+-                // Insufficient wallet balance: defer silently.
++                // Insufficient wallet balance: defer, but record the
++                // reason so "waiting for driver top-up" is distinguishable
++                // from "never attempted" in the dashboard.
++                try {
++                    await Ride.updateOne(
++                        {
++                            _id: ride._id,
++                            settlementStatus: { $ne: "SETTLED" },
++                        },
++                        {
++                            $set: {
++                                settlementError: error.message,
++                            },
++                        }
++                    );
++
++                    await persistSettlementError(
++                        ride,
++                        "PENDING",
++                        error.message
++                    );
++                } catch (persistError) {
++                    console.error(
++                        `Settlement defer reason persist failed for ${ride._id}:`,
++                        persistError.message
++                    );
++                }
++
+                 continue;
+             }
+ 
+@@ -49,11 +112,27 @@ async function processPendingSettlements({ limit = 20 } = {}) {
+                     settlementStatus: { $ne: "SETTLED" },
+                 },
+                 {
+-                    $set: { settlementStatus: "FAILED" },
++                    $set: {
++                        settlementStatus: "FAILED",
++                        settlementError: error.message,
++                    },
+                     $inc: { settlementAttempts: 1 },
+                 }
+             );
+ 
++            try {
++                await persistSettlementError(
++                    ride,
++                    "FAILED",
++                    error.message
++                );
++            } catch (persistError) {
++                console.error(
++                    `Settlement error persist failed for ${ride._id}:`,
++                    persistError.message
++                );
++            }
++
+             console.error(
+                 `Settlement failed for ${ride._id}:`,
+                 error.message
+@@ -69,6 +148,145 @@ async function processPendingSettlements({ limit = 20 } = {}) {
+     return results;
+ }
+ 
++// Parcel mirror of persistSettlementError (see above).
++async function persistParcelSettlementError(parcel, status, message) {
++    const fare =
++        Number.isSafeInteger(parcel.finalPrice) && parcel.finalPrice > 0
++            ? parcel.finalPrice
++            : Number.isSafeInteger(parcel.requestedPrice) &&
++                parcel.requestedPrice > 0
++                ? parcel.requestedPrice
++                : 1;
++
++    await ParcelSettlement.findOneAndUpdate(
++        {
++            parcelOrderId: parcel._id,
++            status: { $ne: "SETTLED" },
++        },
++        {
++            $set: {
++                status,
++                lastError: String(message || "").slice(0, 500),
++            },
++            $setOnInsert: {
++                parcelOrderId: parcel._id,
++                driverId: parcel.driverId,
++                fare,
++                commission: 0,
++                commissionPercentage: 0,
++                driverEarnings: 0,
++            },
++        },
++        { upsert: true }
++    );
++}
++
++async function processPendingParcelSettlements({ limit = 20 } = {}) {
++    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
++        throw new Error("Invalid settlement batch limit");
++    }
++
++    const parcels = await ParcelOrder.find({
++        status: "DELIVERED",
++        settlementStatus: { $in: ["PENDING", "FAILED"] },
++        settlementAttempts: { $lt: 5 },
++    })
++        .sort({ deliveredAt: 1, createdAt: 1 })
++        .limit(limit)
++        .select("_id driverId finalPrice requestedPrice")
++        .lean();
++
++    const results = {
++        scanned: parcels.length,
++        settled: 0,
++        alreadySettled: 0,
++        failed: 0,
++        errors: [],
++    };
++
++    for (const parcel of parcels) {
++        try {
++            const result = await settleParcelCommission(parcel._id);
++
++            if (result.alreadySettled) {
++                results.alreadySettled++;
++            } else {
++                results.settled++;
++            }
++        } catch (error) {
++            results.failed++;
++
++            if (error.message === "Insufficient driver wallet balance") {
++                try {
++                    await ParcelOrder.updateOne(
++                        {
++                            _id: parcel._id,
++                            settlementStatus: { $ne: "SETTLED" },
++                        },
++                        {
++                            $set: {
++                                settlementError: error.message,
++                            },
++                        }
++                    );
++
++                    await persistParcelSettlementError(
++                        parcel,
++                        "PENDING",
++                        error.message
++                    );
++                } catch (persistError) {
++                    console.error(
++                        `Parcel settlement defer reason persist failed for ${parcel._id}:`,
++                        persistError.message
++                    );
++                }
++
++                continue;
++            }
++
++            await ParcelOrder.updateOne(
++                {
++                    _id: parcel._id,
++                    settlementStatus: { $ne: "SETTLED" },
++                },
++                {
++                    $set: {
++                        settlementStatus: "FAILED",
++                        settlementError: error.message,
++                    },
++                    $inc: { settlementAttempts: 1 },
++                }
++            );
++
++            try {
++                await persistParcelSettlementError(
++                    parcel,
++                    "FAILED",
++                    error.message
++                );
++            } catch (persistError) {
++                console.error(
++                    `Parcel settlement error persist failed for ${parcel._id}:`,
++                    persistError.message
++                );
++            }
++
++            console.error(
++                `Parcel settlement failed for ${parcel._id}:`,
++                error.message
++            );
++
++            results.errors.push({
++                parcelOrderId: String(parcel._id),
++                message: error.message,
++            });
++        }
++    }
++
++    return results;
++}
++
+ let settlementTimer = null;
+ let processing = false;
+ 
+@@ -86,6 +304,17 @@ async function runAutomaticSettlements() {
+                 alreadySettled: result.alreadySettled,
+             });
+         }
++
++        const parcelResult = await processPendingParcelSettlements({
++            limit: 20,
++        });
++
++        if (parcelResult.settled > 0 || parcelResult.alreadySettled > 0) {
++            console.log("Automatic parcel settlement:", {
++                settled: parcelResult.settled,
++                alreadySettled: parcelResult.alreadySettled,
++            });
++        }
+     } catch (error) {
+         console.error("Automatic settlement error:", error.message);
+     } finally {
+@@ -116,5 +345,6 @@ if (mongoose.connection.readyState === 1) {
+ 
+ module.exports = {
+     processPendingSettlements,
++    processPendingParcelSettlements,
+     startAutomaticSettlements,
+ };
+diff --git a/backend/src/services/refundService.js b/backend/src/services/refundService.js
+new file mode 100644
+index 0000000..5fb3f9a
+--- /dev/null
++++ b/backend/src/services/refundService.js
+@@ -0,0 +1,147 @@
++const mongoose = require("mongoose");
++const PaymentOrder = require("../models/PaymentOrder");
++const DriverWallet = require("../models/DriverWallet");
++const WalletTransaction = require("../models/WalletTransaction");
++
++// Admin-approved refund of a COMPLETED driver wallet top-up.
++//
++// Scope: ledger reversal only. The money return on the gateway side
++// stays MANUAL — the admin returns the amount from the merchant
++// portal (or reverses the bank transfer) and records that reference
++// on the order (gatewayRefundReference). This service debits the
++// driver's wallet back and marks the order REFUNDED.
++//
++// Rules: full amount only; the order must be CREDITED; the original
++// TOP_UP ledger entry must exist; the wallet must still hold at
++// least the top-up amount (no silent partial refunds). Idempotent:
++// a second call returns the existing refund instead of double-debiting.
++async function refundTopUpOrder(orderId, adminUserId, options = {}) {
++    if (!mongoose.isValidObjectId(orderId)) {
++        throw new Error("Invalid payment order");
++    }
++
++    const reason =
++        typeof options.reason === "string" ? options.reason.trim() : "";
++    const gatewayRefundReference =
++        typeof options.gatewayRefundReference === "string" &&
++        options.gatewayRefundReference.trim()
++            ? options.gatewayRefundReference.trim()
++            : null;
++
++    return mongoose.connection.transaction(async (session) => {
++        const order = await PaymentOrder.findById(orderId).session(session);
++
++        if (!order) {
++            throw new Error("Payment order not found");
++        }
++
++        const idempotencyKey = `refund:${order._id}`;
++
++        const existing = await WalletTransaction.findOne({
++            idempotencyKey,
++        }).session(session);
++
++        if (existing) {
++            if (order.status !== "REFUNDED") {
++                throw new Error("Refund reconciliation required");
++            }
++
++            return {
++                alreadyRefunded: true,
++                transaction: existing,
++            };
++        }
++
++        if (order.status !== "CREDITED") {
++            throw new Error("Only a credited top-up can be refunded");
++        }
++
++        const original = await WalletTransaction.findOne({
++            idempotencyKey: `payment:${order._id}`,
++        }).session(session);
++
++        if (!original || original.type !== "TOP_UP") {
++            throw new Error("Original top-up ledger entry not found");
++        }
++
++        const wallet = await DriverWallet.findOne({
++            driverId: order.driverId,
++        }).session(session);
++
++        if (!wallet) {
++            throw new Error("Driver wallet not found");
++        }
++
++        if (
++            !Number.isSafeInteger(wallet.balance) ||
++            wallet.balance < order.amount
++        ) {
++            throw new Error(
++                "Wallet balance is below the top-up amount; a full refund is not possible"
++            );
++        }
++
++        const updated = await DriverWallet.findOneAndUpdate(
++            {
++                _id: wallet._id,
++                balance: wallet.balance,
++            },
++            {
++                $inc: {
++                    balance: -order.amount,
++                    totalTopUps: -order.amount,
++                },
++            },
++            { session, returnDocument: "after" }
++        );
++
++        if (!updated) {
++            throw new Error("Wallet changed; retry refund");
++        }
++
++        // NOTE: paymentOrderId stays null on the refund row — the
++        // ledger has a unique partial index on paymentOrderId and the
++        // original TOP_UP row already owns this order's id. The
++        // refund is traced via idempotencyKey `refund:<orderId>` and
++        // its own paymentReference (the gateway refund reference, or a
++        // derived unique value when the admin did not supply one).
++        const [transaction] = await WalletTransaction.create(
++            [{
++                walletId: wallet._id,
++                driverId: order.driverId,
++                type: "REFUND",
++                amount: order.amount,
++                balanceBefore: wallet.balance,
++                balanceAfter: updated.balance,
++                description: (
++                    `Refund of ${order.gateway} top-up ${order._id}` +
++                    (reason ? `: ${reason}` : "")
++                ).slice(0, 500),
++                idempotencyKey,
++                paymentGateway: order.gateway,
++                paymentReference:
++                    gatewayRefundReference || `refund:${order._id}`,
++                paymentStatus: "VERIFIED",
++                paymentAmount: order.amount,
++                paymentCurrency: "PKR",
++                createdBy: adminUserId || null,
++            }],
++            { session }
++        );
++
++        order.status = "REFUNDED";
++        order.refundedAt = new Date();
++        order.refundedBy = adminUserId || null;
++        order.refundReason = reason;
++        order.gatewayRefundReference = gatewayRefundReference;
++        await order.save({ session });
++
++        return {
++            alreadyRefunded: false,
++            transaction,
++            balance: updated.balance,
++        };
++    });
++}
++
++module.exports = { refundTopUpOrder };
+diff --git a/backend/src/services/ublPaymentService.js b/backend/src/services/ublPaymentService.js
+new file mode 100644
+index 0000000..3baa107
+--- /dev/null
++++ b/backend/src/services/ublPaymentService.js
+@@ -0,0 +1,161 @@
++const crypto = require("crypto");
++
++// UBL hosted-checkout integration for DRIVER WALLET TOP-UPS,
++// mirroring services/jazzCashPaymentService.js: a signed checkout
++// form is built from the dashboard-saved merchant credentials, and
++// the gateway's signed response is verified (timing-safe) before the
++// callback controller credits the wallet.
++//
++// Credentials contract (admin dashboard, provider UBL):
++//   merchantId — UBL merchant id
++//   password   — merchant terminal/password value
++//   hashKey    — merchant secure hash key issued by UBL
++//   paymentUrl — hosted checkout URL (HTTPS, issued merchant portal)
++
++const SIGNATURE_FIELD = "pp_SecureHash";
++
++function calculateAmountInMinor(amount) {
++    if (
++        !Number.isSafeInteger(amount) ||
++        amount < 1 ||
++        amount > 1000000
++    ) {
++        throw new Error("Invalid payment amount");
++    }
++
++    return String(amount * 100);
++}
++
++function generateSignature(fields, hashKey) {
++    if (typeof hashKey !== "string" || !hashKey.trim()) {
++        throw new Error("UBL hash key is required");
++    }
++
++    const values = Object.keys(fields)
++        .filter(
++            (key) =>
++                key !== SIGNATURE_FIELD &&
++                fields[key] !== undefined &&
++                fields[key] !== null &&
++                String(fields[key]) !== ""
++        )
++        .sort()
++        .map((key) => String(fields[key]));
++
++    const message = `${hashKey}&${values.join("&")}`;
++    const latin1Message = Buffer.from(
++        Buffer.from(message, "utf8").toString("latin1"),
++        "latin1"
++    );
++
++    return crypto
++        .createHmac("sha256", Buffer.from(hashKey, "utf8"))
++        .update(latin1Message)
++        .digest("hex");
++}
++
++function createUblCheckout({ order, credentials, returnUrl }) {
++    if (!order || !credentials) {
++        throw new Error("Payment order and credentials are required");
++    }
++
++    const { merchantId, password, hashKey, paymentUrl } = credentials;
++
++    if (!merchantId || !password || !hashKey || !paymentUrl) {
++        throw new Error("UBL merchant configuration is incomplete");
++    }
++
++    if (typeof returnUrl !== "string" || !returnUrl.trim()) {
++        throw new Error("Payment return URL is required");
++    }
++
++    const callbackUrl = new URL(returnUrl);
++
++    if (
++        callbackUrl.protocol !== "https:" ||
++        callbackUrl.pathname !== "/api/v1/payments/ubl/callback"
++    ) {
++        throw new Error("Invalid UBL callback URL");
++    }
++
++    const url = new URL(paymentUrl);
++
++    if (url.protocol !== "https:") {
++        throw new Error("Unapproved UBL payment URL");
++    }
++
++    const now = new Date();
++
++    const formatTimestamp = (date) =>
++        date.getFullYear().toString() +
++        String(date.getMonth() + 1).padStart(2, "0") +
++        String(date.getDate()).padStart(2, "0") +
++        String(date.getHours()).padStart(2, "0") +
++        String(date.getMinutes()).padStart(2, "0") +
++        String(date.getSeconds()).padStart(2, "0");
++
++    const fields = {
++        pp_MerchantID: merchantId,
++        pp_Password: password,
++        pp_TxnRefNo: order.merchantTxnReference,
++        pp_Amount: calculateAmountInMinor(order.amount),
++        pp_TxnCurrency: "PKR",
++        pp_TxnDateTime: formatTimestamp(now),
++        pp_BillReference: `W${String(order._id).slice(-12)}`,
++        pp_Description: "Safar driver wallet top-up",
++        pp_ReturnURL: returnUrl,
++    };
++
++    fields[SIGNATURE_FIELD] = generateSignature(fields, hashKey);
++
++    return {
++        paymentUrl: url.toString(),
++        fields,
++    };
++}
++
++function verifyUblResponse(response, hashKey) {
++    if (
++        !response ||
++        typeof response !== "object" ||
++        typeof response[SIGNATURE_FIELD] !== "string" ||
++        typeof response.pp_TxnRefNo !== "string" ||
++        typeof response.pp_ResponseCode !== "string"
++    ) {
++        return false;
++    }
++
++    const fields = Object.fromEntries(
++        Object.entries(response).filter(
++            ([key, value]) =>
++                key.startsWith("pp_") &&
++                key !== SIGNATURE_FIELD &&
++                value !== undefined &&
++                value !== null &&
++                String(value) !== ""
++        )
++    );
++
++    const expected = generateSignature(fields, hashKey).toUpperCase();
++    const received = response[SIGNATURE_FIELD].toUpperCase();
++
++    if (
++        !/^[A-F0-9]{64}$/.test(received) ||
++        !/^[A-F0-9]{64}$/.test(expected)
++    ) {
++        return false;
++    }
++
++    return crypto.timingSafeEqual(
++        Buffer.from(expected, "hex"),
++        Buffer.from(received, "hex")
++    );
++}
++
++module.exports = {
++    calculateAmountInMinor,
++    createUblCheckout,
++    generateSignature,
++    verifyUblResponse,
++    UBL_SIGNATURE_FIELD: SIGNATURE_FIELD,
++};
+diff --git a/backend/src/utils/paymentResultRedirect.js b/backend/src/utils/paymentResultRedirect.js
+new file mode 100644
+index 0000000..eb25f00
+--- /dev/null
++++ b/backend/src/utils/paymentResultRedirect.js
+@@ -0,0 +1,53 @@
++const CommissionSettings = require("../models/CommissionSettings");
++const {
++    getPaymentResultUrl,
++} = require("../services/paymentsConfigService");
++
++// Shared post-payment redirect for all gateway callback controllers.
++// The result URL comes from the dashboard-managed commission settings
++// first, with PAYMENT_RESULT_URL as the environment fallback. When no
++// result URL is configured, the callback answers with JSON instead.
++async function redirectToPaymentResult(res, order, status, message) {
++    const settings = await CommissionSettings.findOne({
++        key: "GLOBAL",
++    })
++        .select("paymentResultUrl")
++        .lean();
++
++    const target = getPaymentResultUrl(settings);
++
++    if (!target) {
++        return res.json({
++            success: status === "success",
++            message,
++            orderId: String(order._id),
++            status,
++        });
++    }
++
++    const url = new URL(target);
++
++    const isLocalhost =
++        url.hostname === "localhost" &&
++        ["http:", "https:"].includes(url.protocol);
++
++    const isSafarAppReturn =
++        url.protocol === "com.safar.ridehailing:" &&
++        url.hostname === "driver" &&
++        url.pathname === "/earnings";
++
++    if (
++        url.protocol !== "https:" &&
++        !isLocalhost &&
++        !isSafarAppReturn
++    ) {
++        throw new Error("Invalid payment result URL");
++    }
++
++    url.searchParams.set("paymentStatus", status);
++    url.searchParams.set("paymentOrderId", String(order._id));
++
++    return res.redirect(303, url.toString());
++}
++
++module.exports = { redirectToPaymentResult };
+diff --git a/driver-passenger-frontend/src/app/driver/earnings/page.js b/driver-passenger-frontend/src/app/driver/earnings/page.js
+index 449c878..542edc7 100644
+--- a/driver-passenger-frontend/src/app/driver/earnings/page.js
++++ b/driver-passenger-frontend/src/app/driver/earnings/page.js
+@@ -58,6 +58,7 @@ function EarningsScreen() {
+     const [topUpAmount, setTopUpAmount] = useState("500");
+     const [topUpLoading, setTopUpLoading] = useState(false);
+     const [topUpMessage, setTopUpMessage] = useState("");
++    const [bankTransfer, setBankTransfer] = useState(null);
+     const [paymentNotice, setPaymentNotice] = useState("");
+     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
+     const [walletMessage, setWalletMessage] = useState("");
+@@ -154,6 +155,7 @@ function EarningsScreen() {
+ 
+         setTopUpLoading(true);
+         setTopUpMessage("");
++        setBankTransfer(null);
+ 
+         try {
+             const result = await apiRequest("/drivers/me/wallet/top-up", {
+@@ -165,6 +167,14 @@ function EarningsScreen() {
+                 }),
+             });
+ 
++            if (result.bankTransfer) {
++                setBankTransfer(result.bankTransfer);
++                setTopUpMessage(
++                    result.message || "Bank transfer details neeche diye gaye hain."
++                );
++                return;
++            }
++
+             if (
+                 result.checkout?.paymentUrl &&
+                 result.checkout?.fields &&
+@@ -332,6 +342,22 @@ function EarningsScreen() {
+                                 </p>
+                             )}
+ 
++                            {bankTransfer && (
++                                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-slate-800">
++                                    <p className="mb-2 font-bold">Bank Transfer Details</p>
++                                    <p>Bank: <strong>{bankTransfer.bankName}</strong></p>
++                                    <p>Account Title: <strong>{bankTransfer.accountTitle}</strong></p>
++                                    <p>Account Number: <strong>{bankTransfer.accountNumber}</strong></p>
++                                    <p>Reference: <strong>{bankTransfer.reference}</strong></p>
++                                    {bankTransfer.note && <p className="mt-2">{bankTransfer.note}</p>}
++                                    <p className="mt-2 text-slate-600">
++                                        Isi amount ki transfer karein aur reference lazmi
++                                        likhein. Admin verification ke baad wallet credit
++                                        ho jayega.
++                                    </p>
++                                </div>
++                            )}
++
+                             <button
+                                 type="submit"
+                                 disabled={topUpLoading || paymentMethods.length === 0}

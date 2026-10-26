@@ -51,6 +51,7 @@ const paymentOrderSchema = new mongoose.Schema(
                 "CREDITED",
                 "FAILED",
                 "EXPIRED",
+                "REFUNDED",
             ],
             default: "PENDING",
             index: true,
@@ -103,6 +104,30 @@ const paymentOrderSchema = new mongoose.Schema(
             type: String,
             maxlength: 500,
             default: "",
+        },
+        // Admin-approved top-up refund (see services/refundService).
+        // The gateway-side money return itself is MANUAL (merchant
+        // portal); gatewayRefundReference records its reference.
+        refundedAt: {
+            type: Date,
+            default: null,
+        },
+        refundedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+        refundReason: {
+            type: String,
+            trim: true,
+            maxlength: 500,
+            default: "",
+        },
+        gatewayRefundReference: {
+            type: String,
+            trim: true,
+            maxlength: 150,
+            default: null,
         },
     },
     { timestamps: true }
