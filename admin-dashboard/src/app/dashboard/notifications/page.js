@@ -49,10 +49,6 @@ export default function CustomNotificationsPage() {
             return;
         }
 
-        if (!window.confirm(`Send this notification to ${selected.name}?`)) {
-            return;
-        }
-
         setSending(true);
         setError("");
         setMessage("");
@@ -164,8 +160,8 @@ export default function CustomNotificationsPage() {
                                             setMessage("");
                                         }}
                                         className={`rounded-xl px-4 py-2 text-sm font-bold ${selected?.id === user.id
-                                                ? "bg-slate-900 text-white"
-                                                : "bg-emerald-50 text-[#087F5B]"
+                                            ? "bg-slate-900 text-white"
+                                            : "bg-emerald-50 text-[#087F5B]"
                                             } disabled:cursor-not-allowed disabled:opacity-40`}
                                     >
                                         {user.pushDevices < 1
