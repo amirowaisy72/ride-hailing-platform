@@ -18,6 +18,11 @@ const { getDriverHistory } = require("../controllers/driverHistoryController");
 const { getDriverPublicProfile } = require("../controllers/driverPublicProfileController");
 
 const { getMyWallet } = require("../controllers/driverWalletController");
+const {
+    createTopUpOrder,
+    getTopUpOrderStatus,
+    getAvailableTopUpMethods,
+} = require("../controllers/driverPaymentController");
 
 const { getMyEarnings } = require("../controllers/driverEarningsController");
 
@@ -133,6 +138,27 @@ router.get(
     protect,
     authorize("PASSENGER", "DRIVER"),
     getMyWallet
+);
+
+router.get(
+    "/me/wallet/payment-methods",
+    protect,
+    authorize("DRIVER"),
+    getAvailableTopUpMethods
+);
+
+router.post(
+    "/me/wallet/top-up",
+    protect,
+    authorize("DRIVER"),
+    createTopUpOrder
+);
+
+router.get(
+    "/me/wallet/top-up/:orderId",
+    protect,
+    authorize("DRIVER"),
+    getTopUpOrderStatus
 );
 
 router.get(

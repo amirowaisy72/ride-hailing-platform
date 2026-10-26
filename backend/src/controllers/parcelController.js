@@ -5,6 +5,8 @@ const ParcelOffer = require("../models/ParcelOffer");
 const Driver = require("../models/Driver");
 const Vehicle = require("../models/Vehicle");
 const crypto = require("node:crypto");
+const CommissionSettings = require("../models/CommissionSettings");
+const DriverWallet = require("../models/DriverWallet");
 
 const hashParcelOtp = (otp) => crypto.createHash("sha256").update(String(otp)).digest("hex");
 
@@ -253,6 +255,29 @@ const submitParcelOffer = async (req, res) => {
                 success: false,
                 message: "Driver profile not found",
             });
+        }
+
+        const commissionSettings = await CommissionSettings.findOne({
+            key: "GLOBAL",
+        }).select("topUpRequired minimumWalletBalance").lean();
+
+        if (commissionSettings?.topUpRequired === true) {
+            const wallet = await DriverWallet.findOne({
+                driverId: driver._id,
+            }).select("balance").lean();
+
+            const requiredBalance = Math.max(
+                1,
+                commissionSettings.minimumWalletBalance || 0
+            );
+
+            if (!wallet || wallet.balance < requiredBalance) {
+                return res.status(402).json({
+                    success: false,
+                    code: "DRIVER_WALLET_TOP_UP_REQUIRED",
+                    message: "Please top up your wallet to submit parcel offers. Platform commission will be deducted from your wallet after each completed service.",
+                });
+            }
         }
 
         const price = Number(req.body?.price);

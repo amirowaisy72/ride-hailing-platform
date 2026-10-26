@@ -1,4 +1,5 @@
 const CommissionSettings = require("../models/CommissionSettings");
+const PaymentGatewayConfig = require("../models/PaymentGatewayConfig");
 
 async function getCommissionSettings(req, res) {
     try {
@@ -23,6 +24,9 @@ async function updateCommissionSettings(req, res) {
         const {
             percentage,
             minimumWalletBalance,
+            topUpRequired,
+            paymentGateway,
+            onlineTopUpEnabled,
             isActive,
             freeWaitingMinutes,
             waitingChargePerMinute,
@@ -36,6 +40,13 @@ async function updateCommissionSettings(req, res) {
             Math.round(percentage * 100) !== percentage * 100 ||
             !Number.isSafeInteger(minimumWalletBalance) ||
             minimumWalletBalance < 0 ||
+            (topUpRequired !== undefined && typeof topUpRequired !== "boolean") ||
+            (paymentGateway !== undefined &&
+                !["DISABLED", "SANDBOX", "JAZZCASH", "EASYPAISA", "UBL", "BANK_TRANSFER"].includes(paymentGateway)) ||
+            (paymentGateway === "SANDBOX" &&
+                req.body.paymentEnvironment === "LIVE") ||
+            (onlineTopUpEnabled !== undefined &&
+                typeof onlineTopUpEnabled !== "boolean") ||
             !Number.isInteger(freeWaitingMinutes) ||
             freeWaitingMinutes < 0 ||
             freeWaitingMinutes > 120 ||
@@ -50,12 +61,30 @@ async function updateCommissionSettings(req, res) {
             });
         }
 
+        if (topUpRequired === true) {
+            const verifiedGateway = await PaymentGatewayConfig.exists({
+                enabled: true,
+                verified: true,
+            });
+
+            if (!verifiedGateway) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Top-up Required ON karne se pehle payment gateway verify aur enable karna zaroori hai.",
+                });
+            }
+        }
+
         const settings = await CommissionSettings.findOneAndUpdate(
             { key: "GLOBAL" },
             {
                 $set: {
                     percentage,
                     minimumWalletBalance,
+                    ...(topUpRequired !== undefined ? { topUpRequired } : {}),
+                    ...(paymentGateway !== undefined ? { paymentGateway } : {}),
+                    onlineTopUpEnabled: onlineTopUpEnabled ?? false,
+                    paymentEnvironment: "TEST",
                     isActive,
                     freeWaitingMinutes,
                     waitingChargePerMinute,

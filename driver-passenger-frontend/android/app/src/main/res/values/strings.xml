@@ -3,5 +3,5 @@
     <string name="app_name">Safar</string>
     <string name="title_activity_main">Safar</string>
     <string name="package_name">com.ridehailing.app</string>
-    <string name="custom_url_scheme">com.ridehailing.app</string>
+    <string name="custom_url_scheme">com.safar.ridehailing</string>
 </resources>

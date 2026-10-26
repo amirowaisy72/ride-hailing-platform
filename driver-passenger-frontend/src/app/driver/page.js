@@ -651,7 +651,18 @@ function DriverDashboard() {
                 title: wasSubmitted ? "Offer updated" : "Offer sent", body: `${money(price)} · waiting for passenger`
             });
         } catch (error) {
-            reportError(error, "Offer not sent");
+            if (error.message?.includes("DRIVER_WALLET_TOP_UP_REQUIRED") ||
+                error.message?.includes("Service commission ke liye wallet top-up karein")) {
+                notify({
+                    kind: "error",
+                    sound: false,
+                    title: "Wallet Top-up Required",
+                    body: "Your wallet balance is used to pay the platform commission on each completed ride. Please open the Earnings / Wallet page to top up your balance.",
+                    key: `wallet-topup-required:${ride.rideId}`,
+                });
+            } else {
+                reportError(error, "Offer not sent");
+            }
         } finally {
             setOfferBusy(null);
         }

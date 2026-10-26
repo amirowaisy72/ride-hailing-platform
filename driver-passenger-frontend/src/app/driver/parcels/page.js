@@ -157,7 +157,12 @@ function DriverParcels() {
             setSentOffers((prev) => ({ ...prev, [id]: price }));
             await refresh();
         } catch (e) {
-            setError(e.message);
+            setError(
+                e.message?.includes("DRIVER_WALLET_TOP_UP_REQUIRED") ||
+                    e.message?.includes("Please top up your wallet")
+                    ? "Wallet top-up required. Please open Earnings / Wallet to add funds before submitting parcel offers."
+                    : e.message
+            );
         } finally {
             setBusy("");
         }

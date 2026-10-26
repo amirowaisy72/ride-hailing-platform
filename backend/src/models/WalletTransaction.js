@@ -30,19 +30,9 @@ const walletTransactionSchema = new mongoose.Schema(
             ],
             required: true,
         },
-        amount: {
-            type: Number,
-            required: true,
-            min: 1,
-        },
-        balanceBefore: {
-            type: Number,
-            required: true,
-        },
-        balanceAfter: {
-            type: Number,
-            required: true,
-        },
+        amount: { type: Number, required: true, min: 1 },
+        balanceBefore: { type: Number, required: true },
+        balanceAfter: { type: Number, required: true },
         description: {
             type: String,
             trim: true,
@@ -54,6 +44,54 @@ const walletTransactionSchema = new mongoose.Schema(
             required: true,
             unique: true,
         },
+        paymentGateway: {
+            type: String,
+            enum: [
+                "SANDBOX",
+                "JAZZCASH",
+                "EASYPAISA",
+                "UBL",
+                "BANK_TRANSFER",
+                "OTHER",
+            ],
+            default: null,
+        },
+        paymentReference: {
+            type: String,
+            trim: true,
+            maxlength: 150,
+            default: null,
+        },
+        paymentOrderId: {
+            type: String,
+            trim: true,
+            maxlength: 150,
+            default: null,
+        },
+        paymentStatus: {
+            type: String,
+            enum: [
+                "NOT_APPLICABLE",
+                "PENDING",
+                "VERIFIED",
+                "FAILED",
+            ],
+            default: "NOT_APPLICABLE",
+        },
+        paymentAmount: {
+            type: Number,
+            min: 1,
+            default: null,
+        },
+        paymentCurrency: {
+            type: String,
+            enum: ["PKR"],
+            default: null,
+        },
+        paymentVerifiedAt: {
+            type: Date,
+            default: null,
+        },
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
@@ -64,6 +102,27 @@ const walletTransactionSchema = new mongoose.Schema(
 );
 
 walletTransactionSchema.index({ driverId: 1, createdAt: -1 });
+
+walletTransactionSchema.index(
+    { paymentOrderId: 1 },
+    {
+        unique: true,
+        partialFilterExpression: {
+            paymentOrderId: { $type: "string" },
+        },
+    }
+);
+
+walletTransactionSchema.index(
+    { paymentGateway: 1, paymentReference: 1 },
+    {
+        unique: true,
+        partialFilterExpression: {
+            paymentGateway: { $type: "string" },
+            paymentReference: { $type: "string" },
+        },
+    }
+);
 
 walletTransactionSchema.index(
     { rideId: 1, type: 1 },

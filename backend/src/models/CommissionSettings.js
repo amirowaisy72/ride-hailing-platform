@@ -22,6 +22,49 @@ const commissionSettingsSchema = new mongoose.Schema(
             min: 0,
         },
 
+        topUpRequired: {
+            type: Boolean,
+            default: false,
+        },
+
+        onlineTopUpEnabled: {
+            type: Boolean,
+            default: false,
+        },
+
+        paymentGateway: {
+            type: String,
+            enum: [
+                "DISABLED",
+                "SANDBOX",
+                "JAZZCASH",
+                "EASYPAISA",
+                "UBL",
+                "BANK_TRANSFER",
+            ],
+            default: "DISABLED",
+        },
+
+        paymentEnvironment: {
+            type: String,
+            enum: ["TEST", "LIVE"],
+            default: "TEST",
+        },
+
+        merchantPaymentsConfigured: {
+            type: Boolean,
+            default: false,
+            immutable: true,
+        },
+
+        // Merchant credentials aur server verification ready hone tak
+        // online wallet top-ups disabled rahenge.
+        paymentVerificationRequired: {
+            type: Boolean,
+            default: true,
+            immutable: true,
+        },
+
         freeWaitingMinutes: {
             type: Number,
             default: 5,

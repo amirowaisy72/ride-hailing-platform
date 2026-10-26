@@ -25,6 +25,16 @@ async function topUpDriverWallet({
         throw new Error("Invalid wallet top-up details");
     }
 
+    // Admin top-ups must never be used as unverified payment callbacks.
+    // Merchant payments require a separate server-verified credit flow.
+    if (
+        /^(payment|merchant|gateway|sandbox):/i.test(idempotencyKey)
+    ) {
+        throw new Error(
+            "Payment idempotency keys cannot be used for admin top-ups"
+        );
+    }
+
     return mongoose.connection.transaction(async (session) => {
         const existing = await WalletTransaction.findOne({
             idempotencyKey,
@@ -35,7 +45,12 @@ async function topUpDriverWallet({
                 existing.type !== "TOP_UP" ||
                 String(existing.driverId) !== String(driverId) ||
                 existing.amount !== amount ||
-                String(existing.createdBy) !== String(adminUserId)
+                String(existing.createdBy) !== String(adminUserId) ||
+                existing.paymentGateway != null ||
+                existing.paymentReference != null ||
+                existing.paymentStatus === "VERIFIED" ||
+                existing.paymentGateway != null ||
+                existing.paymentReference != null
             ) {
                 throw new Error("Idempotency key already used");
             }
@@ -89,6 +104,14 @@ async function topUpDriverWallet({
                     description: description.trim(),
                     idempotencyKey,
                     createdBy: adminUserId,
+                    paymentStatus: "NOT_APPLICABLE",
+                    paymentGateway: null,
+                    paymentReference: null,
+                    paymentVerifiedAt: null,
+                    paymentStatus: "NOT_APPLICABLE",
+                    paymentGateway: null,
+                    paymentReference: null,
+                    paymentVerifiedAt: null,
                 },
             ],
             { session }

@@ -54,6 +54,14 @@ function EarningsScreen() {
     const { token } = useAuth();
 
     const [wallet, setWallet] = useState(null);
+    const [paymentMethods, setPaymentMethods] = useState([]);
+    const [topUpAmount, setTopUpAmount] = useState("500");
+    const [topUpLoading, setTopUpLoading] = useState(false);
+    const [topUpMessage, setTopUpMessage] = useState("");
+    const [paymentNotice, setPaymentNotice] = useState("");
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
+    const [walletMessage, setWalletMessage] = useState("");
+    const [topUpRequired, setTopUpRequired] = useState(false);
     const [transactions, setTransactions] = useState([]);
     const [summary, setSummary] = useState(null);
     const [recentTrips, setRecentTrips] = useState([]);
@@ -78,9 +86,21 @@ function EarningsScreen() {
             ]);
 
             setWallet(walletData.wallet);
+            setWalletMessage(walletData.walletMessage || "");
+            setTopUpRequired(walletData.topUpRequired === true);
             setTransactions(walletData.transactions || []);
             setSummary(earningsData.summary);
             setRecentTrips(earningsData.recentTrips || []);
+
+            try {
+                const paymentData = await apiRequest(
+                    "/drivers/me/wallet/payment-methods",
+                    { token }
+                );
+                setPaymentMethods(paymentData.methods || []);
+            } catch {
+                setPaymentMethods([]);
+            }
         } catch (err) {
             setError(err.message);
         } finally {
@@ -91,7 +111,91 @@ function EarningsScreen() {
 
     useEffect(() => {
         loadData(true);
-    }, [loadData]);
+
+        const params = new URLSearchParams(window.location.search);
+        const status = params.get("paymentStatus");
+        const orderId = params.get("paymentOrderId");
+
+        if (status === "success" && orderId && token) {
+            apiRequest(`/drivers/me/wallet/top-up/${encodeURIComponent(orderId)}`, { token })
+                .then(async (result) => {
+                    if (result.order?.status === "CREDITED") {
+                        setPaymentNotice("Payment verified. Wallet successfully credited.");
+                        await loadData();
+                    } else {
+                        setPaymentNotice(`Payment status: ${result.order?.status || "PENDING"}. Wallet credit confirmation is pending.`);
+                    }
+                })
+                .catch(() => {
+                    setPaymentNotice("Payment received. Wallet status check karne ke liye refresh karein.");
+                });
+        } else if (status === "failed") {
+            setPaymentNotice("Payment failed. Wallet balance change nahi hua.");
+        }
+
+        if (status) {
+            window.history.replaceState({}, "", window.location.pathname);
+        }
+    }, [loadData, token]);
+
+    async function submitTopUp(event) {
+        event.preventDefault();
+        const amount = Number(topUpAmount);
+
+        if (!Number.isSafeInteger(amount) || amount < 100 || amount > 1000000) {
+            setTopUpMessage("Amount PKR 100 se 1,000,000 ke darmiyan hona chahiye.");
+            return;
+        }
+
+        if (!selectedPaymentMethod) {
+            setTopUpMessage("Payment method select karein.");
+            return;
+        }
+
+        setTopUpLoading(true);
+        setTopUpMessage("");
+
+        try {
+            const result = await apiRequest("/drivers/me/wallet/top-up", {
+                method: "POST",
+                token,
+                body: JSON.stringify({
+                    amount,
+                    provider: selectedPaymentMethod,
+                }),
+            });
+
+            if (
+                result.checkout?.paymentUrl &&
+                result.checkout?.fields &&
+                result.order?.id
+            ) {
+                const form = document.createElement("form");
+                form.method = "POST";
+                form.action = result.checkout.paymentUrl;
+
+                Object.entries(result.checkout.fields).forEach(([name, value]) => {
+                    const input = document.createElement("input");
+                    input.type = "hidden";
+                    input.name = name;
+                    input.value = String(value);
+                    form.appendChild(input);
+                });
+
+                document.body.appendChild(form);
+                form.submit();
+                return;
+            }
+
+            setTopUpMessage(
+                result.message || `Payment order status: ${result.order?.status || "PENDING"}`
+            );
+        } catch (err) {
+            setTopUpMessage(err.message);
+        } finally {
+            setTopUpLoading(false);
+        }
+    }
 
     const isCredit = (type, tx) =>
         type === "TOP_UP" ||
@@ -152,8 +256,16 @@ function EarningsScreen() {
                     </p>
 
                     <p className="mt-2 text-xs text-slate-500">
-                        Prepaid balance for platform commissions
+                        {topUpRequired
+                            ? "Prepaid balance for platform commissions"
+                            : "Free Mode — No wallet top-up required"}
                     </p>
+
+                    {walletMessage && (
+                        <p className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
+                            {walletMessage}
+                        </p>
+                    )}
 
                     <div className="mt-6 rounded-xl bg-emerald-50 p-4">
                         <p className="flex items-center gap-2 text-xs font-semibold text-[#065F46]">
@@ -161,6 +273,72 @@ function EarningsScreen() {
                             Wallet transactions are recorded by the platform
                         </p>
                     </div>
+                </section>
+
+                <section className="rounded-2xl bg-white p-5 shadow-sm">
+                    <h2 className="text-lg font-extrabold">Top Up Wallet</h2>
+                    <p className="mt-2 text-sm text-slate-500">
+                        Top-up amount future ride commissions ke liye wallet balance mein add hogi.
+                    </p>
+
+                    <form onSubmit={submitTopUp} className="mt-4 space-y-3">
+                        <label className="block text-sm font-semibold">
+                            Amount (PKR)
+                            <input
+                                type="number"
+                                min="100"
+                                max="1000000"
+                                step="1"
+                                required
+                                value={topUpAmount}
+                                onChange={(e) => setTopUpAmount(e.target.value)}
+                                className="mt-1 w-full rounded-xl border p-3"
+                            />
+                        </label>
+
+                        <label className="block text-sm font-semibold">
+                            Payment Method
+                            <select
+                                required
+                                value={selectedPaymentMethod}
+                                onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+                                className="mt-1 w-full rounded-xl border p-3"
+                            >
+                                <option value="">Select method</option>
+                                {paymentMethods.map((item) => (
+                                    <option key={item.provider} value={item.provider}>
+                                        {item.provider.replaceAll("_", " ")}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+
+                        {paymentMethods.length === 0 && (
+                            <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+                                Online payments abhi configure aur verify nahi huin.
+                            </p>
+                        )}
+
+                        {paymentNotice && (
+                            <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
+                                {paymentNotice}
+                            </p>
+                        )}
+
+                        {topUpMessage && (
+                            <p role="status" className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+                                {topUpMessage}
+                            </p>
+                        )}
+
+                        <button
+                            type="submit"
+                            disabled={topUpLoading || paymentMethods.length === 0}
+                            className="w-full rounded-xl bg-[#087F5B] p-3 font-bold text-white disabled:opacity-50"
+                        >
+                            {topUpLoading ? "Creating..." : "Continue to Top Up"}
+                        </button>
+                    </form>
                 </section>
 
                 {error && (

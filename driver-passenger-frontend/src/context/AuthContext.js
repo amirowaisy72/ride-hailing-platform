@@ -36,6 +36,54 @@ export function AuthProvider({ children }) {
 
     useEffect(() => {
         let active = true;
+        let listenerHandle;
+
+        const handlePaymentUrl = ({ url }) => {
+            if (!url || !active) return;
+
+            try {
+                const incoming = new URL(url);
+
+                if (
+                    incoming.protocol !== "com.ridehailing.app:" ||
+                    incoming.hostname !== "driver" ||
+                    incoming.pathname !== "/earnings"
+                ) return;
+
+                const status = incoming.searchParams.get("paymentStatus");
+                const orderId = incoming.searchParams.get("paymentOrderId");
+
+                if (
+                    !["success", "failed"].includes(status) ||
+                    !/^[a-f0-9]{24}$/i.test(orderId || "")
+                ) return;
+
+                window.location.href =
+                    `/driver/earnings?paymentStatus=${encodeURIComponent(status)}&paymentOrderId=${encodeURIComponent(orderId)}`;
+            } catch {
+                // Ignore malformed external URLs.
+            }
+        };
+
+        App.addListener("appUrlOpen", handlePaymentUrl).then((handle) => {
+            if (active) listenerHandle = handle;
+            else handle.remove();
+        }).catch(() => { });
+
+        App.getLaunchUrl().then((launch) => {
+            if (active && launch?.url) {
+                handlePaymentUrl({ url: launch.url });
+            }
+        }).catch(() => { });
+
+        return () => {
+            active = false;
+            listenerHandle?.remove();
+        };
+    }, []);
+
+    useEffect(() => {
+        let active = true;
 
         async function restoreSession() {
             try {

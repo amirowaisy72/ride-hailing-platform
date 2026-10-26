@@ -54,14 +54,17 @@ async function settleRideCommission(rideId) {
 
         const settings = await CommissionSettings.findOne({
             key: "GLOBAL",
-            isActive: true,
         }).session(session);
 
-        if (!settings) {
+        if (settings?.topUpRequired === true && settings.isActive !== true) {
             throw new Error("Active commission settings unavailable");
         }
 
-        const basisPoints = Math.round(settings.percentage * 100);
+        // Free Mode: no commission; Paid Mode: configured commission.
+        const basisPoints =
+            settings?.topUpRequired === true && settings.isActive === true
+                ? Math.round(settings.percentage * 100)
+                : 0;
 
         if (
             !Number.isSafeInteger(basisPoints) ||
@@ -152,7 +155,7 @@ async function settleRideCommission(rideId) {
                         driverId: ride.driverId,
                         fare: ride.finalPrice,
                         commission,
-                        commissionPercentage: settings.percentage,
+                        commissionPercentage: basisPoints / 100,
                         driverEarnings: ride.finalPrice - commission,
                         currency: "PKR",
                         status: "SETTLED",
@@ -175,7 +178,7 @@ async function settleRideCommission(rideId) {
                     driverId: ride.driverId,
                     fare: ride.finalPrice,
                     commission,
-                    commissionPercentage: settings.percentage,
+                    commissionPercentage: basisPoints / 100,
                     driverEarnings: ride.finalPrice - commission,
                     currency: "PKR",
                     status: "SETTLED",

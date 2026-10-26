@@ -30,6 +30,8 @@ const navigation = [
     { label: "Settlements", href: "/dashboard/settlements", icon: CircleDollarSign },
     { label: "Commission Settings", href: "/dashboard/commission", icon: SlidersHorizontal },
     { label: "Integrations", href: "/dashboard/integrations", icon: Plug },
+    { label: "Payment Gateways", href: "/dashboard/payment-gateways", icon: CircleDollarSign },
+    { label: "Bank Transfers", href: "/dashboard/bank-transfers", icon: Wallet },
 ];
 
 export default function AdminShell({ children, title = "Dashboard" }) {

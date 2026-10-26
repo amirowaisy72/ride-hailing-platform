@@ -4,6 +4,8 @@ const Ride = require("../models/Ride");
 const Driver = require("../models/Driver");
 const RideOffer = require("../models/RideOffer");
 const Vehicle = require("../models/Vehicle");
+const CommissionSettings = require("../models/CommissionSettings");
+const DriverWallet = require("../models/DriverWallet");
 const { publishEvent } = require("../services/socketService");
 const { sendPushToUser } = require("../services/pushService");
 
@@ -58,6 +60,29 @@ async function submitOffer(req, res) {
             });
         }
 
+        const commissionSettings = await CommissionSettings.findOne({
+            key: "GLOBAL",
+        }).select("topUpRequired minimumWalletBalance").lean();
+
+        if (commissionSettings?.topUpRequired === true) {
+            const wallet = await DriverWallet.findOne({
+                driverId: driver._id,
+            }).select("balance").lean();
+
+            const requiredBalance = Math.max(
+                1,
+                commissionSettings.minimumWalletBalance || 0
+            );
+
+            if (!wallet || wallet.balance < requiredBalance) {
+                return res.status(402).json({
+                    success: false,
+                    code: "DRIVER_WALLET_TOP_UP_REQUIRED",
+                    message: "Please top up your wallet to use Safar. Platform commission will be deducted from your wallet after each completed ride.",
+                });
+            }
+        }
+
         const ride = await Ride.findOne({
             _id: rideId,
             status: { $in: OPEN },
@@ -84,6 +109,40 @@ async function submitOffer(req, res) {
                 success: false,
                 message: "Approved matching vehicle required",
             });
+        }
+
+        const settings = await CommissionSettings.findOne({
+            key: "GLOBAL",
+        }).lean();
+
+        if (settings?.topUpRequired === true) {
+            if (settings.isActive !== true) {
+                return res.status(503).json({
+                    success: false,
+                    message: "Wallet configuration is unavailable",
+                });
+            }
+
+            const wallet = await DriverWallet.findOne({
+                driverId: driver._id,
+            }).lean();
+
+            const estimatedCommission = Math.round(
+                (price * Math.round(settings.percentage * 100)) / 10000
+            );
+
+            const minimumBalance = Math.max(
+                1,
+                settings.minimumWalletBalance || 0,
+                estimatedCommission
+            );
+
+            if (!wallet || wallet.balance < minimumBalance) {
+                return res.status(403).json({
+                    success: false,
+                    message: `Insufficient wallet balance. Minimum PKR ${minimumBalance} required. Please top up your wallet.`,
+                });
+            }
         }
 
         const location = driver.currentLocation?.coordinates;

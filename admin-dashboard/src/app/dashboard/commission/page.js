@@ -22,6 +22,9 @@ export default function CommissionPage() {
     const [minimumWalletBalance, setMinimumWalletBalance] =
         useState("0");
     const [isActive, setIsActive] = useState(true);
+    const [topUpRequired, setTopUpRequired] = useState(false);
+    const [onlineTopUpEnabled, setOnlineTopUpEnabled] = useState(false);
+    const [paymentGateway, setPaymentGateway] = useState("DISABLED");
     const [freeWaitingMinutes, setFreeWaitingMinutes] = useState("5");
     const [waitingChargePerMinute, setWaitingChargePerMinute] = useState("0");
 
@@ -48,6 +51,9 @@ export default function CommissionPage() {
                     String(settings.minimumWalletBalance ?? 0)
                 );
                 setIsActive(Boolean(settings.isActive));
+                setTopUpRequired(settings.topUpRequired === true);
+                setOnlineTopUpEnabled(settings.onlineTopUpEnabled === true);
+                setPaymentGateway(settings.paymentGateway || "DISABLED");
                 setFreeWaitingMinutes(String(settings.freeWaitingMinutes ?? 5));
                 setWaitingChargePerMinute(String(settings.waitingChargePerMinute ?? 0));
                 setConfigured(true);
@@ -55,6 +61,9 @@ export default function CommissionPage() {
                 setPercentage("");
                 setMinimumWalletBalance("0");
                 setIsActive(true);
+                setTopUpRequired(false);
+                setOnlineTopUpEnabled(false);
+                setPaymentGateway("DISABLED");
                 setFreeWaitingMinutes("5");
                 setWaitingChargePerMinute("0");
                 setConfigured(false);
@@ -129,6 +138,10 @@ export default function CommissionPage() {
                         freeWaitingMinutes: freeMinutes,
                         waitingChargePerMinute: chargePerMinute,
                         isActive,
+                        topUpRequired,
+                        onlineTopUpEnabled,
+                        paymentGateway,
+                        paymentEnvironment: "TEST",
                     }),
                 }
             );
@@ -138,6 +151,9 @@ export default function CommissionPage() {
                 String(data.settings.minimumWalletBalance)
             );
             setIsActive(Boolean(data.settings.isActive));
+            setTopUpRequired(data.settings.topUpRequired === true);
+            setOnlineTopUpEnabled(data.settings.onlineTopUpEnabled === true);
+            setPaymentGateway(data.settings.paymentGateway || "DISABLED");
             setFreeWaitingMinutes(String(data.settings.freeWaitingMinutes ?? 5));
             setWaitingChargePerMinute(String(data.settings.waitingChargePerMinute ?? 0));
             setConfigured(true);
@@ -151,6 +167,72 @@ export default function CommissionPage() {
 
     return (
         <AdminShell title="Commission Settings">
+            <section className="mx-auto mb-6 max-w-5xl rounded-2xl border border-slate-200 bg-white p-5">
+                <div className="mb-5">
+                    <label
+                        htmlFor="paymentGateway"
+                        className="mb-2 block text-sm font-bold text-slate-900"
+                    >
+                        Payment Gateway
+                    </label>
+                    <select
+                        id="paymentGateway"
+                        value={paymentGateway}
+                        onChange={(e) => setPaymentGateway(e.target.value)}
+                        disabled={loading || saving}
+                        className="w-full rounded-xl border border-slate-300 bg-white p-3"
+                    >
+                        <option value="DISABLED">Disabled</option>
+                        <option value="SANDBOX">Sandbox (Testing Only)</option>
+                        <option value="JAZZCASH">JazzCash</option>
+                        <option value="EASYPAISA">Easypaisa</option>
+                        <option value="UBL">UBL Bank</option>
+                        <option value="BANK_TRANSFER">Other Bank Transfer</option>
+                    </select>
+                    <p className="mt-2 text-xs text-slate-500">
+                        Online top-up is disabled until secure payment verification is configured.
+                    </p>
+                </div>
+                <label className="flex items-center justify-between gap-4">
+                    <span>
+                        <strong className="block text-slate-900">Top-up Required</strong>
+                        <span className="text-sm text-slate-500">
+                            OFF = Free Mode. ON = Driver wallet balance required.
+                        </span>
+                    </span>
+                    <input
+                        type="checkbox"
+                        checked={topUpRequired}
+                        onChange={(event) => setTopUpRequired(event.target.checked)}
+                        disabled={saving || loading}
+                        className="h-5 w-5 accent-emerald-600"
+                    />
+                </label>
+                <label className="mt-5 flex items-center justify-between gap-4 border-t border-slate-100 pt-5">
+                    <span>
+                        <strong className="block text-slate-900">
+                            Online Top-up Enabled
+                        </strong>
+                        <span className="text-sm text-slate-500">
+                            Payment gateway checkout allow karein.
+                        </span>
+                    </span>
+                    <input
+                        type="checkbox"
+                        checked={onlineTopUpEnabled}
+                        onChange={(event) =>
+                            setOnlineTopUpEnabled(event.target.checked)
+                        }
+                        disabled={saving || loading}
+                        className="h-5 w-5 accent-emerald-600"
+                    />
+                </label>
+
+                <p className="mt-2 text-xs text-slate-500">
+                    Save Commission Settings to apply these changes. Live payments
+                    ke liye verified merchant integration zaroori hai.
+                </p>
+            </section>
             <div className="mx-auto max-w-5xl space-y-6">
                 <section className="rounded-[24px] border border-slate-100 bg-white p-6 shadow-sm">
                     <div className="flex flex-wrap items-start justify-between gap-4">
