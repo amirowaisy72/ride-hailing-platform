@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { ArrowLeft, MessageCircle, Send, Phone, CheckCheck, UserRound } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { getRealtimeSocket } from "@/lib/socket";
+import { useVisibleViewport, visibleViewportSurfaceStyle } from "@/hooks/useVisibleViewport";
 const QUICK = ["I'm at the pickup", "Please wait 2 minutes", "Where are you?", "Please call me"];
 const same = (a, b) => String(a) === String(b);
 const merge = (old, incoming) => {
@@ -23,6 +24,11 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
     const [text, setText] = useState("");
     const [sending, setSending] = useState(false);
     const [error, setError] = useState("");
+    // The chat dialog is full-screen (h-dvh); in the APK the keyboard
+    // overlays its lower part, hiding the composer while typing. Pin
+    // the dialog to the visible viewport while the keyboard is open
+    // (same Round 5 mechanism as the booking search surfaces).
+    const visibleViewport = useVisibleViewport();
     const openRef = useRef(false);
     const known = useRef(new Set());
     const endRef = useRef(null);
@@ -103,7 +109,7 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                 </span>
             )}
         </button>}
-        {isOpen && createPortal(<div className="fixed inset-0 z-[100] flex h-dvh flex-col overflow-hidden bg-white text-[#111111] dark:!bg-[#101216] dark:!text-[#F5F7FA]" role="dialog" aria-modal="true" aria-label="Ride messages">
+        {isOpen && createPortal(<div style={visibleViewportSurfaceStyle(visibleViewport)} className="fixed inset-0 z-[100] flex h-dvh flex-col overflow-hidden bg-white text-[#111111] dark:!bg-[#101216] dark:!text-[#F5F7FA]" role="dialog" aria-modal="true" aria-label="Ride messages">
             <header className="flex shrink-0 items-center gap-3 border-b border-[#EEF0F2] bg-white px-4 pb-3 pt-[max(12px,env(safe-area-inset-top))] shadow-sm">
                 <button
                     type="button"

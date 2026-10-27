@@ -6,8 +6,7 @@ import { ArrowLeft, Check, ChevronRight, Navigation, Package, Scale, ShoppingBag
 import AuthGuard from "@/components/AuthGuard";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
-import { Geolocation } from "@capacitor/geolocation";
-import { updateDriverLocation } from "@/lib/vehicleService";
+import { useDriverPosition } from "@/hooks/useDriverPosition";
 import { getRealtimeSocket } from "@/lib/socket";
 import {
     CardSkeleton, EmptyState, InlineError, ParcelProgress, ParcelStatusBadge, RouteSummary, Toast,
@@ -28,49 +27,15 @@ function DriverParcels() {
     const { token } = useAuth();
     const [available, setAvailable] = useState([]);
 
-    useEffect(() => {
-        if (!token) return;
-
-        let stopped = false;
-        let updating = false;
-
-        async function refreshGPS() {
-            if (stopped || updating || document.hidden) return;
-
-            updating = true;
-            try {
-                const position = await Geolocation.getCurrentPosition({
-                    enableHighAccuracy: true,
-                    timeout: 15000,
-                    maximumAge: 5000,
-                });
-
-                const { latitude, longitude, accuracy } = position.coords;
-
-                if (
-                    stopped ||
-                    !Number.isFinite(latitude) ||
-                    !Number.isFinite(longitude) ||
-                    !Number.isFinite(accuracy) ||
-                    accuracy > 100
-                ) return;
-
-                await updateDriverLocation(latitude, longitude, token);
-            } catch (error) {
-                console.warn("Parcel GPS refresh:", error.message);
-            } finally {
-                updating = false;
-            }
-        }
-
-        refreshGPS();
-        const timer = setInterval(refreshGPS, 30000);
-
-        return () => {
-            stopped = true;
-            clearInterval(timer);
-        };
-    }, [token]);
+    // Location sync runs on the shared driver-position pipeline (Round
+    // 4's hook): a continuous watch shared with the other driver
+    // screens, accurate fixes (<= 100 m) synced to the backend throttled
+    // to 10 s. This page used to run its own 30 s getCurrentPosition
+    // poll with the same accuracy gate and no watch — a driver sitting
+    // on this list in a weak-signal spot silently stopped syncing, so
+    // passengers and the nearby-parcel query saw a stale driver. The
+    // hook call is for its sync side effect; this list shows no map.
+    useDriverPosition({ token });
     const [assigned, setAssigned] = useState([]);
     const [offerPrices, setOfferPrices] = useState({});
     const [sentOffers, setSentOffers] = useState({});

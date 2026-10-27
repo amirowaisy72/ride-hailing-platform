@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Clock, LocateFixed, MapPin, Maximize2, Minimize2, Radio, Search, X } from "lucide-react";
 import { searchLocations } from "@/lib/locationService";
+import { useVisibleViewport } from "@/hooks/useVisibleViewport";
 
 export function PickupLocationSearch({
     token,
@@ -11,11 +12,28 @@ export function PickupLocationSearch({
     onSelect,
     onUseGPS,
     disabled = false,
+    // Optional: lets the parent booking sheet know a search is active
+    // so it can pin itself above the keyboard (Round 5).
+    onEditingChange,
 }) {
     const [editing, setEditing] = useState(false);
     const [query, setQuery] = useState("");
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
+    const panelRef = useRef(null);
+    const viewport = useVisibleViewport();
+
+    useEffect(() => {
+        onEditingChange?.(editing);
+    }, [editing, onEditingChange]);
+
+    // Keep the search panel on screen when it opens: with the keyboard
+    // up, the panel can start below the visible strip of the sheet.
+    useEffect(() => {
+        if (editing) {
+            panelRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
+    }, [editing]);
 
     useEffect(() => {
         if (!editing || query.trim().length < 3 || !token) {
@@ -86,14 +104,14 @@ export function PickupLocationSearch({
                     disabled={disabled}
                     onClick={onUseGPS}
                     aria-label="Use current GPS location"
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F4F5F7] text-[#111111] transition-colors hover:bg-[#E9EBEE] disabled:opacity-40"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#F4F5F7] text-[#111111] transition-colors hover:bg-[#E9EBEE] disabled:opacity-40"
                 >
                     <LocateFixed size={17} />
                 </button>
             </div>
 
             {editing && !disabled && (
-                <div className="mt-3 rounded-2xl border border-[#EEF0F2] bg-white p-2 shadow-[0_8px_28px_rgba(17,17,17,0.10)]">
+                <div ref={panelRef} className="mt-3 rounded-2xl border border-[#EEF0F2] bg-white p-2 shadow-[0_8px_28px_rgba(17,17,17,0.10)]">
                     <label className="flex items-center gap-2 rounded-xl bg-[#F4F5F7] px-3 focus-within:ring-2 focus-within:ring-[#111111]">
                         <Search size={17} className="text-[#9CA3AF]" aria-hidden="true" />
                         <span className="sr-only">Search pickup address</span>
@@ -108,7 +126,7 @@ export function PickupLocationSearch({
                             type="button"
                             onClick={() => setEditing(false)}
                             aria-label="Close pickup search"
-                            className="flex h-7 w-7 items-center justify-center rounded-full text-[#6B7280] hover:bg-white"
+                            className="flex h-9 w-9 items-center justify-center rounded-full text-[#6B7280] hover:bg-white"
                         >
                             <X size={16} />
                         </button>
@@ -126,7 +144,19 @@ export function PickupLocationSearch({
                     )}
 
                     {results.length > 0 && (
-                        <ul className="mt-1 max-h-52 overflow-y-auto">
+                        <ul
+                            className="mt-1 max-h-52 overflow-y-auto overscroll-contain"
+                            // With the keyboard open, the fixed 13 rem cap
+                            // left results in a one-row strip above the
+                            // keys. Grow the list to the visible height
+                            // instead (sheet header + this card + the
+                            // search field occupy roughly 300 px of it);
+                            // it returns to the compact cap when the
+                            // keyboard closes.
+                            style={viewport.keyboardOpen && viewport.height
+                                ? { maxHeight: Math.max(200, viewport.height - 300) }
+                                : undefined}
+                        >
                             {results.map((place, index) => (
                                 <li key={place.place_id || index} className="border-b border-[#F1F2F4] last:border-b-0">
                                     <button

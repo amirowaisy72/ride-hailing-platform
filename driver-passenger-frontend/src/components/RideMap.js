@@ -102,6 +102,43 @@ function bearingBetween(from, to) {
     if (Math.hypot(deltaLng, deltaLat) <= 0.00008) return null;
     return (Math.atan2(deltaLng, deltaLat) * 180 / Math.PI + 360) % 360;
 }
+function styleUrlForTheme(theme) {
+    return theme === "dark"
+        ? "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+        : "https://tiles.openfreemap.org/styles/liberty";
+}
+
+// The dark basemap ships a near-black background; soften it to the
+// app's dark surface tone. Applied on first load and after every
+// in-place style swap (see the theme effect in the component).
+function applyThemeBackground(map, theme) {
+    if (theme !== "dark") return;
+    for (const layer of map.getStyle().layers || []) {
+        if (layer.type === "background") {
+            map.setPaintProperty(layer.id, "background-color", "#292C32");
+        }
+    }
+}
+
+// The Khanpur streets overlay is a runtime source, so a style swap
+// drops it; this re-adds it from the cached GeoJSON (guard makes it
+// a no-op whenever the source is already present).
+function addStreetsLayer(map, data) {
+    if (!data || map.getSource("khanpur-streets")) return;
+    map.addSource("khanpur-streets", { type: "geojson", data });
+    map.addLayer({
+        id: "khanpur-streets-layer",
+        type: "line",
+        source: "khanpur-streets",
+        minzoom: 13,
+        paint: {
+            "line-color": "#626A70",
+            "line-width": 1,
+            "line-opacity": 0.25,
+        },
+    });
+}
+
 const iconCache = new Map();
 
 function vehicleIconMarkup(type, color, size) {
@@ -222,6 +259,15 @@ export default function RideMap({
     const { token } = useAuth();
     const node = useRef(null);
     const mapRef = useRef(null);
+    // Theme bookkeeping for in-place restyling: the theme the live map's
+    // style was built from, the latest theme (read by handlers created
+    // outside React), the cached streets GeoJSON, and a counter bumped
+    // after each style swap so source-owning effects re-add their
+    // sources/layers against the new style.
+    const appliedThemeRef = useRef(null);
+    const themeRef = useRef(resolvedTheme);
+    const streetsDataRef = useRef(null);
+    const [styleEpoch, setStyleEpoch] = useState(0);
     const pickupRef = useRef(null);
     const driverRef = useRef(null);
     const destinationRef = useRef(null);
@@ -245,33 +291,30 @@ export default function RideMap({
     dragHandler.current = onPickupChange;
     routeUpdateRef.current = onRouteUpdate;
     clickRef.current = onMapClick;
+    themeRef.current = resolvedTheme;
     const placeSelectRef = useRef(null);
     placeSelectRef.current = onPlaceSelect;
     sheetRatioRef.current = sheetRatio;
+    // The map is created ONCE. Theme changes restyle it in place (see
+    // the theme effect below) instead of tearing it down and rebuilding
+    // it — previously every dark/light toggle reset the camera, dropped
+    // the markers' framing and reloaded every tile and source.
     useEffect(() => {
         if (!node.current || mapRef.current) return;
+        const initialTheme = themeRef.current;
+        appliedThemeRef.current = initialTheme;
         const map = new maplibregl.Map({
             container: node.current,
-            style: resolvedTheme === "dark"
-                ? "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
-                : "https://tiles.openfreemap.org/styles/liberty",
+            style: styleUrlForTheme(initialTheme),
             center,
             zoom: 12,
             attributionControl: true,
         });
         mapRef.current = map;
 
-        map.on("load", () => {
-            for (const layer of map.getStyle().layers || []) {
-                if (layer.type === "background" && resolvedTheme === "dark") {
-                    map.setPaintProperty(
-                        layer.id,
-                        "background-color",
-                        "#292C32"
-                    );
-                }
-            }
-        });
+        // Reads the applied theme at fire time, not the mount-time one,
+        // so a toggle that lands before first load still paints right.
+        map.on("load", () => applyThemeBackground(map, appliedThemeRef.current));
         if (showNavigationControl) {
             map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "bottom-right");
         }
@@ -282,25 +325,10 @@ export default function RideMap({
                 const response = await fetch("/khanpur-streets.geojson");
                 if (!response.ok) return;
 
-                const streets = await response.json();
-                if (!mapRef.current || map.getSource("khanpur-streets")) return;
-
-                map.addSource("khanpur-streets", {
-                    type: "geojson",
-                    data: streets,
-                });
-
-                map.addLayer({
-                    id: "khanpur-streets-layer",
-                    type: "line",
-                    source: "khanpur-streets",
-                    minzoom: 13,
-                    paint: {
-                        "line-color": "#626A70",
-                        "line-width": 1,
-                        "line-opacity": 0.25,
-                    },
-                });
+                // Cached so the theme effect can re-add the overlay
+                // after a style swap without refetching.
+                streetsDataRef.current = await response.json();
+                if (mapRef.current === map) addStreetsLayer(map, streetsDataRef.current);
             } catch (error) {
                 console.warn("Khanpur streets loading failed:", error);
             }
@@ -330,11 +358,39 @@ export default function RideMap({
             map.remove();
             mapRef.current = null;
         };
+        // Mount-only: the map lives for the component's whole lifetime;
+        // theme changes go through the restyle effect below.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // In-place theme restyle: setStyle swaps the basemap while MapLibre
+    // preserves the camera (centre/zoom/bearing) and every DOM marker.
+    // Runtime sources/layers do NOT survive the swap, so when the new
+    // style lands we re-add the streets overlay and bump styleEpoch —
+    // the places and route effects key on it and re-add their own
+    // sources/layers with the new theme's paint.
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || appliedThemeRef.current === resolvedTheme) return;
+        appliedThemeRef.current = resolvedTheme;
+        map.setStyle(styleUrlForTheme(resolvedTheme));
+        const onStyleLoad = () => {
+            if (mapRef.current !== map) return;
+            applyThemeBackground(map, resolvedTheme);
+            addStreetsLayer(map, streetsDataRef.current);
+            setStyleEpoch((epoch) => epoch + 1);
+        };
+        map.once("style.load", onStyleLoad);
+        return () => { map.off("style.load", onStyleLoad); };
     }, [resolvedTheme]);
 
     useEffect(() => {
         const map = mapRef.current;
         if (!map || !mapReady || !token) return;
+        // Paint values follow the theme the live style was built for;
+        // after a swap this effect re-runs via styleEpoch and re-adds
+        // the layers with the new theme's colours.
+        const theme = themeRef.current;
 
         let cancelled = false;
 
@@ -350,7 +406,7 @@ export default function RideMap({
             // desaturated and semi-transparent in both themes so they can
             // never be confused with the prominent live passenger/driver
             // markers (full-opacity Safar green, white ring, shadow).
-            const placesMuted = resolvedTheme === "dark" ? "#4F7263" : "#86A696";
+            const placesMuted = theme === "dark" ? "#4F7263" : "#86A696";
             map.addLayer({
                 id: "safar-local-cluster-halo",
                 type: "circle",
@@ -358,7 +414,7 @@ export default function RideMap({
                 filter: ["has", "point_count"],
                 paint: {
                     "circle-color": placesMuted,
-                    "circle-opacity": resolvedTheme === "dark" ? 0.13 : 0.16,
+                    "circle-opacity": theme === "dark" ? 0.13 : 0.16,
                     "circle-radius": ["step", ["get", "point_count"], 16, 10, 20, 50, 25],
                 },
             });
@@ -443,9 +499,9 @@ export default function RideMap({
                     "symbol-sort-key": 1
                 },
                 paint: {
-                    "text-color": resolvedTheme === "dark" ? "#D7E0DA" : "#3D4A44",
+                    "text-color": theme === "dark" ? "#D7E0DA" : "#3D4A44",
                     "text-opacity": 0.9,
-                    "text-halo-color": resolvedTheme === "dark" ? "#16181D" : "#FFFFFF",
+                    "text-halo-color": theme === "dark" ? "#16181D" : "#FFFFFF",
                     "text-halo-width": 2,
                     "text-halo-blur": 0.5
                 },
@@ -521,7 +577,7 @@ export default function RideMap({
     padding: 6px 8px;
     min-width: 170px;
     font-family: system-ui, sans-serif;
-    color: ${resolvedTheme === "dark" ? "#F8FAFC" : "#111827"};
+    color: ${themeRef.current === "dark" ? "#F8FAFC" : "#111827"};
 `;
 
             const title = document.createElement("div");
@@ -619,7 +675,7 @@ export default function RideMap({
                 closeButton: true,
                 offset: 16,
                 maxWidth: "260px",
-                className: resolvedTheme === "dark"
+                className: themeRef.current === "dark"
                     ? "safar-place-popup safar-place-popup-dark"
                     : "safar-place-popup",
             })
@@ -649,7 +705,7 @@ export default function RideMap({
             map.off("click", "safar-local-labels", handlePlaceClick);
             map.off("click", "safar-local-clusters", handleClusterClick);
         };
-    }, [mapReady, token, resolvedTheme]);
+    }, [mapReady, token, styleEpoch]);
 
     useEffect(() => {
         const map = mapRef.current;
@@ -930,7 +986,7 @@ export default function RideMap({
         }
         drawRoute();
         return () => { abandoned = true; controller.abort(); };
-    }, [mapReady, navigationMode, destination?.latitude, destination?.longitude,
+    }, [mapReady, styleEpoch, navigationMode, destination?.latitude, destination?.longitude,
         destination?.coordinates?.[0], destination?.coordinates?.[1],
         // Trigger a new routing request after meaningful GPS movement (\~55 m).
         Math.round((navigationMode && getPoint(driverLocation) ? getPoint(driverLocation)[0] : (getPoint(userLocation)?.[0] || 0)) * 2000),

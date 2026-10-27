@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
     ArrowRight, Banknote, Bell, Check, ChevronDown,
@@ -27,6 +27,7 @@ import {
 import RideMap from "@/components/RideMap";
 import ParcelActivityBar from "@/components/ParcelActivityBar";
 import { useLiveDriverLocation } from "@/hooks/useLiveDriverLocation";
+import { useVisibleViewport, visibleViewportSurfaceStyle } from "@/hooks/useVisibleViewport";
 import { useNearbyDrivers } from "@/hooks/useNearbyDrivers";
 import { useRideUnreadMessages } from "@/hooks/useRideUnreadMessages";
 import RideChat from "@/components/RideChat";
@@ -286,9 +287,28 @@ function PassengerDashboard() {
     }, [token]);
     const [stops, setStops] = useState([]);
     const [destinationQuery, setDestinationQuery] = useState("");
+    // Round 5 keyboard handling: which location search (if any) is
+    // active in the booking sheet, and the visible viewport above the
+    // on-screen keyboard. While a search is active with the keyboard
+    // open, the sheet pins itself to the visible region and the
+    // destination results take its full remaining height — previously
+    // the keyboard overlaid the sheet's lower half and results were
+    // squeezed into a one-row strip with nested scrolling.
+    const [destinationFocused, setDestinationFocused] = useState(false);
+    const [pickupSearchActive, setPickupSearchActive] = useState(false);
+    const [stopSearchActive, setStopSearchActive] = useState(false);
+    const visibleViewport = useVisibleViewport();
+    const handlePickupSearchChange = useCallback((active) => setPickupSearchActive(active), []);
+    const handleStopSearchChange = useCallback((active) => setStopSearchActive(active), []);
+    const anyBookingSearchActive = bookingOpen && (destinationFocused || pickupSearchActive || stopSearchActive);
+    const bookingSheetSearchStyle = anyBookingSearchActive ? visibleViewportSurfaceStyle(visibleViewport) : undefined;
     const [searchResults, setSearchResults] = useState([]);
     const [searching, setSearching] = useState(false);
     const [destinationSelected, setDestinationSelected] = useState(false);
+    // Destination search takes over the booking sheet's body while the
+    // passenger is picking from results (see the search-state block
+    // above); it ends the moment a destination is chosen.
+    const destinationSearchMode = Boolean(bookingSheetSearchStyle && destinationFocused && !destinationSelected);
     const [route, setRoute] = useState(null);
     const [routeLoading, setRouteLoading] = useState(false);
     const [vehicleType, setVehicleType] = useState("CAR_NON_AC");
@@ -1344,6 +1364,10 @@ function PassengerDashboard() {
                 aria-hidden={!bookingOpen || fullScreenMap || Boolean(activeRide)}
                 inert={!bookingOpen || fullScreenMap || Boolean(activeRide)}
                 aria-label="Book a ride"
+                // While a location search is active with the keyboard
+                // open, pin the sheet to the visible viewport (above
+                // the keyboard) instead of its full layout height.
+                style={bookingSheetSearchStyle}
                 className={`absolute inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] top-0 z-30 flex flex-col bg-white shadow-xl transition-transform duration-300 ease-out ${(!bookingOpen || fullScreenMap || activeRide) ? "pointer-events-none translate-y-[120%]" : ""}`}
             >
                 <div className="flex shrink-0 items-center justify-between border-b border-[#EEF0F2] px-5 pb-3 pt-[max(16px,env(safe-area-inset-top))]">
@@ -1355,10 +1379,10 @@ function PassengerDashboard() {
                     <span className="w-11" />
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-3 sm:px-6">
-                    <div className="mx-auto max-w-lg">
+                <div className={`min-h-0 flex-1 px-4 pb-3 sm:px-6 ${destinationSearchMode ? "flex flex-col overflow-hidden" : "overflow-y-auto overscroll-contain"}`}>
+                    <div className={`mx-auto w-full max-w-lg ${destinationSearchMode ? "flex min-h-0 flex-1 flex-col" : ""}`}>
 
-                        {savedPlaces.length > 0 && (
+                        {savedPlaces.length > 0 && !destinationSearchMode && (
                             <div className="mb-3">
                                 <button
                                     type="button"
@@ -1497,14 +1521,18 @@ function PassengerDashboard() {
                             </div>
                         )}
 
-                        <div className="rounded-2xl border border-[#EEF0F2] bg-white shadow-[0_4px_18px_rgba(17,17,17,0.05)]">
-                            <div className="px-3.5 py-3">
+                        <div className={`rounded-2xl border border-[#EEF0F2] bg-white shadow-[0_4px_18px_rgba(17,17,17,0.05)] ${destinationSearchMode ? "shrink-0" : ""}`}>
+                            {/* While picking a destination, the pickup row
+                                collapses so results get the room (it
+                                returns untouched on selection/clear). */}
+                            <div className={`px-3.5 py-3 ${destinationSearchMode ? "hidden" : ""}`}>
                                 <PickupLocationSearch
                                     token={token}
                                     currentLocation={userLocation}
                                     pickupAddress={pickupAddress || (locating ? "Detecting location..." : "")}
                                     disabled={Boolean(activeRide) || booking}
                                     onUseGPS={locateMe}
+                                    onEditingChange={handlePickupSearchChange}
                                     onSelect={(place) => {
                                         setManualPickup(true);
                                         setPickupAddress(place.name);
@@ -1517,7 +1545,7 @@ function PassengerDashboard() {
                                     }}
                                 />
                             </div>
-                            <div className="relative mx-3.5 border-t border-[#EEF0F2]">
+                            <div className={`relative mx-3.5 border-t border-[#EEF0F2] ${destinationSearchMode ? "hidden" : ""}`}>
                                 <span className="absolute -top-3 left-[9px] h-6 border-l-2 border-dotted border-[#C7CBD1]" aria-hidden="true" />
                             </div>
                             <label className="flex items-center gap-3 px-3.5 py-3">
@@ -1529,6 +1557,10 @@ function PassengerDashboard() {
                                     <input
                                         type="text"
                                         value={destinationQuery}
+                                        onFocus={() => setDestinationFocused(true)}
+                                        // Delayed so a tap on a search result
+                                        // lands before the layout restores.
+                                        onBlur={() => setTimeout(() => setDestinationFocused(false), 150)}
                                         onChange={(e) => {
                                             setDestinationQuery(e.target.value);
                                             setDestination(null);
@@ -1571,7 +1603,7 @@ function PassengerDashboard() {
                             </div>
                         )}
                         {!searching && searchResults.length > 0 && (
-                            <ul className="rx-slide-up mt-3 max-h-[45dvh] overflow-y-auto rounded-2xl border border-[#E9EBEE] bg-white shadow-[0_12px_36px_rgba(17,17,17,0.09)]" aria-label="Destination search results">
+                            <ul className={`rx-slide-up mt-3 overflow-y-auto overscroll-contain rounded-2xl border border-[#E9EBEE] bg-white shadow-[0_12px_36px_rgba(17,17,17,0.09)] ${destinationSearchMode ? "min-h-0 flex-1" : "max-h-[45dvh]"}`} aria-label="Destination search results">
                                 {searchResults.map((place, index) => (
                                     <li key={place.place_id || index} className="border-b border-[#F1F2F4] last:border-b-0">
                                         <button
@@ -1612,7 +1644,7 @@ function PassengerDashboard() {
                             </div>
                         )}
 
-                        <div className="mt-3">
+                        <div className={destinationSearchMode ? "hidden" : "mt-3"}>
                             <RideStopsEditor
                                 stops={stops}
                                 onChange={(nextStops) => {
@@ -1623,17 +1655,18 @@ function PassengerDashboard() {
                                 token={token}
                                 pickup={userLocation}
                                 disabled={Boolean(activeRide) || booking}
+                                onEditingChange={handleStopSearchChange}
                             />
                         </div>
 
 
-                        {citySupported === false && (
+                        {citySupported === false && !destinationSearchMode && (
                             <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                                 Service is currently unavailable at your pickup location. Please select a pickup inside an active service area.
                             </p>
                         )}
 
-                        {routeLoading && (
+                        {routeLoading && !destinationSearchMode && (
                             <div className="mt-5 space-y-3" aria-label="Calculating route">
                                 <div className="grid grid-cols-3 gap-2">
                                     {[0, 1, 2].map((item) => <div key={item} className="rx-shimmer h-16 rounded-2xl" />)}
@@ -1644,7 +1677,7 @@ function PassengerDashboard() {
                             </div>
                         )}
 
-                        {route && (
+                        {route && !destinationSearchMode && (
                             <div className="rx-slide-up mt-5 space-y-4">
                                 <div className="grid grid-cols-3 gap-2">
                                     <TripStat
@@ -1801,7 +1834,7 @@ function PassengerDashboard() {
                     </div>
                 </div>
 
-                <div className="shrink-0 border-t border-[#F1F2F4] bg-white px-4 pb-4 pt-3 sm:px-6">
+                <div className={`shrink-0 border-t border-[#F1F2F4] bg-white px-4 pb-4 pt-3 sm:px-6 ${destinationSearchMode ? "hidden" : ""}`}>
                     <div className="mx-auto max-w-lg">
                         {bookingHint && <p className="mb-2 text-center text-xs font-medium text-[#6B7280]">{bookingHint}</p>}
                         <button
@@ -1846,7 +1879,7 @@ function PassengerDashboard() {
                                         : activeRide.status === "DRIVER_ARRIVED" ? "Meet your driver at the pickup point"
                                             : liveRoute?.distanceKm != null
                                                 ? `${liveRoute.distanceKm} km · approx. ${liveRoute.durationMinutes} min remaining`
-                                                : driverLocationFresh ? "Live driver location updating" : "Waiting for live driver location"}
+                                                : driverLocationFresh ? "Live driver location updating" : driverLocation ? "Showing last known driver location" : "Waiting for live driver location"}
                                 </p>
                             </div>
                             {rideAssigned && (
