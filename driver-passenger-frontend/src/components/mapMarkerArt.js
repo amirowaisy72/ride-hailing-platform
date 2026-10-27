@@ -86,8 +86,8 @@ export function flagSvg(color = MARKER_WHITE, size = 16) {
 // Pin family used by ParcelTrackingMap (RideMap keeps its own rx-map-*
 // classes but shares the glyph builders above).
 export const MAP_PIN_STYLES = `
-.sf-pin{position:relative;display:block;filter:drop-shadow(0 6px 9px rgba(9,24,17,.38))}
-.sf-pin-disc{position:relative;z-index:2;display:grid;place-items:center;border-radius:50%;border:3px solid #fff}
+.sf-pin{position:relative;display:block;filter:drop-shadow(0 8px 12px rgba(9,24,17,.5))}
+.sf-pin-disc{position:relative;z-index:2;display:grid;place-items:center;border-radius:50%;border:3.5px solid #fff}
 .sf-pin-tail{position:absolute;z-index:1;left:50%;bottom:-6px;transform:translateX(-50%);width:0;height:0;border:6px solid transparent}
 .sf-pin--green .sf-pin-disc{background:${MARKER_GREEN}}
 .sf-pin--green .sf-pin-tail{border-top:8px solid ${MARKER_GREEN}}
@@ -111,9 +111,10 @@ function pinElement(className, discSize, inner, label, extra = "") {
 export function createPersonPinElement(label = "Passenger location") {
     return pinElement(
         "sf-pin--green",
-        34,
-        hailingPersonSvg(MARKER_WHITE, 19),
-        label
+        38,
+        hailingPersonSvg(MARKER_WHITE, 21),
+        label,
+        `<span class="sf-pin-pulse"></span>`
     );
 }
 
@@ -121,8 +122,8 @@ export function createPersonPinElement(label = "Passenger location") {
 export function createDriverPinElement(vehicleType, label = "Driver live location") {
     return pinElement(
         "sf-pin--green",
-        40,
-        vehicleGlyphSvg(vehicleType, MARKER_WHITE, 23),
+        44,
+        vehicleGlyphSvg(vehicleType, MARKER_WHITE, 25),
         label,
         `<span class="sf-pin-pulse"></span>`
     );
@@ -132,8 +133,8 @@ export function createDriverPinElement(vehicleType, label = "Driver live locatio
 export function createDestinationPinElement(label = "Destination") {
     return pinElement(
         "sf-pin--slate",
-        32,
-        flagSvg(MARKER_WHITE, 16),
+        36,
+        flagSvg(MARKER_WHITE, 18),
         label
     );
 }

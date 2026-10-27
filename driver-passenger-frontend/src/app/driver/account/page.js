@@ -186,10 +186,16 @@ function DriverAccount() {
 
                 <section className="rounded-2xl bg-white p-5 shadow-sm">
                     <h3 className="mb-4 font-extrabold">Account & Settings</h3>
-                    <div className="flex items-center gap-3 border-b py-3">
+                    <Link
+                        href="/driver/earnings"
+                        className="flex items-center gap-3 border-b py-3"
+                    >
                         <Wallet size={20} className="text-[#087F5B]" />
-                        <span className="text-sm">Wallet & Earnings — Coming Soon</span>
-                    </div>
+                        <span className="flex-1 text-sm font-semibold">
+                            Wallet & Earnings
+                        </span>
+                        <span className="text-xs text-[#087F5B]">Open →</span>
+                    </Link>
                     <Link
                         href="/driver/profile"
                         className="flex items-center gap-3 border-b py-3"

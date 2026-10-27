@@ -82,6 +82,74 @@ async function getMyEarnings(req, res) {
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
             .slice(0, 20);
 
+        // Daily breakdown for the last 7 Karachi-local days (today
+        // included), merging settled rides and parcels. Day boundaries use
+        // Asia/Karachi because fares are earned on local days.
+        const DAY_MS = 24 * 60 * 60 * 1000;
+        const dayKeyFormat = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Asia/Karachi",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+        });
+        const todayKey = dayKeyFormat.format(new Date());
+        const rangeStart = new Date(
+            new Date(`${todayKey}T00:00:00+05:00`).getTime() - 6 * DAY_MS
+        );
+        const dayPipeline = [
+            {
+                $match: {
+                    driverId: driver._id,
+                    status: "SETTLED",
+                    createdAt: { $gte: rangeStart },
+                },
+            },
+            {
+                $group: {
+                    _id: {
+                        $dateToString: {
+                            format: "%Y-%m-%d",
+                            date: "$createdAt",
+                            timezone: "Asia/Karachi",
+                        },
+                    },
+                    earnings: { $sum: "$driverEarnings" },
+                    trips: { $sum: 1 },
+                },
+            },
+        ];
+        const [rideDays, parcelDays] = await Promise.all([
+            RideSettlement.aggregate(dayPipeline),
+            ParcelSettlement.aggregate(dayPipeline),
+        ]);
+        const byDay = new Map();
+        for (const row of [...rideDays, ...parcelDays]) {
+            const entry = byDay.get(row._id) || { earnings: 0, trips: 0 };
+            entry.earnings += row.earnings || 0;
+            entry.trips += row.trips || 0;
+            byDay.set(row._id, entry);
+        }
+        const days = [];
+        for (let back = 6; back >= 0; back -= 1) {
+            const date = new Date(rangeStart.getTime() + (6 - back) * DAY_MS);
+            const key = dayKeyFormat.format(date);
+            const entry = byDay.get(key) || { earnings: 0, trips: 0 };
+            days.push({ date: key, earnings: entry.earnings, trips: entry.trips });
+        }
+        const todayEntry = byDay.get(todayKey) || { earnings: 0, trips: 0 };
+        const daily = {
+            today: {
+                date: todayKey,
+                earnings: todayEntry.earnings,
+                trips: todayEntry.trips,
+            },
+            week: {
+                earnings: days.reduce((sum, day) => sum + day.earnings, 0),
+                trips: days.reduce((sum, day) => sum + day.trips, 0),
+            },
+            days,
+        };
+
         const completedTrips = await Ride.countDocuments({
             driverId: driver._id,
             status: "TRIP_COMPLETED",
@@ -134,6 +202,7 @@ async function getMyEarnings(req, res) {
                 ),
             },
             recentTrips,
+            daily,
         });
     } catch (error) {
         console.error("Earnings error:", error.message);

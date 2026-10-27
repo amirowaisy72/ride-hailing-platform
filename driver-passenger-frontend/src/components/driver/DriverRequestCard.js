@@ -60,6 +60,23 @@ export default function DriverRequestCard({ ride, price, onPriceChange, onSend, 
                 <p className="dx-request-sent"><Check size={14} /> Offer sent · waiting for passenger{cooling ? ` · revise in ${cooldownSeconds}s` : ""}</p>
             )}
 
+            <div className="dx-chips" role="group" aria-label="Quick fare add-ons">
+                {[10, 20, 50].map((amount) => (
+                    <button key={amount} type="button" className="dx-chip-add"
+                        onClick={() => onPriceChange(String(current + amount))}
+                        aria-label={`Add PKR ${amount} to your fare`}>
+                        +{amount}
+                    </button>
+                ))}
+                {base > 0 && current !== base && (
+                    <button type="button" className="dx-chip-add dx-chip-reset"
+                        onClick={() => onPriceChange(String(base))}
+                        aria-label="Reset to the passenger's fare">
+                        Reset
+                    </button>
+                )}
+            </div>
+
             <div className="dx-offer">
                 <div className="dx-stepper">
                     <button type="button" aria-label="Lower fare" disabled={current - step <= 0}

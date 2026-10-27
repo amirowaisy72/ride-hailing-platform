@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     ArrowRight, CarFront, CheckCircle2, ChevronRight, Compass, CornerUpRight, FileCheck2,
-    Flag, Hourglass, MapPin, MessageCircle, Navigation, Power, RefreshCw, Satellite, UserRound,
+    Flag, Hourglass, LifeBuoy, MapPin, MessageCircle, Navigation, Power, RefreshCw, Satellite, Star, UserRound,
     WifiOff, XCircle, Menu, X, Bell, BellRing, Volume2, VolumeX, LocateFixed, Wallet,
 } from "lucide-react";
 import { Geolocation } from "@capacitor/geolocation";
@@ -20,6 +20,8 @@ import Link from "next/link";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import DriverSheet from "@/components/driver/DriverSheet";
 import DriverRequestCard, { money, placeText, vehicleNames } from "@/components/driver/DriverRequestCard";
+import DriverRequestOverlay from "@/components/driver/DriverRequestOverlay";
+import SlideToConfirm from "@/components/driver/SlideToConfirm";
 import { DriverToast } from "@/components/driver/DriverMapControls";
 import useDriverNotifications from "@/components/driver/useDriverNotifications";
 import { useAuth } from "@/context/AuthContext";
@@ -29,6 +31,7 @@ import { submitDriverOffer } from "@/lib/driverRideService";
 import { getMyVehicles, selectVehicle, updateOnlineStatus, updateDriverLocation } from "@/lib/vehicleService";
 import { getRealtimeSocket } from "@/lib/socket";
 import { useRideUnreadMessages } from "@/hooks/useRideUnreadMessages";
+import { COMPLAINT_CATEGORIES, COMPLAINT_STATUS_META } from "@/components/ComplaintsSection";
 // Allowed driver-side transitions (unchanged backend contract).
 
 const PARCEL_LINK = "/driver/parcels";
@@ -92,6 +95,19 @@ function formatMeters(m) {
     if (!Number.isFinite(m) || m <= 0) return null;
     return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m / 10) * 10} m`;
 }
+
+function haversineMeters(from, to) {
+    const earth = 6371000;
+    const dLat = (to.latitude - from.latitude) * Math.PI / 180;
+    const dLng = (to.longitude - from.longitude) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2
+        + Math.cos(from.latitude * Math.PI / 180) * Math.cos(to.latitude * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    return 2 * earth * Math.asin(Math.sqrt(a));
+}
+
+// Seconds a live request holds the full-screen takeover before the
+// driver is returned to the list (the request itself stays listed).
+const REQUEST_FOCUS_SECONDS = 45;
 
 function DriverDashboard() {
     const { user, token } = useAuth();
@@ -167,6 +183,12 @@ function DriverDashboard() {
     }));
     const [offerPrices, setOfferPrices] = useState({});
     const [submittedIds, setSubmittedIds] = useState([]);
+    const [focusRideId, setFocusRideId] = useState(null);
+    const [focusDeadline, setFocusDeadline] = useState(0);
+    const [dismissedIds, setDismissedIds] = useState([]);
+    const [driverProfile, setDriverProfile] = useState(null);
+    const [homeEarnings, setHomeEarnings] = useState(null);
+    const [myComplaints, setMyComplaints] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [busy, setBusy] = useState(false);
@@ -269,6 +291,7 @@ function DriverDashboard() {
                 ]);
                 if (cancelled) return;
                 const driver = status.driver;
+                setDriverProfile(driver || null);
                 setIsOnline(Boolean(driver?.isOnline));
                 setIsAvailable(Boolean(driver?.isAvailable));
                 setSelectedVehicle(driver?.currentVehicleId || "");
@@ -289,6 +312,32 @@ function DriverDashboard() {
         return () => { cancelled = true; };
     }, [token, reportError]);
     useEffect(() => { if (!loading) loadRequests(); }, [loading, loadRequests]);
+    // Full-screen takeover: the newest live (socket-arrived) request that
+    // the driver has not answered or dismissed takes focus once. When one
+    // is answered, closed by the passenger, or its countdown ends, focus
+    // clears and the next waiting live request takes over.
+    useEffect(() => {
+        if (selectedRide) {
+            if (focusRideId) setFocusRideId(null);
+            return;
+        }
+        if (focusRideId) {
+            const stillOpen = requests.some((r) => r.rideId === focusRideId);
+            if (!stillOpen || submittedIds.includes(focusRideId)) setFocusRideId(null);
+            return;
+        }
+        const next = requests.find((r) => r.live && !submittedIds.includes(r.rideId) && !dismissedIds.includes(r.rideId));
+        if (next) {
+            setFocusRideId(next.rideId);
+            setFocusDeadline(Date.now() + REQUEST_FOCUS_SECONDS * 1000);
+        }
+    }, [requests, selectedRide, focusRideId, submittedIds, dismissedIds]);
+    useEffect(() => {
+        if (focusRideId && focusDeadline && clock >= focusDeadline) {
+            setDismissedIds((previous) => [...new Set([...previous, focusRideId])]);
+            setFocusRideId(null);
+        }
+    }, [clock, focusRideId, focusDeadline]);
     // Socket is primary; polling catches missed events, reconnects, and late GPS updates.
     useEffect(() => {
         if (!token || !isOnline || !isAvailable || loading) return;
@@ -330,8 +379,24 @@ function DriverDashboard() {
         ]);
         setIsOnline(Boolean(status.driver?.isOnline));
         setIsAvailable(Boolean(status.driver?.isAvailable));
+        setDriverProfile(status.driver || null);
         return active.ride || null;
     }, [token]);
+    // Home summary data: earnings (today/week) + my complaint statuses.
+    // Best-effort: failures simply leave the cards hidden/zeroed.
+    useEffect(() => {
+        if (!token) return;
+        let cancelled = false;
+        Promise.allSettled([
+            apiRequest("/drivers/me/earnings", { token }),
+            apiRequest("/complaints/mine", { token }),
+        ]).then(([earningsResult, complaintsResult]) => {
+            if (cancelled) return;
+            if (earningsResult.status === "fulfilled") setHomeEarnings(earningsResult.value);
+            if (complaintsResult.status === "fulfilled") setMyComplaints(complaintsResult.value.complaints || []);
+        });
+        return () => { cancelled = true; };
+    }, [token, selectedRide?.status]);
     useEffect(() => {
         const socket = getRealtimeSocket();
         if (!socket || !token) return;
@@ -687,15 +752,8 @@ function DriverDashboard() {
     async function advanceTrip() {
         const action = ACTIONS[selectedRide?.status];
         if (!action || busy || !selectedRide?._id) return;
-
-        if (
-            action[0] === "TRIP_COMPLETED" &&
-            selectedRide.tripType === "ROUND_TRIP" &&
-            !window.confirm(
-                "Have you returned the passenger to the original pickup location?"
-            )
-        ) return;
-
+        // No extra confirm dialog: the caller is the slide-to-confirm
+        // control, which already requires a deliberate gesture.
         setBusy(true);
         try {
             const data = await apiRequest(`/rides/${selectedRide._id}/status`, { method: "PATCH", token, body: JSON.stringify({ status: action[0] }) });
@@ -719,6 +777,18 @@ function DriverDashboard() {
         setSheet("half");
         loadRequests();
     }
+    const focusRide = focusRideId ? namedRequests.find((r) => r.rideId === focusRideId) || null : null;
+    const focusSecondsLeft = focusRide ? Math.max(0, Math.ceil((focusDeadline - clock) / 1000)) : 0;
+    const focusPickupDistance = (() => {
+        if (!focusRide || !location) return null;
+        const coords = Array.isArray(focusRide.pickup?.coordinates)
+            ? focusRide.pickup.coordinates
+            : [focusRide.pickup?.longitude, focusRide.pickup?.latitude];
+        const lng = Number(coords?.[0]);
+        const lat = Number(coords?.[1]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+        return formatMeters(haversineMeters(location, { latitude: lat, longitude: lng }));
+    })();
     const activeVehicle = vehicles.find((v) => v._id === selectedVehicle);
     const completeBlocked = selectedRide?.status === "TRIP_STARTED" && (pendingStop || Boolean(selectedRide?.stopWaitingSince));
     const userId = user?._id || user?.id;
@@ -878,6 +948,41 @@ function DriverDashboard() {
     const idleBody = (
         <div className="space-y-4 pb-4">
 
+            {/* Earnings first: today's earnings large, week + rating alongside */}
+            <section className="overflow-hidden rounded-3xl bg-[#087F5B] p-5 text-white shadow-lg shadow-[#087F5B]/25">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-white/75">
+                            Today&apos;s earnings
+                        </p>
+                        <p className="mt-1 text-4xl font-black tracking-tight">
+                            {money(homeEarnings?.daily?.today?.earnings ?? 0)}
+                        </p>
+                        <p className="mt-1.5 text-xs font-semibold text-white/85">
+                            {homeEarnings?.daily?.today?.trips ?? 0} trips today · This week {money(homeEarnings?.daily?.week?.earnings ?? 0)}
+                        </p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-2">
+                        <span className="flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-xs font-extrabold">
+                            <Star size={13} className="fill-amber-300 text-amber-300" />
+                            {driverProfile?.ratingCount
+                                ? `${Number(driverProfile.rating).toFixed(1)} (${driverProfile.ratingCount})`
+                                : "New"}
+                        </span>
+                        <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-extrabold ${isOnline ? "bg-white text-[#087F5B]" : "bg-black/25 text-white"}`}>
+                            <span className={`h-2 w-2 rounded-full ${isOnline ? "bg-[#087F5B]" : "bg-white/60"}`} />
+                            {isOnline ? "Online" : "Offline"}
+                        </span>
+                    </div>
+                </div>
+                <div className="mt-4 flex items-center justify-between border-t border-white/20 pt-3 text-xs font-semibold text-white/85">
+                    <span>All-time net {money(homeEarnings?.summary?.netEarnings ?? 0)} · {homeEarnings?.summary?.completedTrips ?? 0} trips</span>
+                    <Link href="/driver/earnings" className="flex items-center gap-1 font-extrabold text-white">
+                        View earnings <ChevronRight size={14} />
+                    </Link>
+                </div>
+            </section>
+
             {/* Quick Actions */}
             <section className="grid grid-cols-4 gap-2">
                 {[
@@ -940,32 +1045,66 @@ function DriverDashboard() {
                     </div>
                 )}
             </section>
+
+            {/* My complaints: latest statuses at a glance */}
+            <section className="rounded-2xl border border-pd-line bg-pd-surface p-3 text-pd-text">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <LifeBuoy size={20} className="shrink-0 text-pd-accent-text" />
+                        <div className="min-w-0">
+                            <p className="text-xs font-bold text-pd-muted">Help & Complaints</p>
+                            <p className="truncate text-sm font-extrabold">
+                                {myComplaints.length === 0
+                                    ? "No complaints filed"
+                                    : `${myComplaints.filter((c) => c.status === "OPEN" || c.status === "IN_REVIEW").length} in progress · ${myComplaints.length} total`}
+                            </p>
+                        </div>
+                    </div>
+                    <Link href="/driver/complaints" className="shrink-0 rounded-xl bg-pd-surface-2 px-3 py-2 text-xs font-bold">
+                        Open
+                    </Link>
+                </div>
+                {myComplaints.slice(0, 2).map((complaint) => {
+                    const meta = COMPLAINT_STATUS_META[complaint.status] || COMPLAINT_STATUS_META.OPEN;
+                    const category = COMPLAINT_CATEGORIES.find((c) => c.value === complaint.category)?.label || "Other";
+                    return (
+                        <div key={complaint._id} className="mt-3 flex items-center justify-between gap-3 border-t border-pd-line pt-3">
+                            <p className="min-w-0 truncate text-sm font-semibold">{category} complaint</p>
+                            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${meta.classes}`}>
+                                {meta.label}
+                            </span>
+                        </div>
+                    );
+                })}
+            </section>
         </div>
     );
     const primaryAction = selectedRide && ACTIONS[selectedRide.status] && (
         pendingStop ? (
-            <button type="button" className="dx-btn dx-btn-lime dx-btn-xl" disabled={busy}
-                onClick={() => updateStop(selectedRide.stopWaitingSince ? "CONTINUE" : "ARRIVE")}>
-                {busy
+            <SlideToConfirm
+                variant="lime"
+                disabled={busy}
+                label={busy
                     ? "Please wait…"
                     : selectedRide.stopWaitingSince
-                        ? "Continue trip"
+                        ? "Slide to continue trip"
                         : selectedRide.tripType === "ROUND_TRIP" && stopsDone === stopsTotal - 1
-                            ? "Arrived at outbound destination"
-                            : `Arrived at stop ${stopsDone + 1}`}
-                <ArrowRight size={18} />
-            </button>
+                            ? "Slide · Arrived at outbound destination"
+                            : `Slide · Arrived at stop ${stopsDone + 1}`}
+                onConfirm={() => updateStop(selectedRide.stopWaitingSince ? "CONTINUE" : "ARRIVE")}
+            />
         ) : (
-            <button type="button" className={`dx-btn dx-btn-xl ${selectedRide.status === "TRIP_STARTED" ? "dx-btn-ink" : "dx-btn-lime"}`}
-                onClick={advanceTrip} disabled={busy || completeBlocked}>
-                {busy
+            <SlideToConfirm
+                variant={selectedRide.status === "TRIP_STARTED" ? "ink" : "lime"}
+                disabled={busy || completeBlocked}
+                label={busy
                     ? "Please wait…"
                     : selectedRide.status === "TRIP_STARTED" &&
                         selectedRide.tripType === "ROUND_TRIP"
-                        ? "Complete Round Trip"
-                        : ACTIONS[selectedRide.status][1]}
-                <ArrowRight size={18} />
-            </button>
+                        ? "Slide to complete round trip"
+                        : `Slide · ${ACTIONS[selectedRide.status][1]}`}
+                onConfirm={advanceTrip}
+            />
         )
     );
     const tripPeek = rideInProgress && (
@@ -1183,6 +1322,27 @@ function DriverDashboard() {
             >
                 {rideEnded ? endedView : rideInProgress ? tripBody : idleBody}
             </DriverSheet>
+            {focusRide && !rideInProgress && (
+                <DriverRequestOverlay
+                    ride={focusRide}
+                    price={offerPrices[focusRide.rideId]}
+                    onPriceChange={(value) => setOfferPrices((p) => ({ ...p, [focusRide.rideId]: value }))}
+                    onSend={() => {
+                        void sendOffer(focusRide);
+                        setDismissedIds((previous) => [...new Set([...previous, focusRide.rideId])]);
+                        setFocusRideId(null);
+                    }}
+                    onReject={() => {
+                        setDismissedIds((previous) => [...new Set([...previous, focusRide.rideId])]);
+                        setFocusRideId(null);
+                    }}
+                    pickupDistanceText={focusPickupDistance}
+                    secondsLeft={focusSecondsLeft}
+                    totalSeconds={REQUEST_FOCUS_SECONDS}
+                    busy={offerBusy === focusRide.rideId}
+                    submitted={submittedIds.includes(focusRide.rideId)}
+                />
+            )}
             {!rideInProgress && <MobileBottomNav role="DRIVER" />}
         </main>
     );

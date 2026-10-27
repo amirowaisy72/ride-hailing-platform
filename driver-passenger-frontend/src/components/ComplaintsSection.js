@@ -22,6 +22,8 @@ const STATUS_META = {
     REJECTED: { label: "Rejected", classes: "bg-red-50 text-red-600" },
 };
 
+export const COMPLAINT_STATUS_META = STATUS_META;
+
 const categoryLabel = (value) =>
     COMPLAINT_CATEGORIES.find((c) => c.value === value)?.label || "Other";
 
