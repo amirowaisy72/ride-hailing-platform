@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, MapPin, Plus, Search, Trash2, X } from "lucide-react";
 import { searchLocations } from "@/lib/locationService";
+import { useVisibleViewport } from "@/hooks/useVisibleViewport";
 
 const MAX_STOPS = 5;
 
@@ -12,11 +13,29 @@ export default function RideStopsEditor({
     token,
     pickup,
     disabled = false,
+    // Optional: lets the parent booking sheet know a search is active
+    // so it can pin itself above the keyboard (Round 5).
+    onEditingChange,
 }) {
     const [adding, setAdding] = useState(false);
     const [query, setQuery] = useState("");
     const [results, setResults] = useState([]);
     const [searching, setSearching] = useState(false);
+    const panelRef = useRef(null);
+    const viewport = useVisibleViewport();
+
+    useEffect(() => {
+        onEditingChange?.(adding);
+    }, [adding, onEditingChange]);
+
+    // The stops editor sits low in the booking sheet; when its search
+    // opens with the keyboard up, scroll the panel into the visible
+    // strip so the driver of the fix — the results — is reachable.
+    useEffect(() => {
+        if (adding) {
+            panelRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
+    }, [adding]);
 
     useEffect(() => {
         if (!token || !pickup || query.trim().length < 3 || disabled) {
@@ -93,7 +112,7 @@ export default function RideStopsEditor({
                                 disabled={disabled || index === 0}
                                 onClick={() => move(index, -1)}
                                 aria-label={`Move stop ${index + 1} up`}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg text-[#374151] hover:bg-[#F4F5F7] disabled:opacity-30"
+                                className="flex h-10 w-10 items-center justify-center rounded-lg text-[#374151] hover:bg-[#F4F5F7] disabled:opacity-30"
                             >
                                 <ArrowUp size={16} />
                             </button>
@@ -102,7 +121,7 @@ export default function RideStopsEditor({
                                 disabled={disabled || index === stops.length - 1}
                                 onClick={() => move(index, 1)}
                                 aria-label={`Move stop ${index + 1} down`}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg text-[#374151] hover:bg-[#F4F5F7] disabled:opacity-30"
+                                className="flex h-10 w-10 items-center justify-center rounded-lg text-[#374151] hover:bg-[#F4F5F7] disabled:opacity-30"
                             >
                                 <ArrowDown size={16} />
                             </button>
@@ -111,7 +130,7 @@ export default function RideStopsEditor({
                                 disabled={disabled}
                                 onClick={() => onChange(stops.filter((item) => item.id !== stop.id))}
                                 aria-label={`Remove stop ${index + 1}`}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg text-[#E5484D] hover:bg-[#FDECEC] disabled:opacity-30"
+                                className="flex h-10 w-10 items-center justify-center rounded-lg text-[#E5484D] hover:bg-[#FDECEC] disabled:opacity-30"
                             >
                                 <Trash2 size={16} />
                             </button>
@@ -133,7 +152,7 @@ export default function RideStopsEditor({
             )}
 
             {adding && !disabled && (
-                <div className="rounded-2xl border border-[#EEF0F2] bg-white p-2 shadow-[0_8px_28px_rgba(17,17,17,0.08)]">
+                <div ref={panelRef} className="rounded-2xl border border-[#EEF0F2] bg-white p-2 shadow-[0_8px_28px_rgba(17,17,17,0.08)]">
                     <label className="flex items-center gap-2 rounded-xl bg-[#F4F5F7] px-3 focus-within:ring-2 focus-within:ring-[#111111]">
                         <Search size={16} className="text-[#9CA3AF]" aria-hidden="true" />
                         <span className="sr-only">Search a stop</span>
@@ -149,7 +168,7 @@ export default function RideStopsEditor({
                             type="button"
                             onClick={closeSearch}
                             aria-label="Close stop search"
-                            className="flex h-7 w-7 items-center justify-center rounded-full text-[#6B7280] hover:bg-white"
+                            className="flex h-9 w-9 items-center justify-center rounded-full text-[#6B7280] hover:bg-white"
                         >
                             <X size={15} />
                         </button>
@@ -163,7 +182,18 @@ export default function RideStopsEditor({
                     )}
 
                     {results.length > 0 && (
-                        <ul className="mt-1 max-h-44 overflow-y-auto">
+                        <ul
+                            className="mt-1 max-h-44 overflow-y-auto overscroll-contain"
+                            // Same keyboard fix as the pickup/destination
+                            // search: while the keyboard is open, size the
+                            // list from the visible viewport instead of
+                            // the small fixed cap (the sheet's pinned
+                            // header + form above this editor occupy
+                            // roughly 330 px of the visible height).
+                            style={viewport.keyboardOpen && viewport.height
+                                ? { maxHeight: Math.max(200, viewport.height - 330) }
+                                : undefined}
+                        >
                             {results.map((place, index) => (
                                 <li key={place.place_id || index} className="border-b border-[#F1F2F4] last:border-b-0">
                                     <button

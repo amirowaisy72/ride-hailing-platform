@@ -28,6 +28,11 @@ export const viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  // Where the platform supports it, the layout viewport resizes with
+  // the on-screen keyboard instead of being overlaid by it, so dvh-sized
+  // sheets stay reachable. Unsupported WebViews ignore it — the search
+  // surfaces additionally size from window.visualViewport (Round 5).
+  interactiveWidget: "resizes-content",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f4f5f7" },
     { media: "(prefers-color-scheme: dark)", color: "#0c0d10" },

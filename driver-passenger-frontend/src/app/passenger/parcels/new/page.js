@@ -12,6 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
 import { searchLocations, reverseGeocode } from "@/lib/locationService";
 import RideMap from "@/components/RideMap";
+import { useVisibleViewport, visibleViewportSurfaceStyle } from "@/hooks/useVisibleViewport";
 import { Button, InlineError, RouteSummary } from "@/components/parcel/ParcelKit";
 import { CATEGORY_LABELS, VEHICLE_LABELS, categoryLabel, formatPKR, serviceLabel } from "@/components/parcel/parcelUi";
 
@@ -49,6 +50,13 @@ function ParcelBookingForm() {
     const [searchLocation, setSearchLocation] = useState(null);
     const [locating, setLocating] = useState(false);
     const searchTimer = useRef(null);
+    // Address search panel: while the keyboard is open, pin the panel
+    // to the visible viewport so its results area (already flex-1)
+    // fills the space above the keyboard instead of extending behind
+    // it — same Round 5 fix as the ride booking sheet.
+    const visibleViewport = useVisibleViewport();
+    const searchSurface = visibleViewportSurfaceStyle(visibleViewport);
+    const searchPanelStyle = searchSurface ? { ...searchSurface, maxHeight: "none" } : undefined;
 
     useEffect(() => {
         return () => clearTimeout(searchTimer.current);
@@ -456,7 +464,7 @@ function ParcelBookingForm() {
 
                 {/* Search panel */}
                 {searchField && !mapSelectionMode && (
-                    <section className="pd-rise absolute inset-x-0 bottom-0 z-30 mx-auto flex max-h-[85dvh] max-w-xl flex-col rounded-t-[28px] bg-pd-surface shadow-pd-lg sm:inset-x-3 sm:bottom-3 sm:rounded-[28px]">
+                    <section style={searchPanelStyle} className="pd-rise absolute inset-x-0 bottom-0 z-30 mx-auto flex max-h-[85dvh] max-w-xl flex-col rounded-t-[28px] bg-pd-surface shadow-pd-lg sm:inset-x-3 sm:bottom-3 sm:rounded-[28px]">
                         <div className="flex items-center gap-2 px-4 pb-2 pt-4">
                             <h2 className="flex-1 text-base font-extrabold">
                                 {searchField === "pickup" ? "Pickup location" : "Delivery location"}

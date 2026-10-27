@@ -93,6 +93,14 @@ export default function RideJourneyExperience({
         : destinationLabel || placeLabel(ride.destination, "Your destination");
     const vehicleLine = driver.vehicleText || vehicle?.name || "Vehicle";
     const lastFix = locationUpdatedAt ? new Date(locationUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+    // Age of the last known fix, for the stale-marker label ("Last known
+    // · 3 min ago") — the marker itself stays on the map (Round 5 hook
+    // change); this line only reports how old it is.
+    const lastFixAgeMs = locationUpdatedAt ? Math.max(0, now - new Date(locationUpdatedAt).getTime()) : null;
+    const lastFixAge = lastFixAgeMs === null ? ""
+        : lastFixAgeMs < 60000 ? "just now"
+            : lastFixAgeMs < 3600000 ? `${Math.floor(lastFixAgeMs / 60000)} min ago`
+                : `${Math.floor(lastFixAgeMs / 3600000)} h ${Math.floor((lastFixAgeMs % 3600000) / 60000)} min ago`;
 
     return (
         <section
@@ -325,7 +333,7 @@ export default function RideJourneyExperience({
                         {driverLocationFresh
                             ? `Live driver GPS${lastFix ? ` · updated ${lastFix}` : ""}`
                             : lastFix
-                                ? `Driver GPS signal delayed · last update ${lastFix}`
+                                ? `Last known · ${lastFixAge}`
                                 : "Waiting for your driver's live location"}
                     </p>
                     {showEta && <p className="mt-1 text-[11px] text-[#9CA3AF]">Times are road-route estimates and may change with traffic.</p>}

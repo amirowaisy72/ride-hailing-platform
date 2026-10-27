@@ -1,4 +1,5 @@
 const ParcelOrder = require("../models/ParcelOrder");
+const User = require("../models/User");
 const { publishEvent } = require("../services/socketService");
 const { sendPushToUser } = require("../services/pushService");
 const ParcelOffer = require("../models/ParcelOffer");
@@ -397,7 +398,68 @@ const getParcelOffers = async (req, res) => {
             .sort({ price: 1 })
             .lean();
 
-        return res.json({ success: true, offers });
+        // Attach the driver's public identity (name, rating, current
+        // vehicle) so the passenger can see WHO is offering — the offers
+        // UI already renders these fields whenever the API includes
+        // them. driverId stays the plain id; the summary rides along as
+        // `driver`, resolved in batch (no per-offer queries).
+        const driverIds = [...new Set(offers.map((offer) => String(offer.driverId)))];
+        const drivers = driverIds.length
+            ? await Driver.find({ _id: { $in: driverIds } })
+                .select("rating ratingCount currentVehicleId userId")
+                .lean()
+            : [];
+        const driverById = new Map(drivers.map((driver) => [String(driver._id), driver]));
+
+        const userIds = drivers.map((driver) => driver.userId).filter(Boolean);
+        const users = userIds.length
+            ? await User.find({ _id: { $in: userIds } }).select("firstName lastName").lean()
+            : [];
+        const userById = new Map(users.map((user) => [String(user._id), user]));
+
+        const vehicleIds = drivers.map((driver) => driver.currentVehicleId).filter(Boolean);
+        const vehicles = vehicleIds.length
+            ? await Vehicle.find({ _id: { $in: vehicleIds } })
+                .select("make model color vehicleType")
+                .lean()
+            : [];
+        const vehicleById = new Map(vehicles.map((vehicle) => [String(vehicle._id), vehicle]));
+
+        const enrichedOffers = offers.map((offer) => {
+            const driver = driverById.get(String(offer.driverId));
+            if (!driver) return offer;
+
+            const user = driver.userId ? userById.get(String(driver.userId)) : null;
+            const vehicle = driver.currentVehicleId
+                ? vehicleById.get(String(driver.currentVehicleId))
+                : null;
+
+            return {
+                ...offer,
+                driver: {
+                    name: user
+                        ? [user.firstName, user.lastName].filter(Boolean).join(" ") || null
+                        : null,
+                    // Unrated drivers report null so the UI can skip the
+                    // star instead of showing a misleading 0.0.
+                    rating: driver.ratingCount > 0 ? driver.rating : null,
+                    ratingCount: driver.ratingCount ?? 0,
+                    vehicle: vehicle
+                        ? {
+                            make: vehicle.make || null,
+                            model: vehicle.model || null,
+                            color: vehicle.color || null,
+                            // The offers UI labels via vehicle.type; both
+                            // keys carry the backend vehicleType enum.
+                            type: vehicle.vehicleType || null,
+                            vehicleType: vehicle.vehicleType || null,
+                        }
+                        : null,
+                },
+            };
+        });
+
+        return res.json({ success: true, offers: enrichedOffers });
     } catch {
         return res.status(400).json({
             success: false,
