@@ -370,15 +370,19 @@ function AccountScreen() {
                         <ChevronRight size={18} className="text-slate-400" />
                     </Link>
 
-                    <div className="flex items-center gap-3 py-4">
+                    <Link
+                        href="/passenger/complaints"
+                        className="flex items-center gap-3 py-4"
+                    >
                         <Headphones size={20} className="text-[#087F5B]" />
                         <div className="flex-1">
-                            <p className="text-sm font-semibold">Help & Support</p>
+                            <p className="text-sm font-semibold">Help & Complaints</p>
                             <p className="text-xs text-slate-500">
-                                Support centre integration pending
+                                File a complaint or track an existing one
                             </p>
                         </div>
-                    </div>
+                        <ChevronRight size={18} className="text-slate-400" />
+                    </Link>
                 </section>
 
                 <ThemeSelector />

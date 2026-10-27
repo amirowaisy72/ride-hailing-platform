@@ -48,7 +48,7 @@ export default function ParcelActivityBar({ token, role = "PASSENGER", variant =
 
     if (variant === "badge") {
         return activeCount > 0 ? (
-            <span className="ml-1 inline-flex min-w-5 items-center justify-center rounded-full bg-[#C1F11D] px-1.5 text-xs font-extrabold text-[#111111]">
+            <span className="ml-1 inline-flex min-w-5 items-center justify-center rounded-full bg-[#087F5B] px-1.5 text-xs font-extrabold text-white">
                 {activeCount}
             </span>
         ) : null;
@@ -128,7 +128,7 @@ export default function ParcelActivityBar({ token, role = "PASSENGER", variant =
                         {order.status.replaceAll("_", " ")}
                     </p>
                 </div>
-                <span className="rounded-xl bg-[#C1F11D] px-3 py-2 text-xs font-bold">
+                <span className="rounded-xl bg-[#087F5B] px-3 py-2 text-xs font-bold text-white">
                     Track →
                 </span>
             </div>

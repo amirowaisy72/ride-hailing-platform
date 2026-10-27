@@ -1,18 +1,18 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import * as maplibregl from "maplibre-gl";
 import { apiRequest } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Car, UserRound } from "lucide-react";
-import { getVehicle } from "@/lib/rideDisplay";
+import {
+    MARKER_SLATE, MARKER_WHITE, flagSvg, hailingPersonSvg, vehicleGlyphSvg,
+} from "@/components/mapMarkerArt";
 import { useTheme } from "@/components/theme/ThemeProvider";
 maplibregl.setWorkerUrl("/maplibre-worker.mjs");
 
 const DARK = "#111111";
 
-const LIME = "#C1F11D";
+const ACCENT = "#087F5B";
 
 const ROUTE_SOURCE = "actual-road-route";
 
@@ -28,28 +28,30 @@ const TRACKING_PADDING_RATIO = 0.42;
 
 const MAP_STYLES = `
 .rx-map-pickup{position:relative;width:42px;height:42px;display:grid;place-items:center;cursor:grab}
-.rx-map-pickup-pin{position:relative;z-index:2;width:30px;height:30px;border-radius:50%;background:${DARK};border:3px solid #fff;box-shadow:0 4px 14px rgba(17,17,17,.35);display:grid;place-items:center}
-.rx-map-pickup-dot{width:10px;height:10px;border-radius:50%;background:${LIME}}
+.rx-map-pickup-pin{position:relative;z-index:2;width:32px;height:32px;border-radius:50%;background:${ACCENT};border:3px solid #fff;filter:drop-shadow(0 5px 9px rgba(9,24,17,.38));display:grid;place-items:center}
 .rx-map-pickup-pin svg{display:block}
-.rx-map-radar{display:none;position:absolute;z-index:1;left:50%;top:50%;width:220px;height:220px;margin:-110px 0 0 -110px;border-radius:50%;background:radial-gradient(circle,rgba(193,241,29,.45) 0%,rgba(193,241,29,.18) 55%,rgba(193,241,29,0) 70%);border:2px solid rgba(140,180,0,.45);pointer-events:none;animation:rx-map-radar 2.8s cubic-bezier(0,0,.2,1) infinite}
+.rx-map-pin-tail{position:absolute;left:50%;top:calc(100% - 4px);transform:translateX(-50%);width:0;height:0;border:6px solid transparent;pointer-events:none}
+.rx-map-pin-tail--green{border-top:8px solid ${ACCENT}}
+.rx-map-pin-tail--slate{border-top:8px solid ${MARKER_SLATE}}
+.rx-map-radar{display:none;position:absolute;z-index:1;left:50%;top:50%;width:220px;height:220px;margin:-110px 0 0 -110px;border-radius:50%;background:radial-gradient(circle,rgba(8,127,91,.45) 0%,rgba(8,127,91,.18) 55%,rgba(8,127,91,0) 70%);border:2px solid rgba(8,127,91,.45);pointer-events:none;animation:rx-map-radar 2.8s cubic-bezier(0,0,.2,1) infinite}
 .rx-map-searching .rx-map-radar{display:block}
 .rx-map-radar-delay{animation-delay:1.4s}
-.rx-map-dest{width:26px;height:26px;border-radius:8px;background:#E5484D;border:3px solid #fff;box-shadow:0 4px 14px rgba(17,17,17,.3);display:grid;place-items:center}
-.rx-map-dest::after{content:"";width:8px;height:8px;border-radius:2px;background:#fff}
+.rx-map-dest{position:relative;width:30px;height:30px;border-radius:50%;background:${MARKER_SLATE};border:3px solid #fff;filter:drop-shadow(0 5px 8px rgba(9,24,17,.35));display:grid;place-items:center}
+.rx-map-dest svg{display:block}
 .rx-map-stop{width:28px;height:28px;border-radius:50%;background:#fff;border:3px solid ${DARK};color:${DARK};font:800 12px/1 system-ui,sans-serif;display:grid;place-items:center;box-shadow:0 3px 10px rgba(17,17,17,.25)}
 .rx-map-driver{position:relative;width:46px;height:46px}
-.rx-map-driver-pulse{position:absolute;inset:-8px;border-radius:50%;background:rgba(193,241,29,.4);animation:rx-map-pulse 2.2s ease-out infinite}
+.rx-map-driver-pulse{position:absolute;inset:-8px;border-radius:50%;background:rgba(8,127,91,.4);animation:rx-map-pulse 2.2s ease-out infinite}
 .rx-map-driver-heading{position:absolute;inset:-11px;opacity:0;transition:transform .6s ease,opacity .3s ease}
 .rx-map-driver-heading.is-visible{opacity:1}
-.rx-map-driver-heading::before{content:"";position:absolute;left:50%;top:0;margin-left:-7px;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:10px solid ${DARK}}
-.rx-map-driver-body{position:absolute;inset:0;border-radius:50%;background:${DARK};border:3px solid #fff;display:grid;place-items:center;box-shadow:0 6px 18px rgba(17,17,17,.4)}
+.rx-map-driver-heading::before{content:"";position:absolute;left:50%;top:0;margin-left:-7px;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:10px solid ${MARKER_SLATE}}
+.rx-map-driver-body{position:absolute;inset:0;border-radius:50%;background:${ACCENT};border:3px solid #fff;display:grid;place-items:center;filter:drop-shadow(0 6px 10px rgba(9,24,17,.4))}
 .rx-map-cell{position:relative;width:38px;height:38px;display:grid;place-items:center}
 /* Pending passenger requests are distinct from nearby driver grid cells. */
-.rx-map-request{width:36px;height:36px;border:3px solid #fff;border-radius:50%;background:#111111;color:#C1F11D;display:grid;place-items:center;box-shadow:0 4px 15px #0005}
+.rx-map-request{position:relative;width:36px;height:36px;border:3px solid #fff;border-radius:50%;background:#087F5B;color:#FFFFFF;display:grid;place-items:center;filter:drop-shadow(0 4px 8px rgba(9,24,17,.35))}
 .rx-map-request svg{width:19px;height:19px}
-.rx-map-cell-halo{position:absolute;inset:-12px;border-radius:50%;border:1.5px dashed rgba(17,17,17,.35);background:rgba(193,241,29,.2)}
+.rx-map-cell-halo{position:absolute;inset:-12px;border-radius:50%;border:1.5px dashed rgba(17,17,17,.35);background:rgba(8,127,91,.2)}
 .rx-map-cell-body{position:relative;width:36px;height:36px;border-radius:50%;background:#fff;border:2px solid ${DARK};display:grid;place-items:center;box-shadow:0 3px 10px rgba(17,17,17,.25)}
-.rx-map-cell-count{position:absolute;right:-7px;bottom:-7px;min-width:19px;height:19px;padding:0 4px;border-radius:10px;background:${DARK};color:${LIME};font:800 10px/15px system-ui,sans-serif;text-align:center;border:2px solid #fff}
+.rx-map-cell-count{position:absolute;right:-7px;bottom:-7px;min-width:19px;height:19px;padding:0 4px;border-radius:10px;background:${DARK};color:${ACCENT};font:800 10px/15px system-ui,sans-serif;text-align:center;border:2px solid #fff}
 @keyframes rx-map-radar{0%{transform:scale(.12);opacity:.95}100%{transform:scale(1);opacity:0}}
 @keyframes rx-map-pulse{0%{transform:scale(.7);opacity:.9}100%{transform:scale(1.5);opacity:0}}
 @keyframes rx-map-fade{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
@@ -104,17 +106,20 @@ const iconCache = new Map();
 function vehicleIconMarkup(type, color, size) {
     const key = `${type}|${color}|${size}`;
     if (!iconCache.has(key)) {
-        const Icon = getVehicle(type)?.Icon || Car;
-        iconCache.set(key, renderToStaticMarkup(<Icon size={size} color={color} strokeWidth={2.25} aria-hidden="true" />));
+        iconCache.set(key, vehicleGlyphSvg(type, color, size));
     }
     return iconCache.get(key);
+}
+
+function driverBodyMarkup(type) {
+    return `<span class="rx-map-pin-tail rx-map-pin-tail--green"></span>${vehicleGlyphSvg(type, MARKER_WHITE, 21)}`;
 }
 
 function createPickupElement() {
     const element = document.createElement("div");
     element.className = "rx-map-pickup";
     element.setAttribute("aria-label", "Pickup location");
-    element.innerHTML = '<span class="rx-map-radar"></span><span class="rx-map-radar rx-map-radar-delay"></span><span class="rx-map-pickup-pin"><span class="rx-map-pickup-dot"></span></span>';
+    element.innerHTML = `<span class="rx-map-radar"></span><span class="rx-map-radar rx-map-radar-delay"></span><span class="rx-map-pickup-pin"><span class="rx-map-pin-tail rx-map-pin-tail--green"></span>${hailingPersonSvg(MARKER_WHITE, 19)}</span>`;
     return element;
 }
 
@@ -122,6 +127,7 @@ function createDestinationElement() {
     const element = document.createElement("div");
     element.className = "rx-map-dest";
     element.setAttribute("aria-label", "Destination");
+    element.innerHTML = `<span class="rx-map-pin-tail rx-map-pin-tail--slate"></span>${flagSvg(MARKER_WHITE, 16)}`;
     return element;
 }
 
@@ -137,7 +143,7 @@ function createDriverElement(type) {
     const element = document.createElement("div");
     element.className = "rx-map-driver";
     element.setAttribute("aria-label", "Driver live location");
-    element.innerHTML = `<span class="rx-map-driver-pulse"></span><span class="rx-map-driver-heading"></span><span class="rx-map-driver-body">${vehicleIconMarkup(type, LIME, 20)}</span>`;
+    element.innerHTML = `<span class="rx-map-driver-pulse"></span><span class="rx-map-driver-heading"></span><span class="rx-map-driver-body">${driverBodyMarkup(type)}</span>`;
     return element;
 }
 // Privacy-protected anonymous grid cells; these are NOT drivers' exact positions.
@@ -147,7 +153,7 @@ function createRequestElement() {
     el.className = "rx-map-request";
     el.title = "Passenger waiting for driver";
     el.setAttribute("aria-label", el.title);
-    el.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg>';
+    el.innerHTML = `<span class="rx-map-pin-tail rx-map-pin-tail--green"></span>${hailingPersonSvg(MARKER_WHITE, 19)}`;
     return el;
 }
 
@@ -335,18 +341,32 @@ export default function RideMap({
             map.addSource("safar-local-places", {
                 type: "geojson",
                 data: addressGeoJSON([]),
-                cluster: false,
+                cluster: true,
+                clusterMaxZoom: 15,
+                clusterRadius: 50,
             });
+            map.addLayer({
+                id: "safar-local-cluster-halo",
+                type: "circle",
+                source: "safar-local-places",
+                filter: ["has", "point_count"],
+                paint: {
+                    "circle-color": "#087F5B",
+                    "circle-opacity": 0.22,
+                    "circle-radius": ["step", ["get", "point_count"], 22, 10, 26, 50, 31],
+                },
+            });
+
             map.addLayer({
                 id: "safar-local-clusters",
                 type: "circle",
                 source: "safar-local-places",
                 filter: ["has", "point_count"],
                 paint: {
-                    "circle-color": "#C1F11D",
-                    "circle-radius": 16,
-                    "circle-stroke-color": "#16181D",
-                    "circle-stroke-width": 3,
+                    "circle-color": "#087F5B",
+                    "circle-radius": ["step", ["get", "point_count"], 15, 10, 19, 50, 24],
+                    "circle-stroke-color": "#FFFFFF",
+                    "circle-stroke-width": 2,
                 },
             });
 
@@ -357,10 +377,11 @@ export default function RideMap({
                 filter: ["has", "point_count"],
                 layout: {
                     "text-field": ["get", "point_count_abbreviated"],
+                    "text-font": ["Open Sans Semibold"],
                     "text-size": 12,
                 },
                 paint: {
-                    "text-color": "#111111",
+                    "text-color": "#FFFFFF",
                 },
             });
 
@@ -371,10 +392,10 @@ export default function RideMap({
                 filter: ["!", ["has", "point_count"]],
                 minzoom: 15,
                 paint: {
-                    "circle-radius": 4,
-                    "circle-color": "#B7F41E",
+                    "circle-radius": ["interpolate", ["linear"], ["zoom"], 15, 6, 18, 8.5],
+                    "circle-color": "#087F5B",
                     "circle-stroke-width": 2,
-                    "circle-stroke-color": "#0F1116",
+                    "circle-stroke-color": "#FFFFFF",
                 },
             });
 
@@ -450,11 +471,32 @@ export default function RideMap({
             const feature = event.features?.[0];
             if (!feature) return;
 
-            map.easeTo({
-                center: feature.geometry.coordinates,
-                zoom: Math.min(map.getZoom() + 2, 20),
-                duration: 500,
-            });
+            const fallback = () => {
+                map.easeTo({
+                    center: feature.geometry.coordinates,
+                    zoom: Math.min(map.getZoom() + 2, 20),
+                    duration: 500,
+                });
+            };
+
+            const source = map.getSource("safar-local-places");
+            const clusterId = feature.properties?.cluster_id;
+            if (source && typeof source.getClusterExpansionZoom === "function" && clusterId != null) {
+                source.getClusterExpansionZoom(clusterId, (error, zoom) => {
+                    if (error || !Number.isFinite(zoom)) {
+                        fallback();
+                        return;
+                    }
+
+                    map.easeTo({
+                        center: feature.geometry.coordinates,
+                        zoom: Math.min(zoom, 20),
+                        duration: 500,
+                    });
+                });
+            } else {
+                fallback();
+            }
         };
 
         map.on("click", "safar-local-clusters", handleClusterClick);
@@ -505,8 +547,8 @@ export default function RideMap({
             font-size:12px;
             font-weight:700;
             cursor:pointer;
-            background:${mode === "pickup" ? "#C1F11D" : "#20242C"};
-            color:${mode === "pickup" ? "#111111" : "#FFFFFF"};
+            background:${mode === "pickup" ? "#087F5B" : "#20242C"};
+            color:#FFFFFF;
         `;
 
                     button.onclick = () => {
@@ -744,7 +786,7 @@ export default function RideMap({
     }, [mapReady, driverLocation?.latitude, driverLocation?.longitude, driverLocation?.coordinates?.[0], driverLocation?.coordinates?.[1], followDriver, navigationMode, locateRequest, destination?.latitude, destination?.longitude, destination?.coordinates?.[0], destination?.coordinates?.[1]]);
     useEffect(() => {
         const body = driverRef.current?.getElement().querySelector(".rx-map-driver-body");
-        if (body) body.innerHTML = vehicleIconMarkup(vehicleType, LIME, 20);
+        if (body) body.innerHTML = driverBodyMarkup(vehicleType);
     }, [vehicleType]);
     useEffect(() => {
         const map = mapRef.current;

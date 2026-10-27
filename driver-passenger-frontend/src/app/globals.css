@@ -62,10 +62,10 @@
   --pd-faint: #9ca3af;
   --pd-line: #eceef1;
   --pd-line-strong: #dcdfe4;
-  --pd-accent: #c1f11d;
-  --pd-accent-ink: #111111;
-  --pd-accent-soft: #f2f9d7;
-  --pd-accent-text: #3f5d00;
+  --pd-accent: #087F5B;
+  --pd-accent-ink: #ffffff;
+  --pd-accent-soft: #E3F6EE;
+  --pd-accent-text: #065F46;
   --pd-ink: #111111;
   --pd-ink-text: #ffffff;
   --pd-success: #087f5b;
@@ -100,10 +100,10 @@
   --pd-faint: #6f7682;
   --pd-line: #262930;
   --pd-line-strong: #343842;
-  --pd-accent: #c1f11d;
-  --pd-accent-ink: #111111;
-  --pd-accent-soft: rgba(193, 241, 29, 0.12);
-  --pd-accent-text: #d4f75e;
+  --pd-accent: #087F5B;
+  --pd-accent-ink: #ffffff;
+  --pd-accent-soft: rgba(8, 127, 91, 0.12);
+  --pd-accent-text: #3FD6A2;
   --pd-ink: #f1f2f4;
   --pd-ink-text: #111111;
   --pd-success: #34d399;
@@ -343,7 +343,7 @@ select.pd-input {
 }
 
 .dark .bg-\[\#EFFFBE\],
-.dark .bg-\[\#F7FDE6\],
+.dark .bg-\[\#E3F6EE\],
 .dark .bg-lime-100,
 .dark .bg-emerald-50 {
   background-color: var(--pd-accent-soft);
@@ -403,11 +403,11 @@ select.pd-input {
   color: var(--pd-danger);
 }
 
-/* Keep dark ink on lime brand surfaces in both themes. */
-.dark .bg-\[\#C1F11D\],
-.dark .bg-\[\#C1F11D\] .text-\[\#111111\],
-.dark .bg-\[\#C1F11D\] .text-black {
-  color: #111111;
+/* Keep white ink on green brand surfaces in both themes. */
+.dark .bg-\[\#087F5B\],
+.dark .bg-\[\#087F5B\] .text-\[\#111111\],
+.dark .bg-\[\#087F5B\] .text-black {
+  color: #ffffff;
 }
 
 .dark .border-\[\#EEF0F2\],
@@ -518,11 +518,11 @@ select.pd-input {
 
 .dark .dx-home .dx-btn-ghost {
   background: #292f26;
-  color: #d4f75e;
+  color: #3FD6A2;
 }
 
 .dark .dx-home .dx-gps[data-ok="true"] {
-  color: #d4f75e;
+  color: #3FD6A2;
 }
 
 .dark .dx-home .dx-empty {
@@ -537,8 +537,8 @@ select.pd-input {
 }
 
 .dark .dx-home .dx-empty-icon[data-on="true"] {
-  background: #c1f11d;
-  color: #111111;
+  background: #087F5B;
+  color: #ffffff;
 }
 
 .dark .dx-home .dx-request {
@@ -548,7 +548,7 @@ select.pd-input {
 }
 
 .dark .dx-home .dx-request[data-submitted="true"] {
-  background: #283323;
+  background: #14342A;
 }
 
 /* Dark Mode — Loading Skeleton Fix */
@@ -589,8 +589,8 @@ select.pd-input {
 }
 
 .dark .dx-home .dx-vehicle-icon {
-  background: #394722;
-  color: #c1f11d;
+  background: #14342A;
+  color: #087F5B;
 }
 
 .dark .dx-home .dx-radio {
@@ -598,7 +598,7 @@ select.pd-input {
 }
 
 .dark .dx-home .dx-vehicle[data-active="true"] .dx-radio {
-  border-color: #c1f11d;
+  border-color: #087F5B;
   background: #111111;
 }
 
@@ -614,8 +614,8 @@ select.pd-input {
 }
 
 .dark .dx-home .dx-btn-lime {
-  background: #c1f11d;
-  color: #111111;
+  background: #087F5B;
+  color: #ffffff;
 }
 
 .dark .dx-home .dx-btn-lime:disabled {

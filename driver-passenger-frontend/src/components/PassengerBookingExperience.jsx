@@ -181,9 +181,9 @@ export function SearchingDrivers({ ride, offerCount = 0 }) {
         <div className="rounded-3xl border border-[#EEF0F2] bg-white p-5 shadow-[0_8px_28px_rgba(17,17,17,0.08)]">
             <div className="flex items-center gap-4">
                 <span className="relative flex h-14 w-14 shrink-0 items-center justify-center" aria-hidden="true">
-                    <span className="absolute inset-0 animate-ping rounded-full bg-[#C1F11D]/60" />
+                    <span className="absolute inset-0 animate-ping rounded-full bg-[#087F5B]/60" />
                     <span className="relative flex h-14 w-14 items-center justify-center rounded-full bg-[#111111]">
-                        <Radio size={24} className="text-[#C1F11D]" />
+                        <Radio size={24} className="text-[#087F5B]" />
                     </span>
                 </span>
                 <div className="min-w-0 flex-1" aria-live="polite">
