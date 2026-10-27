@@ -27,8 +27,9 @@ const DEFAULT_PADDING_RATIO = 0.62;
 const TRACKING_PADDING_RATIO = 0.42;
 
 const MAP_STYLES = `
-.rx-map-pickup{position:relative;width:42px;height:42px;display:grid;place-items:center;cursor:grab}
-.rx-map-pickup-pin{position:relative;z-index:2;width:32px;height:32px;border-radius:50%;background:${ACCENT};border:3px solid #fff;filter:drop-shadow(0 5px 9px rgba(9,24,17,.38));display:grid;place-items:center}
+.rx-map-pickup{position:relative;width:46px;height:46px;display:grid;place-items:center;cursor:grab}
+.rx-map-pickup-halo{position:absolute;z-index:1;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgba(8,127,91,.16);border:1.5px solid rgba(8,127,91,.4);pointer-events:none}
+.rx-map-pickup-pin{position:relative;z-index:2;width:37px;height:37px;border-radius:50%;background:${ACCENT};border:3.5px solid #fff;filter:drop-shadow(0 7px 12px rgba(9,24,17,.5));display:grid;place-items:center}
 .rx-map-pickup-pin svg{display:block}
 .rx-map-pin-tail{position:absolute;left:50%;top:calc(100% - 4px);transform:translateX(-50%);width:0;height:0;border:6px solid transparent;pointer-events:none}
 .rx-map-pin-tail--green{border-top:8px solid ${ACCENT}}
@@ -36,18 +37,18 @@ const MAP_STYLES = `
 .rx-map-radar{display:none;position:absolute;z-index:1;left:50%;top:50%;width:220px;height:220px;margin:-110px 0 0 -110px;border-radius:50%;background:radial-gradient(circle,rgba(8,127,91,.45) 0%,rgba(8,127,91,.18) 55%,rgba(8,127,91,0) 70%);border:2px solid rgba(8,127,91,.45);pointer-events:none;animation:rx-map-radar 2.8s cubic-bezier(0,0,.2,1) infinite}
 .rx-map-searching .rx-map-radar{display:block}
 .rx-map-radar-delay{animation-delay:1.4s}
-.rx-map-dest{position:relative;width:30px;height:30px;border-radius:50%;background:${MARKER_SLATE};border:3px solid #fff;filter:drop-shadow(0 5px 8px rgba(9,24,17,.35));display:grid;place-items:center}
+.rx-map-dest{position:relative;width:35px;height:35px;border-radius:50%;background:${MARKER_SLATE};border:3.5px solid #fff;filter:drop-shadow(0 7px 11px rgba(9,24,17,.5));display:grid;place-items:center}
 .rx-map-dest svg{display:block}
 .rx-map-stop{width:28px;height:28px;border-radius:50%;background:#fff;border:3px solid ${DARK};color:${DARK};font:800 12px/1 system-ui,sans-serif;display:grid;place-items:center;box-shadow:0 3px 10px rgba(17,17,17,.25)}
-.rx-map-driver{position:relative;width:46px;height:46px}
+.rx-map-driver{position:relative;width:50px;height:50px}
 .rx-map-driver-pulse{position:absolute;inset:-8px;border-radius:50%;background:rgba(8,127,91,.4);animation:rx-map-pulse 2.2s ease-out infinite}
 .rx-map-driver-heading{position:absolute;inset:-11px;opacity:0;transition:transform .6s ease,opacity .3s ease}
 .rx-map-driver-heading.is-visible{opacity:1}
 .rx-map-driver-heading::before{content:"";position:absolute;left:50%;top:0;margin-left:-7px;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:10px solid ${MARKER_SLATE}}
-.rx-map-driver-body{position:absolute;inset:0;border-radius:50%;background:${ACCENT};border:3px solid #fff;display:grid;place-items:center;filter:drop-shadow(0 6px 10px rgba(9,24,17,.4))}
+.rx-map-driver-body{position:absolute;inset:0;border-radius:50%;background:${ACCENT};border:3.5px solid #fff;display:grid;place-items:center;filter:drop-shadow(0 8px 13px rgba(9,24,17,.5))}
 .rx-map-cell{position:relative;width:38px;height:38px;display:grid;place-items:center}
 /* Pending passenger requests are distinct from nearby driver grid cells. */
-.rx-map-request{position:relative;width:36px;height:36px;border:3px solid #fff;border-radius:50%;background:#087F5B;color:#FFFFFF;display:grid;place-items:center;filter:drop-shadow(0 4px 8px rgba(9,24,17,.35))}
+.rx-map-request{position:relative;width:39px;height:39px;border:3.5px solid #fff;border-radius:50%;background:#087F5B;color:#FFFFFF;display:grid;place-items:center;box-shadow:0 0 0 7px rgba(8,127,91,.18);filter:drop-shadow(0 6px 10px rgba(9,24,17,.5))}
 .rx-map-request svg{width:19px;height:19px}
 .rx-map-cell-halo{position:absolute;inset:-12px;border-radius:50%;border:1.5px dashed rgba(17,17,17,.35);background:rgba(8,127,91,.2)}
 .rx-map-cell-body{position:relative;width:36px;height:36px;border-radius:50%;background:#fff;border:2px solid ${DARK};display:grid;place-items:center;box-shadow:0 3px 10px rgba(17,17,17,.25)}
@@ -112,14 +113,14 @@ function vehicleIconMarkup(type, color, size) {
 }
 
 function driverBodyMarkup(type) {
-    return `<span class="rx-map-pin-tail rx-map-pin-tail--green"></span>${vehicleGlyphSvg(type, MARKER_WHITE, 21)}`;
+    return `<span class="rx-map-pin-tail rx-map-pin-tail--green"></span>${vehicleGlyphSvg(type, MARKER_WHITE, 23)}`;
 }
 
 function createPickupElement() {
     const element = document.createElement("div");
     element.className = "rx-map-pickup";
     element.setAttribute("aria-label", "Pickup location");
-    element.innerHTML = `<span class="rx-map-radar"></span><span class="rx-map-radar rx-map-radar-delay"></span><span class="rx-map-pickup-pin"><span class="rx-map-pin-tail rx-map-pin-tail--green"></span>${hailingPersonSvg(MARKER_WHITE, 19)}</span>`;
+    element.innerHTML = `<span class="rx-map-pickup-halo"></span><span class="rx-map-radar"></span><span class="rx-map-radar rx-map-radar-delay"></span><span class="rx-map-pickup-pin"><span class="rx-map-pin-tail rx-map-pin-tail--green"></span>${hailingPersonSvg(MARKER_WHITE, 21)}</span>`;
     return element;
 }
 
@@ -127,7 +128,7 @@ function createDestinationElement() {
     const element = document.createElement("div");
     element.className = "rx-map-dest";
     element.setAttribute("aria-label", "Destination");
-    element.innerHTML = `<span class="rx-map-pin-tail rx-map-pin-tail--slate"></span>${flagSvg(MARKER_WHITE, 16)}`;
+    element.innerHTML = `<span class="rx-map-pin-tail rx-map-pin-tail--slate"></span>${flagSvg(MARKER_WHITE, 18)}`;
     return element;
 }
 
@@ -153,7 +154,7 @@ function createRequestElement() {
     el.className = "rx-map-request";
     el.title = "Passenger waiting for driver";
     el.setAttribute("aria-label", el.title);
-    el.innerHTML = `<span class="rx-map-pin-tail rx-map-pin-tail--green"></span>${hailingPersonSvg(MARKER_WHITE, 19)}`;
+    el.innerHTML = `<span class="rx-map-pin-tail rx-map-pin-tail--green"></span>${hailingPersonSvg(MARKER_WHITE, 21)}`;
     return el;
 }
 
@@ -345,15 +346,20 @@ export default function RideMap({
                 clusterMaxZoom: 15,
                 clusterRadius: 50,
             });
+            // Local places are BACKGROUND reference data: muted,
+            // desaturated and semi-transparent in both themes so they can
+            // never be confused with the prominent live passenger/driver
+            // markers (full-opacity Safar green, white ring, shadow).
+            const placesMuted = resolvedTheme === "dark" ? "#4F7263" : "#86A696";
             map.addLayer({
                 id: "safar-local-cluster-halo",
                 type: "circle",
                 source: "safar-local-places",
                 filter: ["has", "point_count"],
                 paint: {
-                    "circle-color": "#087F5B",
-                    "circle-opacity": 0.22,
-                    "circle-radius": ["step", ["get", "point_count"], 22, 10, 26, 50, 31],
+                    "circle-color": placesMuted,
+                    "circle-opacity": resolvedTheme === "dark" ? 0.13 : 0.16,
+                    "circle-radius": ["step", ["get", "point_count"], 16, 10, 20, 50, 25],
                 },
             });
 
@@ -363,10 +369,12 @@ export default function RideMap({
                 source: "safar-local-places",
                 filter: ["has", "point_count"],
                 paint: {
-                    "circle-color": "#087F5B",
-                    "circle-radius": ["step", ["get", "point_count"], 15, 10, 19, 50, 24],
+                    "circle-color": placesMuted,
+                    "circle-opacity": 0.55,
+                    "circle-radius": ["step", ["get", "point_count"], 12, 10, 15, 50, 19],
                     "circle-stroke-color": "#FFFFFF",
-                    "circle-stroke-width": 2,
+                    "circle-stroke-opacity": 0.65,
+                    "circle-stroke-width": 1.5,
                 },
             });
 
@@ -378,10 +386,11 @@ export default function RideMap({
                 layout: {
                     "text-field": ["get", "point_count_abbreviated"],
                     "text-font": ["Open Sans Semibold"],
-                    "text-size": 12,
+                    "text-size": 11,
                 },
                 paint: {
                     "text-color": "#FFFFFF",
+                    "text-opacity": 0.95,
                 },
             });
 
@@ -392,10 +401,12 @@ export default function RideMap({
                 filter: ["!", ["has", "point_count"]],
                 minzoom: 15,
                 paint: {
-                    "circle-radius": ["interpolate", ["linear"], ["zoom"], 15, 6, 18, 8.5],
-                    "circle-color": "#087F5B",
-                    "circle-stroke-width": 2,
+                    "circle-radius": ["interpolate", ["linear"], ["zoom"], 15, 4.5, 18, 5.5],
+                    "circle-color": placesMuted,
+                    "circle-opacity": 0.8,
+                    "circle-stroke-width": 1.5,
                     "circle-stroke-color": "#FFFFFF",
+                    "circle-stroke-opacity": 0.85,
                 },
             });
 
@@ -432,7 +443,8 @@ export default function RideMap({
                     "symbol-sort-key": 1
                 },
                 paint: {
-                    "text-color": resolvedTheme === "dark" ? "#F8FAFC" : "#263238",
+                    "text-color": resolvedTheme === "dark" ? "#D7E0DA" : "#3D4A44",
+                    "text-opacity": 0.9,
                     "text-halo-color": resolvedTheme === "dark" ? "#16181D" : "#FFFFFF",
                     "text-halo-width": 2,
                     "text-halo-blur": 0.5

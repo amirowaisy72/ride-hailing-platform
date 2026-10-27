@@ -42,6 +42,79 @@ const transactionLabels = {
     ADMIN_ADJUSTMENT: "Admin Adjustment",
 };
 
+const shortMoney = (amount) => {
+    const value = Number(amount) || 0;
+    return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : `${value}`;
+};
+
+const dayLabel = (dateKey) =>
+    new Date(`${dateKey}T12:00:00`).toLocaleDateString("en-PK", {
+        weekday: "short",
+    });
+
+/** Plain-SVG bar chart of the last 7 days of settled earnings. */
+function WeekChart({ days, todayKey }) {
+    const max = Math.max(1, ...days.map((d) => Number(d.earnings) || 0));
+    const width = 300;
+    const height = 132;
+    const baseline = 104;
+    const barWidth = 26;
+    const gap = (width - days.length * barWidth) / (days.length + 1);
+
+    return (
+        <svg
+            viewBox={`0 0 ${width} ${height}`}
+            className="mt-4 w-full"
+            role="img"
+            aria-label="Earnings for the last 7 days"
+        >
+            <line x1="0" y1={baseline} x2={width} y2={baseline} stroke="#E2E8F0" strokeWidth="1" />
+            {days.map((day, index) => {
+                const earnings = Number(day.earnings) || 0;
+                const barHeight = Math.max(earnings > 0 ? 4 : 0, (earnings / max) * 72);
+                const x = gap + index * (barWidth + gap);
+                const y = baseline - barHeight;
+                const isToday = day.date === todayKey;
+                return (
+                    <g key={day.date}>
+                        <rect
+                            x={x}
+                            y={y}
+                            width={barWidth}
+                            height={barHeight}
+                            rx="6"
+                            fill={isToday ? "#087F5B" : "#A7D8C3"}
+                        />
+                        <text
+                            x={x + barWidth / 2}
+                            y={y - 6}
+                            textAnchor="middle"
+                            fontSize="9"
+                            fontWeight="700"
+                            fill={isToday ? "#087F5B" : "#64748B"}
+                        >
+                            {earnings > 0 ? shortMoney(earnings) : ""}
+                        </text>
+                        <text
+                            x={x + barWidth / 2}
+                            y={baseline + 16}
+                            textAnchor="middle"
+                            fontSize="10"
+                            fontWeight={isToday ? "800" : "600"}
+                            fill={isToday ? "#087F5B" : "#64748B"}
+                        >
+                            {dayLabel(day.date)}
+                        </text>
+                        {isToday && (
+                            <circle cx={x + barWidth / 2} cy={baseline + 25} r="2.2" fill="#087F5B" />
+                        )}
+                    </g>
+                );
+            })}
+        </svg>
+    );
+}
+
 export default function DriverEarningsPage() {
     return (
         <AuthGuard role="DRIVER">
@@ -65,6 +138,7 @@ function EarningsScreen() {
     const [topUpRequired, setTopUpRequired] = useState(false);
     const [transactions, setTransactions] = useState([]);
     const [summary, setSummary] = useState(null);
+    const [daily, setDaily] = useState(null);
     const [recentTrips, setRecentTrips] = useState([]);
 
     const [activeTab, setActiveTab] = useState("transactions");
@@ -91,6 +165,7 @@ function EarningsScreen() {
             setTopUpRequired(walletData.topUpRequired === true);
             setTransactions(walletData.transactions || []);
             setSummary(earningsData.summary);
+            setDaily(earningsData.daily || null);
             setRecentTrips(earningsData.recentTrips || []);
 
             try {
@@ -434,6 +509,32 @@ function EarningsScreen() {
                         </p>
                     </div>
                 </div>
+
+                {daily && (
+                    <section className="overflow-hidden rounded-[26px] bg-white p-5 shadow-sm">
+                        <div className="flex items-start justify-between gap-3">
+                            <div>
+                                <h3 className="text-lg font-extrabold">This Week</h3>
+                                <p className="mt-0.5 text-xs text-slate-500">
+                                    Settled earnings, last 7 days
+                                </p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[11px] font-semibold text-slate-500">
+                                    Today · {daily.today.trips} trips
+                                </p>
+                                <p className="text-base font-extrabold text-[#087F5B]">
+                                    {money(daily.today.earnings)}
+                                </p>
+                                <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                                    Week · {daily.week.trips} trips · {money(daily.week.earnings)}
+                                </p>
+                            </div>
+                        </div>
+
+                        <WeekChart days={daily.days} todayKey={daily.today.date} />
+                    </section>
+                )}
 
                 <section className="overflow-hidden rounded-[26px] bg-white p-5 shadow-sm">
                     <h3 className="mb-4 text-lg font-extrabold">Financial Activity</h3>
