@@ -223,6 +223,7 @@ function DriverParcelDetails() {
                 <RideMap
                     userLocation={driverLocation}
                     driverLocation={driverLocation}
+                    vehicleType={order?.vehicleType || null}
                     destination={navigationTarget}
                     navigationMode={true}
                     followDriver={true}

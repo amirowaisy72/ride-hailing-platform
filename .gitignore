@@ -56,3 +56,4 @@ quick.txt
 *.db
 *.dump
 *.bak
+.vercel

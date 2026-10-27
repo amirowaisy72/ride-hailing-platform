@@ -1,6 +1,6 @@
 /* Premium driver design system — scoped to /driver only. Passenger theme unaffected. */
 .driver-experience {
-    --dx-lime: #C1F11D;
+    --dx-lime: #087F5B;
     --dx-ink: #111318;
     --dx-muted: #697385;
     --dx-paper: #F5F6F8;
@@ -51,7 +51,7 @@
     height: 260px;
     right: -90px;
     top: -145px;
-    border: 58px solid rgba(193, 241, 29, .13);
+    border: 58px solid rgba(8, 127, 91, .13);
     border-radius: 50%;
 }
 
@@ -82,11 +82,11 @@
 }
 
 .driver-experience main:not(.driver-live-home) [class*="text-[#087F5B]"] {
-    color: #426200 !important;
+    color: #065F46 !important;
 }
 
 .driver-experience main:not(.driver-live-home) [class*="bg-emerald-50"] {
-    background: #F2F9D7 !important;
+    background: #E3F6EE !important;
 }
 
 .driver-experience nav[aria-label="Main navigation"] {
@@ -192,7 +192,7 @@
     width: 38px;
     border-radius: 13px;
     box-shadow: none;
-    background: #F4F7E9;
+    background: #E3F6EE;
     border: 0
 }
 
@@ -205,7 +205,7 @@
     padding: 0 4px;
     border-radius: 9px;
     background: var(--dx-lime);
-    color: #111;
+    color: #fff;
     font: 900 10px/18px system-ui, sans-serif;
     border: 2px solid #fff
 }
@@ -254,11 +254,11 @@
 
 @keyframes dx-pulse {
     0% {
-        box-shadow: 0 0 0 0 rgba(193, 241, 29, .7)
+        box-shadow: 0 0 0 0 rgba(8, 127, 91, .7)
     }
 
     100% {
-        box-shadow: 0 0 0 8px rgba(193, 241, 29, 0)
+        box-shadow: 0 0 0 8px rgba(8, 127, 91, 0)
     }
 }
 
@@ -334,7 +334,7 @@
     height: 30px;
     width: 30px;
     border-radius: 10px;
-    background: #F2F9D7;
+    background: #E3F6EE;
     color: #111;
     flex-shrink: 0
 }
@@ -391,11 +391,11 @@
 
 .dx-toast[data-kind="ride"] {
     background: var(--dx-lime);
-    color: #111
+    color: #fff
 }
 
 .dx-toast[data-kind="ride"] small {
-    color: #3D4A12
+    color: #065F46
 }
 
 @keyframes dx-drop {
@@ -514,7 +514,7 @@
 }
 
 .dx-gps[data-ok="true"] {
-    color: #3F6212
+    color: #065F46
 }
 
 .dx-power {
@@ -528,10 +528,10 @@
     width: 84px;
     border-radius: 22px;
     background: var(--dx-lime);
-    color: #111;
+    color: #fff;
     font-size: 11px;
     font-weight: 900;
-    box-shadow: 0 8px 22px rgba(140, 180, 0, .35)
+    box-shadow: 0 8px 22px rgba(8, 127, 91, .35)
 }
 
 .dx-power[data-on="true"] {
@@ -612,8 +612,8 @@
 
 .dx-btn-lime {
     background: var(--dx-lime);
-    color: #111;
-    box-shadow: 0 8px 20px rgba(140, 180, 0, .25)
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(8, 127, 91, .25)
 }
 
 .dx-btn-ink {
@@ -635,7 +635,7 @@
     height: 36px;
     padding: 0 12px;
     border-radius: 12px;
-    background: #F4F7E9;
+    background: #E3F6EE;
     font-size: 12px;
     font-weight: 800;
     color: #111
@@ -719,12 +719,12 @@
 }
 
 .dx-request[data-live="true"] {
-    border-color: #CBE86A;
-    box-shadow: 0 0 0 3px rgba(193, 241, 29, .35), 0 10px 28px rgba(17, 19, 24, .08)
+    border-color: #087F5B;
+    box-shadow: 0 0 0 3px rgba(8, 127, 91, .35), 0 10px 28px rgba(17, 19, 24, .08)
 }
 
 .dx-request[data-submitted="true"] {
-    background: #FBFDF3
+    background: #F8FAF9
 }
 
 @keyframes dx-rise {
@@ -756,7 +756,7 @@
     height: 26px;
     padding: 0 9px;
     border-radius: 9px;
-    background: #F2F9D7;
+    background: #E3F6EE;
     font-size: 11px;
     font-weight: 800
 }
@@ -839,7 +839,7 @@
 }
 
 .dx-route li[data-next="true"] .dx-dot {
-    box-shadow: 0 0 0 4px rgba(193, 241, 29, .55)
+    box-shadow: 0 0 0 4px rgba(8, 127, 91, .55)
 }
 
 .dx-route-card {
@@ -872,7 +872,7 @@
 
 .dark .dx-route-card .dx-dot-pickup {
     background: #111318;
-    color: #c1f11d;
+    color: #087F5B;
 }
 
 .dark .dx-route-card .dx-dot-stop {
@@ -905,7 +905,7 @@
 
 .dx-dot-drop {
     background: var(--dx-lime);
-    color: #111
+    color: #fff
 }
 
 .dx-request-sent {
@@ -915,8 +915,8 @@
     margin-top: 10px;
     padding: 7px 10px;
     border-radius: 11px;
-    background: #F2F9D7;
-    color: #3F5212;
+    background: #E3F6EE;
+    color: #065F46;
     font-size: 12px;
     font-weight: 800
 }
@@ -977,7 +977,7 @@
 }
 
 .dx-stepper em[data-up="true"] {
-    color: #3F6212
+    color: #065F46
 }
 
 .dx-stepper input {
@@ -1026,7 +1026,7 @@
 
 .dx-vehicle[data-active="true"] {
     border-color: #111;
-    background: #FBFDF3
+    background: #F8FAF9
 }
 
 .dx-vehicle:disabled {
@@ -1051,7 +1051,7 @@
     height: 40px;
     width: 40px;
     border-radius: 13px;
-    background: #F2F9D7
+    background: #E3F6EE
 }
 
 .dx-radio {
@@ -1103,7 +1103,7 @@
     flex-shrink: 0;
     border-radius: 15px;
     background: var(--dx-lime);
-    color: #111
+    color: #fff
 }
 
 .dx-nav-dist {
@@ -1171,7 +1171,7 @@
 }
 
 .dark .dx-target-chip svg {
-    color: #c1f11d;
+    color: #087F5B;
     flex-shrink: 0;
 }
 
@@ -1204,7 +1204,7 @@
     flex-shrink: 0;
     padding: 7px 10px;
     border-radius: 12px;
-    background: #F2F9D7;
+    background: #E3F6EE;
     font-size: 13px;
     font-weight: 900
 }
@@ -1258,12 +1258,12 @@
 }
 
 .dark .dx-stages [data-done="true"] span {
-    background: #A0C91D;
+    background: #087F5B;
 }
 
 .dark .dx-stages [data-current="true"] span {
-    background: #C1F11D;
-    box-shadow: 0 0 10px rgba(193, 241, 29, .35);
+    background: #087F5B;
+    box-shadow: 0 0 10px rgba(8, 127, 91, .35);
 }
 
 .dark .dx-stages small {
@@ -1277,7 +1277,7 @@
 }
 
 .dark .dx-stages [data-current="true"] small {
-    color: #C1F11D;
+    color: #087F5B;
     font-weight: 900;
 }
 
@@ -1303,8 +1303,8 @@
 }
 
 .dx-banner-lime {
-    background: #F2F9D7;
-    color: #2F3D0A
+    background: #E3F6EE;
+    color: #065F46
 }
 
 .dx-banner-amber {
@@ -1339,7 +1339,7 @@
     width: 72px;
     border-radius: 26px;
     background: var(--dx-lime);
-    color: #111;
+    color: #fff;
     animation: dx-pop .45s var(--dx-ease)
 }
 
@@ -1402,16 +1402,16 @@
 
 .dark .driver-experience main:not(.driver-live-home) button[class*="bg-[#087F5B]"],
 .dark .driver-experience main:not(.driver-live-home) a[class*="bg-[#087F5B]"] {
-    background: #C1F11D !important;
-    color: #111111 !important;
+    background: #087F5B !important;
+    color: #FFFFFF !important;
 }
 
 .dark .driver-experience main:not(.driver-live-home) [class*="text-[#087F5B]"] {
-    color: #D4F75E !important;
+    color: #3FD6A2 !important;
 }
 
 .dark .driver-experience main:not(.driver-live-home) [class*="bg-emerald-50"] {
-    background: rgba(193, 241, 29, .12) !important;
+    background: rgba(8, 127, 91, .12) !important;
 }
 
 .dark .driver-experience main:not(.driver-live-home) section.bg-white,
@@ -1460,8 +1460,8 @@
 }
 
 .dark .dx-status[data-on="true"] {
-    background: #C1F11D;
-    color: #111111;
+    background: #087F5B;
+    color: #FFFFFF;
 }
 
 .dark .dx-notif-head button,
@@ -1472,8 +1472,8 @@
 
 .dark .dx-notif-icon,
 .dark .dx-toast-icon {
-    background: rgba(193, 241, 29, .14);
-    color: #D4F75E;
+    background: rgba(8, 127, 91, .14);
+    color: #3FD6A2;
 }
 
 /* Premium dark request card */
@@ -1487,7 +1487,7 @@
 }
 
 .dark .dx-request[data-live="true"] {
-    border-color: #a8d51a;
+    border-color: #087F5B;
 }
 
 .dark .dx-request-head {
@@ -1496,7 +1496,7 @@
 }
 
 .dark .dx-request .dx-chip {
-    background: #dff5a1;
+    background: #E3F6EE;
     color: #17200b;
 }
 
@@ -1506,12 +1506,12 @@
 }
 
 .dark .dx-request .dx-chip-new {
-    background: #c1f11d;
-    color: #111318;
+    background: #087F5B;
+    color: #FFFFFF;
 }
 
 .dark .dx-request-fare {
-    color: #c1f11d;
+    color: #087F5B;
 }
 
 .dark .dx-request-fare small,
@@ -1551,20 +1551,20 @@
 }
 
 .dark .dx-stepper input:focus {
-    color: #c1f11d;
-    -webkit-text-fill-color: #c1f11d;
+    color: #087F5B;
+    -webkit-text-fill-color: #087F5B;
 }
 
 .dark .dx-offer-send {
-    background: #c1f11d;
-    color: #111318;
+    background: #087F5B;
+    color: #FFFFFF;
     border-radius: 15px;
     font-weight: 900;
 }
 
 .dark .dx-request-sent {
-    background: #304020;
-    color: #d9f8a2;
+    background: #14342A;
+    color: #3FD6A2;
 }
 
 @media (max-width: 390px) {

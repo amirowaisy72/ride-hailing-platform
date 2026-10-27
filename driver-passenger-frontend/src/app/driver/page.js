@@ -37,7 +37,7 @@ function ParcelShortcut() {
     return (
         <Link
             href={PARCEL_LINK}
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#C1F11D] px-3 text-sm font-extrabold text-[#111111]"
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#087F5B] px-3 text-sm font-extrabold text-white"
         >
             <Package size={19} />
             Parcels
@@ -970,7 +970,7 @@ function DriverDashboard() {
     );
     const tripPeek = rideInProgress && (
         <div className="flex items-center gap-3 px-1 py-1">
-            <span className="h-3 w-3 shrink-0 rounded-full bg-[#C1F11D] ring-4 ring-[#C1F11D]/20" />
+            <span className="h-3 w-3 shrink-0 rounded-full bg-[#087F5B] ring-4 ring-[#087F5B]/20" />
             <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-extrabold">{STATUS_LABEL[selectedRide.status]}</p>
                 <p className="truncate text-xs text-[#6B7280]">
@@ -978,7 +978,7 @@ function DriverDashboard() {
                 </p>
             </div>
             <button type="button" onClick={() => setSheet("half")}
-                className="shrink-0 rounded-xl bg-[#C1F11D] px-3 py-2 text-xs font-extrabold text-[#111111]">
+                className="shrink-0 rounded-xl bg-[#087F5B] px-3 py-2 text-xs font-extrabold text-white">
                 Details
             </button>
         </div>
@@ -1037,7 +1037,7 @@ function DriverDashboard() {
             </ol>
             {completeBlocked && !pendingStop && <p className="dx-inline-warn">Continue from the current stop before completing.</p>}
             <button type="button" className="dx-btn dx-btn-ink" onClick={() => { markMessagesRead(); setChatOpen(true); }}>
-                <MessageCircle size={18} /> Message passenger{unreadMessages > 0 && <span className="rounded-full bg-[#C1F11D] px-2 py-0.5 text-xs font-extrabold text-[#111111]">{unreadMessages === 99 ? "99+" : unreadMessages}</span>}
+                <MessageCircle size={18} /> Message passenger{unreadMessages > 0 && <span className="rounded-full bg-[#087F5B] px-2 py-0.5 text-xs font-extrabold text-white">{unreadMessages === 99 ? "99+" : unreadMessages}</span>}
             </button>
         </div>
     );
@@ -1063,7 +1063,7 @@ function DriverDashboard() {
                 {parcelAssignment?.parcelId && (
                     <Link
                         href={`/driver/parcels/details?parcelId=${parcelAssignment.parcelId}`}
-                        className="fixed left-4 right-4 top-20 z-50 mx-auto max-w-md rounded-2xl bg-[#C1F11D] p-4 font-bold text-[#111111] shadow-xl"
+                        className="fixed left-4 right-4 top-20 z-50 mx-auto max-w-md rounded-2xl bg-[#087F5B] p-4 font-bold text-white shadow-xl"
                     >
                         📦 Parcel Assigned! Tap to manage delivery →
                     </Link>
@@ -1074,6 +1074,7 @@ function DriverDashboard() {
                     destination={nextTarget}
                     navigationMode={rideInProgress}
                     driverLocation={location}
+                    vehicleType={activeVehicle?.vehicleType || null}
                     followDriver={navigating}
                     onRouteUpdate={setNavigationInfo}
                     sheetRatio={sheetRatio}
@@ -1093,7 +1094,7 @@ function DriverDashboard() {
                     onClick={() => { setMapMenuOpen((open) => !open); notifications.markRead(); }}
                     className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#111111] shadow-[0_6px_24px_rgba(17,17,17,0.12)]">
                     {mapMenuOpen ? <X size={23} /> : <Menu size={23} />}
-                    {!mapMenuOpen && notifications.unread > 0 && <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-[#C1F11D] ring-2 ring-white" />}
+                    {!mapMenuOpen && notifications.unread > 0 && <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-[#087F5B] ring-2 ring-white" />}
                 </button>
             </div>
             {mapMenuOpen && (
@@ -1167,7 +1168,7 @@ function DriverDashboard() {
                             />
                         )}
 
-                        {unreadMessages > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#C1F11D] px-1 text-[11px] font-extrabold text-[#111111] ring-2 ring-white">{unreadMessages === 99 ? "99+" : unreadMessages}</span>}
+                        {unreadMessages > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#087F5B] px-1 text-[11px] font-extrabold text-white ring-2 ring-white">{unreadMessages === 99 ? "99+" : unreadMessages}</span>}
                     </button>
                     <span className="dx-target-chip"><MapPin size={13} /> {targetTitle}</span>
                 </div>

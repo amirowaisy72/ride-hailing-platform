@@ -267,6 +267,7 @@ function ParcelDetails() {
                         longitude={driverLocation.longitude}
                         pickup={order.pickup}
                         destination={order.destination}
+                        vehicleType={order.vehicleType}
                     />
                 ) : (
                     <RideMap

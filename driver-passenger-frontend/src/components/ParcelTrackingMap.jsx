@@ -3,12 +3,19 @@
 import { useEffect, useRef } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import {
+    MAP_PIN_STYLES,
+    createDestinationPinElement,
+    createDriverPinElement,
+    createPersonPinElement,
+} from "@/components/mapMarkerArt";
 
 export default function ParcelTrackingMap({
     latitude,
     longitude,
     pickup,
     destination,
+    vehicleType = null,
 }) {
     const containerRef = useRef(null);
     const mapRef = useRef(null);
@@ -25,7 +32,9 @@ export default function ParcelTrackingMap({
             zoom: 14,
         });
 
-        const marker = new maplibregl.Marker({ color: "#087F5B" })
+        const marker = new maplibregl.Marker({
+            element: createDriverPinElement(vehicleType),
+        })
             .setLngLat([longitude, latitude])
             .addTo(map);
 
@@ -61,9 +70,9 @@ export default function ParcelTrackingMap({
 
         const markers = [];
 
-        for (const [point, color] of [
-            [pickup, "#111111"],
-            [destination, "#E5484D"],
+        for (const [point, createElement] of [
+            [pickup, () => createPersonPinElement("Parcel pickup")],
+            [destination, () => createDestinationPinElement("Parcel destination")],
         ]) {
             const coords = point?.coordinates;
 
@@ -74,7 +83,7 @@ export default function ParcelTrackingMap({
             ) continue;
 
             markers.push(
-                new maplibregl.Marker({ color })
+                new maplibregl.Marker({ element: createElement() })
                     .setLngLat(coords)
                     .addTo(map)
             );
@@ -182,6 +191,8 @@ export default function ParcelTrackingMap({
         <div
             ref={containerRef}
             className="absolute inset-0 h-full w-full"
-        />
+        >
+            <style>{MAP_PIN_STYLES}</style>
+        </div>
     );
 }

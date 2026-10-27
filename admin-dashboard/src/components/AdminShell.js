@@ -8,7 +8,7 @@ import {
     LayoutDashboard, Users, CarFront, Route, Wallet,
     SlidersHorizontal, ShieldCheck, Menu, X,
     LogOut, ChevronRight, PanelLeftClose,
-    Bell, CircleDollarSign, Plug,
+    Bell, CircleDollarSign, Plug, Flag,
 } from "lucide-react";
 
 import {
@@ -27,6 +27,7 @@ const navigation = [
     { label: "Custom Notifications", href: "/dashboard/notifications", icon: Bell },
     { label: "Rides", href: "/dashboard/rides", icon: Route },
     { label: "Parcels", href: "/dashboard/parcels", icon: Route },
+    { label: "Complaints", href: "/dashboard/complaints", icon: Flag },
     { label: "Wallets", href: "/dashboard/wallets", icon: Wallet },
     { label: "Settlements", href: "/dashboard/settlements", icon: CircleDollarSign },
     { label: "Commission Settings", href: "/dashboard/commission", icon: SlidersHorizontal },

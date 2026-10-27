@@ -102,9 +102,9 @@ export default function RideJourneyExperience({
             <style>{STYLES}</style>
 
             {arrived && (
-                <div role="alert" className="rj-pop mx-3 mb-3 flex items-center gap-3 rounded-2xl bg-[#C1F11D] p-4 text-[#111111] shadow-[0_12px_32px_rgba(17,17,17,0.22)] sm:mx-auto sm:max-w-lg">
+                <div role="alert" className="rj-pop mx-3 mb-3 flex items-center gap-3 rounded-2xl bg-[#087F5B] p-4 text-white shadow-[0_12px_32px_rgba(17,17,17,0.22)] sm:mx-auto sm:max-w-lg">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#111111]">
-                        <MapPin size={20} className="text-[#C1F11D]" aria-hidden="true" />
+                        <MapPin size={20} className="text-[#087F5B]" aria-hidden="true" />
                     </span>
                     <div className="min-w-0">
                         <p className="font-extrabold tracking-tight">Your driver is waiting</p>
@@ -138,13 +138,13 @@ export default function RideJourneyExperience({
                         </div>
                         {showEta ? (
                             <div className="shrink-0 rounded-2xl bg-[#111111] px-3.5 py-2.5 text-center text-white">
-                                <p className="text-2xl font-extrabold leading-none tabular-nums text-[#C1F11D]">
+                                <p className="text-2xl font-extrabold leading-none tabular-nums text-[#087F5B]">
                                     {routeInfo.durationMinutes}<span className="ml-0.5 text-xs font-bold">min</span>
                                 </p>
                                 <p className="mt-1 text-[11px] font-semibold text-white/70">{routeInfo.distanceKm} km away</p>
                             </div>
                         ) : arrived ? (
-                            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#C1F11D]">
+                            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#087F5B] text-white">
                                 <Check size={26} strokeWidth={3} aria-hidden="true" />
                             </span>
                         ) : null}
@@ -158,8 +158,8 @@ export default function RideJourneyExperience({
                                 return (
                                     <li key={step.status} aria-current={current ? "step" : undefined}>
                                         <div className="h-1.5 overflow-hidden rounded-full bg-[#F1F2F4]">
-                                            {done && <div className="h-full w-full bg-[#C1F11D]" />}
-                                            {current && <div className="rj-indeterminate h-full w-1/2 rounded-full bg-[#C1F11D]" />}
+                                            {done && <div className="h-full w-full bg-[#087F5B]" />}
+                                            {current && <div className="rj-indeterminate h-full w-1/2 rounded-full bg-[#087F5B]" />}
                                         </div>
                                         <p className={`mt-1.5 text-[11px] font-bold ${done || current ? "text-[#111111]" : "text-[#9CA3AF]"}`}>{step.label}</p>
                                     </li>
@@ -184,7 +184,7 @@ export default function RideJourneyExperience({
                     <div className="mt-4 rounded-2xl border border-[#EEF0F2] p-3.5">
                         <div className="flex items-center gap-3">
                             <span className="relative flex h-13 w-13 shrink-0 items-center justify-center" aria-hidden="true">
-                                <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#111111] text-sm font-extrabold text-[#C1F11D]">
+                                <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#111111] text-sm font-extrabold text-[#087F5B]">
                                     {driverProfile?.profileImage ? (
                                         <img
                                             src={driverProfile.profileImage}
@@ -195,7 +195,7 @@ export default function RideJourneyExperience({
                                         getInitials(driverProfile?.name || driver.name)
                                     )}
                                 </span>
-                                <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-[#C1F11D]">
+                                <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-[#087F5B] text-white">
                                     <VehicleIcon size={12} />
                                 </span>
                             </span>
@@ -274,7 +274,7 @@ export default function RideJourneyExperience({
                             </div>
                             <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[#F1F2F4]">
                                 <div
-                                    className="h-full rounded-full bg-[#C1F11D] transition-[width] duration-700"
+                                    className="h-full rounded-full bg-[#087F5B] transition-[width] duration-700"
                                     style={{ width: `${(stopsCompleted / (stops.length + 1)) * 100}%` }}
                                 />
                             </div>
@@ -341,8 +341,8 @@ function TimelineItem({ kind, index, label, text, done = false, active = false, 
         : kind === "destination"
             ? <span className="flex h-4 w-4 items-center justify-center rounded-[4px] bg-[#E5484D]"><Flag size={9} className="text-white" /></span>
             : done
-                ? <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#111111]"><Check size={10} strokeWidth={3} className="text-[#C1F11D]" /></span>
-                : <span className={`flex h-4 w-4 items-center justify-center rounded-full border-2 text-[9px] font-extrabold ${active ? "border-[#111111] bg-[#C1F11D]" : "border-[#9CA3AF] bg-white"}`}>{index + 1}</span>;
+                ? <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#111111]"><Check size={10} strokeWidth={3} className="text-[#087F5B]" /></span>
+                : <span className={`flex h-4 w-4 items-center justify-center rounded-full border-2 text-[9px] font-extrabold ${active ? "border-[#111111] bg-[#087F5B] text-white" : "border-[#9CA3AF] bg-white"}`}>{index + 1}</span>;
 
     return (
         <li className="flex gap-3">
@@ -353,7 +353,7 @@ function TimelineItem({ kind, index, label, text, done = false, active = false, 
             <div className={`min-w-0 flex-1 ${last ? "" : "pb-3"}`}>
                 <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
                     {label}
-                    {active && <span className="rounded-full bg-[#111111] px-1.5 py-0.5 text-[9px] font-bold text-[#C1F11D]">Next</span>}
+                    {active && <span className="rounded-full bg-[#111111] px-1.5 py-0.5 text-[9px] font-bold text-[#087F5B]">Next</span>}
                     {done && <span className="sr-only">(completed)</span>}
                 </p>
                 <p className={`truncate text-sm font-semibold ${done ? "text-[#9CA3AF] line-through" : "text-[#111111]"}`} title={text}>{text}</p>
@@ -394,7 +394,7 @@ function SearchingFallback({ ride, offers, now, busyId, onAccept, onReject, onCa
                                 </div>
                                 <div className="mt-3 flex gap-2">
                                     <button type="button" disabled={!!busyId} onClick={() => onReject(key)} className="h-11 flex-1 rounded-xl bg-[#F4F5F7] text-sm font-bold text-[#374151] disabled:opacity-50">Decline</button>
-                                    <button type="button" disabled={!!busyId} onClick={() => onAccept(key)} className="h-11 flex-[2] rounded-xl bg-[#C1F11D] text-sm font-extrabold text-[#111111] disabled:opacity-50">Accept</button>
+                                    <button type="button" disabled={!!busyId} onClick={() => onAccept(key)} className="h-11 flex-[2] rounded-xl bg-[#087F5B] text-sm font-extrabold text-white disabled:opacity-50">Accept</button>
                                 </div>
                             </li>
                         );

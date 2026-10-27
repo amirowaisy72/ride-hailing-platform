@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-    ArrowLeft, CarFront, Clock3, History,
+    ArrowLeft, CarFront, Clock3, History, LifeBuoy,
     LogOut, ShieldCheck, Star, UserRound,
     Wallet, Settings2,
 } from "lucide-react";
@@ -192,13 +192,23 @@ function DriverAccount() {
                     </div>
                     <Link
                         href="/driver/profile"
-                        className="flex items-center gap-3 py-3"
+                        className="flex items-center gap-3 border-b py-3"
                     >
                         <Settings2 size={20} className="text-[#087F5B]" />
                         <span className="flex-1 text-sm font-semibold">
                             Edit Personal Information
                         </span>
                         <span className="text-xs text-[#087F5B]">Edit →</span>
+                    </Link>
+                    <Link
+                        href="/driver/complaints"
+                        className="flex items-center gap-3 py-3"
+                    >
+                        <LifeBuoy size={20} className="text-[#087F5B]" />
+                        <span className="flex-1 text-sm font-semibold">
+                            Help & Complaints
+                        </span>
+                        <span className="text-xs text-[#087F5B]">Open →</span>
                     </Link>
                 </section>
 

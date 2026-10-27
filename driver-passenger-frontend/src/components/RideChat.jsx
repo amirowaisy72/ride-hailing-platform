@@ -97,7 +97,7 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
             <MessageCircle size={18} aria-hidden="true" />
             Message {participantLabel}
             {unread > 0 && (
-                <span className="rounded-full bg-[#C1F11D] px-2 py-0.5 text-[11px] font-extrabold text-[#111111]">
+                <span className="rounded-full bg-[#087F5B] px-2 py-0.5 text-[11px] font-extrabold text-white">
                     {unread === 99 ? "99+" : unread}
                     <span className="sr-only"> unread messages</span>
                 </span>
@@ -113,7 +113,7 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                 >
                     <ArrowLeft size={20} />
                 </button>
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#C1F11D] text-[#111111]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#087F5B] text-white">
                     {participantPhoto ? (
                         <img
                             src={participantPhoto}
@@ -144,7 +144,7 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                 </button>
                 {callNumber ? (
                     <a href={`tel:${callNumber.replace(/[^+\d]/g, "")}`} aria-label={`Call ${participantLabel}`} title={`Call ${participantLabel}`}
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#C1F11D]">
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#087F5B] text-white">
                         <Phone size={19} />
                     </a>
                 ) : (
@@ -169,7 +169,7 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                     </div>
 
                     <div className="flex flex-1 flex-col items-center justify-center gap-6 px-5">
-                        <div className="flex h-64 w-64 max-w-full items-center justify-center overflow-hidden rounded-full border-4 border-[#C1F11D] bg-[#252B34]">
+                        <div className="flex h-64 w-64 max-w-full items-center justify-center overflow-hidden rounded-full border-4 border-[#087F5B] bg-[#252B34]">
                             {participantPhoto ? (
                                 <img
                                     src={participantPhoto}
@@ -180,7 +180,7 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                                     }}
                                 />
                             ) : (
-                                <UserRound size={100} className="text-[#C1F11D]" />
+                                <UserRound size={100} className="text-[#087F5B]" />
                             )}
                         </div>
 
@@ -218,7 +218,7 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                 {messages.map((m) => {
                     const mine = same(m.senderId, userId);
                     return <div key={m._id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                        <div className={`max-w-[82%] px-4 py-3 text-[14px] leading-relaxed shadow-sm ${mine ? "rounded-2xl rounded-br-md bg-[#DFFC79] text-[#111111]" : "rounded-2xl rounded-bl-md bg-white"}`}>
+                        <div className={`max-w-[82%] px-4 py-3 text-[14px] leading-relaxed shadow-sm ${mine ? "rounded-2xl rounded-br-md bg-[#087F5B] text-white" : "rounded-2xl rounded-bl-md bg-white"}`}>
                             <p className="whitespace-pre-wrap break-words">{m.body}</p>
                             <p className={`mt-1 text-right text-[10px] ${mine ? "text-[#4B5563]" : "text-[#9CA3AF]"}`}>
                                 {new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -248,14 +248,14 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                     maxLength={1000}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Write a message..."
-                    className="min-h-12 min-w-0 flex-1 rounded-2xl border border-[#E5E7EB] bg-[#F4F5F7] px-4 text-base text-[#111111] outline-none placeholder:text-[#9CA3AF] focus:border-[#C1F11D] focus:ring-2 focus:ring-[#C1F11D]/30 dark:!border-[#505968] dark:!bg-[#222831] dark:!text-white dark:placeholder:!text-[#AAB4C2] dark:focus:!border-[#C1F11D]"
+                    className="min-h-12 min-w-0 flex-1 rounded-2xl border border-[#E5E7EB] bg-[#F4F5F7] px-4 text-base text-[#111111] outline-none placeholder:text-[#9CA3AF] focus:border-[#087F5B] focus:ring-2 focus:ring-[#087F5B]/30 dark:!border-[#505968] dark:!bg-[#222831] dark:!text-white dark:placeholder:!text-[#AAB4C2] dark:focus:!border-[#087F5B]"
                     aria-label="Message"
                 />
                 <button
                     type="submit"
                     disabled={sending || !text.trim()}
                     aria-label="Send message"
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#C1F11D] text-[#111111] transition-transform active:scale-95 disabled:bg-[#E9EBEE] disabled:text-[#9CA3AF] dark:!bg-[#C1F11D] dark:!text-[#111111] dark:disabled:!bg-[#303741] dark:disabled:!text-[#8793A3]"
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#087F5B] text-white transition-transform active:scale-95 disabled:bg-[#E9EBEE] disabled:text-[#9CA3AF] dark:!bg-[#087F5B] dark:!text-white dark:disabled:!bg-[#303741] dark:disabled:!text-[#8793A3]"
                 >
                     <Send size={19} />
                 </button>

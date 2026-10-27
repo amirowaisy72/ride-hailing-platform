@@ -23,7 +23,12 @@ export default function NewParcelPage() {
     );
 }
 
-const STEP_TITLES = { 1: "Locations", 2: "Parcel details", 3: "Review" };
+const STEP_TITLES = {
+    1: "Sender & receiver",
+    2: "Parcel details",
+    3: "Vehicle & offer",
+    4: "Review",
+};
 const PHONE_RE = /^[+\d][\d\s-]{6,}$/;
 
 function ParcelBookingForm() {
@@ -32,6 +37,7 @@ function ParcelBookingForm() {
 
     const [serviceType, setServiceType] = useState("SEND_PARCEL");
     const [bookingStep, setBookingStep] = useState(1);
+    const [picking, setPicking] = useState(false);
     const [mapSelectionMode, setMapSelectionMode] = useState(null);
     const [pickup, setPickup] = useState(null);
     const [destination, setDestination] = useState(null);
@@ -55,7 +61,7 @@ function ParcelBookingForm() {
     }, []);
 
     const [error, setError] = useState("");
-    const [touched, setTouched] = useState(false);
+    const [touchedStep, setTouchedStep] = useState(0);
 
     const [sender, setSender] = useState({ name: "", phone: "" });
     const [receiver, setReceiver] = useState({ name: "", phone: "" });
@@ -232,7 +238,7 @@ function ParcelBookingForm() {
         }
     }
 
-    // ---- Step 2 validation (client-side only; payload unchanged) ----
+    // ---- Per-step validation (client-side only; payload unchanged) ----
     const fieldErrors = {
         senderName: !sender.name.trim() && "Enter sender name",
         senderPhone: !PHONE_RE.test(sender.phone.trim()) && "Enter a valid phone number",
@@ -242,23 +248,36 @@ function ParcelBookingForm() {
         quantity: !(Number.isInteger(Number(quantity)) && Number(quantity) >= 1) && "At least 1",
         requestedPrice: !(Number.isSafeInteger(Number(requestedPrice)) && Number(requestedPrice) > 0) && "Enter your fare in PKR",
     };
-    const detailsValid = Object.values(fieldErrors).every((v) => !v);
-    const showErr = (key) => (touched ? fieldErrors[key] : false);
+    const FIELD_STEP = {
+        senderName: 1, senderPhone: 1, receiverName: 1, receiverPhone: 1,
+        weightKg: 2, quantity: 2,
+        requestedPrice: 3,
+    };
+    const stepHasErrors = (step) =>
+        Object.entries(FIELD_STEP).some(
+            ([key, fieldStep]) => fieldStep === step && fieldErrors[key]
+        );
+    const showErr = (key) =>
+        touchedStep >= (FIELD_STEP[key] || 1) ? fieldErrors[key] : false;
 
-    function goToReview() {
-        setTouched(true);
-        if (!detailsValid) {
+    function goNext() {
+        setTouchedStep(bookingStep);
+        if (bookingStep === 1 && (!pickup || !destination)) {
+            setError("Choose the pickup and drop-off locations to continue.");
+            return;
+        }
+        if (stepHasErrors(bookingStep)) {
             setError("Please complete the highlighted fields.");
             return;
         }
         setError("");
-        setBookingStep(3);
+        setBookingStep(bookingStep + 1);
         window.scrollTo({ top: 0 });
     }
 
     async function submitParcel(event) {
         event.preventDefault();
-        if (bookingStep !== 3) return;
+        if (bookingStep !== 4) return;
         if (!pickup || !destination || submitting) {
             if (!pickup || !destination) setError("Select pickup and delivery locations.");
             return;
@@ -297,8 +316,8 @@ function ParcelBookingForm() {
         }
     }
 
-    // ===================== STEP 1 — LOCATIONS =====================
-    if (bookingStep === 1) {
+    // ===================== STEP 1 — LOCATION PICKER =====================
+    if (bookingStep === 1 && picking) {
         const searchField = activeSearch;
         return (
             <main className="relative h-dvh overflow-hidden bg-pd-surface-3 text-pd-text">
@@ -315,13 +334,14 @@ function ParcelBookingForm() {
                 {/* Compact top bar */}
                 <div className="pointer-events-none absolute inset-x-0 top-0 z-20 pd-safe-top">
                     <div className="mx-auto flex max-w-xl items-center gap-2 px-3">
-                        <Link
-                            href="/passenger/parcels"
-                            aria-label="Back to parcels"
+                        <button
+                            type="button"
+                            onClick={() => setPicking(false)}
+                            aria-label="Back to sender and receiver details"
                             className="pointer-events-auto grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-pd-surface text-pd-text shadow-pd"
                         >
                             <ArrowLeft size={20} />
-                        </Link>
+                        </button>
                         <div role="radiogroup" aria-label="Service type" className="pointer-events-auto ml-auto flex rounded-2xl bg-pd-surface p-1 shadow-pd">
                             {[
                                 ["SEND_PARCEL", "Send", Package],
@@ -425,9 +445,9 @@ function ParcelBookingForm() {
                         <Button
                             className="mt-3 w-full"
                             disabled={!pickup || !destination}
-                            onClick={() => { setError(""); setBookingStep(2); }}
+                            onClick={() => { setError(""); setPicking(false); }}
                         >
-                            {!pickup ? "Set pickup to continue" : !destination ? "Set drop-off to continue" : <>Continue <ChevronRight size={18} /></>}
+                            {!pickup ? "Set pickup to continue" : !destination ? "Set drop-off to continue" : <>Done <Check size={18} /></>}
                         </Button>
                         <StepDots step={1} />
                         <div className="pd-safe-bottom" />
@@ -522,35 +542,75 @@ function ParcelBookingForm() {
         );
     }
 
-    // ===================== STEPS 2 & 3 =====================
+    // ===================== STEPS 1–4 — FORM SCREENS =====================
     return (
         <main className="min-h-dvh bg-pd-bg text-pd-text">
             <div className="sticky top-0 z-20 border-b border-pd-line bg-pd-elevated backdrop-blur-xl pd-safe-top">
                 <div className="mx-auto flex max-w-xl items-center gap-2 px-3 pb-2.5">
-                    <button
-                        type="button"
-                        aria-label="Previous step"
-                        onClick={() => { setError(""); setBookingStep(bookingStep - 1); }}
-                        className="grid h-11 w-11 place-items-center rounded-2xl"
-                    >
-                        <ArrowLeft size={21} />
-                    </button>
+                    {bookingStep === 1 ? (
+                        <Link
+                            href="/passenger/parcels"
+                            aria-label="Back to parcels"
+                            className="grid h-11 w-11 place-items-center rounded-2xl"
+                        >
+                            <ArrowLeft size={21} />
+                        </Link>
+                    ) : (
+                        <button
+                            type="button"
+                            aria-label="Previous step"
+                            onClick={() => { setError(""); setBookingStep(bookingStep - 1); }}
+                            className="grid h-11 w-11 place-items-center rounded-2xl"
+                        >
+                            <ArrowLeft size={21} />
+                        </button>
+                    )}
                     <div className="min-w-0 flex-1">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-pd-muted">Step {bookingStep} of 3</p>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-pd-muted">Step {bookingStep} of 4</p>
                         <h1 className="text-base font-extrabold leading-tight">{STEP_TITLES[bookingStep]}</h1>
                     </div>
                     <span className="rounded-full bg-pd-surface-2 px-3 py-1.5 text-[11px] font-bold">{serviceLabel(serviceType)}</span>
                 </div>
                 <div className="mx-auto flex max-w-xl gap-1 px-4 pb-2">
-                    {[1, 2, 3].map((s) => (
+                    {[1, 2, 3, 4].map((s) => (
                         <span key={s} className={`h-1 flex-1 rounded-full ${s <= bookingStep ? "bg-pd-accent" : "bg-pd-surface-3"}`} />
                     ))}
                 </div>
             </div>
 
             <form onSubmit={submitParcel} noValidate className="mx-auto max-w-xl px-4 pt-4">
-                {bookingStep === 2 && (
+                {bookingStep === 1 && (
                     <div className="space-y-4 pb-4">
+                        <Card title="Locations" hint="Where the parcel travels">
+                            <RouteSummary pickup={pickup} destination={destination} />
+                            <div className="flex flex-wrap gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setPicking(true)}
+                                    className="flex min-h-11 items-center gap-2 rounded-xl bg-pd-accent-soft px-3 text-xs font-bold text-pd-accent-text"
+                                >
+                                    <MapPin size={14} />
+                                    {pickup && destination ? "Change locations" : "Choose on map / search"}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={useCurrentPickup}
+                                    disabled={locating}
+                                    className="flex min-h-11 items-center gap-2 rounded-xl bg-pd-surface-2 px-3 text-xs font-bold disabled:opacity-60"
+                                >
+                                    <LocateFixed size={14} className={locating ? "animate-pulse" : ""} />
+                                    {locating ? "Locating…" : "Use my location as pickup"}
+                                </button>
+                            </div>
+                            {touchedStep >= 1 && (!pickup || !destination) && (
+                                <p className="text-xs font-semibold text-pd-danger">
+                                    {!pickup
+                                        ? "Set the pickup location to continue."
+                                        : "Set the drop-off location to continue."}
+                                </p>
+                            )}
+                        </Card>
+
                         <Card title="Sender" hint="Who hands over the parcel">
                             <Field label="Full name" error={showErr("senderName")}>
                                 <input autoComplete="name" value={sender.name} onChange={(e) => setSender({ ...sender, name: e.target.value })} className="pd-input" aria-invalid={Boolean(showErr("senderName"))} placeholder="e.g. Ali Khan" />
@@ -569,6 +629,11 @@ function ParcelBookingForm() {
                             </Field>
                         </Card>
 
+                    </div>
+                )}
+
+                {bookingStep === 2 && (
+                    <div className="space-y-4 pb-4">
                         <Card title="Parcel">
                             <div className="pd-no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
                                 {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
@@ -599,6 +664,11 @@ function ParcelBookingForm() {
                             </Field>
                         </Card>
 
+                    </div>
+                )}
+
+                {bookingStep === 3 && (
+                    <div className="space-y-4 pb-4">
                         <Card title="Delivery & payment">
                             <Field label="Vehicle">
                                 <div className="grid grid-cols-2 gap-2">
@@ -660,18 +730,20 @@ function ParcelBookingForm() {
                     </div>
                 )}
 
-                {bookingStep === 3 && (
+                {bookingStep === 4 && (
                     <div className="space-y-4 pb-4">
-                        <Card title="Route" action={<EditLink onClick={() => setBookingStep(1)} />}>
+                        <Card title="Route" action={<EditLink onClick={() => { setError(""); setBookingStep(1); setPicking(true); }} />}>
                             <RouteSummary pickup={pickup} destination={destination} />
                         </Card>
-                        <Card title="People" action={<EditLink onClick={() => setBookingStep(2)} />}>
+                        <Card title="People" action={<EditLink onClick={() => { setError(""); setPicking(false); setBookingStep(1); }} />}>
                             <ReviewRow label="Sender" value={`${sender.name} · ${sender.phone}`} />
                             <ReviewRow label="Receiver" value={`${receiver.name} · ${receiver.phone}`} />
                         </Card>
                         <Card title="Parcel" action={<EditLink onClick={() => setBookingStep(2)} />}>
                             <ReviewRow label="Type" value={`${categoryLabel(category)} · ${weightKg} kg · ×${quantity}`} />
                             {description && <ReviewRow label="Description" value={description} />}
+                        </Card>
+                        <Card title="Delivery" action={<EditLink onClick={() => setBookingStep(3)} />}>
                             <ReviewRow label="Vehicle" value={VEHICLE_LABELS[vehicleType]} />
                             {instructions && <ReviewRow label="Instructions" value={instructions} />}
                         </Card>
@@ -688,9 +760,9 @@ function ParcelBookingForm() {
                 {/* Sticky action bar (sits above keyboard / safe area) */}
                 <div className="sticky bottom-0 z-10 -mx-4 border-t border-pd-line bg-pd-elevated px-4 pt-3 backdrop-blur-xl pd-safe-bottom">
                     <InlineError onDismiss={() => setError("")}>{error}</InlineError>
-                    {bookingStep === 2 ? (
-                        <Button className={`w-full ${error ? "mt-2" : ""}`} onClick={goToReview}>
-                            Review booking <ChevronRight size={18} />
+                    {bookingStep < 4 ? (
+                        <Button className={`w-full ${error ? "mt-2" : ""}`} onClick={goNext}>
+                            {bookingStep === 3 ? "Review booking" : "Continue"} <ChevronRight size={18} />
                         </Button>
                     ) : (
                         <Button type="submit" className={`w-full ${error ? "mt-2" : ""}`} disabled={submitting}>
@@ -705,8 +777,8 @@ function ParcelBookingForm() {
 
 function StepDots({ step }) {
     return (
-        <div className="mt-3 flex justify-center gap-1.5" aria-label={`Step ${step} of 3`}>
-            {[1, 2, 3].map((s) => (
+        <div className="mt-3 flex justify-center gap-1.5" aria-label={`Step ${step} of 4`}>
+            {[1, 2, 3, 4].map((s) => (
                 <span key={s} className={`h-1.5 rounded-full transition-all ${s === step ? "w-5 bg-pd-text" : "w-1.5 bg-pd-line-strong"}`} />
             ))}
         </div>
