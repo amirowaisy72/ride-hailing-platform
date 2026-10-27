@@ -17,12 +17,9 @@ import {
     VEHICLE_LABELS, categoryLabel, formatPKR, orderPrice, playNotificationSound, serviceLabel, statusMeta,
 } from "@/components/parcel/parcelUi";
 
-const ParcelTrackingMap = dynamic(
-    () => import("@/components/ParcelTrackingMap"),
-    { ssr: false }
-);
-
-// Used to preview pickup -> destination before a driver location exists.
+// One map everywhere: live tracking and the pre-assignment preview both
+// render on the shared RideMap (same basemap, theming and markers as the
+// ride screens). The old parcel-only ParcelTrackingMap was removed.
 const RideMap = dynamic(() => import("@/components/RideMap"), { ssr: false });
 
 const PICKUP_OTP_STATUSES = ["DRIVER_ASSIGNED", "DRIVER_EN_ROUTE", "ARRIVED_AT_PICKUP"];
@@ -44,6 +41,7 @@ function ParcelDetails() {
     const [offers, setOffers] = useState([]);
     const [otp, setOtp] = useState(null);
     const [driverLocation, setDriverLocation] = useState(null);
+    const [driverSeenAt, setDriverSeenAt] = useState(0);
     const [snap, setSnap] = useState("peek");
     const [snapTouched, setSnapTouched] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -96,11 +94,16 @@ function ParcelDetails() {
                     { token }
                 );
 
-                if (!cancelled) {
-                    setDriverLocation(data.location || null);
+                // Keep the last known driver position on a stale or
+                // failed poll: the tracking map must never blank out or
+                // swap components because one refresh missed. Freshness
+                // is surfaced via driverSeenAt (Live badge) instead.
+                if (!cancelled && data.location) {
+                    setDriverLocation(data.location);
+                    setDriverSeenAt(Date.now());
                 }
             } catch {
-                if (!cancelled) setDriverLocation(null);
+                // Keep the last known location; the next poll retries.
             }
         }
 
@@ -254,29 +257,31 @@ function ParcelDetails() {
         ? "PICKUP"
         : DELIVERY_OTP_STATUSES.includes(order.status) ? "DELIVERY" : null;
     const showLiveDriver = Boolean(driverLocation) && !delivered && !cancelled;
+    const driverFresh = driverSeenAt > 0 && Date.now() - driverSeenAt <= 30000;
+    // The driver heads to the pickup until the parcel is collected, then
+    // to the destination — same phase rule as ride tracking.
+    const driverTarget = PICKUP_OTP_STATUSES.includes(order.status)
+        ? order.pickup
+        : order.destination;
 
     return (
         <main className="relative h-dvh overflow-hidden bg-pd-surface-3 text-pd-text">
             <Toast message={notification} onClose={() => setNotification("")} />
 
-            {/* Map */}
+            {/* Map — always the shared RideMap; live mode only adds the
+                driver marker, navigation framing and the phase target. */}
             <div className="absolute inset-0 z-0">
-                {showLiveDriver ? (
-                    <ParcelTrackingMap
-                        latitude={driverLocation.latitude}
-                        longitude={driverLocation.longitude}
-                        pickup={order.pickup}
-                        destination={order.destination}
-                        vehicleType={order.vehicleType}
-                    />
-                ) : (
-                    <RideMap
-                        userLocation={order.pickup}
-                        destination={order.destination}
-                        showNavigationControl={false}
-                        sheetRatio={snap === "peek" ? 0.3 : 0.55}
-                    />
-                )}
+                <RideMap
+                    passengerView={showLiveDriver}
+                    userLocation={order.pickup}
+                    driverLocation={showLiveDriver ? driverLocation : null}
+                    vehicleType={order.vehicleType}
+                    destination={showLiveDriver ? driverTarget : order.destination}
+                    navigationMode={showLiveDriver}
+                    followDriver={showLiveDriver}
+                    showNavigationControl={false}
+                    sheetRatio={snap === "peek" ? 0.3 : 0.55}
+                />
             </div>
 
             {/* Compact top strip */}
@@ -291,7 +296,7 @@ function ParcelDetails() {
                     </Link>
                     {showLiveDriver && (
                         <span className="pointer-events-auto ml-auto inline-flex h-9 items-center gap-2 rounded-full bg-pd-surface px-3 text-xs font-bold shadow-pd">
-                            <span className="pd-live-dot h-2 w-2 rounded-full bg-pd-accent" /> Live
+                            <span className={`h-2 w-2 rounded-full bg-pd-accent ${driverFresh ? "pd-live-dot" : "opacity-40"}`} /> {driverFresh ? "Live" : "Last known"}
                         </span>
                     )}
                 </div>

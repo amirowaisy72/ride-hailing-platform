@@ -1,6 +1,7 @@
-// Shared professional map-pin artwork for RideMap and ParcelTrackingMap.
-// Crisp inline SVG only — no emoji, no external assets. Theme colors:
-// Safar green #087F5B, white, dark slate #16181D.
+// Shared professional map-pin artwork for RideMap — the single map used
+// by every ride and parcel screen. Crisp inline SVG only — no emoji, no
+// external assets. Theme colors: Safar green #087F5B, white, dark slate
+// #16181D.
 
 export const MARKER_GREEN = "#087F5B";
 export const MARKER_SLATE = "#16181D";
@@ -81,60 +82,4 @@ export function flagSvg(color = MARKER_WHITE, size = 16) {
         `<path d="M6.5 21.5 V3.5"/>` +
         `<path d="M6.5 4 H15.2 L13 6.9 L15.2 9.8 H6.5 Z" fill="currentColor" stroke="none"/>` +
         `</svg></span>`;
-}
-
-// Pin family used by ParcelTrackingMap (RideMap keeps its own rx-map-*
-// classes but shares the glyph builders above).
-export const MAP_PIN_STYLES = `
-.sf-pin{position:relative;display:block;filter:drop-shadow(0 8px 12px rgba(9,24,17,.5))}
-.sf-pin-disc{position:relative;z-index:2;display:grid;place-items:center;border-radius:50%;border:3.5px solid #fff}
-.sf-pin-tail{position:absolute;z-index:1;left:50%;bottom:-6px;transform:translateX(-50%);width:0;height:0;border:6px solid transparent}
-.sf-pin--green .sf-pin-disc{background:${MARKER_GREEN}}
-.sf-pin--green .sf-pin-tail{border-top:8px solid ${MARKER_GREEN}}
-.sf-pin--slate .sf-pin-disc{background:${MARKER_SLATE}}
-.sf-pin--slate .sf-pin-tail{border-top:8px solid ${MARKER_SLATE}}
-.sf-pin-pulse{position:absolute;inset:-9px;z-index:0;border-radius:50%;background:rgba(8,127,91,.4);animation:sf-pin-pulse 2.2s ease-out infinite}
-@keyframes sf-pin-pulse{0%{transform:scale(.7);opacity:.9}100%{transform:scale(1.5);opacity:0}}
-@media (prefers-reduced-motion: reduce){.sf-pin-pulse{animation:none!important}}
-`;
-
-function pinElement(className, discSize, inner, label, extra = "") {
-    const element = document.createElement("div");
-    element.className = `sf-pin ${className}`;
-    element.setAttribute("aria-label", label);
-    element.innerHTML =
-        `${extra}<span class="sf-pin-disc" style="width:${discSize}px;height:${discSize}px">${inner}</span><span class="sf-pin-tail"></span>`;
-    return element;
-}
-
-/** Green pin with the hailing-passenger glyph (pickup / passenger). */
-export function createPersonPinElement(label = "Passenger location") {
-    return pinElement(
-        "sf-pin--green",
-        38,
-        hailingPersonSvg(MARKER_WHITE, 21),
-        label,
-        `<span class="sf-pin-pulse"></span>`
-    );
-}
-
-/** Green pin with the active vehicle's glyph and a live pulse (driver). */
-export function createDriverPinElement(vehicleType, label = "Driver live location") {
-    return pinElement(
-        "sf-pin--green",
-        44,
-        vehicleGlyphSvg(vehicleType, MARKER_WHITE, 25),
-        label,
-        `<span class="sf-pin-pulse"></span>`
-    );
-}
-
-/** Dark slate pin with a white flag glyph (destination). */
-export function createDestinationPinElement(label = "Destination") {
-    return pinElement(
-        "sf-pin--slate",
-        36,
-        flagSvg(MARKER_WHITE, 18),
-        label
-    );
 }

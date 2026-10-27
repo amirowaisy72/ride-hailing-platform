@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Geolocation } from "@capacitor/geolocation";
 import RideMap from "@/components/RideMap";
-import { updateDriverLocation } from "@/lib/vehicleService";
+import { useDriverPosition } from "@/hooks/useDriverPosition";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, CheckCircle2, CornerUpRight, KeyRound, Phone, Satellite } from "lucide-react";
@@ -52,81 +51,19 @@ function DriverParcelDetails() {
     const [busy, setBusy] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    const [driverLocation, setDriverLocation] = useState(null);
-    const [gpsMessage, setGpsMessage] = useState("Waiting for GPS...");
-    const [gpsOk, setGpsOk] = useState(false);
+    // Live position via the shared hook: the map/marker/route update on
+    // every fix of any accuracy (last known fix shows instantly) and the
+    // hook syncs accurate fixes to the backend — the map is never blocked
+    // waiting for a perfect GPS fix. gpsOk only drives the status pill.
+    const {
+        position: driverLocation,
+        gpsOk,
+        message: gpsMessage,
+    } = useDriverPosition({ token });
     const [routeInfo, setRouteInfo] = useState(null);
     const [snap, setSnap] = useState("peek");
     const [toast, setToast] = useState("");
-    const lastGpsSent = useRef(0);
     const busyRef = useRef(false);
-
-    useEffect(() => {
-        if (!token) return;
-
-        let stopped = false;
-        let watchId;
-
-        async function startGPS() {
-            try {
-                watchId = await Geolocation.watchPosition(
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 15000,
-                        maximumAge: 5000,
-                    },
-                    async (position, error) => {
-                        if (stopped || error || !position) return;
-
-                        const { latitude, longitude, accuracy } = position.coords;
-
-                        if (
-                            !Number.isFinite(latitude) ||
-                            !Number.isFinite(longitude) ||
-                            !Number.isFinite(accuracy) ||
-                            accuracy > 100
-                        ) {
-                            setGpsMessage("Waiting for accurate GPS...");
-                            setGpsOk(false);
-                            return;
-                        }
-
-                        setDriverLocation({ latitude, longitude });
-                        setGpsMessage(`GPS ±${Math.round(accuracy)} m`);
-                        setGpsOk(true);
-
-                        const now = Date.now();
-                        if (now - lastGpsSent.current >= 10000) {
-                            lastGpsSent.current = now;
-                            try {
-                                await updateDriverLocation(latitude, longitude, token);
-                            } catch (e) {
-                                console.warn("Parcel GPS sync:", e.message);
-                            }
-                        }
-                    }
-                );
-
-                if (stopped && watchId != null) {
-                    await Geolocation.clearWatch({ id: watchId });
-                }
-            } catch (e) {
-                if (!stopped) {
-                    setGpsMessage(e.message);
-                    setGpsOk(false);
-                }
-            }
-        }
-
-        startGPS();
-
-        return () => {
-            stopped = true;
-            if (watchId != null) {
-                Geolocation.clearWatch({ id: watchId });
-            }
-        };
-    }, [token]);
 
     const headingToPickup = [
         "DRIVER_ASSIGNED",
