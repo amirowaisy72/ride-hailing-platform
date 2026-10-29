@@ -117,6 +117,17 @@ function ServiceCard({ state, token, onChanged, notify }) {
     const [selectedMode, setSelectedMode] = useState(state.transportMode || "");
     const [policyChecked, setPolicyChecked] = useState(false);
     const [busy, setBusy] = useState("");
+    // Feedback is ALSO rendered inside this card, directly above the
+    // action button: the page-level notice sits at the top of a long
+    // page, so a driver tapping "Activate" at the bottom never saw why
+    // nothing happened (e.g. the no-transport-mode guard) and the
+    // button looked dead.
+    const [cardNotice, setCardNotice] = useState(null);
+
+    function showNotice(next) {
+        setCardNotice(next);
+        notify(next);
+    }
 
     const status = state.status;
     const applied = state.applicationStatus !== "NOT_APPLIED";
@@ -140,9 +151,9 @@ function ServiceCard({ state, token, onChanged, notify }) {
         setBusy(key);
         try {
             await action();
-            if (successText) notify({ kind: "success", text: successText });
+            if (successText) showNotice({ kind: "success", text: successText });
         } catch (error) {
-            notify({ kind: "error", text: error.message });
+            showNotice({ kind: "error", text: error.message });
         } finally {
             setBusy("");
         }
@@ -150,7 +161,7 @@ function ServiceCard({ state, token, onChanged, notify }) {
 
     function apply() {
         if (isBuyDeliver && !selectedMode) {
-            notify({
+            showNotice({
                 kind: "error",
                 text: "Choose how you will travel for Buy & Deliver deliveries first.",
             });
@@ -370,6 +381,19 @@ function ServiceCard({ state, token, onChanged, notify }) {
                         </p>
                     ))}
                 </div>
+            )}
+
+            {cardNotice && (
+                <p
+                    role={cardNotice.kind === "error" ? "alert" : "status"}
+                    className={`mt-4 rounded-xl p-3 text-sm font-semibold ${
+                        cardNotice.kind === "error"
+                            ? "bg-red-50 text-red-700"
+                            : "bg-emerald-50 text-[#087F5B]"
+                    }`}
+                >
+                    {cardNotice.text}
+                </p>
             )}
 
             {(status === "NOT_APPLIED" ||

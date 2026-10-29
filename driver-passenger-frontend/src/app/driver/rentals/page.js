@@ -34,8 +34,8 @@ import {
 import RentalFleetManager from "@/components/driver/RentalFleetManager";
 import RentalPartnerBookings from "@/components/driver/RentalPartnerBookings";
 
-const API_ORIGIN =
-    process.env.NEXT_PUBLIC_API_ORIGIN || "http://localhost:5000";
+const API_URL =
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
 
 // Earliest selectable licence expiry (tomorrow), computed once.
 const MIN_EXPIRY_DATE = new Date(
@@ -284,7 +284,7 @@ function PartnerPanel({ partner, token, notify, reload }) {
             }
             formData.append("document", file);
             const response = await fetch(
-                `${API_ORIGIN}/api/v1/rental-partners/me/documents`,
+                `${API_URL}/rental-partners/me/documents`,
                 {
                     method: "POST",
                     headers: { Authorization: `Bearer ${token}` },
