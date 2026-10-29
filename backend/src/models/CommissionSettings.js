@@ -114,6 +114,80 @@ const commissionSettingsSchema = new mongoose.Schema(
             immutable: true,
         },
 
+        // Phase 4 — Buy & Deliver (PurchaseOrder) platform controls.
+        // Admins manage these from the same GLOBAL settings document;
+        // the settings singleton is extended, never forked.
+        buyDeliverEnabled: {
+            type: Boolean,
+            default: true,
+        },
+
+        // Platform-wide maximum shopping value for a single purchase
+        // order (PKR). null = no platform cap (per-partner limits and
+        // the passenger's own approved maximum still apply).
+        buyDeliverMaxOrderValue: {
+            type: Number,
+            default: null,
+            min: 1,
+        },
+
+        // Radius (km) around the delivery location used when fanning a
+        // new purchase request out to eligible partners.
+        buyDeliverRadiusKm: {
+            type: Number,
+            default: 15,
+            min: 1,
+            max: 100,
+        },
+
+        // Admin-replaceable prohibited-goods terms for purchase
+        // requests. An empty list means "use the conservative defaults"
+        // in services/purchaseOrderService — never "no restrictions".
+        buyDeliverBlockedTerms: {
+            type: [{ type: String, trim: true, maxlength: 60 }],
+            default: [],
+        },
+
+        // Phase 5 — Safar Rentals platform controls (same GLOBAL
+        // singleton, extended never forked). The booking fee is paid
+        // by the customer to the platform's receiving bank account
+        // above (bankName / bankAccountTitle / bankAccountNumber) by
+        // MANUAL transfer in the pilot and verified by an admin —
+        // there is no gateway involved.
+        rentalsEnabled: {
+            type: Boolean,
+            default: true,
+        },
+
+        // Platform booking fee as a percentage of the rental charges
+        // (never of the security deposit). Disclosed to the passenger
+        // before they request, and snapshotted onto every booking.
+        rentalBookingFeePercent: {
+            type: Number,
+            default: 5,
+            min: 0,
+            max: 100,
+        },
+
+        // Launch gate (Amir): With Driver rentals launch first.
+        // Self-Drive bookings stay impossible until an admin turns
+        // this ON after licence/insurance/inspection procedures are
+        // in place (Phase 8 gate).
+        rentalsSelfDriveEnabled: {
+            type: Boolean,
+            default: false,
+        },
+
+        // Hours the passenger has to submit the booking-fee payment
+        // after the provider accepts, before the calendar hold is
+        // released and the vehicle becomes bookable again.
+        rentalPaymentDeadlineHours: {
+            type: Number,
+            default: 24,
+            min: 1,
+            max: 168,
+        },
+
         freeWaitingMinutes: {
             type: Number,
             default: 5,

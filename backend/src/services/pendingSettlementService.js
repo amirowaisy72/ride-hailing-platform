@@ -5,6 +5,9 @@ const ParcelOrder = require("../models/ParcelOrder");
 const ParcelSettlement = require("../models/ParcelSettlement");
 const { settleRideCommission } = require("./commissionSettlementService");
 const { settleParcelCommission } = require("./parcelSettlementService");
+const PurchaseOrder = require("../models/PurchaseOrder");
+const PurchaseSettlement = require("../models/PurchaseSettlement");
+const { settlePurchaseCommission } = require("./purchaseSettlementService");
 
 // Persist WHY a settlement did not complete, so the admin dashboard can
 // show the reason instead of a bare FAILED count. The settlement row is
@@ -287,6 +290,144 @@ async function processPendingParcelSettlements({ limit = 20 } = {}) {
     return results;
 }
 
+// Purchase (Buy & Deliver) mirror of persistParcelSettlementError. The
+// placeholder fare is the order's delivery fee — the only amount a
+// purchase settlement can ever be about.
+async function persistPurchaseSettlementError(order, status, message) {
+    const fare =
+        Number.isSafeInteger(order.deliveryFee) && order.deliveryFee > 0
+            ? order.deliveryFee
+            : 1;
+
+    await PurchaseSettlement.findOneAndUpdate(
+        {
+            purchaseOrderId: order._id,
+            status: { $ne: "SETTLED" },
+        },
+        {
+            $set: {
+                status,
+                lastError: String(message || "").slice(0, 500),
+            },
+            $setOnInsert: {
+                purchaseOrderId: order._id,
+                driverId: order.driverId,
+                fare,
+                commission: 0,
+                commissionPercentage: 0,
+                driverEarnings: 0,
+            },
+        },
+        { upsert: true }
+    );
+}
+
+async function processPendingPurchaseSettlements({ limit = 20 } = {}) {
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+        throw new Error("Invalid settlement batch limit");
+    }
+
+    const orders = await PurchaseOrder.find({
+        status: { $in: ["DELIVERED", "COMPLETED"] },
+        settlementStatus: { $in: ["PENDING", "FAILED"] },
+        settlementAttempts: { $lt: 5 },
+    })
+        .sort({ deliveredAt: 1, createdAt: 1 })
+        .limit(limit)
+        .select("_id driverId deliveryFee")
+        .lean();
+
+    const results = {
+        scanned: orders.length,
+        settled: 0,
+        alreadySettled: 0,
+        failed: 0,
+        errors: [],
+    };
+
+    for (const order of orders) {
+        try {
+            const result = await settlePurchaseCommission(order._id);
+
+            if (result.alreadySettled) {
+                results.alreadySettled++;
+            } else {
+                results.settled++;
+            }
+        } catch (error) {
+            results.failed++;
+
+            if (error.message === "Insufficient driver wallet balance") {
+                try {
+                    await PurchaseOrder.updateOne(
+                        {
+                            _id: order._id,
+                            settlementStatus: { $ne: "SETTLED" },
+                        },
+                        {
+                            $set: {
+                                settlementError: error.message,
+                            },
+                        }
+                    );
+
+                    await persistPurchaseSettlementError(
+                        order,
+                        "PENDING",
+                        error.message
+                    );
+                } catch (persistError) {
+                    console.error(
+                        `Purchase settlement defer reason persist failed for ${order._id}:`,
+                        persistError.message
+                    );
+                }
+
+                continue;
+            }
+
+            await PurchaseOrder.updateOne(
+                {
+                    _id: order._id,
+                    settlementStatus: { $ne: "SETTLED" },
+                },
+                {
+                    $set: {
+                        settlementStatus: "FAILED",
+                        settlementError: error.message,
+                    },
+                    $inc: { settlementAttempts: 1 },
+                }
+            );
+
+            try {
+                await persistPurchaseSettlementError(
+                    order,
+                    "FAILED",
+                    error.message
+                );
+            } catch (persistError) {
+                console.error(
+                    `Purchase settlement error persist failed for ${order._id}:`,
+                    persistError.message
+                );
+            }
+
+            console.error(
+                `Purchase settlement failed for ${order._id}:`,
+                error.message
+            );
+
+            results.errors.push({
+                purchaseOrderId: String(order._id),
+                message: error.message,
+            });
+        }
+    }
+
+    return results;
+}
+
 let settlementTimer = null;
 let processing = false;
 
@@ -313,6 +454,17 @@ async function runAutomaticSettlements() {
             console.log("Automatic parcel settlement:", {
                 settled: parcelResult.settled,
                 alreadySettled: parcelResult.alreadySettled,
+            });
+        }
+
+        const purchaseResult = await processPendingPurchaseSettlements({
+            limit: 20,
+        });
+
+        if (purchaseResult.settled > 0 || purchaseResult.alreadySettled > 0) {
+            console.log("Automatic purchase settlement:", {
+                settled: purchaseResult.settled,
+                alreadySettled: purchaseResult.alreadySettled,
             });
         }
     } catch (error) {
@@ -346,5 +498,6 @@ if (mongoose.connection.readyState === 1) {
 module.exports = {
     processPendingSettlements,
     processPendingParcelSettlements,
+    processPendingPurchaseSettlements,
     startAutomaticSettlements,
 };

@@ -4,6 +4,7 @@ import {
     ArrowRight, CarFront, CheckCircle2, ChevronRight, Compass, CornerUpRight, FileCheck2,
     Flag, Hourglass, LifeBuoy, MapPin, MessageCircle, Navigation, Power, RefreshCw, Satellite, Star, UserRound,
     WifiOff, XCircle, Menu, X, Bell, BellRing, Volume2, VolumeX, LocateFixed, Wallet,
+    CircleAlert, ClipboardList, LayoutGrid, Store,
 } from "lucide-react";
 import { Geolocation } from "@capacitor/geolocation";
 import {
@@ -29,6 +30,9 @@ import { BRAND } from "@/config/brand";
 import { apiRequest } from "@/lib/api";
 import { submitDriverOffer } from "@/lib/driverRideService";
 import { getMyVehicles, selectVehicle, updateOnlineStatus, updateDriverLocation } from "@/lib/vehicleService";
+import { getMyServices } from "@/lib/driverServicesService";
+import ServiceEarnings from "@/components/driver/ServiceEarnings";
+import { SERVICE_META, SERVICE_ORDER, STATUS_META, humanizeReason, pendingActionsFor } from "@/components/driver/ServiceMeta";
 import { getRealtimeSocket } from "@/lib/socket";
 import { useRideUnreadMessages } from "@/hooks/useRideUnreadMessages";
 import { COMPLAINT_CATEGORIES, COMPLAINT_STATUS_META } from "@/components/ComplaintsSection";
@@ -188,6 +192,19 @@ function DriverDashboard() {
     const [dismissedIds, setDismissedIds] = useState([]);
     const [driverProfile, setDriverProfile] = useState(null);
     const [homeEarnings, setHomeEarnings] = useState(null);
+    const [myServices, setMyServices] = useState(null);
+    const [onlineBlock, setOnlineBlock] = useState(null);
+    const loadMyServices = useCallback(async () => {
+        if (!token) return null;
+        try {
+            const data = await getMyServices(token);
+            const list = data.services || [];
+            setMyServices(list);
+            return list;
+        } catch {
+            return null;
+        }
+    }, [token]);
     const [myComplaints, setMyComplaints] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -390,10 +407,12 @@ function DriverDashboard() {
         Promise.allSettled([
             apiRequest("/drivers/me/earnings", { token }),
             apiRequest("/complaints/mine", { token }),
-        ]).then(([earningsResult, complaintsResult]) => {
+            getMyServices(token),
+        ]).then(([earningsResult, complaintsResult, servicesResult]) => {
             if (cancelled) return;
             if (earningsResult.status === "fulfilled") setHomeEarnings(earningsResult.value);
             if (complaintsResult.status === "fulfilled") setMyComplaints(complaintsResult.value.complaints || []);
+            if (servicesResult.status === "fulfilled") setMyServices(servicesResult.value.services || []);
         });
         return () => { cancelled = true; };
     }, [token, selectedRide?.status]);
@@ -660,6 +679,8 @@ function DriverDashboard() {
             }
             setIsOnline(Boolean(data.isOnline));
             setIsAvailable(Boolean(data.isAvailable));
+            setOnlineBlock(null);
+            void loadMyServices();
             notify({
                 kind: data.isOnline ? "success" : "info", key: `online:${data.isOnline}:${Date.now()}`, sound: false,
                 title: data.isOnline ? "You're online" : "You're offline",
@@ -673,6 +694,17 @@ function DriverDashboard() {
             }
         } catch (error) {
             reportError(error, "Couldn't change status");
+            // Going online failed: surface the specific per-service
+            // reasons (Phase 2 eligibility), not just the raw error.
+            if (!isOnline) {
+                const list = await loadMyServices();
+                if (list) {
+                    setOnlineBlock({
+                        message: error?.message || "You can't go online yet.",
+                        services: list.filter((service) => !service.eligible),
+                    });
+                }
+            }
         } finally {
             setBusy(false);
         }
@@ -983,10 +1015,118 @@ function DriverDashboard() {
                 </div>
             </section>
 
+            {/* Active Tasks + earnings-by-service shortcuts */}
+            <Link
+                href="/driver/tasks"
+                className="flex items-center gap-3 rounded-2xl border border-pd-line bg-pd-surface p-3 text-pd-text shadow-sm"
+            >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                    <ClipboardList size={20} />
+                </span>
+                <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-bold text-pd-muted">
+                        Active Tasks
+                    </span>
+                    <span className="block truncate text-sm font-extrabold">
+                        Shopping, rentals, rides & parcels in one queue
+                    </span>
+                </span>
+                <ChevronRight size={16} className="shrink-0 text-pd-muted" />
+            </Link>
+
+            <ServiceEarnings token={token} compact />
+
+            {/* Blocked from going online: the specific per-service reasons */}
+            {onlineBlock && (
+                <section className="rounded-2xl border border-red-200 bg-red-50 p-3 text-slate-900">
+                    <div className="flex items-start gap-2">
+                        <CircleAlert size={18} className="mt-0.5 shrink-0 text-red-500" />
+                        <div className="min-w-0 flex-1">
+                            <p className="text-sm font-extrabold">You can&apos;t go online yet</p>
+                            <p className="mt-0.5 text-xs font-semibold text-slate-600">{onlineBlock.message}</p>
+                            {onlineBlock.services.map((service) => (
+                                <p key={service.service} className="mt-1.5 text-xs font-semibold">
+                                    {SERVICE_META[service.service]?.short}:{" "}
+                                    {(service.blockedReasons || []).map(humanizeReason).filter(Boolean).slice(0, 2).join(" · ")
+                                        || (STATUS_META[service.status]?.label || service.status)}
+                                </p>
+                            ))}
+                            <Link href="/driver/services" className="mt-2.5 inline-block rounded-lg bg-[#087F5B] px-3 py-1.5 text-xs font-extrabold text-white">
+                                Fix in My Services
+                            </Link>
+                        </div>
+                    </div>
+                </section>
+            )}
+
+            {/* My Services summary: per-service readiness at a glance */}
+            <section className="rounded-2xl border border-pd-line bg-pd-surface p-3 text-pd-text">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <LayoutGrid size={20} className="shrink-0 text-pd-accent-text" />
+                        <div className="min-w-0">
+                            <p className="text-xs font-bold text-pd-muted">My Services</p>
+                            <p className="truncate text-sm font-extrabold">
+                                {myServices
+                                    ? `${myServices.filter((s) => s.eligible).length} of ${myServices.length} services ready to earn`
+                                    : "Loading services…"}
+                            </p>
+                        </div>
+                    </div>
+                    <Link href="/driver/services" className="shrink-0 rounded-xl bg-pd-surface-2 px-3 py-2 text-xs font-bold">
+                        Manage
+                    </Link>
+                </div>
+                {myServices && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                        {SERVICE_ORDER.map((key) => {
+                            const service = myServices.find((s) => s.service === key);
+                            if (!service) return null;
+                            const meta = SERVICE_META[key];
+                            const statusMeta = STATUS_META[service.status] || STATUS_META.NOT_APPLIED;
+                            const ServiceIcon = meta.Icon;
+                            return (
+                                <span key={key} className="flex items-center gap-1.5 rounded-full bg-pd-surface-2 py-1.5 pl-2.5 pr-3 text-xs font-bold">
+                                    <ServiceIcon size={14} className="text-pd-accent-text" />
+                                    {meta.short}
+                                    <span className={`h-2 w-2 rounded-full ${service.eligible ? "bg-[#087F5B]" : statusMeta.dot}`} />
+                                    <span className="font-semibold text-pd-muted">{service.eligible ? "Ready" : statusMeta.label}</span>
+                                </span>
+                            );
+                        })}
+                    </div>
+                )}
+            </section>
+
+            {/* Pending actions: service-specific, never a generic prompt */}
+            {myServices && pendingActionsFor(myServices).length > 0 && (
+                <section className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-slate-900">
+                    <div className="flex items-center gap-2">
+                        <CircleAlert size={18} className="shrink-0 text-amber-600" />
+                        <p className="text-sm font-extrabold">Pending actions</p>
+                        <span className="flex min-h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-extrabold text-white">
+                            {pendingActionsFor(myServices).length}
+                        </span>
+                    </div>
+                    <div className="mt-1 divide-y divide-amber-100">
+                        {pendingActionsFor(myServices).slice(0, 4).map((action) => (
+                            <Link key={action.key} href={action.href} className="flex items-center gap-2 py-2 text-sm font-semibold">
+                                <span className="min-w-0 flex-1">{action.text}</span>
+                                <ChevronRight size={15} className="shrink-0 text-amber-600" />
+                            </Link>
+                        ))}
+                    </div>
+                    <Link href="/driver/services" className="mt-1 inline-block text-xs font-extrabold text-[#087F5B]">
+                        Open My Services →
+                    </Link>
+                </section>
+            )}
+
             {/* Quick Actions */}
-            <section className="grid grid-cols-4 gap-2">
+            <section className="grid grid-cols-5 gap-2">
                 {[
                     { href: "/driver/parcels", icon: Package, label: "Parcels", count: parcelRequests.length, active: true },
+                    { href: "/driver/services", icon: LayoutGrid, label: "Services" },
                     { href: "/driver/earnings", icon: Wallet, label: "Earnings" },
                     { href: "/driver/vehicles", icon: CarFront, label: "Vehicles" },
                     { href: "/driver/documents", icon: FileCheck2, label: "Documents" },
@@ -1252,6 +1392,14 @@ function DriverDashboard() {
                             <Package size={19} />
                             <span className="flex-1">Parcel Deliveries</span>
                             <ParcelActivityBar token={token} role="DRIVER" variant="badge" />
+                        </Link>
+                        <Link href="/driver/services" onClick={() => setMapMenuOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-[#F4F5F7]">
+                            <LayoutGrid size={19} />
+                            <span className="flex-1">My Services</span>
+                        </Link>
+                        <Link href="/driver/rentals" onClick={() => setMapMenuOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-[#F4F5F7]">
+                            <Store size={19} />
+                            <span className="flex-1">My Rental Business</span>
                         </Link>
                         <button type="button" onClick={notifications.toggleSound} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold hover:bg-[#F4F5F7]">
                             {notifications.soundEnabled ? <Volume2 size={19} /> : <VolumeX size={19} />}

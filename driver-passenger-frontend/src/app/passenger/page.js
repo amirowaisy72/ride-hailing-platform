@@ -1347,6 +1347,18 @@ function PassengerDashboard() {
                                 📦 Parcel Delivery
                                 <ParcelActivityBar token={token} role="PASSENGER" variant="badge" />
                             </Link>
+                            <Link
+                                href="/passenger/buy-deliver"
+                                className="shrink-0 rounded-xl bg-[#F4F5F7] px-4 py-2.5 text-sm font-bold text-[#111111]"
+                            >
+                                🛒 Buy &amp; Deliver
+                            </Link>
+                            <Link
+                                href="/passenger/rentals"
+                                className="shrink-0 rounded-xl bg-[#F4F5F7] px-4 py-2.5 text-sm font-bold text-[#111111]"
+                            >
+                                🚗 Rentals
+                            </Link>
                         </div>
                         <button type="button" onClick={() => setBookingOpen(true)}
                             className="flex w-full items-center gap-3 rounded-2xl bg-[#F4F5F7] px-4 py-4 text-left shadow-sm transition-transform active:scale-[0.98]"

@@ -19,6 +19,7 @@ import {
 
 import AuthGuard from "@/components/AuthGuard";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import ServiceEarnings from "@/components/driver/ServiceEarnings";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
 
@@ -535,6 +536,8 @@ function EarningsScreen() {
                         <WeekChart days={daily.days} todayKey={daily.today.date} />
                     </section>
                 )}
+
+                <ServiceEarnings token={token} />
 
                 <section className="overflow-hidden rounded-[26px] bg-white p-5 shadow-sm">
                     <h3 className="mb-4 text-lg font-extrabold">Financial Activity</h3>

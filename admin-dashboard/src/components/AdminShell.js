@@ -9,6 +9,7 @@ import {
     SlidersHorizontal, ShieldCheck, Menu, X,
     LogOut, ChevronRight, PanelLeftClose,
     Bell, CircleDollarSign, Plug, Flag,
+    ShoppingBag, KeyRound,
 } from "lucide-react";
 
 import {
@@ -27,6 +28,8 @@ const navigation = [
     { label: "Custom Notifications", href: "/dashboard/notifications", icon: Bell },
     { label: "Rides", href: "/dashboard/rides", icon: Route },
     { label: "Parcels", href: "/dashboard/parcels", icon: Route },
+    { label: "Buy & Deliver", href: "/dashboard/buy-deliver", icon: ShoppingBag },
+    { label: "Rentals", href: "/dashboard/rentals", icon: KeyRound },
     { label: "Complaints", href: "/dashboard/complaints", icon: Flag },
     { label: "Wallets", href: "/dashboard/wallets", icon: Wallet },
     { label: "Settlements", href: "/dashboard/settlements", icon: CircleDollarSign },
