@@ -12,6 +12,7 @@ const TABS = [
     { id: "payments", label: "Fee Payment Queue" },
     { id: "bookings", label: "Bookings" },
     { id: "listings", label: "Listings" },
+    { id: "partners", label: "Partners" },
     { id: "reports", label: "Reports" },
     { id: "settings", label: "Settings" },
 ];
@@ -37,6 +38,7 @@ const STATUS_CLASSES = {
     NO_SHOW: "bg-slate-100 text-slate-600",
     DISPUTED: "bg-red-50 text-red-600",
     PENDING: "bg-amber-50 text-amber-700",
+    UNDER_REVIEW: "bg-amber-50 text-amber-700",
     APPROVED: "bg-emerald-50 text-[#087F5B]",
     REJECTED: "bg-red-50 text-red-600",
     SUSPENDED: "bg-red-50 text-red-600",
@@ -114,6 +116,9 @@ export default function RentalsAdminPage() {
                 )}
                 {tab === "listings" && (
                     <ListingsTab setError={setError} setMessage={setMessage} />
+                )}
+                {tab === "partners" && (
+                    <PartnersTab setError={setError} setMessage={setMessage} />
                 )}
                 {tab === "reports" && <ReportsTab setError={setError} />}
                 {tab === "settings" && (
@@ -891,6 +896,339 @@ function ListingsTab({ setError, setMessage }) {
 // ---------------------------------------------------------------------
 // Reports — fee reconciliation + suspicious cancellations
 // ---------------------------------------------------------------------
+
+
+// ---------------------------------------------------------------------
+// Rental Partner approvals — KYC documents + application status.
+// Backend: /admin/rental-partners (Phase 2 admin API).
+// Chauffeur verification is display-only here: no admin endpoint
+// approves it yet, so With-Driver stays gated until that ships.
+// ---------------------------------------------------------------------
+
+const PARTNER_DOC_LABELS = {
+    CNIC_FRONT: "CNIC front",
+    CNIC_BACK: "CNIC back",
+    PROFILE_PHOTO: "Profile photo",
+    DRIVING_LICENSE: "Driving licence",
+    BUSINESS_REGISTRATION: "Business registration",
+    AUTHORIZATION_LETTER: "Authorization letter",
+    VEHICLE_OWNERSHIP: "Vehicle ownership",
+};
+
+function PartnersTab({ setError, setMessage }) {
+    const [mode, setMode] = useState("PENDING");
+    const [partners, setPartners] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [busyId, setBusyId] = useState("");
+    const [docsFor, setDocsFor] = useState("");
+    const [documents, setDocuments] = useState([]);
+    const [docsLoading, setDocsLoading] = useState(false);
+
+    const load = useCallback(async () => {
+        setLoading(true);
+        setError("");
+        try {
+            const data = await authenticatedAdminRequest(
+                mode === "PENDING"
+                    ? "/admin/rental-partners/pending"
+                    : "/admin/rental-partners"
+            );
+            setPartners(data.rentalPartners || []);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    }, [mode, setError]);
+
+    useEffect(() => {
+        void (async () => {
+            await Promise.resolve();
+            await load();
+        })();
+    }, [load]);
+
+    async function setStatus(partner, nextStatus) {
+        const body = { status: nextStatus };
+        if (nextStatus === "APPROVED") {
+            if (!partner.agreementAcceptedAt) {
+                if (!window.confirm("This partner has NOT accepted the provider agreement yet. Approve anyway?")) return;
+            } else if (!window.confirm(`Approve rental partner "${partner.businessName || "Unnamed"}"?`)) {
+                return;
+            }
+        }
+        if (nextStatus === "REJECTED") {
+            const reason = window.prompt("Rejection reason (required):", "");
+            if (reason === null) return;
+            if (!reason.trim()) {
+                setError("A rejection reason is required.");
+                return;
+            }
+            body.rejectionReason = reason.trim();
+        }
+        if (nextStatus === "SUSPENDED") {
+            const reason = window.prompt("Suspension reason (optional):", "");
+            if (reason === null) return;
+            body.suspensionReason = reason.trim();
+        }
+
+        setBusyId(partner._id);
+        setError("");
+        setMessage("");
+        try {
+            await authenticatedAdminRequest(
+                `/admin/rental-partners/${partner._id}/status`,
+                { method: "PATCH", body: JSON.stringify(body) }
+            );
+            setMessage(`Partner ${nextStatus.toLowerCase()}.`);
+            await load();
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setBusyId("");
+        }
+    }
+
+    async function toggleDocuments(partner) {
+        if (docsFor === partner._id) {
+            setDocsFor("");
+            setDocuments([]);
+            return;
+        }
+        setDocsFor(partner._id);
+        setDocuments([]);
+        setDocsLoading(true);
+        setError("");
+        try {
+            const data = await authenticatedAdminRequest(
+                `/admin/rental-partners/${partner._id}/documents`
+            );
+            setDocuments(data.documents || []);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setDocsLoading(false);
+        }
+    }
+
+    async function viewDocument(documentId) {
+        setError("");
+        try {
+            const data = await authenticatedAdminRequest(
+                `/admin/rental-partners/documents/${documentId}/view`
+            );
+            if (data.imageUrl) window.open(data.imageUrl, "_blank", "noopener");
+        } catch (err) {
+            setError(err.message);
+        }
+    }
+
+    async function reviewDocument(partner, document, nextStatus) {
+        const body = { status: nextStatus };
+        if (nextStatus === "REJECTED") {
+            const reason = window.prompt("Document rejection reason (required):", "");
+            if (reason === null) return;
+            if (!reason.trim()) {
+                setError("A rejection reason is required.");
+                return;
+            }
+            body.rejectionReason = reason.trim();
+        }
+        setBusyId(document._id);
+        setError("");
+        setMessage("");
+        try {
+            await authenticatedAdminRequest(
+                `/admin/rental-partners/documents/${document._id}/review`,
+                { method: "PATCH", body: JSON.stringify(body) }
+            );
+            setMessage(`Document ${nextStatus.toLowerCase()}.`);
+            const data = await authenticatedAdminRequest(
+                `/admin/rental-partners/${partner._id}/documents`
+            );
+            setDocuments(data.documents || []);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setBusyId("");
+        }
+    }
+
+    return (
+        <section className="rounded-2xl bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="text-lg font-extrabold">Rental Partners</h3>
+                <div className="flex gap-2">
+                    {[
+                        { id: "PENDING", label: "Pending queue" },
+                        { id: "ALL", label: "All partners" },
+                    ].map(({ id, label }) => (
+                        <button
+                            key={id}
+                            type="button"
+                            onClick={() => setMode(id)}
+                            className={`rounded-xl px-3.5 py-2 text-xs font-bold ${mode === id
+                                ? "bg-[#087F5B] text-white"
+                                : "bg-slate-100 text-slate-600"
+                                }`}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                    <button
+                        type="button"
+                        onClick={load}
+                        className="rounded-xl bg-slate-100 px-3.5 py-2 text-xs font-bold text-slate-600"
+                    >
+                        <RefreshCw size={14} className="mr-1 inline" /> Refresh
+                    </button>
+                </div>
+            </div>
+
+            {loading ? (
+                <p className="mt-4 text-sm text-slate-500">Loading partners…</p>
+            ) : partners.length === 0 ? (
+                <p className="mt-4 text-sm text-slate-500">
+                    {mode === "PENDING"
+                        ? "No partners are waiting for review."
+                        : "No rental partners yet."}
+                </p>
+            ) : (
+                <div className="mt-4 space-y-3">
+                    {partners.map((partner) => {
+                        const user = partner.userId || {};
+                        const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
+                        return (
+                            <div key={partner._id} className="rounded-xl border border-slate-100 p-4">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <p className="font-extrabold">
+                                            {partner.businessName || "Unnamed business"}
+                                        </p>
+                                        <p className="text-xs text-slate-500">
+                                            {fullName || "—"}{user.email ? ` • ${user.email}` : ""}
+                                        </p>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            Applied {when(partner.createdAt)} •{" "}
+                                            {partner.agreementAcceptedAt
+                                                ? `Agreement accepted ${when(partner.agreementAcceptedAt)}`
+                                                : "Agreement NOT accepted"}
+                                            {partner.providesChauffeur
+                                                ? ` • Chauffeur: ${pretty(partner.chauffeurVerificationStatus || "NOT APPLIED")}`
+                                                : ""}
+                                        </p>
+                                    </div>
+                                    <StatusChip status={partner.applicationStatus} />
+                                </div>
+
+                                <div className="mt-3 flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleDocuments(partner)}
+                                        className="rounded-xl bg-slate-100 px-3.5 py-2 text-xs font-bold text-slate-600"
+                                    >
+                                        <Eye size={14} className="mr-1 inline" /> KYC Documents
+                                    </button>
+                                    {partner.applicationStatus !== "APPROVED" && (
+                                        <button
+                                            type="button"
+                                            disabled={busyId === partner._id}
+                                            onClick={() => setStatus(partner, "APPROVED")}
+                                            className="rounded-xl bg-[#087F5B] px-3.5 py-2 text-xs font-bold text-white disabled:opacity-50"
+                                        >
+                                            <CheckCircle2 size={14} className="mr-1 inline" /> Approve
+                                        </button>
+                                    )}
+                                    {partner.applicationStatus !== "REJECTED" && (
+                                        <button
+                                            type="button"
+                                            disabled={busyId === partner._id}
+                                            onClick={() => setStatus(partner, "REJECTED")}
+                                            className="rounded-xl bg-red-50 px-3.5 py-2 text-xs font-bold text-red-600 disabled:opacity-50"
+                                        >
+                                            <XCircle size={14} className="mr-1 inline" /> Reject
+                                        </button>
+                                    )}
+                                    {partner.applicationStatus === "APPROVED" && (
+                                        <button
+                                            type="button"
+                                            disabled={busyId === partner._id}
+                                            onClick={() => setStatus(partner, "SUSPENDED")}
+                                            className="rounded-xl bg-red-50 px-3.5 py-2 text-xs font-bold text-red-600 disabled:opacity-50"
+                                        >
+                                            Suspend
+                                        </button>
+                                    )}
+                                </div>
+
+                                {docsFor === partner._id && (
+                                    <div className="mt-3 rounded-xl bg-slate-50 p-3">
+                                        {docsLoading ? (
+                                            <p className="text-xs text-slate-500">Loading documents…</p>
+                                        ) : documents.length === 0 ? (
+                                            <p className="text-xs text-slate-500">No KYC documents uploaded.</p>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {documents.map((document) => (
+                                                    <div
+                                                        key={document._id}
+                                                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white px-3 py-2"
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <ShieldCheck size={14} className="text-[#087F5B]" />
+                                                            <span className="text-xs font-bold">
+                                                                {PARTNER_DOC_LABELS[document.documentType] || pretty(document.documentType)}
+                                                            </span>
+                                                            <StatusChip status={document.verificationStatus} />
+                                                            {document.rejectionReason && (
+                                                                <span className="text-[11px] text-red-500">
+                                                                    {document.rejectionReason}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => viewDocument(document._id)}
+                                                                className="rounded-lg bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-600"
+                                                            >
+                                                                View
+                                                            </button>
+                                                            {document.verificationStatus !== "APPROVED" && (
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={busyId === document._id}
+                                                                    onClick={() => reviewDocument(partner, document, "APPROVED")}
+                                                                    className="rounded-lg bg-[#087F5B] px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
+                                                                >
+                                                                    Approve
+                                                                </button>
+                                                            )}
+                                                            {document.verificationStatus !== "REJECTED" && (
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={busyId === document._id}
+                                                                    onClick={() => reviewDocument(partner, document, "REJECTED")}
+                                                                    className="rounded-lg bg-red-50 px-3 py-1.5 text-[11px] font-bold text-red-600 disabled:opacity-50"
+                                                                >
+                                                                    Reject
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </section>
+    );
+}
 
 function ReportsTab({ setError }) {
     const [from, setFrom] = useState(() =>
