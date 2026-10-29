@@ -6,6 +6,7 @@ import {
     House,
     CarFront,
     History,
+    LayoutGrid,
     UserRound,
     Wallet,
 } from "lucide-react";
@@ -19,6 +20,7 @@ const passengerLinks = [
 const driverLinks = [
     { label: "Home", href: "/driver", icon: House },
     { label: "Trips", href: "/driver/trips", icon: CarFront },
+    { label: "Services", href: "/driver/services", icon: LayoutGrid },
     { label: "Earnings", href: "/driver/earnings", icon: Wallet },
     { label: "Account", href: "/driver/account", icon: UserRound },
 ];
@@ -37,6 +39,9 @@ export default function MobileBottomNav({ role }) {
                 {links.map(({ label, href, icon: Icon, pending }) => {
                     const active =
                         pathname === href ||
+                        (label === "Services" &&
+                            (pathname.startsWith("/driver/services") ||
+                                pathname.startsWith("/driver/rentals"))) ||
                         (label === "Account" &&
                             pathname.startsWith(`${role === "DRIVER" ? "/driver" : "/passenger"}/profile`));
 

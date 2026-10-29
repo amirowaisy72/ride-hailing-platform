@@ -25,6 +25,11 @@ const walletTransactionSchema = new mongoose.Schema(
             ref: "ParcelOrder",
             default: null,
         },
+        purchaseOrderId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "PurchaseOrder",
+            default: null,
+        },
         type: {
             type: String,
             enum: [

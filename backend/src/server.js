@@ -69,6 +69,11 @@ app.use("/api/v1/service-areas", serviceAreaRoutes);
 app.use("/api/v1/admin/service-areas", serviceAreaRoutes);
 app.use("/api/v1/rides", rideRoutes);
 app.use("/api/v1/parcels", require("./routes/parcelRoutes"));
+app.use("/api/v1/purchases", require("./routes/purchaseRoutes"));
+app.use(
+    "/api/v1/admin/purchases",
+    require("./routes/adminPurchaseRoutes")
+);
 app.use("/api/v1/admin/parcels", require("./routes/adminParcelRoutes"));
 app.use("/api/v1/complaints", require("./routes/complaintRoutes"));
 app.use(
@@ -79,9 +84,23 @@ app.use("/api/v1/vehicle-pricing", vehiclePricingRoutes);
 app.use("/api/v1/drivers/me/vehicles", vehicleRoutes);
 app.use("/api/v1/admin/vehicles", adminVehicleRoutes);
 app.use(
+    "/api/v1/rental-partners",
+    require("./routes/rentalPartnerRoutes")
+);
+app.use(
+    "/api/v1/admin/rental-partners",
+    require("./routes/adminRentalPartnerRoutes")
+);
+app.use("/api/v1/rentals", require("./routes/rentalRoutes"));
+app.use(
+    "/api/v1/admin/rentals",
+    require("./routes/adminRentalRoutes")
+);
+app.use(
     "/api/v1/admin/operations",
     require("./routes/adminOperationsRoutes")
 );
+app.use("/api/v1/order-chats", require("./routes/orderChatRoutes"));
 
 app.get("/api/v1/health", (req, res) => {
     res.status(200).json({

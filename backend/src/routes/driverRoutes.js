@@ -24,7 +24,17 @@ const {
     getAvailableTopUpMethods,
 } = require("../controllers/driverPaymentController");
 
-const { getMyEarnings } = require("../controllers/driverEarningsController");
+const {
+    getMyEarnings,
+    getMyEarningsByService,
+} = require("../controllers/driverEarningsController");
+
+const {
+    getMyServices,
+    applyForService,
+    updateServiceTransportMode,
+    updateServiceAvailability,
+} = require("../controllers/driverServiceController");
 
 const router = express.Router();
 
@@ -49,10 +59,42 @@ router.patch(
     updateOnlineStatus
 );
 
+// Phase 2 — multi-service eligibility ("My Services")
+router.get(
+    "/me/services",
+    protect,
+    authorize("PASSENGER", "DRIVER"),
+    getMyServices
+);
+
+router.post(
+    "/me/services/:service/apply",
+    protect,
+    authorize("PASSENGER", "DRIVER"),
+    applyForService
+);
+
+router.patch(
+    "/me/services/:service/transport-mode",
+    protect,
+    authorize("PASSENGER", "DRIVER"),
+    updateServiceTransportMode
+);
+
+router.patch(
+    "/me/services/:service/availability",
+    protect,
+    authorize("PASSENGER", "DRIVER"),
+    updateServiceAvailability
+);
+
 router.patch(
     "/me/location",
     protect,
-    authorize("DRIVER"),
+    // GPS fix (Phase 8 finding): location refresh must also accept a
+    // partner eligible for at least one service (e.g. Buy & Deliver-
+    // only, global status PENDING) — see middleware/roleMiddleware.js.
+    authorize("DRIVER", { allowServiceEligibility: true }),
     updateDriverLocation
 );
 
@@ -65,7 +107,7 @@ router.post(
         next();
     },
     protect,
-    authorize("DRIVER"),
+    authorize("DRIVER", { allowServiceEligibility: true }),
     (req, res, next) => {
         const accuracy = Number(req.body?.accuracy);
         if (!Number.isFinite(accuracy) || accuracy > 100 || accuracy < 0) {
@@ -166,6 +208,13 @@ router.get(
     protect,
     authorize("PASSENGER", "DRIVER"),
     getMyEarnings
+);
+
+router.get(
+    "/me/earnings-by-service",
+    protect,
+    authorize("PASSENGER", "DRIVER"),
+    getMyEarningsByService
 );
 
 module.exports = router;

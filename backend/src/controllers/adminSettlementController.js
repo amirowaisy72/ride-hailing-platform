@@ -9,6 +9,7 @@ const {
 const {
     processPendingSettlements,
     processPendingParcelSettlements,
+    processPendingPurchaseSettlements,
 } = require("../services/pendingSettlementService");
 
 async function getSettlementOverview(req, res) {
@@ -149,10 +150,15 @@ async function runSettlementBatch(req, res) {
             limit: 20,
         });
 
+        const purchases = await processPendingPurchaseSettlements({
+            limit: 20,
+        });
+
         return res.json({
             success: true,
             result,
             parcels,
+            purchases,
         });
     } catch (error) {
         console.error("Settlement batch:", error.message);

@@ -5,6 +5,9 @@ const DriverDocument = require("../models/DriverDocument");
 const Ride = require("../models/Ride");
 const ParcelOrder = require("../models/ParcelOrder");
 const { publishEvent } = require("../services/socketService");
+const {
+    hasAnyEligibleService,
+} = require("../services/eligibilityService");
 
 const registerDriver = async (req, res) => {
     try {
@@ -88,55 +91,95 @@ const updateOnlineStatus = async (req, res) => {
             });
         }
 
-        if (isOnline && driver.verificationStatus !== "APPROVED") {
-            return res.status(403).json({
-                success: false,
-                message: "Driver approval required",
-            });
-        }
-
         if (isOnline) {
-            const vehicle = await Vehicle.findOne({
-                _id: driver.currentVehicleId,
-                driverId: driver._id,
-                verificationStatus: "APPROVED",
-                isActive: true,
-            });
+            // Phase 2 — service-aware online gate. A driver may go
+            // online when AT LEAST ONE enabled service is fully eligible
+            // (eligibilityService is the single source of truth). Every
+            // service — RIDE, PARCEL and BUY_DELIVER alike — requires
+            // the full vehicle + document verification (Amir
+            // correction, 2026-10-29); only WHICH service qualifies the
+            // driver differs, never the standard.
+            const { eligible, evaluations, context } =
+                await hasAnyEligibleService(driver);
 
-            if (!vehicle) {
+            if (!eligible) {
+                // Preserve the pre-Phase-2 error behaviour for drivers
+                // whose only path online is the legacy ride/parcel one.
+                if (
+                    driver.verificationStatus !== "APPROVED" &&
+                    evaluations.BUY_DELIVER.status !== "APPROVED"
+                ) {
+                    return res.status(403).json({
+                        success: false,
+                        message: "Driver approval required",
+                    });
+                }
+
+                if (
+                    evaluations.RIDE.status === "APPROVED" ||
+                    evaluations.PARCEL.status === "APPROVED"
+                ) {
+                    const vehicle = context.vehicle;
+
+                    if (!vehicle) {
+                        return res.status(403).json({
+                            success: false,
+                            message:
+                                "Select an approved vehicle before going online",
+                        });
+                    }
+
+                    const expiredDocument = await DriverDocument.exists({
+                        driverId: driver._id,
+                        documentType: {
+                            $in: ["DRIVING_LICENSE", "VEHICLE_REGISTRATION"],
+                        },
+                        verificationStatus: "APPROVED",
+                        expiryDate: { $lte: new Date() },
+                    });
+
+                    if (expiredDocument) {
+                        driver.isOnline = false;
+                        driver.isAvailable = false;
+                        await driver.save();
+
+                        return res.status(403).json({
+                            success: false,
+                            message:
+                                "Document expired. Renewal and Admin Approval required.",
+                        });
+                    }
+
+                    if (
+                        vehicle.registrationExpiryDate &&
+                        vehicle.registrationExpiryDate <= new Date()
+                    ) {
+                        driver.isOnline = false;
+                        driver.isAvailable = false;
+                        await driver.save();
+
+                        return res.status(403).json({
+                            success: false,
+                            message:
+                                "Vehicle registration expired. Renew and obtain Admin Approval.",
+                        });
+                    }
+
+                    return res.status(403).json({
+                        success: false,
+                        message:
+                            "All services are turned off or suspended",
+                    });
+                }
+
+                const firstReason =
+                    evaluations.BUY_DELIVER.reasons[0] ||
+                    evaluations.RIDE.reasons[0] ||
+                    "No eligible service available";
+
                 return res.status(403).json({
                     success: false,
-                    message: "Select an approved vehicle before going online",
-                });
-            }
-
-            const expiredDocument = await DriverDocument.exists({
-                driverId: driver._id,
-                documentType: { $in: ["DRIVING_LICENSE", "VEHICLE_REGISTRATION"] },
-                verificationStatus: "APPROVED",
-                expiryDate: { $lte: new Date() },
-            });
-
-            if (expiredDocument) {
-                driver.isOnline = false;
-                driver.isAvailable = false;
-                await driver.save();
-
-                return res.status(403).json({
-                    success: false,
-                    message: "Document expired. Renewal and Admin Approval required.",
-                });
-            }
-
-            if (vehicle.registrationExpiryDate &&
-                vehicle.registrationExpiryDate <= new Date()) {
-                driver.isOnline = false;
-                driver.isAvailable = false;
-                await driver.save();
-
-                return res.status(403).json({
-                    success: false,
-                    message: "Vehicle registration expired. Renew and obtain Admin Approval.",
+                    message: firstReason,
                 });
             }
         }
@@ -213,7 +256,6 @@ const updateDriverLocation = async (req, res) => {
 
         const driver = await Driver.findOne({
             userId: req.user._id,
-            verificationStatus: "APPROVED",
             isOnline: true,
         });
 
@@ -222,6 +264,29 @@ const updateDriverLocation = async (req, res) => {
                 success: false,
                 message: "Approved online driver required",
             });
+        }
+
+        // GPS fix (Phase 8 finding): a partner approved ONLY for a
+        // service (e.g. Buy & Deliver) keeps the legacy global status
+        // PENDING by design, yet must be able to refresh GPS — the
+        // purchase/parcel freshness gates read lastLocationUpdate with
+        // a 120-second window, so the old global-APPROVED-only filter
+        // locked BD-only partners out of offers ~2 minutes after any
+        // fix. Legacy APPROVED drivers take the exact pre-fix path
+        // (no extra evaluation, zero behaviour change); anyone else
+        // must be eligible for at least one service via
+        // eligibilityService, the single source of truth. A driver
+        // eligible for nothing is still refused, with the same
+        // response as before.
+        if (driver.verificationStatus !== "APPROVED") {
+            const { eligible } = await hasAnyEligibleService(driver);
+
+            if (!eligible) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Approved online driver required",
+                });
+            }
         }
 
         driver.currentLocation = {
@@ -291,7 +356,7 @@ const getMyDriverStatus = async (req, res) => {
         const driver = await Driver.findOne({
             userId: req.user._id,
         }).select(
-            "verificationStatus rejectionReason isOnline isAvailable currentVehicleId currentLocation rating ratingCount"
+            "verificationStatus rejectionReason isOnline isAvailable currentVehicleId currentLocation rating ratingCount services"
         );
 
         if (!driver) {

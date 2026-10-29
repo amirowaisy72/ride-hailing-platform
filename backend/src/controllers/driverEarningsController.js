@@ -3,6 +3,8 @@ const Ride = require("../models/Ride");
 const RideSettlement = require("../models/RideSettlement");
 const ParcelOrder = require("../models/ParcelOrder");
 const ParcelSettlement = require("../models/ParcelSettlement");
+const PurchaseOrder = require("../models/PurchaseOrder");
+const PurchaseSettlement = require("../models/PurchaseSettlement");
 
 async function getMyEarnings(req, res) {
     try {
@@ -214,4 +216,153 @@ async function getMyEarnings(req, res) {
     }
 }
 
-module.exports = { getMyEarnings };
+// Phase 4 — earnings split BY SERVICE (the endpoint Phase 3's driver
+// dashboard deferred to). Every figure comes from real records:
+//  - RIDE / PARCEL service earnings from their settlement collections;
+//  - BUY_DELIVER service earnings from PurchaseSettlement (whose fare
+//    is the delivery fee — the partner's only earnings from an order);
+//  - the Buy & Deliver SHOPPING money is reported in its own block —
+//    advanced (what the partner spent from their own pocket),
+//    reimbursed (what the passenger has paid back) and unpaid. It is
+//    reimbursement, NOT earnings, and is never added to any earnings
+//    total.
+async function getMyEarningsByService(req, res) {
+    try {
+        const driver = await Driver.findOne({
+            userId: req.user._id,
+        }).select("_id");
+
+        if (!driver) {
+            return res.status(404).json({
+                success: false,
+                message: "Driver profile not found",
+            });
+        }
+
+        const settledGroup = (extra = {}) => [
+            {
+                $match: {
+                    driverId: driver._id,
+                    status: "SETTLED",
+                    ...extra,
+                },
+            },
+            {
+                $group: {
+                    _id: null,
+                    completed: { $sum: 1 },
+                    totalFares: { $sum: "$fare" },
+                    totalCommission: { $sum: "$commission" },
+                    netEarnings: { $sum: "$driverEarnings" },
+                },
+            },
+        ];
+
+        const [rideAgg, parcelAgg, purchaseAgg, shoppingAgg] =
+            await Promise.all([
+                RideSettlement.aggregate(settledGroup()),
+                ParcelSettlement.aggregate(settledGroup()),
+                PurchaseSettlement.aggregate(settledGroup()),
+                PurchaseOrder.aggregate([
+                    {
+                        $match: {
+                            driverId: driver._id,
+                            actualCost: { $type: "number" },
+                            status: {
+                                $in: [
+                                    "PURCHASED",
+                                    "OUT_FOR_DELIVERY",
+                                    "ARRIVED",
+                                    "DELIVERED",
+                                    "COMPLETED",
+                                    "DISPUTED",
+                                ],
+                            },
+                        },
+                    },
+                    {
+                        $group: {
+                            _id: null,
+                            orders: { $sum: 1 },
+                            advanced: { $sum: "$actualCost" },
+                            reimbursed: { $sum: "$reimbursementReceived" },
+                            unpaid: { $sum: "$unpaidAmount" },
+                        },
+                    },
+                ]),
+            ]);
+
+        const zeroService = {
+            completed: 0,
+            totalFares: 0,
+            totalCommission: 0,
+            netEarnings: 0,
+        };
+
+        const ride = rideAgg[0] || zeroService;
+        const parcel = parcelAgg[0] || zeroService;
+        const buyDeliverService = purchaseAgg[0] || zeroService;
+        const shopping = shoppingAgg[0] || {
+            orders: 0,
+            advanced: 0,
+            reimbursed: 0,
+            unpaid: 0,
+        };
+
+        const services = {
+            RIDE: {
+                completedOrders: ride.completed,
+                totalFares: ride.totalFares,
+                totalCommission: ride.totalCommission,
+                netEarnings: ride.netEarnings,
+            },
+            PARCEL: {
+                completedOrders: parcel.completed,
+                totalFares: parcel.totalFares,
+                totalCommission: parcel.totalCommission,
+                netEarnings: parcel.netEarnings,
+            },
+            BUY_DELIVER: {
+                completedOrders: buyDeliverService.completed,
+                totalDeliveryFees: buyDeliverService.totalFares,
+                totalCommission: buyDeliverService.totalCommission,
+                netEarnings: buyDeliverService.netEarnings,
+                // Reimbursement ledger — deliberately OUTSIDE the
+                // earnings fields above and outside `totals`.
+                shopping: {
+                    orders: shopping.orders,
+                    advanced: shopping.advanced,
+                    reimbursed: shopping.reimbursed,
+                    unpaid: shopping.unpaid,
+                },
+            },
+        };
+
+        return res.json({
+            success: true,
+            currency: "PKR",
+            services,
+            totals: {
+                // Service earnings only. Shopping reimbursements are
+                // pass-through money and are NEVER totalled as income.
+                netEarnings:
+                    ride.netEarnings +
+                    parcel.netEarnings +
+                    buyDeliverService.netEarnings,
+                totalCommission:
+                    ride.totalCommission +
+                    parcel.totalCommission +
+                    buyDeliverService.totalCommission,
+            },
+        });
+    } catch (error) {
+        console.error("Earnings by service error:", error.message);
+
+        return res.status(500).json({
+            success: false,
+            message: "Unable to load earnings by service",
+        });
+    }
+}
+
+module.exports = { getMyEarnings, getMyEarningsByService };

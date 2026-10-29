@@ -19,6 +19,10 @@ const {
     registerInternalEventsHandler,
 } = require("./handlers/internalEventsHandler");
 
+const {
+    registerOrderChatRoomHandler,
+} = require("./handlers/orderChatRoomHandler");
+
 function initializeRealtime(httpServer) {
     const io = new Server(httpServer, {
         cors: {
@@ -37,6 +41,7 @@ function initializeRealtime(httpServer) {
         registerRideRoomHandler(io, socket);
         registerRideEventsHandler(io, socket);
         registerInternalEventsHandler(io, socket);
+        registerOrderChatRoomHandler(io, socket);
 
         socket.on("disconnect", () => {
             console.log("Socket disconnected:", socket.id);

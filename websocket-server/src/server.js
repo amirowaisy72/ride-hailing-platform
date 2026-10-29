@@ -11,6 +11,7 @@ const { registerDriverLocationHandler } = require("./handlers/driverLocationHand
 const { registerRideRoomHandler } = require("./handlers/rideRoomHandler");
 const { registerRideEventsHandler } = require("./handlers/rideEventsHandler");
 const { registerInternalEventsHandler } = require("./handlers/internalEventsHandler");
+const { registerOrderChatRoomHandler } = require("./handlers/orderChatRoomHandler");
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -38,6 +39,7 @@ io.on("connection", (socket) => {
     registerRideRoomHandler(io, socket);
     registerRideEventsHandler(io, socket);
     registerInternalEventsHandler(io, socket);
+    registerOrderChatRoomHandler(io, socket);
     console.log("Socket connected:", socket.id);
 
     socket.on("disconnect", () => {

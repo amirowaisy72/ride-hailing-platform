@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-    ArrowLeft, CarFront, Clock3, History, LifeBuoy,
-    LogOut, ShieldCheck, Star, UserRound,
+    ArrowLeft, CarFront, Clock3, History, LayoutGrid, LifeBuoy,
+    LogOut, ShieldCheck, Star, Store, UserRound,
     Wallet, Settings2,
 } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
@@ -193,6 +193,26 @@ function DriverAccount() {
                         <Wallet size={20} className="text-[#087F5B]" />
                         <span className="flex-1 text-sm font-semibold">
                             Wallet & Earnings
+                        </span>
+                        <span className="text-xs text-[#087F5B]">Open →</span>
+                    </Link>
+                    <Link
+                        href="/driver/services"
+                        className="flex items-center gap-3 border-b py-3"
+                    >
+                        <LayoutGrid size={20} className="text-[#087F5B]" />
+                        <span className="flex-1 text-sm font-semibold">
+                            My Services
+                        </span>
+                        <span className="text-xs text-[#087F5B]">Open →</span>
+                    </Link>
+                    <Link
+                        href="/driver/rentals"
+                        className="flex items-center gap-3 border-b py-3"
+                    >
+                        <Store size={20} className="text-[#087F5B]" />
+                        <span className="flex-1 text-sm font-semibold">
+                            My Rental Business
                         </span>
                         <span className="text-xs text-[#087F5B]">Open →</span>
                     </Link>

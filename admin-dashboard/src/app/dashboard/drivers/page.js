@@ -11,6 +11,7 @@ import {
 import AdminShell from "@/components/AdminShell";
 import { authenticatedAdminRequest } from "@/lib/adminSession";
 import DriverDocumentReview from "@/components/DriverDocumentReview";
+import DriverServicesPanel from "@/components/DriverServicesPanel";
 
 const statuses = {
     APPROVED: "bg-emerald-50 text-emerald-700",
@@ -35,6 +36,7 @@ export default function DriversPage() {
     const [message, setMessage] = useState("");
     const [busyId, setBusyId] = useState(null);
     const [reviewDriver, setReviewDriver] = useState(null);
+    const [servicesDriver, setServicesDriver] = useState(null);
     const [filter, setFilter] = useState("ALL");
     const [search, setSearch] = useState("");
 
@@ -276,6 +278,29 @@ export default function DriversPage() {
                                             >
                                                 {status}
                                             </span>
+
+                                            {/* Phase 7 — per-service records at a glance
+                                                (stored statuses; the Services panel shows
+                                                the evaluated eligibility). */}
+                                            <div className="mt-2 flex flex-wrap gap-1.5">
+                                                {[
+                                                    ["RIDE", "Ride"],
+                                                    ["PARCEL", "Parcel"],
+                                                    ["BUY_DELIVER", "Buy & Deliver"],
+                                                ].map(([key, label]) => {
+                                                    const serviceStatus =
+                                                        driver.services?.[key]?.status || "NOT_APPLIED";
+                                                    return (
+                                                        <span
+                                                            key={key}
+                                                            className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${statuses[serviceStatus] || "bg-slate-100 text-slate-500"
+                                                                }`}
+                                                        >
+                                                            {label}: {serviceStatus.replaceAll("_", " ")}
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
 
                                         <button
@@ -289,6 +314,19 @@ export default function DriversPage() {
                                             className="rounded-xl border border-emerald-200 px-4 py-3 text-sm font-bold text-[#087F5B]"
                                         >
                                             Review Documents
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setServicesDriver({
+                                                    id: driverId,
+                                                    name: nameOf(driver),
+                                                })
+                                            }
+                                            className="rounded-xl border border-emerald-200 px-4 py-3 text-sm font-bold text-[#087F5B]"
+                                        >
+                                            Services
                                         </button>
 
                                         {["PENDING", "UNDER_REVIEW"].includes(status) && (
@@ -326,6 +364,14 @@ export default function DriversPage() {
                     driverId={reviewDriver.id}
                     driverName={reviewDriver.name}
                     onClose={() => setReviewDriver(null)}
+                    onUpdated={loadDrivers}
+                />
+            )}
+            {servicesDriver && (
+                <DriverServicesPanel
+                    driverId={servicesDriver.id}
+                    driverName={servicesDriver.name}
+                    onClose={() => setServicesDriver(null)}
                     onUpdated={loadDrivers}
                 />
             )}

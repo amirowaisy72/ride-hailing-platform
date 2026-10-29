@@ -14,6 +14,7 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 const DOCUMENTS = [
     { type: "CNIC_FRONT", title: "CNIC Front", icon: "🪪" },
     { type: "CNIC_BACK", title: "CNIC Back", icon: "🪪" },
+    { type: "PROFILE_PHOTO", title: "Profile Photo", icon: "🧑" },
     { type: "DRIVING_LICENSE", title: "Driving License", icon: "🚘" },
     {
         type: "VEHICLE_REGISTRATION",
@@ -156,8 +157,10 @@ function DocumentUploadScreen() {
                                 Identity Verification
                             </h2>
                             <p className="mt-1 text-xs text-slate-500">
-                                All 4 required documents must be approved
-                                before your driver account can be approved.
+                                Every service — Rides, Parcels and Buy &amp;
+                                Deliver — has its own document requirements.
+                                Check My Services to see exactly what each of
+                                your services still needs.
                             </p>
                         </div>
                     </div>
