@@ -23,8 +23,8 @@ const DOCUMENTS = [
     },
 ];
 
-const API_ORIGIN =
-    process.env.NEXT_PUBLIC_API_ORIGIN || "http://localhost:5000";
+const API_URL =
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
 
 export default function DriverDocumentsPage() {
     return (
@@ -90,7 +90,7 @@ function DocumentUploadScreen() {
 
             formData.append("document", file);
             const response = await fetch(
-                `${API_ORIGIN}/api/v1/drivers/me/documents`,
+                `${API_URL}/drivers/me/documents`,
                 {
                     method: "POST",
                     headers: {
