@@ -31,7 +31,7 @@ const ROWS = [
         key: "RIDE",
         label: "Passenger Rides",
         Icon: CarFront,
-        iconWrap: "bg-emerald-50 text-[#087F5B]",
+        iconWrap: "bg-pd-success-soft text-[#087F5B]",
         grossLabel: "Total fares",
         gross: (s) => s.totalFares,
     },
@@ -39,7 +39,7 @@ const ROWS = [
         key: "PARCEL",
         label: "Parcel Delivery",
         Icon: Package,
-        iconWrap: "bg-blue-50 text-blue-600",
+        iconWrap: "bg-pd-info-soft text-pd-info",
         grossLabel: "Total fares",
         gross: (s) => s.totalFares,
     },
@@ -101,7 +101,7 @@ export default function ServiceEarnings({ token, compact = false }) {
                 href="/driver/earnings"
                 className="flex items-center gap-3 rounded-2xl border border-pd-line bg-pd-surface p-3 text-pd-text shadow-sm"
             >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-[#087F5B]">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-pd-success-soft text-[#087F5B]">
                     <TrendingUp size={20} />
                 </span>
                 <span className="min-w-0 flex-1">
@@ -116,7 +116,7 @@ export default function ServiceEarnings({ token, compact = false }) {
                               : `Net ${money(data?.totals?.netEarnings)} · Rides, Parcels & Buy & Deliver`}
                     </span>
                     {!loading && !error && unpaid > 0 && (
-                        <span className="mt-0.5 block text-[11px] font-bold text-amber-600">
+                        <span className="mt-0.5 block text-[11px] font-bold text-pd-warning">
                             Shopping reimbursement unpaid: {money(unpaid)}
                         </span>
                     )}
@@ -129,7 +129,7 @@ export default function ServiceEarnings({ token, compact = false }) {
     if (loading) {
         return (
             <section
-                className="h-56 animate-pulse rounded-[26px] bg-white shadow-sm"
+                className="h-56 animate-pulse rounded-[26px] bg-pd-surface shadow-sm"
                 aria-busy="true"
             />
         );
@@ -137,8 +137,8 @@ export default function ServiceEarnings({ token, compact = false }) {
 
     if (error) {
         return (
-            <section className="rounded-[26px] bg-white p-5 shadow-sm">
-                <p className="flex items-start gap-2 text-sm font-semibold text-red-600">
+            <section className="rounded-[26px] bg-pd-surface p-5 shadow-sm">
+                <p className="flex items-start gap-2 text-sm font-semibold text-pd-danger">
                     <CircleAlert size={17} className="mt-0.5 shrink-0" />
                     {error}
                 </p>
@@ -165,14 +165,14 @@ export default function ServiceEarnings({ token, compact = false }) {
     );
 
     return (
-        <section className="overflow-hidden rounded-[26px] bg-white p-5 shadow-sm">
+        <section className="overflow-hidden rounded-[26px] bg-pd-surface p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3">
                 <div>
                     <h3 className="flex items-center gap-2 text-lg font-extrabold">
                         <Wallet size={20} className="text-[#087F5B]" />
                         Earnings by Service
                     </h3>
-                    <p className="mt-0.5 text-xs text-slate-500">
+                    <p className="mt-0.5 text-xs text-pd-muted">
                         What each Safar service has earned you, after platform
                         commission.
                     </p>
@@ -181,7 +181,7 @@ export default function ServiceEarnings({ token, compact = false }) {
                     type="button"
                     onClick={() => void load()}
                     aria-label="Refresh earnings by service"
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pd-surface-2 text-pd-text-2"
                 >
                     <RefreshCw size={16} />
                 </button>
@@ -191,13 +191,13 @@ export default function ServiceEarnings({ token, compact = false }) {
                 <div className="py-8 text-center">
                     <TrendingUp size={30} className="mx-auto text-[#087F5B]" />
                     <p className="mt-3 font-bold">No settled earnings yet</p>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-pd-muted">
                         Completed rides, parcels and shopping deliveries will
                         appear here, service by service.
                     </p>
                 </div>
             ) : (
-                <div className="mt-4 divide-y divide-slate-100">
+                <div className="mt-4 divide-y divide-pd-line">
                     {ROWS.map((row) => {
                         const service = services[row.key] || {};
                         const Icon = row.Icon;
@@ -213,7 +213,7 @@ export default function ServiceEarnings({ token, compact = false }) {
                                         <p className="text-sm font-extrabold">
                                             {row.label}
                                         </p>
-                                        <p className="text-xs text-slate-500">
+                                        <p className="text-xs text-pd-muted">
                                             {service.completedOrders ?? 0}{" "}
                                             completed · {row.grossLabel}{" "}
                                             {money(row.gross(service))} ·
@@ -243,10 +243,10 @@ export default function ServiceEarnings({ token, compact = false }) {
                                             />
                                         </button>
                                         {shoppingOpen && (
-                                            <div className="mt-2 rounded-xl bg-slate-50 p-3 text-xs">
+                                            <div className="mt-2 rounded-xl bg-pd-surface-2 p-3 text-xs">
                                                 <div className="grid grid-cols-3 gap-2 text-center">
                                                     <div>
-                                                        <p className="text-slate-500">
+                                                        <p className="text-pd-muted">
                                                             You spent
                                                         </p>
                                                         <p className="mt-0.5 font-extrabold">
@@ -254,7 +254,7 @@ export default function ServiceEarnings({ token, compact = false }) {
                                                         </p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-slate-500">
+                                                        <p className="text-pd-muted">
                                                             Reimbursed
                                                         </p>
                                                         <p className="mt-0.5 font-extrabold text-[#087F5B]">
@@ -262,17 +262,17 @@ export default function ServiceEarnings({ token, compact = false }) {
                                                         </p>
                                                     </div>
                                                     <div>
-                                                        <p className="text-slate-500">
+                                                        <p className="text-pd-muted">
                                                             Still unpaid
                                                         </p>
                                                         <p
-                                                            className={`mt-0.5 font-extrabold ${Number(shopping.unpaid) > 0 ? "text-amber-600" : ""}`}
+                                                            className={`mt-0.5 font-extrabold ${Number(shopping.unpaid) > 0 ? "text-pd-warning" : ""}`}
                                                         >
                                                             {money(shopping.unpaid)}
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <p className="mt-2.5 leading-4 text-slate-500">
+                                                <p className="mt-2.5 leading-4 text-pd-muted">
                                                     Across {shopping.orders ?? 0}{" "}
                                                     shopping orders. This is
                                                     reimbursement of money you

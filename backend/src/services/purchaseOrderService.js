@@ -48,7 +48,18 @@ const PURCHASE_TRANSITIONS = {
     REQUESTED: ["BIDDING", "CANCELLED", "FAILED"],
     BIDDING: ["DRIVER_SELECTED", "CANCELLED", "FAILED"],
     DRIVER_SELECTED: ["SHOPPING", "CANCELLED", "DISPUTED"],
-    SHOPPING: ["AWAITING_APPROVAL", "CANCELLED", "DISPUTED"],
+    // SHOPPING -> PURCHASE_APPROVED is the budget-cap auto-approval edge
+    // (Amir review A13): when the partner's estimate is at or below the
+    // budget the passenger stated at creation, that budget IS the
+    // approval, so no passenger approval round-trip is needed. The edge
+    // may ONLY be taken through evaluateBudgetCapApproval below; an
+    // over-budget estimate still goes SHOPPING -> AWAITING_APPROVAL.
+    SHOPPING: [
+        "AWAITING_APPROVAL",
+        "PURCHASE_APPROVED",
+        "CANCELLED",
+        "DISPUTED",
+    ],
     AWAITING_APPROVAL: [
         "PURCHASE_APPROVED",
         "SHOPPING",
@@ -189,6 +200,80 @@ function checkAmountWithinCaps(amount, { partnerLimit = null, globalCap = null }
     }
 
     return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Budget-cap approval (Amir review A13 — approved decision: the
+// passenger's stated budget IS the approved cap)
+//
+// How an estimate becomes an approval, and what `approvedMaxAmount`
+// (the ceiling checkPurchaseWithinApproval enforces at purchase time)
+// means for each source, recorded on the order as
+// `estimateApprovalSource`:
+//
+//   "PASSENGER"  — the estimate exceeded the stated budget (or was an
+//                  increase above a previous ceiling), the order waited
+//                  in AWAITING_APPROVAL, and the passenger approved an
+//                  amount explicitly. approvedMaxAmount = THAT amount.
+//   "BUDGET_CAP" — the estimate was at or below `estimatedBudget`, so
+//                  it was auto-approved with NO passenger action.
+//                  approvedMaxAmount = estimatedBudget (the stated
+//                  cap itself, NOT the estimate): the passenger
+//                  authorised spending up to their budget, so till
+//                  prices landing above the estimate but at/below the
+//                  budget need no fresh approval round, while anything
+//                  above the budget still does (a new estimate above
+//                  approvedMaxAmount loops PURCHASE_APPROVED ->
+//                  AWAITING_APPROVAL exactly as before).
+// ---------------------------------------------------------------------------
+const ESTIMATE_APPROVAL_SOURCES = ["PASSENGER", "BUDGET_CAP"];
+
+function evaluateBudgetCapApproval({ estimatedCost, estimatedBudget } = {}) {
+    if (!isValidAmount(estimatedCost) || !isValidAmount(estimatedBudget)) {
+        return { autoApproved: false };
+    }
+
+    if (estimatedCost > estimatedBudget) {
+        return { autoApproved: false };
+    }
+
+    return {
+        autoApproved: true,
+        approvalSource: "BUDGET_CAP",
+        approvedMaxAmount: estimatedBudget,
+    };
+}
+
+// Receipt photos are OPTIONAL when recording a purchase (Amir review
+// A14): zero photos is valid. When photos ARE provided the historical
+// validation is unchanged — an array of at most 6 non-empty URL
+// strings, each at most 1000 characters (mirrors the controller's
+// validImageUrls rule for order/product images).
+function checkReceiptImageUrls(receiptImageUrls) {
+    if (receiptImageUrls === undefined || receiptImageUrls === null) {
+        return { ok: true, receiptImageUrls: [] };
+    }
+
+    const valid =
+        Array.isArray(receiptImageUrls) &&
+        receiptImageUrls.length <= 6 &&
+        receiptImageUrls.every(
+            (url) =>
+                typeof url === "string" &&
+                url.trim().length > 0 &&
+                url.length <= 1000
+        );
+
+    if (!valid) {
+        return {
+            ok: false,
+            code: "INVALID_RECEIPT_URLS",
+            message:
+                "Receipt photos must be image URLs (max 6). A receipt photo is optional — you may record the purchase without one.",
+        };
+    }
+
+    return { ok: true, receiptImageUrls };
 }
 
 // The hard purchase rule: actual spending may never exceed the amount
@@ -506,6 +591,9 @@ module.exports = {
     canDispute,
     isValidAmount,
     checkAmountWithinCaps,
+    ESTIMATE_APPROVAL_SOURCES,
+    evaluateBudgetCapApproval,
+    checkReceiptImageUrls,
     checkPurchaseWithinApproval,
     computeTotals,
     applyPayment,

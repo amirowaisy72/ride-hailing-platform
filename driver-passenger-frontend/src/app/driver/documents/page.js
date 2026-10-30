@@ -28,7 +28,7 @@ const API_URL =
 
 export default function DriverDocumentsPage() {
     return (
-        <AuthGuard role="PASSENGER">
+        <AuthGuard role="DRIVER">
             <DocumentUploadScreen />
         </AuthGuard>
     );
@@ -125,7 +125,7 @@ function DocumentUploadScreen() {
     }
 
     return (
-        <main className="driver-subpage min-h-dvh bg-[#F7F9F8] pb-28 text-slate-900">
+        <main className="driver-subpage min-h-dvh bg-pd-bg pb-28 text-pd-text">
             <MobileBottomNav role="DRIVER" />
 
             <header className="bg-[#087F5B] px-5 pb-8 pt-[max(24px,env(safe-area-inset-top))] text-white">
@@ -149,14 +149,14 @@ function DocumentUploadScreen() {
             </header>
 
             <div className="relative z-10 mx-auto mt-4 max-w-xl space-y-5 px-4 pb-6">
-                <section className="rounded-[24px] bg-white p-5 shadow-sm">
+                <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                     <div className="flex items-center gap-3">
                         <ShieldCheck size={26} className="text-[#087F5B]" />
                         <div>
                             <h2 className="font-extrabold">
                                 Identity Verification
                             </h2>
-                            <p className="mt-1 text-xs text-slate-500">
+                            <p className="mt-1 text-xs text-pd-muted">
                                 Every service — Rides, Parcels and Buy &amp;
                                 Deliver — has its own document requirements.
                                 Check My Services to see exactly what each of
@@ -169,7 +169,7 @@ function DocumentUploadScreen() {
                 {error && (
                     <p
                         role="alert"
-                        className="rounded-xl bg-red-50 p-4 text-sm text-red-600"
+                        className="rounded-xl bg-pd-danger-soft p-4 text-sm text-pd-danger"
                     >
                         <AlertCircle size={16} className="mr-2 inline" />
                         {error}
@@ -179,7 +179,7 @@ function DocumentUploadScreen() {
                 {message && (
                     <p
                         role="status"
-                        className="rounded-xl bg-emerald-50 p-4 text-sm text-[#087F5B]"
+                        className="rounded-xl bg-pd-success-soft p-4 text-sm text-[#087F5B]"
                     >
                         <CheckCircle2 size={16} className="mr-2 inline" />
                         {message}
@@ -189,26 +189,26 @@ function DocumentUploadScreen() {
                 {DOCUMENTS.map((doc) => (
                     <section
                         key={doc.type}
-                        className="rounded-[24px] bg-white p-5 shadow-sm"
+                        className="rounded-[24px] bg-pd-surface p-5 shadow-sm"
                     >
                         <div className="flex items-center gap-3">
                             <span className="text-3xl">{doc.icon}</span>
 
                             <div className="flex-1">
                                 <h3 className="font-extrabold">{doc.title}</h3>
-                                <p className="mt-1 text-xs text-slate-500">
+                                <p className="mt-1 text-xs text-pd-muted">
                                     JPG, PNG or WebP
                                 </p>
                             </div>
 
                             {uploaded[doc.type] && (
-                                <span className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700">
+                                <span className="rounded-lg bg-pd-warning-soft px-3 py-2 text-xs font-bold text-pd-warning">
                                     Uploaded
                                 </span>
                             )}
                         </div>
 
-                        <label className="mt-4 block cursor-pointer rounded-xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 p-5 text-center">
+                        <label className="mt-4 block cursor-pointer rounded-xl border-2 border-dashed border-emerald-200 bg-pd-success-soft/40 p-5 text-center">
                             <UploadCloud
                                 size={26}
                                 className="mx-auto text-[#087F5B]"
@@ -263,14 +263,14 @@ function DocumentUploadScreen() {
                         </button>
 
                         {uploaded[doc.type] && (
-                            <p className="mt-3 text-xs text-amber-700">
+                            <p className="mt-3 text-xs text-pd-warning">
                                 Submitted for admin verification.
                             </p>
                         )}
                     </section>
                 ))}
 
-                <p className="rounded-xl bg-amber-50 p-4 text-xs leading-5 text-amber-800">
+                <p className="rounded-xl bg-pd-warning-soft p-4 text-xs leading-5 text-pd-warning">
                     Use genuine documents only. Uploading does not mean
                     approval — your administrator must review each document.
                     Do not use someone else's documents.

@@ -24,6 +24,9 @@ const PURCHASE_EVENT_TYPE_MAP = {
     ESTIMATE_UPDATED: "ESTIMATE",
     COST_INCREASE_REQUESTED: "PRICE_INCREASE",
     AMOUNT_APPROVED: "APPROVAL",
+    // Budget-cap auto-approval (A13): an approval decision made by the
+    // system under the passenger's stated budget, not by the passenger.
+    ESTIMATE_AUTO_APPROVED: "APPROVAL",
     // ESTIMATE_REJECTED is an approval DECISION (a "no"); the raw type
     // is preserved in event.type so the UI can distinguish it from an
     // approval.
@@ -152,14 +155,23 @@ function buildOfferEventKey(offerId) {
 
 // --- Outgoing participant message validation (pure) ---------------------------
 // Returns { valid: true, kind, body, imageUrl } with the body trimmed,
-// or { valid: false, message }.
-function validateOutgoingMessage({ kind, body, imageUrl, clientMessageId } = {}) {
+// or { valid: false, message }. AUDIO additionally returns
+// { audioUrl, audioMime, audioDurationSec }.
+function validateOutgoingMessage({
+    kind,
+    body,
+    imageUrl,
+    audioUrl,
+    audioMime,
+    audioDurationSec,
+    clientMessageId,
+} = {}) {
     if (typeof clientMessageId !== "string" || !clientMessageId.trim()) {
         return { valid: false, message: "clientMessageId is required" };
     }
 
-    if (kind !== "TEXT" && kind !== "IMAGE") {
-        return { valid: false, message: 'kind must be "TEXT" or "IMAGE"' };
+    if (kind !== "TEXT" && kind !== "IMAGE" && kind !== "AUDIO") {
+        return { valid: false, message: 'kind must be "TEXT", "IMAGE" or "AUDIO"' };
     }
 
     const cleanBody = typeof body === "string" ? body.trim() : "";
@@ -175,9 +187,29 @@ function validateOutgoingMessage({ kind, body, imageUrl, clientMessageId } = {})
         return { valid: true, kind, body: cleanBody, imageUrl: "" };
     }
 
-    // IMAGE
-    if (!cleanImageUrl) {
-        return { valid: false, message: "imageUrl is required for an image message" };
+    if (kind === "IMAGE") {
+        if (!cleanImageUrl) {
+            return { valid: false, message: "imageUrl is required for an image message" };
+        }
+        if (cleanBody.length > 1000) {
+            return {
+                valid: false,
+                message: "Caption must contain at most 1000 characters",
+            };
+        }
+        return { valid: true, kind, body: cleanBody, imageUrl: cleanImageUrl };
+    }
+
+    // AUDIO
+    const cleanAudioUrl = typeof audioUrl === "string" ? audioUrl.trim() : "";
+    if (!cleanAudioUrl) {
+        return { valid: false, message: "audioUrl is required for an audio message" };
+    }
+    if (cleanAudioUrl.length > 1000) {
+        return {
+            valid: false,
+            message: "audioUrl must contain at most 1000 characters",
+        };
     }
     if (cleanBody.length > 1000) {
         return {
@@ -185,7 +217,33 @@ function validateOutgoingMessage({ kind, body, imageUrl, clientMessageId } = {})
             message: "Caption must contain at most 1000 characters",
         };
     }
-    return { valid: true, kind, body: cleanBody, imageUrl: cleanImageUrl };
+    const cleanAudioMime = typeof audioMime === "string" ? audioMime.trim() : "";
+    if (cleanAudioMime.length > 100) {
+        return {
+            valid: false,
+            message: "audioMime must contain at most 100 characters",
+        };
+    }
+    let cleanAudioDurationSec = null;
+    if (audioDurationSec !== undefined && audioDurationSec !== null && audioDurationSec !== "") {
+        const duration = Number(audioDurationSec);
+        if (!Number.isFinite(duration) || duration < 0 || duration > 600) {
+            return {
+                valid: false,
+                message: "audioDurationSec must be a number between 0 and 600",
+            };
+        }
+        cleanAudioDurationSec = duration;
+    }
+    return {
+        valid: true,
+        kind,
+        body: cleanBody,
+        imageUrl: "",
+        audioUrl: cleanAudioUrl,
+        audioMime: cleanAudioMime,
+        audioDurationSec: cleanAudioDurationSec,
+    };
 }
 
 module.exports = {

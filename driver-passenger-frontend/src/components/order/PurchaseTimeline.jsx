@@ -23,34 +23,34 @@ export const PURCHASE_FLOW = [
 ];
 
 export const PURCHASE_STATUS_META = {
-    REQUESTED: { label: "Requested", pill: "bg-amber-50 text-amber-700" },
-    BIDDING: { label: "Waiting for offers", pill: "bg-amber-50 text-amber-700" },
-    DRIVER_SELECTED: { label: "Partner selected", pill: "bg-sky-50 text-sky-700" },
-    SHOPPING: { label: "Shopping in progress", pill: "bg-sky-50 text-sky-700" },
-    AWAITING_APPROVAL: { label: "Awaiting your approval", pill: "bg-orange-50 text-orange-700" },
-    PURCHASE_APPROVED: { label: "Amount approved", pill: "bg-emerald-50 text-[#087F5B]" },
-    PURCHASED: { label: "Items purchased", pill: "bg-emerald-50 text-[#087F5B]" },
-    OUT_FOR_DELIVERY: { label: "Out for delivery", pill: "bg-sky-50 text-sky-700" },
-    ARRIVED: { label: "Partner arrived", pill: "bg-emerald-50 text-[#087F5B]" },
-    DELIVERED: { label: "Delivered", pill: "bg-emerald-50 text-[#087F5B]" },
-    COMPLETED: { label: "Completed", pill: "bg-emerald-50 text-[#087F5B]" },
-    CANCELLED: { label: "Cancelled", pill: "bg-red-50 text-red-600" },
-    FAILED: { label: "Failed", pill: "bg-red-50 text-red-600" },
-    DISPUTED: { label: "Disputed", pill: "bg-red-50 text-red-600" },
+    REQUESTED: { label: "Requested", labelUr: "درخواست دی گئی", pill: "bg-pd-warning-soft text-pd-warning" },
+    BIDDING: { label: "Waiting for offers", labelUr: "آفرز کا انتظار", pill: "bg-pd-warning-soft text-pd-warning" },
+    DRIVER_SELECTED: { label: "Partner selected", labelUr: "ساتھی منتخب ہو گیا", pill: "bg-sky-50 text-sky-700" },
+    SHOPPING: { label: "Shopping in progress", labelUr: "خریداری جاری ہے", pill: "bg-sky-50 text-sky-700" },
+    AWAITING_APPROVAL: { label: "Awaiting your approval", labelUr: "آپ کی منظوری کا انتظار", pill: "bg-orange-50 text-orange-700" },
+    PURCHASE_APPROVED: { label: "Amount approved", labelUr: "رقم منظور ہو گئی", pill: "bg-pd-success-soft text-[#087F5B]" },
+    PURCHASED: { label: "Items purchased", labelUr: "سامان خرید لیا گیا", pill: "bg-pd-success-soft text-[#087F5B]" },
+    OUT_FOR_DELIVERY: { label: "Out for delivery", labelUr: "ڈیلیوری کے لیے نکل پڑا", pill: "bg-sky-50 text-sky-700" },
+    ARRIVED: { label: "Partner arrived", labelUr: "ساتھی پہنچ گیا", pill: "bg-pd-success-soft text-[#087F5B]" },
+    DELIVERED: { label: "Delivered", labelUr: "پہنچا دیا گیا", pill: "bg-pd-success-soft text-[#087F5B]" },
+    COMPLETED: { label: "Completed", labelUr: "مکمل", pill: "bg-pd-success-soft text-[#087F5B]" },
+    CANCELLED: { label: "Cancelled", labelUr: "منسوخ", pill: "bg-pd-danger-soft text-pd-danger" },
+    FAILED: { label: "Failed", labelUr: "ناکام", pill: "bg-pd-danger-soft text-pd-danger" },
+    DISPUTED: { label: "Disputed", labelUr: "تنازعہ", pill: "bg-pd-danger-soft text-pd-danger" },
 };
 
 const PURCHASE_STEPS = [
-    ["REQUESTED", "Request placed"],
-    ["BIDDING", "Partner offers"],
-    ["DRIVER_SELECTED", "Partner selected"],
-    ["SHOPPING", "Shopping"],
-    ["AWAITING_APPROVAL", "Your approval"],
-    ["PURCHASE_APPROVED", "Amount approved"],
-    ["PURCHASED", "Items purchased"],
-    ["OUT_FOR_DELIVERY", "Out for delivery"],
-    ["ARRIVED", "Partner arrived"],
-    ["DELIVERED", "Delivered"],
-    ["COMPLETED", "Completed"],
+    ["REQUESTED", "Request placed", "درخواست دے دی گئی"],
+    ["BIDDING", "Partner offers", "ساتھیوں کی آفرز"],
+    ["DRIVER_SELECTED", "Partner selected", "ساتھی منتخب ہو گیا"],
+    ["SHOPPING", "Shopping", "خریداری"],
+    ["AWAITING_APPROVAL", "Your approval", "آپ کی منظوری"],
+    ["PURCHASE_APPROVED", "Amount approved", "رقم منظور ہو گئی"],
+    ["PURCHASED", "Items purchased", "سامان خرید لیا گیا"],
+    ["OUT_FOR_DELIVERY", "Out for delivery", "ڈیلیوری کے لیے نکل پڑا"],
+    ["ARRIVED", "Partner arrived", "ساتھی پہنچ گیا"],
+    ["DELIVERED", "Delivered", "پہنچا دیا گیا"],
+    ["COMPLETED", "Completed", "مکمل"],
 ];
 
 export const RENTAL_FLOW = [
@@ -65,41 +65,59 @@ export const RENTAL_FLOW = [
 ];
 
 export const RENTAL_STATUS_META = {
-    REQUESTED: { label: "Requested", pill: "bg-amber-50 text-amber-700" },
-    PROVIDER_ACCEPTED: { label: "Accepted — pay booking fee", pill: "bg-orange-50 text-orange-700" },
-    PAYMENT_PENDING: { label: "Fee verification pending", pill: "bg-amber-50 text-amber-700" },
-    CONFIRMED: { label: "Confirmed", pill: "bg-emerald-50 text-[#087F5B]" },
-    PICKUP_VERIFIED: { label: "Pickup verified", pill: "bg-sky-50 text-sky-700" },
-    RENTAL_ACTIVE: { label: "Rental active", pill: "bg-sky-50 text-sky-700" },
-    RETURN_PENDING: { label: "Return — confirm to finish", pill: "bg-orange-50 text-orange-700" },
-    COMPLETED: { label: "Completed", pill: "bg-emerald-50 text-[#087F5B]" },
-    CANCELLED: { label: "Cancelled", pill: "bg-red-50 text-red-600" },
-    NO_SHOW: { label: "No show", pill: "bg-red-50 text-red-600" },
-    DISPUTED: { label: "Disputed", pill: "bg-red-50 text-red-600" },
+    REQUESTED: { label: "Requested", labelUr: "درخواست دی گئی", pill: "bg-pd-warning-soft text-pd-warning" },
+    PROVIDER_ACCEPTED: { label: "Accepted — pay booking fee", labelUr: "قبول ہو گئی — بکنگ فیس ادا کریں", pill: "bg-orange-50 text-orange-700" },
+    PAYMENT_PENDING: { label: "Fee verification pending", labelUr: "فیس کی تصدیق باقی ہے", pill: "bg-pd-warning-soft text-pd-warning" },
+    CONFIRMED: { label: "Confirmed", labelUr: "تصدیق ہو گئی", pill: "bg-pd-success-soft text-[#087F5B]" },
+    PICKUP_VERIFIED: { label: "Pickup verified", labelUr: "پک اپ کی تصدیق ہو گئی", pill: "bg-sky-50 text-sky-700" },
+    RENTAL_ACTIVE: { label: "Rental active", labelUr: "کرایہ جاری ہے", pill: "bg-sky-50 text-sky-700" },
+    RETURN_PENDING: { label: "Return — confirm to finish", labelUr: "واپسی — ختم کرنے کے لیے تصدیق کریں", pill: "bg-orange-50 text-orange-700" },
+    COMPLETED: { label: "Completed", labelUr: "مکمل", pill: "bg-pd-success-soft text-[#087F5B]" },
+    CANCELLED: { label: "Cancelled", labelUr: "منسوخ", pill: "bg-pd-danger-soft text-pd-danger" },
+    NO_SHOW: { label: "No show", labelUr: "نہیں آئے", pill: "bg-pd-danger-soft text-pd-danger" },
+    DISPUTED: { label: "Disputed", labelUr: "تنازعہ", pill: "bg-pd-danger-soft text-pd-danger" },
 };
 
 const RENTAL_STEPS = [
-    ["REQUESTED", "Booking requested"],
-    ["PROVIDER_ACCEPTED", "Provider accepted"],
-    ["PAYMENT_PENDING", "Booking fee"],
-    ["CONFIRMED", "Booking confirmed"],
-    ["PICKUP_VERIFIED", "Pickup verified"],
-    ["RENTAL_ACTIVE", "Rental active"],
-    ["RETURN_PENDING", "Vehicle returned"],
-    ["COMPLETED", "Completed"],
+    ["REQUESTED", "Booking requested", "بکنگ کی درخواست"],
+    ["PROVIDER_ACCEPTED", "Provider accepted", "فراہم کنندہ نے قبول کیا"],
+    ["PAYMENT_PENDING", "Booking fee", "بکنگ فیس"],
+    ["CONFIRMED", "Booking confirmed", "بکنگ کی تصدیق ہو گئی"],
+    ["PICKUP_VERIFIED", "Pickup verified", "پک اپ کی تصدیق ہو گئی"],
+    ["RENTAL_ACTIVE", "Rental active", "کرایہ جاری ہے"],
+    ["RETURN_PENDING", "Vehicle returned", "گاڑی واپس ہو گئی"],
+    ["COMPLETED", "Completed", "مکمل"],
 ];
 
+function isUrduUi() {
+    try {
+        return window.localStorage.getItem("app-language") === "ur";
+    } catch {
+        return false;
+    }
+}
+
+function localize(meta) {
+    if (!meta) return meta;
+    try {
+        if (window.localStorage.getItem("app-language") === "ur" && meta.labelUr) {
+            return { ...meta, label: meta.labelUr };
+        }
+    } catch { /* SSR / storage blocked — English label */ }
+    return meta;
+}
+
 export function purchaseStatusMeta(status) {
-    return PURCHASE_STATUS_META[status] || {
+    return localize(PURCHASE_STATUS_META[status]) || {
         label: String(status || "Unknown").replaceAll("_", " "),
-        pill: "bg-slate-100 text-slate-600",
+        pill: "bg-pd-surface-2 text-pd-text-2",
     };
 }
 
 export function rentalStatusMeta(status) {
-    return RENTAL_STATUS_META[status] || {
+    return localize(RENTAL_STATUS_META[status]) || {
         label: String(status || "Unknown").replaceAll("_", " "),
-        pill: "bg-slate-100 text-slate-600",
+        pill: "bg-pd-surface-2 text-pd-text-2",
     };
 }
 
@@ -115,9 +133,9 @@ export function StatusPill({ meta }) {
 function Stepper({ status, flow, steps, offPath }) {
     if (offPath.includes(status)) {
         return (
-            <div className="flex items-center gap-2.5 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+            <div className="flex items-center gap-2.5 rounded-2xl bg-pd-danger-soft px-4 py-3 text-sm font-bold text-pd-danger">
                 <AlertTriangle size={18} className="shrink-0" aria-hidden="true" />
-                This order is {String(status).replaceAll("_", " ").toLowerCase()}.
+                {isUrduUi() ? "یہ آرڈر " : "This order is "}{isUrduUi() ? (purchaseStatusMeta(status)?.label || status) : String(status).replaceAll("_", " ").toLowerCase()}{isUrduUi() ? " ہے۔" : "."}
             </div>
         );
     }
@@ -125,8 +143,9 @@ function Stepper({ status, flow, steps, offPath }) {
     const current = flow.indexOf(status);
 
     return (
-        <ol className="relative space-y-0" aria-label="Order progress">
-            {steps.map(([value, label], index) => {
+        <ol className="relative space-y-0" aria-label={isUrduUi() ? "آرڈر کی پیش رفت" : "Order progress"}>
+            {steps.map(([value, labelEn, labelUr], index) => {
+                const label = isUrduUi() && labelUr ? labelUr : labelEn;
                 const done = current > index || status === "COMPLETED";
                 const now = current === index && status !== "COMPLETED";
                 const last = index === steps.length - 1;
@@ -134,7 +153,7 @@ function Stepper({ status, flow, steps, offPath }) {
                     <li key={value} className="relative flex gap-3 pb-3 last:pb-0">
                         {!last && (
                             <span
-                                className={`absolute left-[11px] top-6 h-[calc(100%-16px)] w-0.5 rounded ${done ? "bg-[#087F5B]" : "bg-slate-200"}`}
+                                className={`absolute left-[11px] top-6 h-[calc(100%-16px)] w-0.5 rounded ${done ? "bg-[#087F5B]" : "bg-pd-surface-3"}`}
                                 aria-hidden="true"
                             />
                         )}
@@ -142,15 +161,15 @@ function Stepper({ status, flow, steps, offPath }) {
                             className={`relative z-10 grid h-6 w-6 shrink-0 place-items-center rounded-full text-[10px] font-extrabold ${done
                                 ? "bg-[#087F5B] text-white"
                                 : now
-                                    ? "border-2 border-[#087F5B] bg-white text-[#087F5B]"
-                                    : "border-2 border-slate-200 bg-white text-slate-400"
+                                    ? "border-2 border-[#087F5B] bg-pd-surface text-[#087F5B]"
+                                    : "border-2 border-pd-line bg-pd-surface text-pd-faint"
                                 }`}
                         >
                             {done ? <Check size={13} strokeWidth={3} /> : index + 1}
                         </span>
-                        <span className={`pt-0.5 text-sm ${done || now ? "font-bold text-slate-900" : "text-slate-400"}`}>
+                        <span className={`pt-0.5 text-sm ${done || now ? "font-bold text-pd-text" : "text-pd-faint"}`}>
                             {label}
-                            {now && <span className="ml-2 text-[11px] font-semibold text-[#087F5B]">Now</span>}
+                            {now && <span className="ml-2 text-[11px] font-semibold text-[#087F5B]">{isUrduUi() ? "ابھی" : "Now"}</span>}
                         </span>
                     </li>
                 );

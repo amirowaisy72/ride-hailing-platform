@@ -6,6 +6,7 @@ const {
     getAllRentalPartners,
     getPendingRentalPartners,
     updateRentalPartnerStatus,
+    updateRentalPartnerChauffeur,
     reviewRentalPartnerDocument,
     getRentalPartnerDocuments,
     viewRentalPartnerDocument,
@@ -28,5 +29,6 @@ router.patch(
 
 router.get("/:id/documents", getRentalPartnerDocuments);
 router.patch("/:id/status", updateRentalPartnerStatus);
+router.patch("/:id/chauffeur", updateRentalPartnerChauffeur);
 
 module.exports = router;

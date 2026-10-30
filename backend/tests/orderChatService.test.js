@@ -366,6 +366,103 @@ test("validation: IMAGE requires imageUrl, caption is optional up to 1000", () =
     );
 });
 
+test("validation: AUDIO accepts a valid voice message and normalizes its fields", () => {
+    const ok = validateOutgoingMessage({
+        kind: "AUDIO",
+        audioUrl: " https://cdn.example/voice.webm ",
+        audioMime: "audio/webm",
+        audioDurationSec: 12.5,
+        body: " listen ",
+        clientMessageId: "c4",
+    });
+    assert.strictEqual(ok.valid, true);
+    assert.strictEqual(ok.kind, "AUDIO");
+    assert.strictEqual(ok.audioUrl, "https://cdn.example/voice.webm");
+    assert.strictEqual(ok.audioMime, "audio/webm");
+    assert.strictEqual(ok.audioDurationSec, 12.5);
+    assert.strictEqual(ok.body, "listen");
+    assert.strictEqual(ok.imageUrl, "");
+
+    // Caption, mime and duration are all optional.
+    const bare = validateOutgoingMessage({
+        kind: "AUDIO",
+        audioUrl: "https://cdn.example/voice.webm",
+        clientMessageId: "c4",
+    });
+    assert.strictEqual(bare.valid, true);
+    assert.strictEqual(bare.body, "");
+    assert.strictEqual(bare.audioMime, "");
+    assert.strictEqual(bare.audioDurationSec, null);
+
+    // Boundary durations are accepted.
+    for (const d of [0, 600]) {
+        assert.strictEqual(
+            validateOutgoingMessage({
+                kind: "AUDIO",
+                audioUrl: "https://cdn.example/v.webm",
+                audioDurationSec: d,
+                clientMessageId: "c4",
+            }).valid,
+            true,
+            `duration ${d}`
+        );
+    }
+});
+
+test("validation: AUDIO rejects missing/blank and over-long audioUrl", () => {
+    assert.strictEqual(
+        validateOutgoingMessage({ kind: "AUDIO", clientMessageId: "c5" }).valid,
+        false
+    );
+    assert.strictEqual(
+        validateOutgoingMessage({ kind: "AUDIO", audioUrl: "   ", clientMessageId: "c5" }).valid,
+        false
+    );
+    assert.strictEqual(
+        validateOutgoingMessage({
+            kind: "AUDIO",
+            audioUrl: `https://cdn.example/${"x".repeat(1000)}`,
+            clientMessageId: "c5",
+        }).valid,
+        false
+    );
+    assert.strictEqual(
+        validateOutgoingMessage({
+            kind: "AUDIO",
+            audioUrl: "https://cdn.example/v.webm",
+            body: "y".repeat(1001),
+            clientMessageId: "c5",
+        }).valid,
+        false,
+        "over-long caption"
+    );
+    assert.strictEqual(
+        validateOutgoingMessage({
+            kind: "AUDIO",
+            audioUrl: "https://cdn.example/v.webm",
+            audioMime: "m".repeat(101),
+            clientMessageId: "c5",
+        }).valid,
+        false,
+        "over-long mime"
+    );
+});
+
+test("validation: AUDIO rejects out-of-range or non-numeric durations", () => {
+    for (const d of [-1, 600.01, 601, "abc", NaN]) {
+        assert.strictEqual(
+            validateOutgoingMessage({
+                kind: "AUDIO",
+                audioUrl: "https://cdn.example/v.webm",
+                audioDurationSec: d,
+                clientMessageId: "c6",
+            }).valid,
+            false,
+            `duration ${d}`
+        );
+    }
+});
+
 test("validation: EVENT and unknown kinds can never be sent by clients", () => {
     assert.strictEqual(
         validateOutgoingMessage({ kind: "EVENT", body: "hi", clientMessageId: "c3" }).valid,

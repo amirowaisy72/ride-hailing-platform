@@ -245,6 +245,18 @@ const createRide = async (req, res) => {
     } catch (error) {
         console.error("Create ride error:", error.message);
 
+        // Missing VehiclePricing for the requested vehicle type is an
+        // admin-fixable configuration gap (fareService throws
+        // "Vehicle pricing unavailable"), not a server fault — surface
+        // it as a clear, non-500 error naming the problem instead of
+        // the generic failure below. The real cause is logged above.
+        if (error.message === "Vehicle pricing unavailable") {
+            return res.status(422).json({
+                success: false,
+                message: "Pricing is not available for this vehicle type yet. Please choose another vehicle type or try again later.",
+            });
+        }
+
         return res.status(500).json({
             success: false,
             message: "Failed to create ride",

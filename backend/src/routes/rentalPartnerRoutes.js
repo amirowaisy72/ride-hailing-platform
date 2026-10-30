@@ -5,6 +5,7 @@ const upload = require("../middleware/uploadMiddleware");
 const {
     applyForRentalPartner,
     getMyRentalPartner,
+    updateMyChauffeurDetails,
     uploadRentalPartnerDocument,
 } = require("../controllers/rentalPartnerController");
 
@@ -25,6 +26,13 @@ router.get(
     protect,
     authorize("PASSENGER", "DRIVER"),
     getMyRentalPartner
+);
+
+router.patch(
+    "/me/chauffeur",
+    protect,
+    authorize("PASSENGER", "DRIVER"),
+    updateMyChauffeurDetails
 );
 
 router.post(

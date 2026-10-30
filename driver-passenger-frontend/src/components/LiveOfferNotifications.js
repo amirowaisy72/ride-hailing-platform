@@ -78,11 +78,11 @@ export default function LiveOfferNotifications({
                 return (
                     <article
                         key={key}
-                        className="pointer-events-auto overflow-hidden rounded-[22px] border border-emerald-100 bg-white/95 p-4 shadow-2xl backdrop-blur-xl"
+                        className="pointer-events-auto overflow-hidden rounded-[22px] border border-emerald-100 bg-pd-elevated p-4 shadow-2xl backdrop-blur-xl"
                     >
                         <div className="flex items-start justify-between gap-3">
                             <div className="flex items-center gap-3">
-                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 font-black text-[#087F5B]">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-pd-success-soft font-black text-[#087F5B]">
                                     {getName(offer)[0]}
                                 </div>
 
@@ -90,7 +90,7 @@ export default function LiveOfferNotifications({
                                     <p className="text-sm font-extrabold">
                                         {getName(offer)}
                                     </p>
-                                    <p className="flex items-center gap-1 text-xs text-slate-500">
+                                    <p className="flex items-center gap-1 text-xs text-pd-muted">
                                         <ShieldCheck size={13} />
                                         New fare offer
                                     </p>
@@ -106,7 +106,7 @@ export default function LiveOfferNotifications({
                                         [key]: true,
                                     }))
                                 }
-                                className="rounded-lg p-2 text-slate-400"
+                                className="rounded-lg p-2 text-pd-faint"
                             >
                                 <X size={17} />
                             </button>
@@ -128,7 +128,7 @@ export default function LiveOfferNotifications({
                                 )}
 
                                 {remaining != null && (
-                                    <p className="mt-1 flex items-center justify-end gap-1 text-slate-500">
+                                    <p className="mt-1 flex items-center justify-end gap-1 text-pd-muted">
                                         <Clock3 size={13} />
                                         {Math.floor(remaining / 60)}:
                                         {String(remaining % 60).padStart(2, "0")}
@@ -142,7 +142,7 @@ export default function LiveOfferNotifications({
                                 type="button"
                                 disabled={Boolean(busyId)}
                                 onClick={() => onReject(id)}
-                                className="rounded-xl border border-red-200 bg-red-50 py-3 text-sm font-bold text-red-600 disabled:opacity-50"
+                                className="rounded-xl border border-red-200 bg-pd-danger-soft py-3 text-sm font-bold text-pd-danger disabled:opacity-50"
                             >
                                 Reject
                             </button>

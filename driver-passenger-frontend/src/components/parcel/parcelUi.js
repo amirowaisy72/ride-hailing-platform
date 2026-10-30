@@ -14,15 +14,15 @@ export const TERMINAL_STATUSES = ["DELIVERED", "CANCELLED", "FAILED"];
 
 // tone -> token family used by ParcelStatusBadge
 export const STATUS_META = {
-    REQUESTED: { label: "Awaiting offers", short: "Awaiting offers", tone: "warning" },
-    DRIVER_ASSIGNED: { label: "Driver assigned", short: "Assigned", tone: "info" },
-    DRIVER_EN_ROUTE: { label: "Driver heading to pickup", short: "To pickup", tone: "info" },
-    ARRIVED_AT_PICKUP: { label: "Driver at pickup", short: "At pickup", tone: "accent" },
-    PICKED_UP: { label: "Parcel picked up", short: "Picked up", tone: "accent" },
-    OUT_FOR_DELIVERY: { label: "Out for delivery", short: "In transit", tone: "accent" },
-    DELIVERED: { label: "Delivered", short: "Delivered", tone: "success" },
-    CANCELLED: { label: "Cancelled", short: "Cancelled", tone: "danger" },
-    FAILED: { label: "Delivery failed", short: "Failed", tone: "danger" },
+    REQUESTED: { label: "Awaiting offers", labelUr: "آفرز کا انتظار", short: "Awaiting offers", shortUr: "انتظار", tone: "warning" },
+    DRIVER_ASSIGNED: { label: "Driver assigned", labelUr: "ڈرائیور منتخب ہو گیا", short: "Assigned", shortUr: "منتخب", tone: "info" },
+    DRIVER_EN_ROUTE: { label: "Driver heading to pickup", labelUr: "ڈرائیور پک اپ کی طرف آ رہا ہے", short: "To pickup", shortUr: "راستے میں", tone: "info" },
+    ARRIVED_AT_PICKUP: { label: "Driver at pickup", labelUr: "ڈرائیور پک اپ پر پہنچ گیا", short: "At pickup", shortUr: "پک اپ پر", tone: "accent" },
+    PICKED_UP: { label: "Parcel picked up", labelUr: "پارسل اٹھا لیا گیا", short: "Picked up", shortUr: "اٹھا لیا", tone: "accent" },
+    OUT_FOR_DELIVERY: { label: "Out for delivery", labelUr: "ڈیلیوری کے لیے نکل پڑا", short: "In transit", shortUr: "راستے میں", tone: "accent" },
+    DELIVERED: { label: "Delivered", labelUr: "پہنچا دیا گیا", short: "Delivered", shortUr: "پہنچ گیا", tone: "success" },
+    CANCELLED: { label: "Cancelled", labelUr: "منسوخ", short: "Cancelled", shortUr: "منسوخ", tone: "danger" },
+    FAILED: { label: "Delivery failed", labelUr: "ڈیلیوری ناکام", short: "Failed", shortUr: "ناکام", tone: "danger" },
 };
 
 export const TIMELINE_STEPS = [
@@ -50,8 +50,52 @@ export const VEHICLE_LABELS = {
     CAR_AC: "Car AC",
 };
 
+export const VEHICLE_LABELS_UR = {
+    BIKE: "موٹر سائیکل",
+    RICKSHAW: "رکشہ",
+    CAR_NON_AC: "کار بغیر AC",
+    CAR_AC: "کار AC",
+};
+
+const CATEGORY_LABELS_UR = {
+    DOCUMENTS: "دستاویزات",
+    FOOD: "کھانا",
+    CLOTHES: "کپڑے",
+    ELECTRONICS: "الیکٹرانکس",
+    GROCERY: "راشن",
+    MEDICINE: "ادویات",
+    FRAGILE: "نازک سامان",
+    OTHER: "دیگر",
+};
+
+function isUrduUi() {
+    try {
+        return window.localStorage.getItem("app-language") === "ur";
+    } catch {
+        return false;
+    }
+}
+
+export function vehicleLabel(vehicleType) {
+    if (isUrduUi()) return VEHICLE_LABELS_UR[vehicleType] || VEHICLE_LABELS[vehicleType] || vehicleType;
+    return VEHICLE_LABELS[vehicleType] || vehicleType;
+}
+
 export function statusMeta(status) {
-    return STATUS_META[status] || {
+    const meta = STATUS_META[status];
+    if (meta) {
+        try {
+            if (window.localStorage.getItem("app-language") === "ur") {
+                return {
+                    ...meta,
+                    label: meta.labelUr || meta.label,
+                    short: meta.shortUr || meta.short,
+                };
+            }
+        } catch { /* SSR / storage blocked — English label */ }
+        return meta;
+    }
+    return {
         label: String(status || "Unknown").replaceAll("_", " ").toLowerCase(),
         short: String(status || "Unknown").replaceAll("_", " ").toLowerCase(),
         tone: "neutral",
@@ -59,10 +103,12 @@ export function statusMeta(status) {
 }
 
 export function serviceLabel(serviceType) {
+    if (isUrduUi()) return serviceType === "SHOP_PICKUP" ? "دکان سے اٹھانا" : "پارسل بھیجیں";
     return serviceType === "SHOP_PICKUP" ? "Shop Pickup" : "Send Parcel";
 }
 
 export function categoryLabel(category) {
+    if (isUrduUi()) return CATEGORY_LABELS_UR[category] || CATEGORY_LABELS[category] || "پارسل";
     return CATEGORY_LABELS[category] || (category ? String(category).replaceAll("_", " ") : "Parcel");
 }
 

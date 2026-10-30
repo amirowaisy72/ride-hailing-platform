@@ -19,6 +19,9 @@ const {
     canDispute,
     checkAmountWithinCaps,
     checkPurchaseWithinApproval,
+    ESTIMATE_APPROVAL_SOURCES,
+    evaluateBudgetCapApproval,
+    checkReceiptImageUrls,
     computeTotals,
     applyPayment,
     computePurchaseCommission,
@@ -393,6 +396,93 @@ test("admin term lists replace the defaults; an empty admin list falls back to d
         "empty admin list must fall back to the conservative defaults"
     );
     assert.ok(DEFAULT_BLOCKED_TERMS.length >= 10);
+});
+
+// ---------------------------------------------------------------------
+// Budget-cap approval (A13) + optional receipt (A14)
+// ---------------------------------------------------------------------
+
+test("budget-cap edge: SHOPPING -> PURCHASE_APPROVED exists, SHOPPING -> PURCHASED still does not", () => {
+    assert.strictEqual(canTransition("SHOPPING", "PURCHASE_APPROVED"), true);
+    assert.strictEqual(canTransition("SHOPPING", "PURCHASED"), false);
+    assert.ok(nextStatuses("SHOPPING").includes("AWAITING_APPROVAL"));
+});
+
+test("within-cap estimate auto-approves under the BUDGET cap (ceiling = stated budget, not the estimate)", () => {
+    const result = evaluateBudgetCapApproval({
+        estimatedCost: 2500,
+        estimatedBudget: 3000,
+    });
+    assert.deepStrictEqual(result, {
+        autoApproved: true,
+        approvalSource: "BUDGET_CAP",
+        approvedMaxAmount: 3000,
+    });
+    assert.ok(ESTIMATE_APPROVAL_SOURCES.includes(result.approvalSource));
+
+    // Exactly at the budget is within the cap.
+    assert.strictEqual(
+        evaluateBudgetCapApproval({ estimatedCost: 3000, estimatedBudget: 3000 })
+            .autoApproved,
+        true
+    );
+
+    // Till spend above the estimate but at/below the budget passes the
+    // recorded ceiling; above the budget is still hard-blocked.
+    assert.strictEqual(checkPurchaseWithinApproval(2800, result.approvedMaxAmount).ok, true);
+    assert.strictEqual(
+        checkPurchaseWithinApproval(3100, result.approvedMaxAmount).code,
+        "ABOVE_APPROVED_AMOUNT"
+    );
+});
+
+test("over-cap estimate does NOT auto-approve (passenger approval path unchanged)", () => {
+    assert.deepStrictEqual(
+        evaluateBudgetCapApproval({ estimatedCost: 3500, estimatedBudget: 3000 }),
+        { autoApproved: false }
+    );
+    // Invalid amounts never auto-approve.
+    assert.strictEqual(
+        evaluateBudgetCapApproval({ estimatedCost: 0, estimatedBudget: 3000 }).autoApproved,
+        false
+    );
+    assert.strictEqual(
+        evaluateBudgetCapApproval({ estimatedCost: 100, estimatedBudget: null }).autoApproved,
+        false
+    );
+    assert.strictEqual(
+        evaluateBudgetCapApproval({ estimatedCost: 10.5, estimatedBudget: 3000 }).autoApproved,
+        false
+    );
+});
+
+test("receipt photos are OPTIONAL: zero photos valid, provided photos still validated (max 6)", () => {
+    assert.deepStrictEqual(checkReceiptImageUrls(undefined), {
+        ok: true,
+        receiptImageUrls: [],
+    });
+    assert.deepStrictEqual(checkReceiptImageUrls([]), {
+        ok: true,
+        receiptImageUrls: [],
+    });
+    assert.strictEqual(
+        checkReceiptImageUrls(["https://example.com/receipt.jpg"]).ok,
+        true
+    );
+    assert.strictEqual(
+        checkReceiptImageUrls(
+            Array.from({ length: 6 }, (_, i) => `https://example.com/r${i}.jpg`)
+        ).ok,
+        true
+    );
+    const tooMany = checkReceiptImageUrls(
+        Array.from({ length: 7 }, (_, i) => `https://example.com/r${i}.jpg`)
+    );
+    assert.strictEqual(tooMany.ok, false);
+    assert.strictEqual(tooMany.code, "INVALID_RECEIPT_URLS");
+    assert.strictEqual(checkReceiptImageUrls("not-an-array").ok, false);
+    assert.strictEqual(checkReceiptImageUrls([""]).ok, false);
+    assert.strictEqual(checkReceiptImageUrls([42]).ok, false);
 });
 
 // ---------------------------------------------------------------------

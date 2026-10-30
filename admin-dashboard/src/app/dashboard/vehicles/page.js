@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import AdminShell from "@/components/AdminShell";
+import { useAdminDialog } from "@/components/AdminDialog";
 import { authenticatedAdminRequest } from "@/lib/adminSession";
 
 const vehicleNames = {
@@ -24,6 +25,7 @@ const statusStyles = {
 };
 
 export default function VehiclesPage() {
+    const { confirmDialog } = useAdminDialog();
     const [vehicles, setVehicles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -73,9 +75,10 @@ export default function VehiclesPage() {
     async function updateStatus(vehicleId, status) {
         if (busyId) return;
 
-        if (!window.confirm(
-            `Are you sure you want to ${status.toLowerCase()} this vehicle?`
-        )) return;
+        if (!(await confirmDialog(
+            `Are you sure you want to ${status.toLowerCase()} this vehicle?`,
+            { danger: status === "REJECTED" }
+        ))) return;
 
         setBusyId(vehicleId);
         setMessage("");

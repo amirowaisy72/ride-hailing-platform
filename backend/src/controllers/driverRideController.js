@@ -1,17 +1,20 @@
 const Ride = require("../models/Ride");
 const Driver = require("../models/Driver");
 const Vehicle = require("../models/Vehicle");
+const { canReceiveRideRequests } = require("../services/eligibilityService");
 
 const getAvailableRides = async (req, res) => {
     try {
         const driver = await Driver.findOne({
             userId: req.user._id,
-            verificationStatus: "APPROVED",
             isOnline: true,
             isAvailable: true,
         });
 
-        if (!driver) {
+        // Same eligibility source of truth as the offer/select gates:
+        // a per-service RIDE approval (global status PENDING) counts,
+        // the legacy global APPROVED derives it, no approval = no feed.
+        if (!driver || !(await canReceiveRideRequests(driver))) {
             return res.json({ success: true, rides: [] });
         }
 

@@ -33,11 +33,14 @@ const orderMessageSchema = new mongoose.Schema(
         },
         kind: {
             type: String,
-            enum: ["TEXT", "IMAGE", "EVENT"],
+            enum: ["TEXT", "IMAGE", "AUDIO", "EVENT"],
             required: true,
         },
         body: { type: String, default: "", maxlength: 1000 },
         imageUrl: { type: String, default: "", maxlength: 1000 },
+        audioUrl: { type: String, default: "", maxlength: 1000 },
+        audioMime: { type: String, default: "", maxlength: 100 },
+        audioDurationSec: { type: Number, default: null, min: 0, max: 600 },
         // Structured card type for EVENT messages (OFFER, ESTIMATE,
         // APPROVAL, ...); null for participant messages.
         eventType: { type: String, default: null },

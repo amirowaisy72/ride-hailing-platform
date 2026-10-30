@@ -8,7 +8,7 @@ const { sendResetOTP, resetPassword } = require("../controllers/passwordResetCon
 
 const { protect } = require("../middleware/authMiddleware");
 
-const { authLimiter } = require("../middleware/authRateLimiter");
+const { authLimiter, sessionLimiter } = require("../middleware/authRateLimiter");
 
 const { authorize } = require("../middleware/roleMiddleware");
 
@@ -59,8 +59,8 @@ router.get("/me", protect, (req, res) => {
 
 const { refresh, logout } = require("../controllers/tokenController");
 
-router.post("/refresh", authLimiter, refreshTokenValidator, validateRequest, refresh);
-router.post("/logout", authLimiter, refreshTokenValidator, validateRequest, logout);
+router.post("/refresh", sessionLimiter, refreshTokenValidator, validateRequest, refresh);
+router.post("/logout", sessionLimiter, refreshTokenValidator, validateRequest, logout);
 
 
 module.exports = router;

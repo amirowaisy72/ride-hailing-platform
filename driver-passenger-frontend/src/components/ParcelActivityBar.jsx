@@ -65,7 +65,7 @@ export default function ParcelActivityBar({ token, role = "PASSENGER", variant =
             href={href}
             draggable={false}
             onDragStart={(e) => e.preventDefault()}
-            className="fixed bottom-[260px] left-4 right-4 z-50 mx-auto max-w-md cursor-grab select-none rounded-2xl border border-gray-200 bg-white p-3 text-[#111111] shadow-lg active:cursor-grabbing"
+            className="fixed bottom-[260px] left-4 right-4 z-50 mx-auto max-w-md cursor-grab select-none rounded-2xl border border-pd-line bg-pd-surface p-3 text-pd-text shadow-lg active:cursor-grabbing"
             style={{
                 transform: `translate(${offset.x}px, ${offset.y}px)`,
                 touchAction: "none",
@@ -124,7 +124,7 @@ export default function ParcelActivityBar({ token, role = "PASSENGER", variant =
                     <p className="text-sm font-extrabold">
                         📦 Active Parcel Delivery
                     </p>
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-pd-muted">
                         {order.status.replaceAll("_", " ")}
                     </p>
                 </div>

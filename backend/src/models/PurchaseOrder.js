@@ -120,11 +120,30 @@ const purchaseOrderSchema = new mongoose.Schema({
     estimatedBudget: { type: Number, required: true, min: 1 },
     // Partner's latest submitted shopping-cost estimate.
     estimatedCost: { type: Number, default: null },
-    // The maximum the passenger has EXPLICITLY approved the partner to
-    // spend. Purchases above this are impossible without renewed
-    // approval (enforced in the controller via purchaseOrderService).
+    // The maximum the partner is approved to spend. Purchases above
+    // this are impossible without renewed approval (enforced in the
+    // controller via purchaseOrderService.checkPurchaseWithinApproval).
+    // Its meaning depends on estimateApprovalSource (see below):
+    // PASSENGER -> the amount the passenger explicitly approved;
+    // BUDGET_CAP -> the passenger's stated estimatedBudget itself.
     approvedMaxAmount: { type: Number, default: null },
-    // What the partner actually spent (receipt-backed).
+    // HOW the current approvedMaxAmount was approved (Amir review A13):
+    //   "PASSENGER"  — passenger approved the amount in
+    //                  AWAITING_APPROVAL;
+    //   "BUDGET_CAP" — the partner's estimate was at/below the budget
+    //                  the passenger stated at creation, so it was
+    //                  auto-approved under that cap with NO passenger
+    //                  action (SHOPPING -> PURCHASE_APPROVED);
+    //   null         — no approval recorded yet.
+    // Serialized with the order, so the passenger app can show that an
+    // estimate was auto-approved under their budget.
+    estimateApprovalSource: {
+        type: String,
+        enum: ["PASSENGER", "BUDGET_CAP", null],
+        default: null,
+    },
+    // What the partner actually spent (a receipt photo is optional
+    // evidence since Amir review A14 — see receiptImageUrls).
     actualCost: { type: Number, default: null },
     // Negotiated delivery fee — from the accepted PurchaseOffer. This
     // is the partner's service charge and the ONLY commissionable part.
@@ -139,6 +158,8 @@ const purchaseOrderSchema = new mongoose.Schema({
     // acknowledged the COD obligation.
     codAcknowledgedAt: { type: Date, default: null },
 
+    // OPTIONAL receipt evidence (Amir review A14): a purchase may be
+    // recorded with zero receipt photos; at most 6 when provided.
     receiptImageUrls: {
         type: [{ type: String, maxlength: 1000 }],
         default: [],

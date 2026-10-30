@@ -39,6 +39,34 @@ const uploadToCloudinary = async (buffer, driverId) => {
     });
 };
 
+// Voice messages (Phase 3 A11b). Cloudinary stores audio under
+// resource_type "video"; type "upload" (public) so a plain <audio>
+// tag can play the returned secure_url without signed delivery.
+const uploadAudioToCloudinary = async (buffer, userId) => {
+    await ensureCloudinaryEnabled();
+
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            {
+                folder: `ride-hailing/chat-audio/${userId}`,
+                resource_type: "video",
+                type: "upload",
+                overwrite: false,
+            },
+            (error, result) => {
+                if (error) return reject(error);
+
+                resolve({
+                    audioUrl: result.secure_url,
+                    publicId: result.public_id,
+                });
+            }
+        );
+
+        Readable.from(buffer).pipe(stream);
+    });
+};
+
 const uploadProfileImage = async (buffer, userId) => {
     await ensureCloudinaryEnabled();
 
@@ -77,5 +105,6 @@ const uploadProfileImage = async (buffer, userId) => {
 
 module.exports = {
     uploadToCloudinary,
+    uploadAudioToCloudinary,
     uploadProfileImage,
 };

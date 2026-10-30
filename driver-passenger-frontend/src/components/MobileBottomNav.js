@@ -1,5 +1,7 @@
 "use client";
 
+import { useLanguage } from "@/components/i18n/LanguageProvider";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -12,54 +14,55 @@ import {
 } from "lucide-react";
 
 const passengerLinks = [
-    { label: "Home", href: "/passenger", icon: House },
-    { label: "My Rides", href: "/passenger/trips", icon: History },
-    { label: "Account", href: "/passenger/account", icon: UserRound },
+    { labelKey: "nav.home", href: "/passenger", icon: House },
+    { labelKey: "nav.myRides", href: "/passenger/trips", icon: History },
+    { labelKey: "nav.account", href: "/passenger/account", icon: UserRound },
 ];
 
 const driverLinks = [
-    { label: "Home", href: "/driver", icon: House },
-    { label: "Trips", href: "/driver/trips", icon: CarFront },
-    { label: "Services", href: "/driver/services", icon: LayoutGrid },
-    { label: "Earnings", href: "/driver/earnings", icon: Wallet },
-    { label: "Account", href: "/driver/account", icon: UserRound },
+    { labelKey: "nav.home", href: "/driver", icon: House },
+    { labelKey: "nav.trips", href: "/driver/trips", icon: CarFront },
+    { labelKey: "nav.services", href: "/driver/services", icon: LayoutGrid },
+    { labelKey: "nav.earnings", href: "/driver/earnings", icon: Wallet },
+    { labelKey: "nav.account", href: "/driver/account", icon: UserRound },
 ];
 
 export default function MobileBottomNav({ role }) {
+    const { t } = useLanguage();
     const pathname = usePathname();
 
     const links = role === "DRIVER" ? driverLinks : passengerLinks;
 
     return (
         <nav
-            aria-label="Main navigation"
-            className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-100 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_25px_rgba(0,0,0,0.06)] backdrop-blur-xl"
+            aria-label={t("nav.main")}
+            className="fixed inset-x-0 bottom-0 z-50 border-t border-pd-line bg-pd-elevated pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_25px_rgba(0,0,0,0.06)] backdrop-blur-xl"
         >
             <div className="mx-auto flex h-[68px] max-w-xl items-center justify-around">
-                {links.map(({ label, href, icon: Icon, pending }) => {
+                {links.map(({ labelKey, href, icon: Icon, pending }) => {
                     const active =
                         pathname === href ||
-                        (label === "Services" &&
+                        (labelKey === "nav.services" &&
                             (pathname.startsWith("/driver/services") ||
                                 pathname.startsWith("/driver/rentals"))) ||
-                        (label === "Account" &&
+                        (labelKey === "nav.account" &&
                             pathname.startsWith(`${role === "DRIVER" ? "/driver" : "/passenger"}/profile`));
 
                     return (
                         <Link
-                            key={label}
+                            key={labelKey}
                             href={pending ? "#" : href}
                             onClick={pending ? (e) => e.preventDefault() : undefined}
                             aria-current={active ? "page" : undefined}
                             className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2 text-[11px] font-semibold ${active
                                 ? "text-[#087F5B]"
                                 : pending
-                                    ? "text-slate-300"
-                                    : "text-slate-500"
+                                    ? "text-pd-faint"
+                                    : "text-pd-muted"
                                 }`}
                         >
                             <Icon size={21} strokeWidth={active ? 2.5 : 1.8} />
-                            <span>{label}</span>
+                            <span>{t(labelKey)}</span>
                         </Link>
                     );
                 })}

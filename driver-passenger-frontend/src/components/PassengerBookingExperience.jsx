@@ -1,5 +1,7 @@
 "use client";
 
+import { useLanguage, storedLanguage } from "@/components/i18n/LanguageProvider";
+
 import { useEffect, useRef, useState } from "react";
 import { Clock, LocateFixed, MapPin, Maximize2, Minimize2, Radio, Search, X } from "lucide-react";
 import { searchLocations } from "@/lib/locationService";
@@ -16,6 +18,7 @@ export function PickupLocationSearch({
     // so it can pin itself above the keyboard (Round 5).
     onEditingChange,
 }) {
+    const { t } = useLanguage();
     const [editing, setEditing] = useState(false);
     const [query, setQuery] = useState("");
     const [results, setResults] = useState([]);
@@ -71,7 +74,7 @@ export function PickupLocationSearch({
         onSelect({
             latitude,
             longitude,
-            name: place.display_name || place.name || "Selected pickup",
+            name: place.display_name || place.name || (storedLanguage() === "ur" ? "منتخب اٹھانے کی جگہ" : "Selected pickup"),
         });
 
         setEditing(false);
@@ -83,7 +86,7 @@ export function PickupLocationSearch({
         <div className="relative">
             <div className="flex items-center gap-3">
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center" aria-hidden="true">
-                    <span className="h-3.5 w-3.5 rounded-full border-[4px] border-[#111111]" />
+                    <span className="h-3.5 w-3.5 rounded-full border-[4px] border-pd-ink" />
                 </span>
 
                 <button
@@ -93,9 +96,9 @@ export function PickupLocationSearch({
                     aria-expanded={editing}
                     className="min-w-0 flex-1 text-left disabled:opacity-50"
                 >
-                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">Pickup</span>
-                    <span className="block truncate text-[15px] font-semibold text-[#111111]">
-                        {pickupAddress || "Choose pickup location"}
+                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-pd-faint">{t("ride.pickup")}</span>
+                    <span className="block truncate text-[15px] font-semibold text-pd-text">
+                        {pickupAddress || t("ride.choosePickup")}
                     </span>
                 </button>
 
@@ -103,44 +106,44 @@ export function PickupLocationSearch({
                     type="button"
                     disabled={disabled}
                     onClick={onUseGPS}
-                    aria-label="Use current GPS location"
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#F4F5F7] text-[#111111] transition-colors hover:bg-[#E9EBEE] disabled:opacity-40"
+                    aria-label={t("ride.useGps")}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-pd-surface-2 text-pd-text transition-colors hover:bg-pd-surface-3 disabled:opacity-40"
                 >
                     <LocateFixed size={17} />
                 </button>
             </div>
 
             {editing && !disabled && (
-                <div ref={panelRef} className="mt-3 rounded-2xl border border-[#EEF0F2] bg-white p-2 shadow-[0_8px_28px_rgba(17,17,17,0.10)]">
-                    <label className="flex items-center gap-2 rounded-xl bg-[#F4F5F7] px-3 focus-within:ring-2 focus-within:ring-[#111111]">
-                        <Search size={17} className="text-[#9CA3AF]" aria-hidden="true" />
-                        <span className="sr-only">Search pickup address</span>
+                <div ref={panelRef} className="mt-3 rounded-2xl border border-pd-line bg-pd-surface p-2 shadow-[0_8px_28px_rgba(17,17,17,0.10)]">
+                    <label className="flex items-center gap-2 rounded-xl bg-pd-surface-2 px-3 focus-within:ring-2 focus-within:ring-pd-text">
+                        <Search size={17} className="text-pd-faint" aria-hidden="true" />
+                        <span className="sr-only">{t("ride.searchPickup")}</span>
                         <input
                             autoFocus
                             value={query}
                             onChange={(event) => setQuery(event.target.value)}
-                            placeholder="Search pickup address"
-                            className="h-11 min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-[#9CA3AF]"
+                            placeholder={t("ride.searchPickup")}
+                            className="h-11 min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-pd-faint"
                         />
                         <button
                             type="button"
                             onClick={() => setEditing(false)}
-                            aria-label="Close pickup search"
-                            className="flex h-9 w-9 items-center justify-center rounded-full text-[#6B7280] hover:bg-white"
+                            aria-label={t("ride.closePickupSearch")}
+                            className="flex h-9 w-9 items-center justify-center rounded-full text-pd-muted hover:bg-pd-surface"
                         >
                             <X size={16} />
                         </button>
                     </label>
 
                     {loading && (
-                        <div className="mt-2 space-y-2 px-1" aria-label="Searching locations">
-                            <div className="h-10 animate-pulse rounded-xl bg-[#F1F2F4]" />
-                            <div className="h-10 animate-pulse rounded-xl bg-[#F1F2F4]" />
+                        <div className="mt-2 space-y-2 px-1" aria-label={t("ride.searchingLocations")}>
+                            <div className="h-10 animate-pulse rounded-xl bg-pd-surface-2" />
+                            <div className="h-10 animate-pulse rounded-xl bg-pd-surface-2" />
                         </div>
                     )}
 
                     {!loading && query.trim().length >= 3 && results.length === 0 && (
-                        <p className="px-3 py-3 text-xs text-[#6B7280]">No matching places. Try a nearby landmark.</p>
+                        <p className="px-3 py-3 text-xs text-pd-muted">{t("ride.noMatchingPlaces")}</p>
                     )}
 
                     {results.length > 0 && (
@@ -158,18 +161,18 @@ export function PickupLocationSearch({
                                 : undefined}
                         >
                             {results.map((place, index) => (
-                                <li key={place.place_id || index} className="border-b border-[#F1F2F4] last:border-b-0">
+                                <li key={place.place_id || index} className="border-b border-pd-line last:border-b-0">
                                     <button
                                         type="button"
                                         onClick={() => choosePlace(place)}
-                                        className="flex w-full items-center gap-3 rounded-xl p-2.5 text-left transition-colors hover:bg-[#F7F8F9]"
+                                        className="flex w-full items-center gap-3 rounded-xl p-2.5 text-left transition-colors hover:bg-pd-surface-2"
                                     >
-                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F4F5F7]">
-                                            <MapPin size={15} className="text-[#6B7280]" aria-hidden="true" />
+                                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pd-surface-2">
+                                            <MapPin size={15} className="text-pd-muted" aria-hidden="true" />
                                         </span>
                                         <span className="min-w-0">
                                             <span className="block truncate text-sm font-semibold">{place.shortName || place.name}</span>
-                                            {place.subtitle && <span className="block truncate text-xs text-[#6B7280]">{place.subtitle}</span>}
+                                            {place.subtitle && <span className="block truncate text-xs text-pd-muted">{place.subtitle}</span>}
                                         </span>
                                     </button>
                                 </li>
@@ -183,19 +186,21 @@ export function PickupLocationSearch({
 }
 
 export function MapViewControl({ fullScreen, onToggle }) {
+    const { t } = useLanguage();
     return (
         <button
             type="button"
             onClick={onToggle}
-            className="flex h-11 items-center gap-2 rounded-full bg-white px-4 text-xs font-bold text-[#111111] shadow-[0_6px_24px_rgba(17,17,17,0.12)] transition-transform active:scale-95"
+            className="flex h-11 items-center gap-2 rounded-full bg-pd-surface px-4 text-xs font-bold text-pd-text shadow-[0_6px_24px_rgba(17,17,17,0.12)] transition-transform active:scale-95"
         >
             {fullScreen ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}
-            {fullScreen ? "Show booking" : "Full screen map"}
+            {fullScreen ? t("ride.showBooking") : t("ride.fullScreenMap")}
         </button>
     );
 }
 
 export function SearchingDrivers({ ride, offerCount = 0 }) {
+    const { t } = useLanguage();
     const [seconds, setSeconds] = useState(0);
 
     useEffect(() => {
@@ -208,36 +213,36 @@ export function SearchingDrivers({ ride, offerCount = 0 }) {
     if (!ride || !["REQUESTED", "SEARCHING", "BIDDING"].includes(ride.status)) return null;
 
     return (
-        <div className="rounded-3xl border border-[#EEF0F2] bg-white p-5 shadow-[0_8px_28px_rgba(17,17,17,0.08)]">
+        <div className="rounded-3xl border border-pd-line bg-pd-surface p-5 shadow-[0_8px_28px_rgba(17,17,17,0.08)]">
             <div className="flex items-center gap-4">
                 <span className="relative flex h-14 w-14 shrink-0 items-center justify-center" aria-hidden="true">
                     <span className="absolute inset-0 animate-ping rounded-full bg-[#087F5B]/60" />
-                    <span className="relative flex h-14 w-14 items-center justify-center rounded-full bg-[#111111]">
+                    <span className="relative flex h-14 w-14 items-center justify-center rounded-full bg-pd-ink">
                         <Radio size={24} className="text-[#087F5B]" />
                     </span>
                 </span>
                 <div className="min-w-0 flex-1" aria-live="polite">
-                    <h3 className="text-lg font-extrabold tracking-tight text-[#111111]">Finding your driver</h3>
-                    <p className="mt-0.5 text-xs text-[#6B7280]">Nearby available drivers are being notified.</p>
+                    <h3 className="text-lg font-extrabold tracking-tight text-pd-text">{t("ride.findingDriver")}</h3>
+                    <p className="mt-0.5 text-xs text-pd-muted">{t("ride.findingHint")}</p>
                 </div>
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-2">
-                <div className="rounded-2xl bg-[#F4F5F7] p-3">
+                <div className="rounded-2xl bg-pd-surface-2 p-3">
                     <p className="text-xl font-extrabold tabular-nums">{offerCount}</p>
-                    <p className="text-[11px] font-medium text-[#6B7280]">Offers received</p>
+                    <p className="text-[11px] font-medium text-pd-muted">{t("ride.offersReceived")}</p>
                 </div>
-                <div className="rounded-2xl bg-[#F4F5F7] p-3">
+                <div className="rounded-2xl bg-pd-surface-2 p-3">
                     <p className="flex items-center gap-1 text-xl font-extrabold tabular-nums">
                         <Clock size={16} aria-hidden="true" />
                         {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}
                     </p>
-                    <p className="text-[11px] font-medium text-[#6B7280]">Waiting time</p>
+                    <p className="text-[11px] font-medium text-pd-muted">{t("ride.waitingTime")}</p>
                 </div>
             </div>
 
             {seconds >= 45 && offerCount === 0 && (
-                <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
+                <p className="mt-3 rounded-2xl border border-amber-200 bg-pd-warning-soft p-3 text-xs leading-relaxed text-pd-warning">
                     No offers yet. You can cancel this request and try again with a higher proposed fare.
                 </p>
             )}

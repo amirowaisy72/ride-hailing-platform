@@ -8,13 +8,15 @@ import {
     ArrowLeft, Check, ChevronRight, Crosshair, LocateFixed, MapPin, Package, Search, ShoppingBag, X,
 } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
+import MicButton from "@/components/MicButton";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 import { apiRequest } from "@/lib/api";
 import { searchLocations, reverseGeocode } from "@/lib/locationService";
 import RideMap from "@/components/RideMap";
 import { useVisibleViewport, visibleViewportSurfaceStyle } from "@/hooks/useVisibleViewport";
 import { Button, InlineError, RouteSummary } from "@/components/parcel/ParcelKit";
-import { CATEGORY_LABELS, VEHICLE_LABELS, categoryLabel, formatPKR, serviceLabel } from "@/components/parcel/parcelUi";
+import { CATEGORY_LABELS, VEHICLE_LABELS, categoryLabel, formatPKR, serviceLabel , vehicleLabel } from "@/components/parcel/parcelUi";
 
 export default function NewParcelPage() {
     return (
@@ -34,6 +36,7 @@ const PHONE_RE = /^[+\d][\d\s-]{6,}$/;
 
 function ParcelBookingForm() {
     const { token } = useAuth();
+    const { t } = useLanguage();
     const router = useRouter();
 
     const [serviceType, setServiceType] = useState("SEND_PARCEL");
@@ -248,13 +251,13 @@ function ParcelBookingForm() {
 
     // ---- Per-step validation (client-side only; payload unchanged) ----
     const fieldErrors = {
-        senderName: !sender.name.trim() && "Enter sender name",
-        senderPhone: !PHONE_RE.test(sender.phone.trim()) && "Enter a valid phone number",
-        receiverName: !receiver.name.trim() && "Enter receiver name",
-        receiverPhone: !PHONE_RE.test(receiver.phone.trim()) && "Enter a valid phone number",
-        weightKg: !(Number(weightKg) > 0) && "Weight must be above 0",
-        quantity: !(Number.isInteger(Number(quantity)) && Number(quantity) >= 1) && "At least 1",
-        requestedPrice: !(Number.isSafeInteger(Number(requestedPrice)) && Number(requestedPrice) > 0) && "Enter your fare in PKR",
+        senderName: !sender.name.trim() && t("parcels.errSenderName"),
+        senderPhone: !PHONE_RE.test(sender.phone.trim()) && t("parcels.errPhone"),
+        receiverName: !receiver.name.trim() && t("parcels.errReceiverName"),
+        receiverPhone: !PHONE_RE.test(receiver.phone.trim()) && t("parcels.errPhone"),
+        weightKg: !(Number(weightKg) > 0) && t("parcels.errWeight"),
+        quantity: !(Number.isInteger(Number(quantity)) && Number(quantity) >= 1) && t("parcels.errQuantity"),
+        requestedPrice: !(Number.isSafeInteger(Number(requestedPrice)) && Number(requestedPrice) > 0) && t("parcels.errFare"),
     };
     const FIELD_STEP = {
         senderName: 1, senderPhone: 1, receiverName: 1, receiverPhone: 1,
@@ -271,11 +274,11 @@ function ParcelBookingForm() {
     function goNext() {
         setTouchedStep(bookingStep);
         if (bookingStep === 1 && (!pickup || !destination)) {
-            setError("Choose the pickup and drop-off locations to continue.");
+            setError(t("parcels.errChooseLocations"));
             return;
         }
         if (stepHasErrors(bookingStep)) {
-            setError("Please complete the highlighted fields.");
+            setError(t("parcels.errCompleteFields"));
             return;
         }
         setError("");
@@ -287,7 +290,7 @@ function ParcelBookingForm() {
         event.preventDefault();
         if (bookingStep !== 4) return;
         if (!pickup || !destination || submitting) {
-            if (!pickup || !destination) setError("Select pickup and delivery locations.");
+            if (!pickup || !destination) setError(t("parcels.errSelectLocations"));
             return;
         }
 
@@ -345,15 +348,15 @@ function ParcelBookingForm() {
                         <button
                             type="button"
                             onClick={() => setPicking(false)}
-                            aria-label="Back to sender and receiver details"
+                            aria-label={t("parcels.backDetails")}
                             className="pointer-events-auto grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-pd-surface text-pd-text shadow-pd"
                         >
                             <ArrowLeft size={20} />
                         </button>
-                        <div role="radiogroup" aria-label="Service type" className="pointer-events-auto ml-auto flex rounded-2xl bg-pd-surface p-1 shadow-pd">
+                        <div role="radiogroup" aria-label={t("parcels.serviceType")} className="pointer-events-auto ml-auto flex rounded-2xl bg-pd-surface p-1 shadow-pd">
                             {[
                                 ["SEND_PARCEL", "Send", Package],
-                                ["SHOP_PICKUP", "Shop pickup", ShoppingBag],
+                                ["SHOP_PICKUP", t("parcels.shopPickup"), ShoppingBag],
                             ].map(([id, label, Icon]) => (
                                 <button
                                     key={id}
@@ -393,9 +396,9 @@ function ParcelBookingForm() {
                 {!mapSelectionMode && !searchField && (
                     <section className="pd-rise absolute inset-x-0 bottom-0 z-20 mx-auto max-w-xl rounded-t-[28px] bg-pd-surface px-4 pt-4 shadow-pd-lg sm:inset-x-3 sm:bottom-3 sm:rounded-[28px]">
                         <h1 className="text-lg font-extrabold tracking-tight">
-                            {serviceType === "SHOP_PICKUP" ? "Where is the shop?" : "Where is it going?"}
+                            {serviceType === "SHOP_PICKUP" ? t("parcels.whereShop") : t("parcels.whereGoing")}
                         </h1>
-                        <p className="mt-0.5 text-xs text-pd-muted">Search, use GPS, or tap the map.</p>
+                        <p className="mt-0.5 text-xs text-pd-muted">{t("parcels.mapHint")}</p>
 
                         <div className="relative mt-3 rounded-2xl bg-pd-surface-2">
                             <span className="absolute bottom-[26px] left-[22px] top-[26px] w-px border-l-2 border-dotted border-pd-line-strong" aria-hidden="true" />
@@ -414,10 +417,10 @@ function ParcelBookingForm() {
                                             </span>
                                             <span className="min-w-0">
                                                 <span className="block text-[10px] font-bold uppercase tracking-wide text-pd-muted">
-                                                    {field === "pickup" ? (serviceType === "SHOP_PICKUP" ? "Shop / pickup" : "Pickup") : "Drop-off"}
+                                                    {field === "pickup" ? (serviceType === "SHOP_PICKUP" ? t("parcels.shopPickupPoint") : t("parcels.pickup")) : t("parcels.dropoff")}
                                                 </span>
                                                 <span className={`block truncate text-sm font-semibold ${point ? "text-pd-text" : "text-pd-faint"}`}>
-                                                    {point ? (point.address || query) : field === "pickup" ? "Set pickup location" : "Set delivery location"}
+                                                    {point ? (point.address || query) : field === "pickup" ? t("parcels.setPickup") : t("parcels.setDelivery")}
                                                 </span>
                                             </span>
                                         </button>
@@ -442,7 +445,7 @@ function ParcelBookingForm() {
                                 className="flex min-h-11 items-center gap-2 rounded-xl bg-pd-surface-2 px-3 text-xs font-bold disabled:opacity-60"
                             >
                                 <LocateFixed size={15} className={locating ? "animate-pulse" : ""} />
-                                {locating ? "Locating…" : "Use my location as pickup"}
+                                {locating ? t("parcels.locating") : t("parcels.useMyLocation")}
                             </button>
                         </div>
 
@@ -455,7 +458,7 @@ function ParcelBookingForm() {
                             disabled={!pickup || !destination}
                             onClick={() => { setError(""); setPicking(false); }}
                         >
-                            {!pickup ? "Set pickup to continue" : !destination ? "Set drop-off to continue" : <>Done <Check size={18} /></>}
+                            {!pickup ? t("parcels.setPickupContinue") : !destination ? t("parcels.setDropoffContinue") : <>{t("parcels.done")} <Check size={18} /></>}
                         </Button>
                         <StepDots step={1} />
                         <div className="pd-safe-bottom" />
@@ -467,11 +470,11 @@ function ParcelBookingForm() {
                     <section style={searchPanelStyle} className="pd-rise absolute inset-x-0 bottom-0 z-30 mx-auto flex max-h-[85dvh] max-w-xl flex-col rounded-t-[28px] bg-pd-surface shadow-pd-lg sm:inset-x-3 sm:bottom-3 sm:rounded-[28px]">
                         <div className="flex items-center gap-2 px-4 pb-2 pt-4">
                             <h2 className="flex-1 text-base font-extrabold">
-                                {searchField === "pickup" ? "Pickup location" : "Delivery location"}
+                                {searchField === "pickup" ? t("parcels.pickupLocation") : t("parcels.deliveryLocation")}
                             </h2>
                             <button
                                 type="button"
-                                aria-label="Close search"
+                                aria-label={t("parcels.closeSearch")}
                                 onClick={() => { setActiveSearch(null); setResults([]); }}
                                 className="grid h-10 w-10 place-items-center rounded-full bg-pd-surface-2"
                             >
@@ -479,8 +482,9 @@ function ParcelBookingForm() {
                             </button>
                         </div>
                         <div className="px-4">
-                            <label className="relative block">
-                                <span className="sr-only">Search address or place</span>
+                            <div className="flex items-start gap-2">
+                            <label className="relative block min-w-0 flex-1">
+                                <span className="sr-only">{t("parcels.searchPlaceholder")}</span>
                                 <Search size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-pd-faint" />
                                 <input
                                     autoFocus
@@ -496,14 +500,21 @@ function ParcelBookingForm() {
                                             findPlaces(e.currentTarget.value, searchField);
                                         }
                                     }}
-                                    placeholder="Search address or place"
+                                    placeholder={t("parcels.searchPlaceholder")}
                                     className="pd-input pl-10"
                                 />
                             </label>
+                            <MicButton
+                                onAppend={(spoken) => {
+                                    const current = searchField === "pickup" ? pickupQuery : destinationQuery;
+                                    onQueryChange(searchField, current.trim() ? `${current.replace(/\s+$/, "")} ${spoken}` : spoken);
+                                }}
+                            />
+                            </div>
                             <div className="mt-2 flex flex-wrap gap-2">
                                 {searchField === "pickup" && (
                                     <button type="button" onClick={useCurrentPickup} disabled={locating} className="flex min-h-10 items-center gap-1.5 rounded-xl bg-pd-accent-soft px-3 text-xs font-bold text-pd-accent-text">
-                                        <LocateFixed size={14} /> {locating ? "Locating…" : "Current location"}
+                                        <LocateFixed size={14} /> {locating ? t("parcels.locating") : t("parcels.currentLocation")}
                                     </button>
                                 )}
                                 <button
@@ -524,8 +535,8 @@ function ParcelBookingForm() {
                             {!searching && results.length === 0 && (
                                 <p className="px-3 py-6 text-center text-sm text-pd-muted">
                                     {(searchField === "pickup" ? pickupQuery : destinationQuery).trim().length < 3
-                                        ? "Type at least 3 characters to search."
-                                        : "No places found. Try another search or pick on the map."}
+                                        ? t("parcels.typeMore")
+                                        : t("parcels.noPlaces")}
                                 </p>
                             )}
                             {!searching && results.map((place, index) => (
@@ -558,7 +569,7 @@ function ParcelBookingForm() {
                     {bookingStep === 1 ? (
                         <Link
                             href="/passenger/parcels"
-                            aria-label="Back to parcels"
+                            aria-label={t("parcels.backParcels")}
                             className="grid h-11 w-11 place-items-center rounded-2xl"
                         >
                             <ArrowLeft size={21} />
@@ -566,7 +577,7 @@ function ParcelBookingForm() {
                     ) : (
                         <button
                             type="button"
-                            aria-label="Previous step"
+                            aria-label={t("parcels.previousStep")}
                             onClick={() => { setError(""); setBookingStep(bookingStep - 1); }}
                             className="grid h-11 w-11 place-items-center rounded-2xl"
                         >
@@ -574,8 +585,8 @@ function ParcelBookingForm() {
                         </button>
                     )}
                     <div className="min-w-0 flex-1">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-pd-muted">Step {bookingStep} of 4</p>
-                        <h1 className="text-base font-extrabold leading-tight">{STEP_TITLES[bookingStep]}</h1>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-pd-muted">{t("dBd.stepOf", { step: bookingStep, total: 4, title: "" }).replace(/\s*—\s*$/, "")}</p>
+                        <h1 className="text-base font-extrabold leading-tight">{t(`parcels.step${bookingStep}`)}</h1>
                     </div>
                     <span className="rounded-full bg-pd-surface-2 px-3 py-1.5 text-[11px] font-bold">{serviceLabel(serviceType)}</span>
                 </div>
@@ -589,7 +600,7 @@ function ParcelBookingForm() {
             <form onSubmit={submitParcel} noValidate className="mx-auto max-w-xl px-4 pt-4">
                 {bookingStep === 1 && (
                     <div className="space-y-4 pb-4">
-                        <Card title="Locations" hint="Where the parcel travels">
+                        <Card title={t("parcels.locations")} hint={t("parcels.locationsHint")}>
                             <RouteSummary pickup={pickup} destination={destination} />
                             <div className="flex flex-wrap gap-2">
                                 <button
@@ -598,7 +609,7 @@ function ParcelBookingForm() {
                                     className="flex min-h-11 items-center gap-2 rounded-xl bg-pd-accent-soft px-3 text-xs font-bold text-pd-accent-text"
                                 >
                                     <MapPin size={14} />
-                                    {pickup && destination ? "Change locations" : "Choose on map / search"}
+                                    {pickup && destination ? t("parcels.changeLocations") : t("parcels.chooseOnMap")}
                                 </button>
                                 <button
                                     type="button"
@@ -607,32 +618,32 @@ function ParcelBookingForm() {
                                     className="flex min-h-11 items-center gap-2 rounded-xl bg-pd-surface-2 px-3 text-xs font-bold disabled:opacity-60"
                                 >
                                     <LocateFixed size={14} className={locating ? "animate-pulse" : ""} />
-                                    {locating ? "Locating…" : "Use my location as pickup"}
+                                    {locating ? t("parcels.locating") : t("parcels.useMyLocation")}
                                 </button>
                             </div>
                             {touchedStep >= 1 && (!pickup || !destination) && (
                                 <p className="text-xs font-semibold text-pd-danger">
                                     {!pickup
-                                        ? "Set the pickup location to continue."
-                                        : "Set the drop-off location to continue."}
+                                        ? t("parcels.setPickupErr")
+                                        : t("parcels.setDropoffErr")}
                                 </p>
                             )}
                         </Card>
 
-                        <Card title="Sender" hint="Who hands over the parcel">
-                            <Field label="Full name" error={showErr("senderName")}>
-                                <input autoComplete="name" value={sender.name} onChange={(e) => setSender({ ...sender, name: e.target.value })} className="pd-input" aria-invalid={Boolean(showErr("senderName"))} placeholder="e.g. Ali Khan" />
+                        <Card title={t("parcels.sender")} hint={t("parcels.senderHint")}>
+                            <Field label={t("parcels.fullName")} error={showErr("senderName")}>
+                                <input autoComplete="name" value={sender.name} onChange={(e) => setSender({ ...sender, name: e.target.value })} className="pd-input" aria-invalid={Boolean(showErr("senderName"))} placeholder={t("parcels.namePlaceholder")} />
                             </Field>
-                            <Field label="Phone" error={showErr("senderPhone")}>
+                            <Field label={t("parcels.phone")} error={showErr("senderPhone")}>
                                 <input type="tel" inputMode="tel" autoComplete="tel" value={sender.phone} onChange={(e) => setSender({ ...sender, phone: e.target.value })} className="pd-input" aria-invalid={Boolean(showErr("senderPhone"))} placeholder="03xx xxxxxxx" />
                             </Field>
                         </Card>
 
-                        <Card title="Receiver" hint="Who collects the parcel">
-                            <Field label="Full name" error={showErr("receiverName")}>
-                                <input value={receiver.name} onChange={(e) => setReceiver({ ...receiver, name: e.target.value })} className="pd-input" aria-invalid={Boolean(showErr("receiverName"))} placeholder="Receiver name" />
+                        <Card title={t("parcels.receiver")} hint={t("parcels.receiverHint")}>
+                            <Field label={t("parcels.fullName")} error={showErr("receiverName")}>
+                                <input value={receiver.name} onChange={(e) => setReceiver({ ...receiver, name: e.target.value })} className="pd-input" aria-invalid={Boolean(showErr("receiverName"))} placeholder={t("parcels.receiverNamePlaceholder")} />
                             </Field>
-                            <Field label="Phone" error={showErr("receiverPhone")}>
+                            <Field label={t("parcels.phone")} error={showErr("receiverPhone")}>
                                 <input type="tel" inputMode="tel" value={receiver.phone} onChange={(e) => setReceiver({ ...receiver, phone: e.target.value })} className="pd-input" aria-invalid={Boolean(showErr("receiverPhone"))} placeholder="03xx xxxxxxx" />
                             </Field>
                         </Card>
@@ -642,7 +653,7 @@ function ParcelBookingForm() {
 
                 {bookingStep === 2 && (
                     <div className="space-y-4 pb-4">
-                        <Card title="Parcel">
+                        <Card title={t("parcels.parcelCard")}>
                             <div className="pd-no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
                                 {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
                                     <button
@@ -660,15 +671,15 @@ function ParcelBookingForm() {
                                 ))}
                             </div>
                             <div className="grid grid-cols-2 gap-3">
-                                <Field label="Weight (kg)" error={showErr("weightKg")}>
+                                <Field label={t("parcels.weight")} error={showErr("weightKg")}>
                                     <input type="number" inputMode="decimal" min="0.01" step="0.01" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} className="pd-input" aria-invalid={Boolean(showErr("weightKg"))} />
                                 </Field>
-                                <Field label="Quantity" error={showErr("quantity")}>
+                                <Field label={t("parcels.quantity")} error={showErr("quantity")}>
                                     <input type="number" inputMode="numeric" min="1" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="pd-input" aria-invalid={Boolean(showErr("quantity"))} />
                                 </Field>
                             </div>
-                            <Field label="Description (optional)">
-                                <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What's inside? e.g. 2 books" maxLength={500} className="pd-input resize-none" />
+                            <Field label={t("parcels.descriptionOptional")}>
+                                <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("parcels.descriptionPlaceholder")} maxLength={500} className="pd-input resize-none" />
                             </Field>
                         </Card>
 
@@ -677,8 +688,8 @@ function ParcelBookingForm() {
 
                 {bookingStep === 3 && (
                     <div className="space-y-4 pb-4">
-                        <Card title="Delivery & payment">
-                            <Field label="Vehicle">
+                        <Card title={t("parcels.deliveryPayment")}>
+                            <Field label={t("parcels.vehicle")}>
                                 <div className="grid grid-cols-2 gap-2">
                                     {Object.entries(VEHICLE_LABELS).map(([value, label]) => (
                                         <button
@@ -697,7 +708,7 @@ function ParcelBookingForm() {
                                 </div>
                             </Field>
 
-                            <Field label="Your offer" error={showErr("requestedPrice")}>
+                            <Field label={t("parcels.yourOffer")} error={showErr("requestedPrice")}>
                                 <div className="relative">
                                     <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-pd-muted">PKR</span>
                                     <input
@@ -712,12 +723,12 @@ function ParcelBookingForm() {
                                         className="pd-input pl-14 text-xl font-extrabold"
                                     />
                                 </div>
-                                <p className="mt-1.5 text-xs text-pd-muted">Drivers can accept or counter your offer.</p>
+                                <p className="mt-1.5 text-xs text-pd-muted">{t("parcels.counterHint")}</p>
                             </Field>
 
-                            <Field label="Who pays?">
+                            <Field label={t("parcels.whoPays")}>
                                 <div className="grid grid-cols-2 gap-1 rounded-2xl bg-pd-surface-2 p-1">
-                                    {[["SENDER", "Sender"], ["RECEIVER", "Receiver"]].map(([value, label]) => (
+                                    {[["SENDER", t("parcels.senderPays")], ["RECEIVER", t("parcels.receiverPays")]].map(([value, label]) => (
                                         <button
                                             key={value}
                                             type="button"
@@ -731,8 +742,11 @@ function ParcelBookingForm() {
                                 </div>
                             </Field>
 
-                            <Field label="Instructions (optional)">
-                                <textarea rows={2} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Gate code, landmark, handle with care…" maxLength={500} className="pd-input resize-none" />
+                            <Field label={t("parcels.instructionsOptional")}>
+                                <div className="flex items-start gap-2">
+                                    <textarea rows={2} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder={t("parcels.instructionsPlaceholder")} maxLength={500} className="pd-input min-w-0 flex-1 resize-none" />
+                                    <MicButton onAppend={(spoken) => setInstructions((prev) => (prev.trim() ? `${prev.replace(/\s+$/, "")} ${spoken}` : spoken))} />
+                                </div>
                             </Field>
                         </Card>
                     </div>
@@ -743,21 +757,21 @@ function ParcelBookingForm() {
                         <Card title="Route" action={<EditLink onClick={() => { setError(""); setBookingStep(1); setPicking(true); }} />}>
                             <RouteSummary pickup={pickup} destination={destination} />
                         </Card>
-                        <Card title="People" action={<EditLink onClick={() => { setError(""); setPicking(false); setBookingStep(1); }} />}>
-                            <ReviewRow label="Sender" value={`${sender.name} · ${sender.phone}`} />
-                            <ReviewRow label="Receiver" value={`${receiver.name} · ${receiver.phone}`} />
+                        <Card title={t("parcels.people")} action={<EditLink onClick={() => { setError(""); setPicking(false); setBookingStep(1); }} />}>
+                            <ReviewRow label={t("parcels.sender")} value={`${sender.name} · ${sender.phone}`} />
+                            <ReviewRow label={t("parcels.receiver")} value={`${receiver.name} · ${receiver.phone}`} />
                         </Card>
-                        <Card title="Parcel" action={<EditLink onClick={() => setBookingStep(2)} />}>
-                            <ReviewRow label="Type" value={`${categoryLabel(category)} · ${weightKg} kg · ×${quantity}`} />
-                            {description && <ReviewRow label="Description" value={description} />}
+                        <Card title={t("parcels.parcelCard")} action={<EditLink onClick={() => setBookingStep(2)} />}>
+                            <ReviewRow label={t("parcels.type")} value={`${categoryLabel(category)} · ${weightKg} kg · ×${quantity}`} />
+                            {description && <ReviewRow label={t("parcels.description")} value={description} />}
                         </Card>
-                        <Card title="Delivery" action={<EditLink onClick={() => setBookingStep(3)} />}>
-                            <ReviewRow label="Vehicle" value={VEHICLE_LABELS[vehicleType]} />
-                            {instructions && <ReviewRow label="Instructions" value={instructions} />}
+                        <Card title={t("parcels.delivery")} action={<EditLink onClick={() => setBookingStep(3)} />}>
+                            <ReviewRow label={t("parcels.vehicle")} value={vehicleLabel(vehicleType)} />
+                            {instructions && <ReviewRow label={t("parcels.instructions")} value={instructions} />}
                         </Card>
                         <div className="flex items-center justify-between rounded-3xl bg-pd-ink p-5 text-pd-ink-text">
                             <div>
-                                <p className="text-xs font-semibold opacity-70">Your offer · {paymentBy === "SENDER" ? "Sender" : "Receiver"} pays</p>
+                                <p className="text-xs font-semibold opacity-70">{t("parcels.offerLine", { who: paymentBy === "SENDER" ? t("parcels.senderPays") : t("parcels.receiverPays") })}</p>
                                 <p className="mt-0.5 text-2xl font-extrabold">{formatPKR(requestedPrice)}</p>
                             </div>
                             <Package size={28} className="opacity-60" />
@@ -770,11 +784,11 @@ function ParcelBookingForm() {
                     <InlineError onDismiss={() => setError("")}>{error}</InlineError>
                     {bookingStep < 4 ? (
                         <Button className={`w-full ${error ? "mt-2" : ""}`} onClick={goNext}>
-                            {bookingStep === 3 ? "Review booking" : "Continue"} <ChevronRight size={18} />
+                            {bookingStep === 3 ? t("parcels.reviewBooking") : t("parcels.continue")} <ChevronRight size={18} />
                         </Button>
                     ) : (
                         <Button type="submit" className={`w-full ${error ? "mt-2" : ""}`} disabled={submitting}>
-                            {submitting ? "Requesting…" : <>Request delivery <Check size={18} /></>}
+                            {submitting ? t("parcels.requesting") : <>{t("parcels.requestDelivery")} <Check size={18} /></>}
                         </Button>
                     )}
                 </div>

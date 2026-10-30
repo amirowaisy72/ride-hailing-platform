@@ -54,37 +54,37 @@ export default function StructuredEventCard({ message }) {
 
     return (
         <div className="flex justify-center px-2">
-            <div className="w-full max-w-[86%] rounded-[20px] border border-[#E5E7EB] bg-white px-4 py-3 shadow-sm">
+            <div className="w-full max-w-[86%] rounded-[20px] border border-pd-line bg-pd-surface px-4 py-3 shadow-sm">
                 <div className="flex items-center gap-2.5">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-[#087F5B]">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pd-success-soft text-[#087F5B]">
                         <Icon size={17} aria-hidden="true" />
                     </span>
-                    <p className="min-w-0 flex-1 text-[13px] font-extrabold leading-tight text-[#111111]">
+                    <p className="min-w-0 flex-1 text-[13px] font-extrabold leading-tight text-pd-text">
                         {meta.title}
                     </p>
                     {amountText && (
-                        <span className="shrink-0 rounded-full bg-[#111111] px-2.5 py-1 text-[12px] font-extrabold text-white">
+                        <span className="shrink-0 rounded-full bg-pd-ink px-2.5 py-1 text-[12px] font-extrabold text-pd-ink-text">
                             {amountText}
                         </span>
                     )}
                 </div>
 
                 {eventType === "STATUS" && (event.fromStatus || event.toStatus) && (
-                    <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold capitalize text-[#374151]">
+                    <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold capitalize text-pd-text-2">
                         <span>{statusLabel(event.fromStatus) || "—"}</span>
-                        <ArrowRight size={13} className="shrink-0 text-[#9CA3AF]" aria-hidden="true" />
+                        <ArrowRight size={13} className="shrink-0 text-pd-faint" aria-hidden="true" />
                         <span>{statusLabel(event.toStatus) || "—"}</span>
                     </p>
                 )}
 
                 {note ? (
-                    <p className="mt-1.5 whitespace-pre-wrap break-words text-[13px] leading-relaxed text-[#4B5563]">
+                    <p className="mt-1.5 whitespace-pre-wrap break-words text-[13px] leading-relaxed text-pd-text-2">
                         {note}
                     </p>
                 ) : null}
 
                 {createdAt && (
-                    <p className="mt-1.5 text-right text-[10px] font-medium text-[#9CA3AF]">
+                    <p className="mt-1.5 text-right text-[10px] font-medium text-pd-faint">
                         {new Date(createdAt).toLocaleString([], {
                             month: "short",
                             day: "numeric",

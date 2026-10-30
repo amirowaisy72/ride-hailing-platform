@@ -81,7 +81,7 @@ function TripsContent() {
     });
 
     return (
-        <main className="min-h-dvh bg-[#F8FAF9] pb-[calc(100px+env(safe-area-inset-bottom))] text-slate-900">
+        <main className="min-h-dvh bg-pd-bg pb-[calc(100px+env(safe-area-inset-bottom))] text-pd-text">
             <MobileBottomNav role="PASSENGER" />
 
             <header className="bg-[#087F5B] px-5 pb-20 pt-[max(24px,env(safe-area-inset-top))] text-white">
@@ -100,7 +100,7 @@ function TripsContent() {
             </header>
 
             <div className="mx-auto -mt-10 max-w-xl space-y-4 px-4">
-                <div className="rounded-2xl bg-white p-3 shadow-sm">
+                <div className="rounded-2xl bg-pd-surface p-3 shadow-sm">
                     <div className="grid grid-cols-3 gap-2">
                         {[
                             ["ALL", "All Trips"],
@@ -113,7 +113,7 @@ function TripsContent() {
                                 onClick={() => setFilter(value)}
                                 className={`rounded-xl px-2 py-3 text-xs font-bold ${filter === value
                                         ? "bg-[#087F5B] text-white"
-                                        : "bg-slate-50 text-slate-600"
+                                        : "bg-pd-surface-2 text-pd-text-2"
                                     }`}
                             >
                                 {label}
@@ -123,39 +123,39 @@ function TripsContent() {
                 </div>
 
                 {loading && (
-                    <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">
+                    <div className="rounded-2xl bg-pd-surface p-8 text-center text-sm text-pd-muted">
                         Loading your rides...
                     </div>
                 )}
 
                 {error && (
-                    <p role="alert" className="rounded-2xl bg-red-50 p-4 text-sm text-red-600">
+                    <p role="alert" className="rounded-2xl bg-pd-danger-soft p-4 text-sm text-pd-danger">
                         {error}
                     </p>
                 )}
 
                 {!loading && !error && visibleRides.length === 0 && (
-                    <div className="rounded-2xl bg-white p-10 text-center">
+                    <div className="rounded-2xl bg-pd-surface p-10 text-center">
                         <History size={36} className="mx-auto text-[#087F5B]" />
                         <h3 className="mt-3 font-bold">No rides found</h3>
-                        <p className="mt-2 text-sm text-slate-500">
+                        <p className="mt-2 text-sm text-pd-muted">
                             Your trips will appear here as you use the app.
                         </p>
                     </div>
                 )}
 
                 {!loading && !error && visibleRides.map((ride) => (
-                    <article key={ride._id} className="rounded-[24px] bg-white p-5 shadow-sm">
+                    <article key={ride._id} className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                         <div className="flex items-start justify-between gap-3">
                             <div className="flex items-center gap-3">
-                                <div className="rounded-xl bg-emerald-50 p-3 text-[#087F5B]">
+                                <div className="rounded-xl bg-pd-success-soft p-3 text-[#087F5B]">
                                     <CarFront size={23} />
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-extrabold">
                                         {ride.vehicleType?.replaceAll("_", " ") || "Ride"}
                                     </h3>
-                                    <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
+                                    <p className="mt-1 flex items-center gap-1 text-xs text-pd-muted">
                                         <CalendarDays size={13} />
                                         {formatDate(ride.createdAt)}
                                     </p>
@@ -166,17 +166,17 @@ function TripsContent() {
                             </p>
                         </div>
 
-                        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
+                        <div className="mt-4 flex items-center justify-between border-t border-pd-line pt-4">
                             <span className={`rounded-lg px-3 py-1.5 text-xs font-bold ${ride.status === "TRIP_COMPLETED"
-                                    ? "bg-emerald-50 text-[#087F5B]"
+                                    ? "bg-pd-success-soft text-[#087F5B]"
                                     : ride.status === "CANCELLED"
-                                        ? "bg-red-50 text-red-600"
-                                        : "bg-amber-50 text-amber-700"
+                                        ? "bg-pd-danger-soft text-pd-danger"
+                                        : "bg-pd-warning-soft text-pd-warning"
                                 }`}>
                                 {statusLabels[ride.status] || ride.status}
                             </span>
 
-                            <span className="flex items-center gap-1 text-xs text-slate-500">
+                            <span className="flex items-center gap-1 text-xs text-pd-muted">
                                 <Route size={14} />
                                 {ride.distance != null ? `${ride.distance} km` : "—"}
                             </span>
@@ -185,7 +185,7 @@ function TripsContent() {
                         {ride.status === "TRIP_COMPLETED" && (
                             <Link
                                 href={`/passenger/receipt?rideId=${encodeURIComponent(ride._id)}`}
-                                className="mt-4 flex items-center justify-between rounded-xl bg-emerald-50 p-3 text-sm font-bold text-[#087F5B]"
+                                className="mt-4 flex items-center justify-between rounded-xl bg-pd-success-soft p-3 text-sm font-bold text-[#087F5B]"
                             >
                                 <span className="flex items-center gap-2">
                                     <ReceiptText size={17} />
@@ -198,7 +198,7 @@ function TripsContent() {
                 ))}
 
                 {pages > 1 && !error && (
-                    <div className="flex items-center justify-between rounded-2xl bg-white p-3">
+                    <div className="flex items-center justify-between rounded-2xl bg-pd-surface p-3">
                         <button
                             disabled={loading || page <= 1}
                             onClick={() => setPage((p) => p - 1)}
@@ -206,7 +206,7 @@ function TripsContent() {
                         >
                             Previous
                         </button>
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-pd-muted">
                             {page} / {pages}
                         </span>
                         <button

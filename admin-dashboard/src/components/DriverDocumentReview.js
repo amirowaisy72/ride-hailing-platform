@@ -7,6 +7,7 @@ import {
     RefreshCw, X, AlertTriangle, ShieldCheck,
 } from "lucide-react";
 import { authenticatedAdminRequest } from "@/lib/adminSession";
+import { useAdminDialog } from "@/components/AdminDialog";
 
 const requiredTypes = [
     "CNIC_FRONT",
@@ -28,6 +29,7 @@ export default function DriverDocumentReview({
     onClose,
     onUpdated,
 }) {
+    const { confirmDialog } = useAdminDialog();
     const [documents, setDocuments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [busyId, setBusyId] = useState(null);
@@ -264,8 +266,8 @@ export default function DriverDocumentReview({
                                                 <button
                                                     type="button"
                                                     disabled={Boolean(busyId)}
-                                                    onClick={() => {
-                                                        if (window.confirm("Approve this document?")) {
+                                                    onClick={async () => {
+                                                        if (await confirmDialog("Approve this document?")) {
                                                             reviewDocument(doc._id, "APPROVED");
                                                         }
                                                     }}

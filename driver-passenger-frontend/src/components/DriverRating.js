@@ -32,9 +32,9 @@ export default function DriverRating({ rideId, token, onSuccess }) {
     }
 
     return (
-        <div className="rounded-2xl border border-emerald-100 bg-white p-5">
+        <div className="rounded-2xl border border-emerald-100 bg-pd-surface p-5">
             <h3 className="text-lg font-extrabold">Rate Your Driver</h3>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-pd-muted">
                 How was your trip?
             </p>
 
@@ -51,7 +51,7 @@ export default function DriverRating({ rideId, token, onSuccess }) {
                             size={34}
                             className={value <= rating
                                 ? "fill-amber-400 text-amber-400"
-                                : "text-slate-300"}
+                                : "text-pd-faint"}
                         />
                     </button>
                 ))}
@@ -63,11 +63,11 @@ export default function DriverRating({ rideId, token, onSuccess }) {
                 maxLength={1000}
                 rows={3}
                 placeholder="Share your experience (optional)"
-                className="w-full resize-none rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-[#087F5B]"
+                className="w-full resize-none rounded-xl border border-pd-line p-3 text-sm outline-none focus:border-[#087F5B]"
             />
 
             {error && (
-                <p role="alert" className="mt-2 text-sm text-red-600">
+                <p role="alert" className="mt-2 text-sm text-pd-danger">
                     {error}
                 </p>
             )}

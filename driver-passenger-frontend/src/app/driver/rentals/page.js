@@ -72,7 +72,7 @@ function Toggle({ checked, disabled, onChange, label }) {
             disabled={disabled}
             onClick={() => onChange(!checked)}
             className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-                checked ? "bg-[#087F5B]" : "bg-slate-300"
+                checked ? "bg-[#087F5B]" : "bg-pd-surface-3"
             } ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
         >
             <span
@@ -86,11 +86,11 @@ function Toggle({ checked, disabled, onChange, label }) {
 
 function StatPlaceholder({ Icon, label, caption }) {
     return (
-        <div className="rounded-2xl bg-white p-4 shadow-sm">
+        <div className="rounded-2xl bg-pd-surface p-4 shadow-sm">
             <Icon size={22} className="text-[#087F5B]" />
-            <p className="mt-2 text-xl font-extrabold text-slate-300">—</p>
-            <p className="text-xs font-bold text-slate-700">{label}</p>
-            <p className="mt-0.5 text-[11px] leading-4 text-slate-400">
+            <p className="mt-2 text-xl font-extrabold text-pd-faint">—</p>
+            <p className="text-xs font-bold text-pd-text-2">{label}</p>
+            <p className="mt-0.5 text-[11px] leading-4 text-pd-faint">
                 {caption}
             </p>
         </div>
@@ -119,12 +119,12 @@ function BusinessFields({
                 />
             </label>
 
-            <div className="mt-4 flex items-center gap-3 rounded-xl border border-slate-200 p-3">
+            <div className="mt-4 flex items-center gap-3 rounded-xl border border-pd-line p-3">
                 <div className="min-w-0 flex-1">
                     <p className="text-sm font-extrabold">
                         I can also provide a driver
                     </p>
-                    <p className="mt-0.5 text-xs text-slate-500">
+                    <p className="mt-0.5 text-xs text-pd-muted">
                         {partner?.providesChauffeur
                             ? `Chauffeur verification: ${(STATUS_META[partner.chauffeurVerificationStatus] || STATUS_META.NOT_APPLIED).label}`
                             : "For With Driver bookings. Your chauffeur licence is verified separately."}
@@ -167,14 +167,14 @@ function ApplyForm({ token, notify, onApplied }) {
     }
 
     return (
-        <section className="rounded-[24px] bg-white p-5 shadow-sm">
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#087F5B]">
+        <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-pd-success-soft text-[#087F5B]">
                 <KeyRound size={24} />
             </span>
             <h2 className="mt-3 text-lg font-extrabold">
                 Become a Rental Partner
             </h2>
-            <p className="mt-1 text-sm leading-6 text-slate-500">
+            <p className="mt-1 text-sm leading-6 text-pd-muted">
                 List your car on Safar Rentals and earn from bookings. Safar
                 collects its booking fee when a booking is confirmed, so your
                 rental price is yours. Vehicle listings open in the next
@@ -310,9 +310,9 @@ function PartnerPanel({ partner, token, notify, reload }) {
 
     return (
         <>
-            <section className="rounded-[24px] bg-white p-5 shadow-sm">
+            <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                 <div className="flex items-start gap-3">
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#087F5B]">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-pd-success-soft text-[#087F5B]">
                         <Store size={24} />
                     </span>
                     <div className="min-w-0 flex-1">
@@ -322,7 +322,7 @@ function PartnerPanel({ partner, token, notify, reload }) {
                             </h2>
                             <StatusBadge status={status} />
                         </div>
-                        <p className="mt-1 text-sm text-slate-500">
+                        <p className="mt-1 text-sm text-pd-muted">
                             {status === "APPROVED"
                                 ? "Your rental business is verified. Listings open in the next update."
                                 : "Complete the verification below — Safar reviews every Rental Partner before listings go live."}
@@ -331,7 +331,7 @@ function PartnerPanel({ partner, token, notify, reload }) {
                 </div>
 
                 {status === "REJECTED" && (
-                    <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">
+                    <p className="mt-4 rounded-xl bg-pd-danger-soft p-3 text-sm font-semibold text-pd-danger">
                         Application rejected
                         {partner.rejectionReason
                             ? ` — ${partner.rejectionReason}`
@@ -340,7 +340,7 @@ function PartnerPanel({ partner, token, notify, reload }) {
                     </p>
                 )}
                 {status === "SUSPENDED" && (
-                    <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">
+                    <p className="mt-4 rounded-xl bg-pd-danger-soft p-3 text-sm font-semibold text-pd-danger">
                         This partner account is suspended
                         {partner.suspensionReason
                             ? ` — ${partner.suspensionReason}`
@@ -349,7 +349,7 @@ function PartnerPanel({ partner, token, notify, reload }) {
                     </p>
                 )}
                 {(status === "PENDING" || status === "UNDER_REVIEW") && (
-                    <p className="mt-4 flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-800">
+                    <p className="mt-4 flex items-start gap-2 rounded-xl bg-pd-warning-soft p-3 text-sm font-semibold text-pd-warning">
                         <Hourglass size={16} className="mt-0.5 shrink-0" />
                         Safar is reviewing your KYC documents. You will be
                         notified when your business is approved.
@@ -379,11 +379,11 @@ function PartnerPanel({ partner, token, notify, reload }) {
                 )}
             </section>
 
-            <section className="rounded-[24px] bg-white p-5 shadow-sm">
-                <h3 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-slate-500">
+            <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
+                <h3 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-pd-muted">
                     <ClipboardList size={14} /> Partner verification (KYC)
                 </h3>
-                <ul className="mt-1 divide-y divide-slate-100">
+                <ul className="mt-1 divide-y divide-pd-line">
                     {(partner.requiredDocuments || []).map((type) => {
                         const doc = documentsByType.get(type);
                         const docStatus = doc?.verificationStatus;
@@ -400,7 +400,7 @@ function PartnerPanel({ partner, token, notify, reload }) {
                                     ) : (
                                         <CircleAlert
                                             size={18}
-                                            className="shrink-0 text-amber-500"
+                                            className="shrink-0 text-pd-warning"
                                         />
                                     )}
                                     <span className="min-w-0 flex-1 text-sm font-semibold">
@@ -409,12 +409,12 @@ function PartnerPanel({ partner, token, notify, reload }) {
                                     <span
                                         className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-extrabold ${
                                             docStatus === "APPROVED"
-                                                ? "bg-emerald-50 text-[#087F5B]"
+                                                ? "bg-pd-success-soft text-[#087F5B]"
                                                 : docStatus === "REJECTED"
-                                                  ? "bg-red-50 text-red-600"
+                                                  ? "bg-pd-danger-soft text-pd-danger"
                                                   : docStatus === "PENDING"
-                                                    ? "bg-amber-50 text-amber-700"
-                                                    : "bg-slate-100 text-slate-500"
+                                                    ? "bg-pd-warning-soft text-pd-warning"
+                                                    : "bg-pd-surface-3 text-pd-muted"
                                         }`}
                                     >
                                         {docStatus === "APPROVED"
@@ -428,13 +428,13 @@ function PartnerPanel({ partner, token, notify, reload }) {
                                 </div>
                                 {docStatus === "REJECTED" &&
                                     doc?.rejectionReason && (
-                                        <p className="mt-1.5 pl-7 text-xs font-semibold text-red-600">
+                                        <p className="mt-1.5 pl-7 text-xs font-semibold text-pd-danger">
                                             {doc.rejectionReason}
                                         </p>
                                     )}
                                 {docStatus !== "APPROVED" && (
                                     <div className="mt-2.5 pl-7">
-                                        <label className="block cursor-pointer rounded-xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 p-3 text-center">
+                                        <label className="block cursor-pointer rounded-xl border-2 border-dashed border-pd-line bg-pd-success-soft p-3 text-center">
                                             <UploadCloud
                                                 size={20}
                                                 className="mx-auto text-[#087F5B]"
@@ -504,7 +504,7 @@ function PartnerPanel({ partner, token, notify, reload }) {
             </section>
 
             <section>
-                <h3 className="px-1 text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                <h3 className="px-1 text-xs font-extrabold uppercase tracking-wider text-pd-muted">
                     Business overview
                 </h3>
                 <div className="mt-2 grid grid-cols-2 gap-3">
@@ -529,7 +529,7 @@ function PartnerPanel({ partner, token, notify, reload }) {
                         caption="Rental earnings will be tracked here."
                     />
                 </div>
-                <p className="mt-3 flex items-start gap-2 rounded-xl bg-emerald-50 p-3 text-xs leading-5 text-[#087F5B]">
+                <p className="mt-3 flex items-start gap-2 rounded-xl bg-pd-success-soft p-3 text-xs leading-5 text-[#087F5B]">
                     <BadgeCheck size={15} className="mt-0.5 shrink-0" />
                     Safar Rentals launches With Driver bookings first. Partners
                     with approved KYC will be able to list vehicles as soon as
@@ -605,7 +605,7 @@ function RentalBusinessScreen() {
         : "none";
 
     return (
-        <main className="driver-subpage min-h-dvh bg-[#F7F9F8] pb-28 text-slate-900">
+        <main className="driver-subpage min-h-dvh bg-pd-bg pb-28 text-pd-text">
             <MobileBottomNav role="DRIVER" />
 
             <header className="bg-[#087F5B] px-5 pb-8 pt-[max(24px,env(safe-area-inset-top))] text-white">
@@ -646,8 +646,8 @@ function RentalBusinessScreen() {
                         role={notice.kind === "error" ? "alert" : "status"}
                         className={`rounded-xl p-4 text-sm font-semibold ${
                             notice.kind === "error"
-                                ? "bg-red-50 text-red-600"
-                                : "bg-emerald-50 text-[#087F5B]"
+                                ? "bg-pd-danger-soft text-pd-danger"
+                                : "bg-pd-success-soft text-[#087F5B]"
                         }`}
                     >
                         {notice.text}
@@ -655,8 +655,8 @@ function RentalBusinessScreen() {
                 )}
 
                 {loadError && (
-                    <div className="rounded-[24px] bg-white p-5 shadow-sm">
-                        <p role="alert" className="text-sm font-semibold text-red-600">
+                    <div className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
+                        <p role="alert" className="text-sm font-semibold text-pd-danger">
                             {loadError}
                         </p>
                         <button
@@ -671,7 +671,7 @@ function RentalBusinessScreen() {
 
                 {partner === undefined && !loadError && (
                     <div
-                        className="h-64 animate-pulse rounded-[24px] bg-white shadow-sm"
+                        className="h-64 animate-pulse rounded-[24px] bg-pd-surface shadow-sm"
                         aria-busy="true"
                     />
                 )}
@@ -686,7 +686,7 @@ function RentalBusinessScreen() {
 
                 {partner && status === "APPROVED" && (
                     <div
-                        className="grid grid-cols-3 gap-2 rounded-2xl bg-white p-1.5 shadow-sm"
+                        className="grid grid-cols-3 gap-2 rounded-2xl bg-pd-surface p-1.5 shadow-sm"
                         role="tablist"
                         aria-label="Rental business sections"
                     >
@@ -704,7 +704,7 @@ function RentalBusinessScreen() {
                                 className={`rounded-xl py-2.5 text-xs font-extrabold ${
                                     activeTab === tab.key
                                         ? "bg-[#087F5B] text-white shadow-sm"
-                                        : "text-slate-500"
+                                        : "text-pd-muted"
                                 }`}
                             >
                                 {tab.label}

@@ -7,6 +7,7 @@ const {
     requiredKycDocuments,
     missingKycDocuments,
     loadRentalPartnerDocuments,
+    applyChauffeurDeclaration,
 } = require("../services/rentalPartnerService");
 
 // ---------------------------------------------------------------------------
@@ -25,6 +26,10 @@ function partnerState(partner, documents) {
         suspensionReason: partner.suspensionReason,
         providesChauffeur: partner.providesChauffeur,
         chauffeurVerificationStatus: partner.chauffeurVerificationStatus,
+        chauffeurName: partner.chauffeurName,
+        chauffeurLicenceNumber: partner.chauffeurLicenceNumber,
+        chauffeurLicenceExpiry: partner.chauffeurLicenceExpiry,
+        chauffeurRejectionReason: partner.chauffeurRejectionReason,
         requiredDocuments: requiredKycDocuments(partner),
         missingDocuments: missingKycDocuments(partner, documents),
         documents: documents.map((doc) => ({
@@ -230,8 +235,61 @@ const uploadRentalPartnerDocument = async (req, res) => {
     }
 };
 
+// Partner-side chauffeur declaration (Amir review A16): the partner
+// submits the chauffeur identity an admin then reviews via
+// PATCH /admin/rental-partners/:id/chauffeur. Declaration rules live in
+// rentalPartnerService.applyChauffeurDeclaration.
+const updateMyChauffeurDetails = async (req, res) => {
+    try {
+        const partner = await RentalPartner.findOne({
+            userId: req.user._id,
+        });
+
+        if (!partner) {
+            return res.status(404).json({
+                success: false,
+                message: "Rental partner profile not found",
+            });
+        }
+
+        if (partner.applicationStatus === "SUSPENDED") {
+            return res.status(403).json({
+                success: false,
+                message: "Rental partner is suspended",
+            });
+        }
+
+        const result = applyChauffeurDeclaration(partner, req.body || {});
+
+        if (!result.ok) {
+            return res.status(result.error.status).json({
+                success: false,
+                message: result.error.message,
+            });
+        }
+
+        await partner.save();
+
+        const documents = await loadRentalPartnerDocuments(partner._id);
+
+        return res.json({
+            success: true,
+            message: "Chauffeur details saved",
+            rentalPartner: partnerState(partner, documents),
+        });
+    } catch (error) {
+        console.error("Chauffeur declaration error:", error.message);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to save chauffeur details",
+        });
+    }
+};
+
 module.exports = {
     applyForRentalPartner,
     getMyRentalPartner,
+    updateMyChauffeurDetails,
     uploadRentalPartnerDocument,
 };

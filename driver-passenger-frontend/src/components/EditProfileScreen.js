@@ -93,7 +93,7 @@ export default function EditProfileScreen({ role }) {
     }
 
     return (
-        <main className="min-h-dvh bg-[#F8FAF9] pb-10 text-slate-900">
+        <main className="min-h-dvh bg-pd-surface-2 pb-10 text-pd-text">
             <header className="bg-[#087F5B] px-5 pb-24 pt-[max(24px,env(safe-area-inset-top))] text-white">
                 <div className="mx-auto flex max-w-xl items-center gap-4">
                     <Link
@@ -116,19 +116,19 @@ export default function EditProfileScreen({ role }) {
             </header>
 
             <div className="mx-auto -mt-16 max-w-xl px-4">
-                <section className="rounded-[28px] bg-white p-6 shadow-lg shadow-slate-900/5">
+                <section className="rounded-[28px] bg-pd-surface p-6 shadow-lg shadow-slate-900/5">
                     {loading ? (
-                        <p className="py-8 text-center text-sm text-slate-500">
+                        <p className="py-8 text-center text-sm text-pd-muted">
                             Loading profile...
                         </p>
                     ) : !profile ? (
-                        <p role="alert" className="text-sm text-red-600">
+                        <p role="alert" className="text-sm text-pd-danger">
                             {error || "Unable to load profile."}
                         </p>
                     ) : (
                         <form onSubmit={saveProfile} className="space-y-5">
                             <div className="flex flex-col items-center border-b pb-6">
-                                <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-emerald-100 text-[#087F5B]">
+                                <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-pd-success-soft text-[#087F5B]">
                                     <UserRound size={40} />
                                 </div>
 
@@ -162,7 +162,7 @@ export default function EditProfileScreen({ role }) {
                                     autoComplete="given-name"
                                     required
                                     disabled={saving}
-                                    className="h-13 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-[#087F5B]"
+                                    className="h-13 w-full rounded-xl border border-pd-line px-4 py-3 outline-none focus:border-[#087F5B]"
                                     placeholder="Enter first name"
                                 />
                             </div>
@@ -183,7 +183,7 @@ export default function EditProfileScreen({ role }) {
                                     autoComplete="family-name"
                                     required
                                     disabled={saving}
-                                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-[#087F5B]"
+                                    className="w-full rounded-xl border border-pd-line px-4 py-3 outline-none focus:border-[#087F5B]"
                                     placeholder="Enter last name"
                                 />
                             </div>
@@ -193,26 +193,26 @@ export default function EditProfileScreen({ role }) {
                                     Email Address
                                 </label>
 
-                                <div className="flex min-h-12 items-center gap-3 rounded-xl bg-slate-50 px-4">
-                                    <Mail size={18} className="text-slate-400" />
-                                    <span className="min-w-0 truncate text-sm text-slate-600">
+                                <div className="flex min-h-12 items-center gap-3 rounded-xl bg-pd-surface-2 px-4">
+                                    <Mail size={18} className="text-pd-faint" />
+                                    <span className="min-w-0 truncate text-sm text-pd-text-2">
                                         {profile.email}
                                     </span>
                                 </div>
 
-                                <p className="mt-2 text-xs text-slate-500">
+                                <p className="mt-2 text-xs text-pd-muted">
                                     Email changes require a separate verification process.
                                 </p>
                             </div>
 
                             {error && (
-                                <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-600">
+                                <p role="alert" className="rounded-xl bg-pd-danger-soft p-3 text-sm text-pd-danger">
                                     {error}
                                 </p>
                             )}
 
                             {message && (
-                                <p role="status" className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm text-[#065F46]">
+                                <p role="status" className="flex items-center gap-2 rounded-xl bg-pd-success-soft p-3 text-sm text-pd-accent-text">
                                     <CheckCircle2 size={18} />
                                     {message}
                                 </p>

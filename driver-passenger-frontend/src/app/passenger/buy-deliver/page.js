@@ -55,13 +55,13 @@ function BuyDeliverDashboard() {
     }, [load]);
 
     return (
-        <main className="min-h-dvh bg-[#F4F5F7] pb-28 text-[#111111]">
-            <div className="sticky top-0 z-20 border-b border-slate-100 bg-white/95 backdrop-blur-xl">
+        <main className="min-h-dvh bg-pd-bg pb-28 text-pd-text">
+            <div className="sticky top-0 z-20 border-b border-pd-line bg-pd-elevated backdrop-blur-xl">
                 <div className="mx-auto flex max-w-xl items-center gap-2 px-3 pb-3 pt-[max(12px,env(safe-area-inset-top))]">
                     <Link
                         href="/passenger"
                         aria-label="Back to home"
-                        className="grid h-11 w-11 place-items-center rounded-2xl hover:bg-[#F4F5F7]"
+                        className="grid h-11 w-11 place-items-center rounded-2xl hover:bg-pd-surface-2"
                     >
                         <ArrowLeft size={21} />
                     </Link>
@@ -70,7 +70,7 @@ function BuyDeliverDashboard() {
                         type="button"
                         aria-label="Refresh"
                         onClick={() => { setRefreshing(true); void load(); }}
-                        className="grid h-11 w-11 place-items-center rounded-2xl text-slate-500 hover:bg-[#F4F5F7]"
+                        className="grid h-11 w-11 place-items-center rounded-2xl text-pd-muted hover:bg-pd-surface-2"
                     >
                         <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} />
                     </button>
@@ -96,7 +96,7 @@ function BuyDeliverDashboard() {
                         </p>
                         <Link
                             href="/passenger/buy-deliver/new"
-                            className="mt-4 inline-flex h-12 items-center gap-2 rounded-2xl bg-white px-5 text-sm font-extrabold text-[#087F5B] transition-transform active:scale-[0.98]"
+                            className="mt-4 inline-flex h-12 items-center gap-2 rounded-2xl bg-pd-surface px-5 text-sm font-extrabold text-[#087F5B] transition-transform active:scale-[0.98]"
                         >
                             <Plus size={18} /> New shopping request
                         </Link>
@@ -104,16 +104,16 @@ function BuyDeliverDashboard() {
                 </section>
 
                 {error && (
-                    <p role="alert" className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+                    <p role="alert" className="rounded-2xl bg-pd-danger-soft px-4 py-3 text-sm font-semibold text-pd-danger">
                         {error}
                     </p>
                 )}
 
                 <section aria-labelledby="my-orders-title">
-                    <h2 id="my-orders-title" className="mb-3 flex items-center gap-2 px-1 text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <h2 id="my-orders-title" className="mb-3 flex items-center gap-2 px-1 text-xs font-bold uppercase tracking-wider text-pd-muted">
                         My requests
                         {orders.length > 0 && (
-                            <span className="rounded-full bg-white px-2 py-0.5 text-[10px] text-slate-600 shadow-sm">
+                            <span className="rounded-full bg-pd-surface px-2 py-0.5 text-[10px] text-pd-text-2 shadow-sm">
                                 {orders.length}
                             </span>
                         )}
@@ -122,20 +122,20 @@ function BuyDeliverDashboard() {
                     {loading ? (
                         <div className="space-y-3" aria-busy="true" aria-label="Loading">
                             {[0, 1].map((i) => (
-                                <div key={i} className="rounded-[24px] bg-white p-4 shadow-sm">
-                                    <div className="h-4 w-1/3 animate-pulse rounded-full bg-slate-100" />
-                                    <div className="mt-3 h-3 w-2/3 animate-pulse rounded-full bg-slate-100" />
-                                    <div className="mt-2 h-3 w-1/2 animate-pulse rounded-full bg-slate-100" />
+                                <div key={i} className="rounded-[24px] bg-pd-surface p-4 shadow-sm">
+                                    <div className="h-4 w-1/3 animate-pulse rounded-full bg-pd-surface-2" />
+                                    <div className="mt-3 h-3 w-2/3 animate-pulse rounded-full bg-pd-surface-2" />
+                                    <div className="mt-2 h-3 w-1/2 animate-pulse rounded-full bg-pd-surface-2" />
                                 </div>
                             ))}
                         </div>
                     ) : orders.length === 0 ? (
-                        <div className="rounded-[24px] border border-dashed border-slate-300 bg-white px-5 py-8 text-center shadow-sm">
-                            <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-emerald-50 text-[#087F5B]">
+                        <div className="rounded-[24px] border border-dashed border-pd-line-strong bg-pd-surface px-5 py-8 text-center shadow-sm">
+                            <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-pd-success-soft text-[#087F5B]">
                                 <ShoppingBag size={22} />
                             </span>
                             <h3 className="mt-3 font-extrabold">No shopping requests yet</h3>
-                            <p className="mx-auto mt-1 max-w-xs text-sm text-slate-500">
+                            <p className="mx-auto mt-1 max-w-xs text-sm text-pd-muted">
                                 Groceries, pharmacy runs, market shopping — send your list and
                                 partners nearby will offer their delivery fee.
                             </p>
@@ -155,7 +155,7 @@ function BuyDeliverDashboard() {
                                     <Link
                                         key={order._id}
                                         href={`/passenger/buy-deliver/details?id=${order._id}`}
-                                        className="block rounded-[24px] bg-white p-4 shadow-sm transition-transform active:scale-[0.99]"
+                                        className="block rounded-[24px] bg-pd-surface p-4 shadow-sm transition-transform active:scale-[0.99]"
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <p className="min-w-0 flex-1 truncate text-[15px] font-extrabold leading-snug">
@@ -163,21 +163,21 @@ function BuyDeliverDashboard() {
                                             </p>
                                             <StatusPill meta={meta} />
                                         </div>
-                                        <p className="mt-1 line-clamp-2 text-sm text-slate-500">
+                                        <p className="mt-1 line-clamp-2 text-sm text-pd-muted">
                                             {order.itemsText}
                                         </p>
-                                        <div className="mt-3 flex items-center justify-between text-xs font-semibold text-slate-500">
+                                        <div className="mt-3 flex items-center justify-between text-xs font-semibold text-pd-muted">
                                             <span>
-                                                Budget <span className="font-extrabold text-slate-900">{formatPKR(order.estimatedBudget)}</span>
+                                                Budget <span className="font-extrabold text-pd-text">{formatPKR(order.estimatedBudget)}</span>
                                                 {order.deliveryFee ? (
-                                                    <> · Fee <span className="font-extrabold text-slate-900">{formatPKR(order.deliveryFee)}</span></>
+                                                    <> · Fee <span className="font-extrabold text-pd-text">{formatPKR(order.deliveryFee)}</span></>
                                                 ) : null}
                                             </span>
                                             <span className="flex items-center gap-1">
                                                 {order.createdAt
                                                     ? new Date(order.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })
                                                     : ""}
-                                                <ChevronRight size={14} className="text-slate-300" />
+                                                <ChevronRight size={14} className="text-pd-faint" />
                                             </span>
                                         </div>
                                     </Link>

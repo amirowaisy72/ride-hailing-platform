@@ -16,10 +16,10 @@ export const COMPLAINT_CATEGORIES = [
 ];
 
 const STATUS_META = {
-    OPEN: { label: "Open", classes: "bg-amber-100 text-amber-700" },
+    OPEN: { label: "Open", classes: "bg-pd-warning-soft text-pd-warning" },
     IN_REVIEW: { label: "In review", classes: "bg-sky-100 text-sky-700" },
-    RESOLVED: { label: "Resolved", classes: "bg-emerald-50 text-[#087F5B]" },
-    REJECTED: { label: "Rejected", classes: "bg-red-50 text-red-600" },
+    RESOLVED: { label: "Resolved", classes: "bg-pd-success-soft text-[#087F5B]" },
+    REJECTED: { label: "Rejected", classes: "bg-pd-danger-soft text-pd-danger" },
 };
 
 export const COMPLAINT_STATUS_META = STATUS_META;
@@ -147,14 +147,14 @@ export default function ComplaintsSection({ token, role }) {
 
     return (
         <div className="space-y-5">
-            <section className="rounded-[24px] bg-white p-5 shadow-sm">
+            <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                 <div className="mb-4 flex items-center gap-3">
                     <LifeBuoy size={22} className="text-[#087F5B]" />
                     <h3 className="text-lg font-extrabold">File a complaint</h3>
                 </div>
 
                 {submitted && (
-                    <p role="status" className="mb-4 flex items-start gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-[#087F5B]">
+                    <p role="status" className="mb-4 flex items-start gap-2 rounded-xl bg-pd-success-soft p-3 text-sm font-semibold text-[#087F5B]">
                         <CheckCircle2 size={18} className="mt-0.5 shrink-0" />
                         Complaint submitted. Our team will review it — you can
                         track its status below.
@@ -162,14 +162,14 @@ export default function ComplaintsSection({ token, role }) {
                 )}
 
                 {formError && (
-                    <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-600">
+                    <p role="alert" className="mb-4 rounded-xl bg-pd-danger-soft p-3 text-sm font-semibold text-pd-danger">
                         {formError}
                     </p>
                 )}
 
                 <form onSubmit={submitComplaint} noValidate className="space-y-4">
                     <div>
-                        <p className="mb-2 text-xs font-bold text-slate-500">
+                        <p className="mb-2 text-xs font-bold text-pd-muted">
                             What is this about?
                         </p>
                         <div className="flex flex-wrap gap-2">
@@ -181,7 +181,7 @@ export default function ComplaintsSection({ token, role }) {
                                     onClick={() => setCategory(value)}
                                     className={`min-h-10 rounded-xl px-3.5 text-sm font-bold transition ${category === value
                                         ? "bg-[#087F5B] text-white"
-                                        : "bg-slate-100 text-slate-600"
+                                        : "bg-pd-surface-2 text-pd-text-2"
                                         }`}
                                 >
                                     {label}
@@ -194,7 +194,7 @@ export default function ComplaintsSection({ token, role }) {
                         <div>
                             <label
                                 htmlFor="complaint-link"
-                                className="mb-2 block text-xs font-bold text-slate-500"
+                                className="mb-2 block text-xs font-bold text-pd-muted"
                             >
                                 Link to a trip or parcel (optional)
                             </label>
@@ -202,7 +202,7 @@ export default function ComplaintsSection({ token, role }) {
                                 id="complaint-link"
                                 value={link}
                                 onChange={(e) => setLink(e.target.value)}
-                                className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-semibold outline-none focus:border-[#087F5B]"
+                                className="w-full rounded-xl border border-pd-line bg-pd-surface p-3 text-sm font-semibold outline-none focus:border-[#087F5B]"
                             >
                                 <option value="">General — no specific trip</option>
                                 {links.rides.length > 0 && (
@@ -230,7 +230,7 @@ export default function ComplaintsSection({ token, role }) {
                     <div>
                         <label
                             htmlFor="complaint-description"
-                            className="mb-2 block text-xs font-bold text-slate-500"
+                            className="mb-2 block text-xs font-bold text-pd-muted"
                         >
                             Describe what happened
                         </label>
@@ -241,9 +241,9 @@ export default function ComplaintsSection({ token, role }) {
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="Tell us the details so we can help…"
-                            className="w-full resize-none rounded-xl border border-slate-200 p-3 text-sm font-medium outline-none focus:border-[#087F5B]"
+                            className="w-full resize-none rounded-xl border border-pd-line p-3 text-sm font-medium outline-none focus:border-[#087F5B]"
                         />
-                        <p className="mt-1 text-right text-xs text-slate-400">
+                        <p className="mt-1 text-right text-xs text-pd-faint">
                             {description.length}/1000
                         </p>
                     </div>
@@ -259,26 +259,26 @@ export default function ComplaintsSection({ token, role }) {
                 </form>
             </section>
 
-            <section className="rounded-[24px] bg-white p-5 shadow-sm">
+            <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                 <div className="mb-4 flex items-center gap-3">
                     <MessageSquareWarning size={22} className="text-[#087F5B]" />
                     <h3 className="text-lg font-extrabold">My complaints</h3>
                 </div>
 
                 {loading && (
-                    <p className="py-5 text-center text-sm text-slate-500">
+                    <p className="py-5 text-center text-sm text-pd-muted">
                         Loading complaints...
                     </p>
                 )}
 
                 {listError && (
-                    <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-600">
+                    <p role="alert" className="rounded-xl bg-pd-danger-soft p-3 text-sm text-pd-danger">
                         {listError}
                     </p>
                 )}
 
                 {!loading && !listError && complaints.length === 0 && (
-                    <p className="py-6 text-center text-sm text-slate-500">
+                    <p className="py-6 text-center text-sm text-pd-muted">
                         You have not filed any complaints yet.
                     </p>
                 )}
@@ -288,7 +288,7 @@ export default function ComplaintsSection({ token, role }) {
                     return (
                         <article
                             key={complaint._id}
-                            className="border-b border-slate-100 py-4 last:border-0"
+                            className="border-b border-pd-line py-4 last:border-0"
                         >
                             <div className="flex items-start justify-between gap-3">
                                 <p className="font-bold">
@@ -298,17 +298,17 @@ export default function ComplaintsSection({ token, role }) {
                                     {meta.label}
                                 </span>
                             </div>
-                            <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
+                            <p className="mt-1 flex items-center gap-1 text-xs text-pd-muted">
                                 <Clock3 size={13} />
                                 {formatDate(complaint.createdAt)}
                                 {complaint.ride && " · Linked to a trip"}
                                 {complaint.parcelOrder && " · Linked to a parcel"}
                             </p>
-                            <p className="mt-2 line-clamp-3 text-sm text-slate-600">
+                            <p className="mt-2 line-clamp-3 text-sm text-pd-text-2">
                                 {complaint.description}
                             </p>
                             {complaint.adminNote && (
-                                <p className="mt-2 rounded-xl bg-emerald-50 p-3 text-sm text-slate-700">
+                                <p className="mt-2 rounded-xl bg-pd-success-soft p-3 text-sm text-pd-text-2">
                                     <span className="font-bold text-[#087F5B]">Support reply: </span>
                                     {complaint.adminNote}
                                 </p>

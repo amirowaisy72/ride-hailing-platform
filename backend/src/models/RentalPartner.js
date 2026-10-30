@@ -69,6 +69,41 @@ const rentalPartnerSchema = new mongoose.Schema(
             ],
             default: "NOT_APPLIED",
         },
+        // Chauffeur identity the partner declares (name + licence) and
+        // the admin reviews in the chauffeur verification flow. The
+        // licence document itself stays a RentalPartnerDocument
+        // (DRIVING_LICENSE); these fields are the reviewable identity
+        // summary the With-Driver booking gate relies on.
+        chauffeurName: {
+            type: String,
+            default: null,
+            trim: true,
+        },
+        chauffeurLicenceNumber: {
+            type: String,
+            default: null,
+            trim: true,
+        },
+        chauffeurLicenceExpiry: {
+            type: Date,
+            default: null,
+        },
+        chauffeurRejectionReason: {
+            type: String,
+            default: null,
+            trim: true,
+        },
+        // Who approved the chauffeur and when (cleared whenever the
+        // verification is revoked or the declared details change).
+        chauffeurVerifiedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+        chauffeurVerifiedAt: {
+            type: Date,
+            default: null,
+        },
         // Phase 5 — anti-bypass provider agreement: the partner must
         // accept the agreement (no off-platform conversion of Safar
         // bookings, no false cancellations to dodge the booking fee)

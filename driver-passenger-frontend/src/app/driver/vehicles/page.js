@@ -31,10 +31,10 @@ const emptyForm = {
 };
 
 const statusStyles = {
-    PENDING: "bg-amber-50 text-amber-700",
-    UNDER_REVIEW: "bg-blue-50 text-blue-700",
-    APPROVED: "bg-emerald-50 text-[#087F5B]",
-    REJECTED: "bg-red-50 text-red-600",
+    PENDING: "bg-pd-warning-soft text-pd-warning",
+    UNDER_REVIEW: "bg-pd-info-soft text-pd-info",
+    APPROVED: "bg-pd-success-soft text-[#087F5B]",
+    REJECTED: "bg-pd-danger-soft text-pd-danger",
 };
 
 export default function DriverVehiclesPage() {
@@ -173,7 +173,7 @@ function VehicleScreen() {
             : String(driver?.currentVehicleId || "");
 
     return (
-        <main className="driver-subpage min-h-dvh bg-[#F7F9F8] pb-[calc(100px+env(safe-area-inset-bottom))] text-slate-900">
+        <main className="driver-subpage min-h-dvh bg-pd-bg pb-[calc(100px+env(safe-area-inset-bottom))] text-pd-text">
             <MobileBottomNav role="DRIVER" />
 
             <header className="bg-[#087F5B] px-5 pb-24 pt-[max(24px,env(safe-area-inset-top))] text-white">
@@ -200,13 +200,13 @@ function VehicleScreen() {
             </header>
 
             <div className="relative z-10 mx-auto mt-5 max-w-xl space-y-5 px-4">
-                <section className="rounded-[26px] bg-white p-5 shadow-lg shadow-slate-900/5">
+                <section className="rounded-[26px] bg-pd-surface p-5 shadow-lg shadow-slate-900/5">
                     <div className="flex items-center justify-between gap-4">
                         <div>
                             <h3 className="text-xl font-extrabold">
                                 Registered Vehicles
                             </h3>
-                            <p className="mt-1 text-sm text-slate-500">
+                            <p className="mt-1 text-sm text-pd-muted">
                                 {vehicles.length} vehicles on your account
                             </p>
                         </div>
@@ -228,7 +228,7 @@ function VehicleScreen() {
                 {error && (
                     <p
                         role="alert"
-                        className="rounded-xl bg-red-50 p-4 text-sm text-red-600"
+                        className="rounded-xl bg-pd-danger-soft p-4 text-sm text-pd-danger"
                     >
                         <AlertCircle size={16} className="mr-2 inline" />
                         {error}
@@ -238,7 +238,7 @@ function VehicleScreen() {
                 {message && (
                     <p
                         role="status"
-                        className="rounded-xl bg-emerald-50 p-4 text-sm font-semibold text-[#087F5B]"
+                        className="rounded-xl bg-pd-success-soft p-4 text-sm font-semibold text-[#087F5B]"
                     >
                         <CheckCircle2 size={17} className="mr-2 inline" />
                         {message}
@@ -248,7 +248,7 @@ function VehicleScreen() {
                 {showForm && (
                     <form
                         onSubmit={registerVehicle}
-                        className="space-y-5 rounded-[26px] bg-white p-5 shadow-sm"
+                        className="space-y-5 rounded-[26px] bg-pd-surface p-5 shadow-sm"
                     >
                         <h3 className="text-xl font-extrabold">
                             Register New Vehicle
@@ -268,8 +268,8 @@ function VehicleScreen() {
                                             updateField("vehicleType", type.id)
                                         }
                                         className={`rounded-2xl border-2 p-4 text-left ${form.vehicleType === type.id
-                                            ? "border-[#087F5B] bg-emerald-50"
-                                            : "border-slate-200"
+                                            ? "border-[#087F5B] bg-pd-success-soft"
+                                            : "border-pd-line"
                                             }`}
                                     >
                                         <span className="text-2xl">{type.emoji}</span>
@@ -349,12 +349,12 @@ function VehicleScreen() {
                                         updateField(input.field, event.target.value)
                                     }
                                     placeholder={input.placeholder}
-                                    className="h-13 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-[#087F5B]"
+                                    className="h-13 w-full rounded-xl border border-pd-line px-4 py-3 text-sm outline-none focus:border-[#087F5B]"
                                 />
                             </div>
                         ))}
 
-                        <div className="rounded-xl bg-amber-50 p-4 text-xs leading-5 text-amber-800">
+                        <div className="rounded-xl bg-pd-warning-soft p-4 text-xs leading-5 text-pd-warning">
                             <ShieldCheck size={17} className="mb-2" />
                             Vehicle admin approval ke baad hi active ho sakega.
                             Required driver documents ki verification bhi zaroori hai.
@@ -394,11 +394,11 @@ function VehicleScreen() {
                     </div>
 
                     {loading ? (
-                        <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">
+                        <div className="rounded-2xl bg-pd-surface p-8 text-center text-sm text-pd-muted">
                             Loading vehicles...
                         </div>
                     ) : vehicles.length === 0 ? (
-                        <div className="rounded-2xl bg-white p-9 text-center">
+                        <div className="rounded-2xl bg-pd-surface p-9 text-center">
                             <CarFront
                                 size={38}
                                 className="mx-auto text-[#087F5B]"
@@ -408,7 +408,7 @@ function VehicleScreen() {
                                 No vehicles registered
                             </p>
 
-                            <p className="mt-2 text-sm text-slate-500">
+                            <p className="mt-2 text-sm text-pd-muted">
                                 Add your first vehicle to begin verification.
                             </p>
                         </div>
@@ -429,10 +429,10 @@ function VehicleScreen() {
                             return (
                                 <article
                                     key={vehicle._id}
-                                    className="rounded-[24px] bg-white p-5 shadow-sm"
+                                    className="rounded-[24px] bg-pd-surface p-5 shadow-sm"
                                 >
                                     <div className="flex items-start gap-4">
-                                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-2xl">
+                                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-pd-success-soft text-2xl">
                                             {type?.emoji || "🚗"}
                                         </div>
 
@@ -441,11 +441,11 @@ function VehicleScreen() {
                                                 {vehicle.make} {vehicle.model}
                                             </h4>
 
-                                            <p className="mt-1 text-sm text-slate-500">
+                                            <p className="mt-1 text-sm text-pd-muted">
                                                 {vehicle.registrationNumber}
                                             </p>
 
-                                            <p className="mt-1 text-xs text-slate-500">
+                                            <p className="mt-1 text-xs text-pd-muted">
                                                 {type?.label || vehicle.vehicleType}
                                                 {vehicle.color
                                                     ? ` · ${vehicle.color}`
@@ -460,14 +460,14 @@ function VehicleScreen() {
                                     <div className="mt-4 flex flex-wrap items-center gap-2">
                                         <span
                                             className={`rounded-lg px-3 py-2 text-xs font-bold ${statusStyles[vehicle.verificationStatus] ||
-                                                "bg-slate-100 text-slate-600"
+                                                "bg-pd-surface-2 text-pd-text-2"
                                                 }`}
                                         >
                                             {vehicle.verificationStatus}
                                         </span>
 
                                         {isCurrent && (
-                                            <span className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-[#087F5B]">
+                                            <span className="rounded-lg bg-pd-success-soft px-3 py-2 text-xs font-bold text-[#087F5B]">
                                                 Active Vehicle
                                             </span>
                                         )}
@@ -491,14 +491,14 @@ function VehicleScreen() {
                                         )}
 
                                     {vehicle.verificationStatus === "PENDING" && (
-                                        <p className="mt-4 flex items-center gap-2 text-xs text-amber-700">
+                                        <p className="mt-4 flex items-center gap-2 text-xs text-pd-warning">
                                             <Clock3 size={16} />
                                             Waiting for administrator approval
                                         </p>
                                     )}
 
                                     {vehicle.verificationStatus === "REJECTED" && (
-                                        <p className="mt-4 flex items-center gap-2 text-xs text-red-600">
+                                        <p className="mt-4 flex items-center gap-2 text-xs text-pd-danger">
                                             <XCircle size={16} />
                                             Vehicle rejected. Contact support for review.
                                         </p>

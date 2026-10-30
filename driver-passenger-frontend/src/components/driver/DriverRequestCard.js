@@ -1,16 +1,19 @@
 "use client";
 
 import { Check, Clock3, Flag, Minus, Navigation, Plus, Route } from "lucide-react";
+import { useLanguage, storedLanguage } from "@/components/i18n/LanguageProvider";
 
 const vehicleNames = { BIKE: "Motorcycle", RICKSHAW: "Rickshaw", CAR_AC: "Car · AC", CAR_NON_AC: "Car · Non-AC" };
+const vehicleNamesUr = { BIKE: "موٹر سائیکل", RICKSHAW: "رکشہ", CAR_AC: "کار · AC", CAR_NON_AC: "کار · بغیر AC" };
 const money = (v) => (Number.isFinite(Number(v)) ? `PKR ${Number(v).toLocaleString("en-PK")}` : "—");
 export const placeText = (point) =>
     point?.name || point?.address || (Array.isArray(point?.coordinates)
         ? `${point.coordinates[1].toFixed(5)}, ${point.coordinates[0].toFixed(5)}`
-        : "Location unavailable");
+        : storedLanguage() === "ur" ? "جگہ دستیاب نہیں" : "Location unavailable");
 
 /** Premium incoming-request card with fare stepper, offer and rebid cooldown. */
 export default function DriverRequestCard({ ride, price, onPriceChange, onSend, busy, disabled, submitted, cooldownSeconds }) {
+    const { t, isUrdu } = useLanguage();
     const base = Number(ride.requestedPrice) || 0;
     const current = Number(price ?? ride.requestedPrice) || 0;
     const step = base >= 1000 ? 50 : 10;
@@ -20,27 +23,27 @@ export default function DriverRequestCard({ ride, price, onPriceChange, onSend, 
     return (
         <article className="dx-request" data-live={ride.live ? "true" : undefined} data-submitted={submitted ? "true" : undefined}>
             <header className="dx-request-head">
-                <span className="dx-chip">{vehicleNames[ride.vehicleType] || ride.vehicleType}</span>
+                <span className="dx-chip">{(isUrdu ? vehicleNamesUr : vehicleNames)[ride.vehicleType] || ride.vehicleType}</span>
                 <span className="dx-chip dx-chip-ghost">
-                    {ride.tripType === "ROUND_TRIP" ? "↩ Round Trip" : "One Way"}
+                    {ride.tripType === "ROUND_TRIP" ? t("card.roundTrip") : t("card.oneWay")}
                 </span>
                 {ride.distance != null && <span className="dx-chip dx-chip-ghost"><Route size={12} /> {ride.distance} km</span>}
-                {ride.live && <span className="dx-chip dx-chip-new">New</span>}
+                {ride.live && <span className="dx-chip dx-chip-new">{t("card.new")}</span>}
                 <span className="dx-request-fare">
-                    <small>Passenger offer</small>
+                    <small>{t("card.passengerOffer")}</small>
                     {money(ride.requestedPrice)}
                 </span>
             </header>
 
             <ol className="dx-route">
-                <li><span className="dx-dot dx-dot-pickup"><Navigation size={11} /></span><p><small>Pickup</small>{placeText(ride.pickup)}</p></li>
+                <li><span className="dx-dot dx-dot-pickup"><Navigation size={11} /></span><p><small>{t("card.pickup")}</small>{placeText(ride.pickup)}</p></li>
                 {ride.stops?.map((stop, index) => (
                     <li key={index}>
                         <span className="dx-dot dx-dot-stop">{index + 1}</span>
                         <p>
                             <small>
                                 {ride.tripType === "ROUND_TRIP" && index === ride.stops.length - 1
-                                    ? "Outbound Destination"
+                                    ? t("card.outboundDestination")
                                     : `Stop ${index + 1}`}
                             </small>
                             {placeText(stop)}
@@ -50,7 +53,7 @@ export default function DriverRequestCard({ ride, price, onPriceChange, onSend, 
                 <li>
                     <span className="dx-dot dx-dot-drop"><Flag size={11} /></span>
                     <p>
-                        <small>{ride.tripType === "ROUND_TRIP" ? "Return to Pickup" : "Destination"}</small>
+                        <small>{ride.tripType === "ROUND_TRIP" ? t("card.returnToPickup") : t("card.destination")}</small>
                         {placeText(ride.destination)}
                     </p>
                 </li>
@@ -60,7 +63,7 @@ export default function DriverRequestCard({ ride, price, onPriceChange, onSend, 
                 <p className="dx-request-sent"><Check size={14} /> Offer sent · waiting for passenger{cooling ? ` · revise in ${cooldownSeconds}s` : ""}</p>
             )}
 
-            <div className="dx-chips" role="group" aria-label="Quick fare add-ons">
+            <div className="dx-chips" role="group" aria-label={t("card.quickFare")}>
                 {[10, 20, 50].map((amount) => (
                     <button key={amount} type="button" className="dx-chip-add"
                         onClick={() => onPriceChange(String(current + amount))}
@@ -71,7 +74,7 @@ export default function DriverRequestCard({ ride, price, onPriceChange, onSend, 
                 {base > 0 && current !== base && (
                     <button type="button" className="dx-chip-add dx-chip-reset"
                         onClick={() => onPriceChange(String(base))}
-                        aria-label="Reset to the passenger's fare">
+                        aria-label={t("card.resetFare")}>
                         Reset
                     </button>
                 )}
@@ -79,19 +82,19 @@ export default function DriverRequestCard({ ride, price, onPriceChange, onSend, 
 
             <div className="dx-offer">
                 <div className="dx-stepper">
-                    <button type="button" aria-label="Lower fare" disabled={current - step <= 0}
+                    <button type="button" aria-label={t("card.lowerFare")} disabled={current - step <= 0}
                         onClick={() => onPriceChange(String(Math.max(1, current - step)))}><Minus size={16} /></button>
                     <label>
                         <small>Your fare · PKR{diff !== 0 && base ? <em data-up={diff > 0}>{diff > 0 ? "+" : ""}{diff}</em> : null}</small>
                         <input type="number" inputMode="numeric" min="1" step="1"
                             value={price ?? ride.requestedPrice ?? ""}
                             onChange={(e) => onPriceChange(e.target.value)}
-                            aria-label="Your offer in PKR" />
+                            aria-label={t("card.yourOfferPkr")} />
                     </label>
-                    <button type="button" aria-label="Raise fare" onClick={() => onPriceChange(String(current + step))}><Plus size={16} /></button>
+                    <button type="button" aria-label={t("card.raiseFare")} onClick={() => onPriceChange(String(current + step))}><Plus size={16} /></button>
                 </div>
                 <button type="button" className="dx-btn dx-btn-lime dx-offer-send" onClick={onSend} disabled={disabled || cooling}>
-                    {busy ? "Sending…" : cooling ? <><Clock3 size={15} /> {cooldownSeconds}s</> : submitted ? "Update offer" : "Send offer"}
+                    {busy ? t("card.sending") : cooling ? <><Clock3 size={15} /> {cooldownSeconds}s</> : submitted ? t("card.updateOffer") : t("card.sendOffer")}
                 </button>
             </div>
             {cooling && <div className="dx-cooldown" style={{ "--p": `${(cooldownSeconds / 15) * 100}%` }} aria-hidden />}

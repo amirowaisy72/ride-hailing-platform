@@ -119,6 +119,112 @@ const searchAddress = async (query, latitude, longitude) => {
     }));
 };
 
+// ---------------------------------------------------------------------------
+// Reverse geocoding provider chain (Amir review A4 — location-name
+// reliability). "Use my current location" used to depend on Nominatim
+// alone: any timeout/HTTP failure surfaced as a 502 and the app fell back
+// to showing raw coordinates. The chain is now:
+//
+//   1. Nominatim (primary)          — short 4s timeout
+//   2. BigDataCloud free client API — secondary, also 4s; no API key.
+//      GET https://api.bigdatacloud.net/data/reverse-geocode-client
+//      returns { city, locality, principalSubdivision, countryName, ... }
+//      at locality/city granularity (coarser than Nominatim's street
+//      address, but a real place name beats raw coordinates).
+//   3. Both fail/empty → throw, exactly as before; the controller then
+//      tries the caller's nearest SavedPlace before returning 502.
+//
+// Worst-case added latency is bounded: 4s + 4s sequential, and the second
+// call only happens when the first already failed. ensureMapsEnabled()
+// still gates the WHOLE chain: when an admin disables "maps-routing",
+// reverseGeocode throws the 503 before any provider is contacted — the
+// fallback never bypasses that switch.
+// ---------------------------------------------------------------------------
+
+const REVERSE_GEOCODE_TIMEOUT_MS = 4000;
+
+const reverseGeocodeNominatim = async (lat, lon) => {
+    const url = new URL("https://nominatim.openstreetmap.org/reverse");
+
+    url.searchParams.set("lat", lat);
+    url.searchParams.set("lon", lon);
+    url.searchParams.set("format", "json");
+    url.searchParams.set("addressdetails", "1");
+
+    const response = await fetch(url, {
+        headers: {
+            "User-Agent": "RideHailingPlatform/1.0 (development; contact: amirowaisy72@.com)",
+            "Accept": "application/json",
+        },
+        signal: AbortSignal.timeout(REVERSE_GEOCODE_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+        throw new Error("Reverse geocoding unavailable");
+    }
+
+    const place = await response.json();
+
+    if (place.error || !place.display_name) {
+        throw new Error("Address not found");
+    }
+
+    return {
+        name: place.display_name,
+        latitude: lat,
+        longitude: lon,
+        source: "provider",
+    };
+};
+
+const reverseGeocodeBigDataCloud = async (lat, lon) => {
+    const url = new URL(
+        "https://api.bigdatacloud.net/data/reverse-geocode-client"
+    );
+
+    url.searchParams.set("latitude", lat);
+    url.searchParams.set("longitude", lon);
+    url.searchParams.set("localityLanguage", "en");
+
+    const response = await fetch(url, {
+        headers: {
+            "Accept": "application/json",
+        },
+        signal: AbortSignal.timeout(REVERSE_GEOCODE_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+        throw new Error("Reverse geocoding unavailable");
+    }
+
+    const place = await response.json();
+
+    // Normalize BigDataCloud's locality fields to the shared shape:
+    // most specific first, de-duplicated ("Khanpur, Punjab, Pakistan").
+    const parts = [];
+    for (const value of [
+        place.locality || place.city,
+        place.city,
+        place.principalSubdivision,
+        place.countryName,
+    ]) {
+        if (typeof value === "string" && value.trim() && !parts.includes(value.trim())) {
+            parts.push(value.trim());
+        }
+    }
+
+    if (!parts.length) {
+        throw new Error("Address not found");
+    }
+
+    return {
+        name: parts.join(", "),
+        latitude: lat,
+        longitude: lon,
+        source: "provider",
+    };
+};
+
 const reverseGeocode = async (latitude, longitude) => {
     await ensureMapsEnabled();
     const lat = Number(latitude);
@@ -133,36 +239,31 @@ const reverseGeocode = async (latitude, longitude) => {
         throw new Error("Invalid coordinates");
     }
 
-    const url = new URL("https://nominatim.openstreetmap.org/reverse");
+    try {
+        return await reverseGeocodeNominatim(lat, lon);
+    } catch (primaryError) {
+        console.error(
+            "[REVERSE GEOCODE] Nominatim failed, trying fallback:",
+            primaryError.message
+        );
+    }
 
-    url.searchParams.set("lat", lat);
-    url.searchParams.set("lon", lon);
-    url.searchParams.set("format", "json");
-    url.searchParams.set("addressdetails", "1");
-
-    const response = await fetch(url, {
-        headers: {
-            "User-Agent": "RideHailingPlatform/1.0 (development; contact: amirowaisy72@.com)",
-            "Accept": "application/json",
-        },
-        signal: AbortSignal.timeout(10000),
-    });
-
-    if (!response.ok) {
+    try {
+        return await reverseGeocodeBigDataCloud(lat, lon);
+    } catch (fallbackError) {
+        console.error(
+            "[REVERSE GEOCODE] All providers failed:",
+            fallbackError.message
+        );
         throw new Error("Reverse geocoding unavailable");
     }
-
-    const place = await response.json();
-
-    if (place.error) {
-        throw new Error("Address not found");
-    }
-
-    return {
-        name: place.display_name,
-        latitude: lat,
-        longitude: lon,
-    };
 };
 
-module.exports = { getRoute, searchAddress, reverseGeocode };
+module.exports = {
+    getRoute,
+    searchAddress,
+    reverseGeocode,
+    // Exported for unit tests (provider chain stages).
+    reverseGeocodeNominatim,
+    reverseGeocodeBigDataCloud,
+};

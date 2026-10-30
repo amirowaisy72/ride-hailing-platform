@@ -42,7 +42,11 @@ router.post("/", protect, authorize("PASSENGER"), createRide);
 router.get("/active", protect, authorize("PASSENGER"), getActiveRide);
 router.get("/history", protect, authorize("PASSENGER"), getMyRideHistory);
 router.get("/latest-completed", protect, authorize("PASSENGER"), getLatestCompletedRide);
-router.post("/:rideId/cancel", protect, authorize("PASSENGER"), cancelRide);
+// Either party may cancel: the passenger (before OR after driver
+// selection, up to TRIP_STARTED) or the assigned driver (which
+// releases the ride back to REQUESTED). The controller resolves the
+// caller from the ride; see rideCancellationController.js.
+router.post("/:rideId/cancel", protect, authorize("PASSENGER", "DRIVER"), cancelRide);
 
 const {
     submitOffer,
@@ -53,7 +57,11 @@ const {
 router.post(
     "/:rideId/offers",
     protect,
-    authorize("DRIVER"),
+    // Per-service eligibility: a driver approved ONLY through the
+    // Services screen (RIDE=APPROVED, global status still PENDING)
+    // must be able to offer; the controller additionally enforces
+    // canReceiveRideRequests for the RIDE service specifically.
+    authorize("DRIVER", { allowServiceEligibility: true }),
     submitOffer
 );
 
@@ -83,7 +91,7 @@ router.post(
 router.patch(
     "/:rideId/status",
     protect,
-    authorize("DRIVER"),
+    authorize("DRIVER", { allowServiceEligibility: true }),
     updateTripStatus
 );
 
@@ -108,7 +116,7 @@ const {
 router.patch(
     "/:rideId/stops",
     protect,
-    authorize("DRIVER"),
+    authorize("DRIVER", { allowServiceEligibility: true }),
     updateRideStop
 );
 

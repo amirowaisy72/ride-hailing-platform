@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import AdminShell from "@/components/AdminShell";
+import { useAdminDialog } from "@/components/AdminDialog";
 import { authenticatedAdminRequest } from "@/lib/adminSession";
 import {
     Plug, ExternalLink, ShieldCheck, Server,
@@ -104,6 +105,7 @@ const integrations = [
 ];
 
 export default function IntegrationsPage() {
+    const { confirmDialog } = useAdminDialog();
     const [statuses, setStatuses] = useState({});
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(true);
@@ -152,9 +154,10 @@ export default function IntegrationsPage() {
     }
 
     async function toggleIntegration(key, enabled) {
-        if (!window.confirm(
-            `Are you sure you want to turn ${enabled ? "ON" : "OFF"} ${key.replaceAll("-", " ")}?`
-        )) return;
+        if (!(await confirmDialog(
+            `Are you sure you want to turn ${enabled ? "ON" : "OFF"} ${key.replaceAll("-", " ")}?`,
+            { danger: !enabled }
+        ))) return;
 
         setSavingKey(key);
         setError("");

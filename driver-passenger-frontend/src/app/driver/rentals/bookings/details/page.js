@@ -27,6 +27,7 @@ import {
 import AuthGuard from "@/components/AuthGuard";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import OrderChat from "@/components/OrderChat";
+import DestinationMap from "@/components/DestinationMap";
 import { RentalTimeline } from "@/components/order/PurchaseTimeline";
 // RentalTimeline is a named export; PurchaseTimeline is that module's default.
 import { RENTAL_BOOKING_META } from "@/components/driver/RentalPartnerBookings";
@@ -184,13 +185,13 @@ function BookingScreen() {
     const status = booking?.status;
     const meta = RENTAL_BOOKING_META[status] || {
         label: status || "",
-        pill: "bg-slate-100 text-slate-600",
+        pill: "bg-pd-surface-3 text-pd-muted",
     };
     const vehicle = booking?.vehicle;
     const feeStatus = booking?.feePayment?.status;
 
     return (
-        <main className="driver-subpage min-h-dvh bg-[#F7F9F8] pb-28 text-slate-900">
+        <main className="driver-subpage min-h-dvh bg-pd-bg pb-28 text-pd-text">
             <MobileBottomNav role="DRIVER" />
 
             <header className="bg-[#087F5B] px-5 pb-8 pt-[max(24px,env(safe-area-inset-top))] text-white">
@@ -229,8 +230,8 @@ function BookingScreen() {
                         role={notice.kind === "error" ? "alert" : "status"}
                         className={`rounded-xl p-4 text-sm font-semibold ${
                             notice.kind === "error"
-                                ? "bg-red-50 text-red-600"
-                                : "bg-emerald-50 text-[#087F5B]"
+                                ? "bg-pd-danger-soft text-pd-danger"
+                                : "bg-pd-success-soft text-[#087F5B]"
                         }`}
                     >
                         {notice.text}
@@ -239,12 +240,12 @@ function BookingScreen() {
 
                 {loading ? (
                     <div
-                        className="h-72 animate-pulse rounded-[24px] bg-white shadow-sm"
+                        className="h-72 animate-pulse rounded-[24px] bg-pd-surface shadow-sm"
                         aria-busy="true"
                     />
                 ) : error && !booking ? (
-                    <div className="rounded-[24px] bg-white p-5 shadow-sm">
-                        <p role="alert" className="flex items-start gap-2 text-sm font-semibold text-red-600">
+                    <div className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
+                        <p role="alert" className="flex items-start gap-2 text-sm font-semibold text-pd-danger">
                             <CircleAlert size={17} className="mt-0.5 shrink-0" />
                             {error}
                         </p>
@@ -258,14 +259,14 @@ function BookingScreen() {
                     </div>
                 ) : booking ? (
                     <>
-                        <section className="rounded-[24px] bg-white p-5 shadow-sm">
+                        <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                             <div className="flex items-center gap-2">
                                 <span
                                     className={`rounded-full px-3 py-1 text-xs font-extrabold ${meta.pill}`}
                                 >
                                     {meta.label}
                                 </span>
-                                <span className="text-xs font-bold text-slate-400">
+                                <span className="text-xs font-bold text-pd-faint">
                                     {fmtDateTime(booking.startAt)} →{" "}
                                     {fmtDateTime(booking.endAt)}
                                 </span>
@@ -276,14 +277,14 @@ function BookingScreen() {
                         </section>
 
                         <section className="grid grid-cols-2 gap-3">
-                            <div className="rounded-[24px] bg-white p-5 shadow-sm">
-                                <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                            <div className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
+                                <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-pd-muted">
                                     <UserRound size={14} /> Customer
                                 </p>
                                 <p className="mt-2 text-sm font-bold">
                                     Renter
                                 </p>
-                                <p className="text-xs text-slate-500">
+                                <p className="text-xs text-pd-muted">
                                     {booking.mode === "WITH_DRIVER"
                                         ? "With Driver booking"
                                         : "Self-Drive booking"}
@@ -299,8 +300,8 @@ function BookingScreen() {
                                     <MessageCircle size={15} /> Chat
                                 </button>
                             </div>
-                            <div className="rounded-[24px] bg-white p-5 shadow-sm">
-                                <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                            <div className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
+                                <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-pd-muted">
                                     <CarFront size={14} /> Vehicle
                                 </p>
                                 <p className="mt-2 text-sm font-bold">
@@ -308,12 +309,12 @@ function BookingScreen() {
                                         ? `${vehicle.brand} ${vehicle.model}`
                                         : "—"}
                                 </p>
-                                <p className="text-xs text-slate-500">
+                                <p className="text-xs text-pd-muted">
                                     {vehicle
                                         ? `${vehicle.transmission === "AUTOMATIC" ? "Automatic" : "Manual"} · ${vehicle.seats} seats${vehicle.hasAC ? " · AC" : ""}`
                                         : ""}
                                 </p>
-                                <p className="mt-1 text-xs text-slate-500">
+                                <p className="mt-1 text-xs text-pd-muted">
                                     Pickup:{" "}
                                     {vehicle?.contactUnlocked &&
                                     vehicle?.exactPickupAddress
@@ -322,15 +323,22 @@ function BookingScreen() {
                                 </p>
                                 {vehicle?.contactUnlocked &&
                                     vehicle?.pickupContactPhone && (
-                                        <p className="text-xs font-semibold text-slate-600">
+                                        <p className="text-xs font-semibold text-pd-muted">
                                             {vehicle.pickupContactName} ·{" "}
                                             {vehicle.pickupContactPhone}
                                         </p>
                                     )}
+                                <div className="mt-3">
+                                    <DestinationMap
+                                        point={vehicle?.pickupArea}
+                                        label={vehicle?.pickupAreaLabel || "Pickup area"}
+                                        navigateLabel="Navigate to pickup"
+                                    />
+                                </div>
                             </div>
                         </section>
 
-                        <section className="rounded-[24px] bg-white p-5 shadow-sm">
+                        <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                             <h2 className="flex items-center gap-2 text-sm font-extrabold">
                                 <Banknote size={17} className="text-[#087F5B]" />
                                 Amounts
@@ -347,7 +355,7 @@ function BookingScreen() {
                                     value={`${money(booking.ratePerUnit)} × ${booking.units} ${String(booking.billingUnit || "").toLowerCase()}`}
                                 />
                             </div>
-                            <div className="mt-3 rounded-xl bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+                            <div className="mt-3 rounded-xl bg-pd-surface-2 p-3 text-xs leading-5 text-pd-muted">
                                 <p className="font-bold">
                                     Booking fee payment:{" "}
                                     {feeStatus === "VERIFIED"
@@ -373,7 +381,7 @@ function BookingScreen() {
                                 </p>
                             </div>
                             {booking.returnDues?.remainingDues != null && (
-                                <div className="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+                                <div className="mt-3 rounded-xl bg-pd-warning-soft p-3 text-xs leading-5 text-pd-warning">
                                     <p className="font-bold">
                                         Return dues: {money(booking.returnDues.remainingDues)}
                                     </p>
@@ -395,7 +403,7 @@ function BookingScreen() {
 
                         {(booking.handover?.recordedAt ||
                             booking.returnInspection?.recordedAt) && (
-                            <section className="rounded-[24px] bg-white p-5 shadow-sm">
+                            <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                                 <h2 className="text-sm font-extrabold">
                                     Inspection record
                                 </h2>
@@ -411,11 +419,11 @@ function BookingScreen() {
                         )}
 
                         {status === "REQUESTED" && (
-                            <section className="rounded-[24px] bg-white p-5 shadow-sm">
+                            <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                                 <h2 className="text-base font-extrabold">
                                     New booking request
                                 </h2>
-                                <p className="mt-1 text-sm leading-6 text-slate-500">
+                                <p className="mt-1 text-sm leading-6 text-pd-muted">
                                     Accepting holds the vehicle for this window
                                     and asks the customer to pay the Safar
                                     booking fee. The booking confirms once
@@ -442,7 +450,7 @@ function BookingScreen() {
                                             type="button"
                                             disabled={Boolean(busy)}
                                             onClick={() => setRejectOpen(true)}
-                                            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-red-50 font-bold text-red-600 disabled:opacity-40"
+                                            className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-pd-danger-soft font-bold text-pd-danger disabled:opacity-40"
                                         >
                                             <XCircle size={18} /> Reject
                                         </button>
@@ -472,14 +480,14 @@ function BookingScreen() {
                                                         "Booking rejected."
                                                     )
                                                 }
-                                                className="flex h-12 flex-1 items-center justify-center rounded-xl bg-red-500 font-bold text-white disabled:opacity-40"
+                                                className="flex h-12 flex-1 items-center justify-center rounded-xl bg-pd-danger-soft0 font-bold text-white disabled:opacity-40"
                                             >
                                                 {busy === "reject" ? "Rejecting…" : "Confirm reject"}
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={() => setRejectOpen(false)}
-                                                className="h-12 rounded-xl bg-slate-100 px-4 text-sm font-bold text-slate-600"
+                                                className="h-12 rounded-xl bg-pd-surface-3 px-4 text-sm font-bold text-pd-muted"
                                             >
                                                 Back
                                             </button>
@@ -491,8 +499,8 @@ function BookingScreen() {
 
                         {(status === "PROVIDER_ACCEPTED" ||
                             status === "PAYMENT_PENDING") && (
-                            <section className="rounded-[24px] bg-blue-50 p-5 shadow-sm">
-                                <p className="flex items-start gap-2 text-sm font-semibold leading-6 text-blue-800">
+                            <section className="rounded-[24px] bg-pd-info-soft p-5 shadow-sm">
+                                <p className="flex items-start gap-2 text-sm font-semibold leading-6 text-pd-info">
                                     <Hourglass size={18} className="mt-0.5 shrink-0" />
                                     Waiting on the booking fee. The booking
                                     confirms automatically once Safar verifies
@@ -503,11 +511,11 @@ function BookingScreen() {
                         )}
 
                         {status === "CONFIRMED" && (
-                            <section className="rounded-[24px] bg-white p-5 shadow-sm">
+                            <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                                 <h2 className="text-base font-extrabold">
                                     Verify the pickup
                                 </h2>
-                                <p className="mt-1 text-sm leading-6 text-slate-500">
+                                <p className="mt-1 text-sm leading-6 text-pd-muted">
                                     Collect the refundable deposit of{" "}
                                     <strong>{money(booking.securityDeposit)}</strong>,
                                     ask the customer for their pickup OTP, and
@@ -567,7 +575,7 @@ function BookingScreen() {
                                         {busy === "pickup" ? "Verifying…" : "Verify pickup & record handover"}
                                     </button>
                                     {handover.photoUrls.length === 0 && (
-                                        <p className="text-center text-[11px] font-semibold text-slate-400">
+                                        <p className="text-center text-[11px] font-semibold text-pd-faint">
                                             At least one handover photo is required.
                                         </p>
                                     )}
@@ -576,11 +584,11 @@ function BookingScreen() {
                         )}
 
                         {status === "PICKUP_VERIFIED" && (
-                            <section className="rounded-[24px] bg-white p-5 shadow-sm">
+                            <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                                 <h2 className="text-base font-extrabold">
                                     Handover recorded
                                 </h2>
-                                <p className="mt-1 text-sm text-slate-500">
+                                <p className="mt-1 text-sm text-pd-muted">
                                     Start the rental clock when the customer
                                     drives away.
                                 </p>
@@ -603,12 +611,12 @@ function BookingScreen() {
                         )}
 
                         {status === "RENTAL_ACTIVE" && (
-                            <section className="rounded-[24px] bg-white p-5 shadow-sm">
+                            <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                                 <h2 className="flex items-center gap-2 text-base font-extrabold">
                                     <Undo2 size={18} className="text-[#087F5B]" />
                                     Record the return
                                 </h2>
-                                <p className="mt-1 text-sm leading-6 text-slate-500">
+                                <p className="mt-1 text-sm leading-6 text-pd-muted">
                                     Inspect the car with the customer, record
                                     fuel and odometer, and add any other dues
                                     (damage, fines). Safar works out extra-km
@@ -623,7 +631,7 @@ function BookingScreen() {
                                         onUpload={(files) => void uploadPhotos("return", files)}
                                     />
                                     <label className="block">
-                                        <span className="text-xs font-semibold text-slate-500">
+                                        <span className="text-xs font-semibold text-pd-muted">
                                             Other dues (PKR) — damage, fines, cleaning
                                         </span>
                                         <input
@@ -679,7 +687,7 @@ function BookingScreen() {
                                         {busy === "return" ? "Saving…" : "Submit return inspection"}
                                     </button>
                                     {returnForm.photoUrls.length === 0 && (
-                                        <p className="text-center text-[11px] font-semibold text-slate-400">
+                                        <p className="text-center text-[11px] font-semibold text-pd-faint">
                                             At least one return photo is required.
                                         </p>
                                     )}
@@ -688,8 +696,8 @@ function BookingScreen() {
                         )}
 
                         {status === "RETURN_PENDING" && (
-                            <section className="rounded-[24px] bg-amber-50 p-5 shadow-sm">
-                                <p className="flex items-start gap-2 text-sm font-semibold leading-6 text-amber-800">
+                            <section className="rounded-[24px] bg-pd-warning-soft p-5 shadow-sm">
+                                <p className="flex items-start gap-2 text-sm font-semibold leading-6 text-pd-warning">
                                     <Hourglass size={18} className="mt-0.5 shrink-0" />
                                     Return submitted — waiting for the customer
                                     to confirm the inspection and settle any
@@ -704,12 +712,12 @@ function BookingScreen() {
                         )}
 
                         {status === "COMPLETED" && (
-                            <section className="rounded-[24px] bg-emerald-50 p-5 text-center shadow-sm">
+                            <section className="rounded-[24px] bg-pd-success-soft p-5 text-center shadow-sm">
                                 <CheckCircle2 size={34} className="mx-auto text-[#087F5B]" />
                                 <p className="mt-2 font-extrabold text-[#087F5B]">
                                     Rental complete
                                 </p>
-                                <p className="mt-1 text-sm text-slate-600">
+                                <p className="mt-1 text-sm text-pd-muted">
                                     You earned {money(booking.rentalCharges)} on
                                     this booking.
                                 </p>
@@ -719,8 +727,8 @@ function BookingScreen() {
                         {(status === "CANCELLED" ||
                             status === "NO_SHOW" ||
                             status === "DISPUTED") && (
-                            <section className="rounded-[24px] bg-white p-5 shadow-sm">
-                                <p className="text-sm font-semibold leading-6 text-slate-600">
+                            <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
+                                <p className="text-sm font-semibold leading-6 text-pd-muted">
                                     This booking is {meta.label.toLowerCase()}.
                                     {booking.cancelReason
                                         ? ` Reason: ${booking.cancelReason}`
@@ -751,7 +759,7 @@ function BookingScreen() {
 function Row({ label, value, strong = false }) {
     return (
         <div className="flex items-center justify-between gap-3">
-            <span className="text-slate-500">{label}</span>
+            <span className="text-pd-muted">{label}</span>
             <span className={strong ? "font-extrabold text-[#087F5B]" : "font-bold"}>
                 {value}
             </span>
@@ -761,8 +769,8 @@ function Row({ label, value, strong = false }) {
 
 function InspectionCard({ title, inspection }) {
     return (
-        <div className="rounded-2xl bg-slate-50 p-3.5">
-            <p className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+        <div className="rounded-2xl bg-pd-surface-2 p-3.5">
+            <p className="text-xs font-extrabold uppercase tracking-wider text-pd-muted">
                 {title}
             </p>
             <p className="mt-2 flex items-center gap-1.5 text-sm font-bold">
@@ -774,7 +782,7 @@ function InspectionCard({ title, inspection }) {
                 {Number(inspection.odometerKm ?? 0).toLocaleString("en-PK")} km
             </p>
             {inspection.notes && (
-                <p className="mt-1.5 text-xs leading-5 text-slate-500">
+                <p className="mt-1.5 text-xs leading-5 text-pd-muted">
                     {inspection.notes}
                 </p>
             )}
@@ -804,7 +812,7 @@ function InspectionForm({ form, setForm, uploading, onUpload }) {
         <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
                 <label className="block">
-                    <span className="flex items-center gap-1 text-xs font-semibold text-slate-500">
+                    <span className="flex items-center gap-1 text-xs font-semibold text-pd-muted">
                         <Fuel size={12} /> Fuel level %
                     </span>
                     <input
@@ -820,7 +828,7 @@ function InspectionForm({ form, setForm, uploading, onUpload }) {
                     />
                 </label>
                 <label className="block">
-                    <span className="flex items-center gap-1 text-xs font-semibold text-slate-500">
+                    <span className="flex items-center gap-1 text-xs font-semibold text-pd-muted">
                         <Gauge size={12} /> Odometer (km)
                     </span>
                     <input
@@ -835,7 +843,7 @@ function InspectionForm({ form, setForm, uploading, onUpload }) {
                     />
                 </label>
             </div>
-            <label className="block cursor-pointer rounded-xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 p-3 text-center">
+            <label className="block cursor-pointer rounded-xl border-2 border-dashed border-pd-line bg-pd-success-soft p-3 text-center">
                 <Camera size={20} className="mx-auto text-[#087F5B]" />
                 <span className="mt-1 block text-xs font-semibold">
                     {uploading

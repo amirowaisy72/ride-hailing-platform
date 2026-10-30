@@ -22,6 +22,7 @@ import {
     XCircle,
 } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
+import { useActionDialog } from "@/components/ActionDialog";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import OrderChat from "@/components/OrderChat";
 import { useAuth } from "@/context/AuthContext";
@@ -70,6 +71,7 @@ function countdown(deadline, now) {
 
 function BookingDetail() {
     const { token, user } = useAuth();
+    const dialog = useActionDialog();
     const searchParams = useSearchParams();
     const id = String(searchParams.get("id") || "");
 
@@ -200,21 +202,36 @@ function BookingDetail() {
     }
 
     async function handleCancel() {
-        const reason = window.prompt("Why are you cancelling? (optional)", "");
+        const reason = await dialog.prompt({
+            title: "Cancel this booking?",
+            label: "Why are you cancelling?",
+            confirmLabel: "Continue",
+        });
         if (reason === null) return;
-        if (!window.confirm("Cancel this booking? Any booking-fee refund follows the vehicle's cancellation policy.")) return;
+        if (!(await dialog.confirm({
+            title: "Cancel this booking?",
+            message: "Any booking-fee refund follows the vehicle's cancellation policy.",
+            confirmLabel: "Cancel booking",
+            cancelLabel: "Keep booking",
+            danger: true,
+        }))) return;
         await run("cancel", () => cancelRentalBooking(id, reason || "", token), "Booking cancelled.");
     }
 
     async function handleDispute() {
-        const reason = window.prompt("Tell us what went wrong — our team will review this booking.", "");
+        const reason = await dialog.prompt({
+            title: "Raise a dispute",
+            label: "Tell us what went wrong — our team will review this booking.",
+            optional: false,
+            confirmLabel: "Send dispute",
+        });
         if (!reason?.trim()) return;
         await run("dispute", () => raiseRentalDispute(id, reason.trim(), token), "Dispute raised. Our team will review it.");
     }
 
     if (loading && !booking) {
         return (
-            <main className="flex min-h-dvh items-center justify-center bg-[#F4F5F7] text-sm font-semibold text-slate-500">
+            <main className="flex min-h-dvh items-center justify-center bg-pd-bg text-sm font-semibold text-pd-muted">
                 Loading your booking…
             </main>
         );
@@ -222,10 +239,10 @@ function BookingDetail() {
 
     if (!booking) {
         return (
-            <main className="min-h-dvh bg-[#F4F5F7] pb-28 text-[#111111]">
+            <main className="min-h-dvh bg-pd-bg pb-28 text-pd-text">
                 <div className="mx-auto max-w-xl px-4 pt-16 text-center">
                     <p className="font-extrabold">Booking not found</p>
-                    {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+                    {error && <p className="mt-2 text-sm text-pd-danger">{error}</p>}
                     <Link href="/passenger/rentals" className="mt-4 inline-block rounded-2xl bg-[#087F5B] px-5 py-3 text-sm font-extrabold text-white">
                         Back to Rentals
                     </Link>
@@ -245,35 +262,35 @@ function BookingDetail() {
     const dues = booking.returnDues || {};
 
     return (
-        <main className="min-h-dvh bg-[#F4F5F7] pb-28 text-[#111111]">
-            <div className="sticky top-0 z-20 border-b border-slate-100 bg-white/95 backdrop-blur-xl">
+        <main className="min-h-dvh bg-pd-bg pb-28 text-pd-text">
+            <div className="sticky top-0 z-20 border-b border-pd-line bg-pd-elevated backdrop-blur-xl">
                 <div className="mx-auto flex max-w-xl items-center gap-2 px-3 pb-3 pt-[max(12px,env(safe-area-inset-top))]">
-                    <Link href="/passenger/rentals" aria-label="Back to Rentals" className="grid h-11 w-11 place-items-center rounded-2xl hover:bg-[#F4F5F7]">
+                    <Link href="/passenger/rentals" aria-label="Back to Rentals" className="grid h-11 w-11 place-items-center rounded-2xl hover:bg-pd-bg">
                         <ArrowLeft size={21} />
                     </Link>
                     <div className="min-w-0 flex-1">
                         <h1 className="truncate text-lg font-extrabold leading-tight tracking-tight">{vehicleTitle(vehicle)}</h1>
-                        <p className="text-xs text-slate-500">Ref {booking.bookingRef} · {booking.mode === "SELF_DRIVE" ? "Self-drive" : "With driver"}</p>
+                        <p className="text-xs text-pd-muted">Ref {booking.bookingRef} · {booking.mode === "SELF_DRIVE" ? "Self-drive" : "With driver"}</p>
                     </div>
                     <StatusPill meta={meta} />
-                    <button type="button" aria-label="Refresh" onClick={() => void load()} className="grid h-11 w-11 place-items-center rounded-2xl text-slate-500 hover:bg-[#F4F5F7]">
+                    <button type="button" aria-label="Refresh" onClick={() => void load()} className="grid h-11 w-11 place-items-center rounded-2xl text-pd-muted hover:bg-pd-bg">
                         <RefreshCw size={18} />
                     </button>
                 </div>
             </div>
 
             <div className="mx-auto max-w-xl space-y-4 px-4 pt-4">
-                {error && <p role="alert" className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">{error}</p>}
-                {notice && <p role="status" className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-[#087F5B]">{notice}</p>}
+                {error && <p role="alert" className="rounded-2xl bg-pd-danger-soft px-4 py-3 text-sm font-semibold text-pd-danger">{error}</p>}
+                {notice && <p role="status" className="rounded-2xl bg-pd-success-soft px-4 py-3 text-sm font-semibold text-[#087F5B]">{notice}</p>}
 
-                <section className="rounded-[24px] bg-white p-4 shadow-sm">
+                <section className="rounded-[24px] bg-pd-surface p-4 shadow-sm">
                     <RentalTimeline status={booking.status} />
                 </section>
 
                 {/* Vehicle + window */}
-                <section className="rounded-[24px] bg-white p-4 shadow-sm">
+                <section className="rounded-[24px] bg-pd-surface p-4 shadow-sm">
                     <div className="flex gap-3">
-                        <span className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-slate-100 text-slate-300">
+                        <span className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-pd-surface-3 text-pd-faint">
                             {photo ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={photo} alt={vehicleTitle(vehicle)} className="h-full w-full object-cover" />
@@ -283,28 +300,28 @@ function BookingDetail() {
                         </span>
                         <div className="min-w-0 flex-1 text-sm">
                             <p className="text-[15px] font-extrabold">{vehicleTitle(vehicle)}</p>
-                            <p className="mt-0.5 flex items-center gap-1.5 font-semibold text-slate-500">
+                            <p className="mt-0.5 flex items-center gap-1.5 font-semibold text-pd-muted">
                                 <CalendarDays size={13} />
                                 {booking.startAt ? new Date(booking.startAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
                             </p>
-                            <p className="font-semibold text-slate-500">
+                            <p className="font-semibold text-pd-muted">
                                 → {booking.endAt ? new Date(booking.endAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
                             </p>
-                            <p className="mt-0.5 text-xs font-semibold text-slate-400">
+                            <p className="mt-0.5 text-xs font-semibold text-pd-faint">
                                 {booking.units} × {String(booking.billingUnit || "").toLowerCase()} @ {formatPKR(booking.ratePerUnit)}
                             </p>
                         </div>
                     </div>
-                    <dl className="mt-4 space-y-1.5 border-t border-slate-50 pt-3 text-sm font-semibold">
-                        <div className="flex justify-between"><dt className="text-slate-500">Rental charges</dt><dd>{formatPKR(booking.rentalCharges)}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Booking fee ({booking.bookingFeePercent}%)</dt><dd>{formatPKR(booking.bookingFee)}</dd></div>
-                        <div className="flex justify-between"><dt className="text-slate-500">Security deposit (at pickup, refundable)</dt><dd>{formatPKR(booking.securityDeposit)}</dd></div>
+                    <dl className="mt-4 space-y-1.5 border-t border-pd-line pt-3 text-sm font-semibold">
+                        <div className="flex justify-between"><dt className="text-pd-muted">Rental charges</dt><dd>{formatPKR(booking.rentalCharges)}</dd></div>
+                        <div className="flex justify-between"><dt className="text-pd-muted">Booking fee ({booking.bookingFeePercent}%)</dt><dd>{formatPKR(booking.bookingFee)}</dd></div>
+                        <div className="flex justify-between"><dt className="text-pd-muted">Security deposit (at pickup, refundable)</dt><dd>{formatPKR(booking.securityDeposit)}</dd></div>
                     </dl>
                     <button
                         type="button"
                         disabled={!booking.partnerUserId}
                         onClick={() => setChatOpen(true)}
-                        className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#111111] text-sm font-bold text-white disabled:opacity-40"
+                        className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-pd-ink text-sm font-bold text-pd-ink-text disabled:opacity-40"
                     >
                         <MessageCircle size={17} /> Chat with the vehicle owner
                     </button>
@@ -312,74 +329,74 @@ function BookingDetail() {
 
                 {/* Fee instructions + proof */}
                 {feeDue && (
-                    <section className="space-y-3 rounded-[24px] border-2 border-orange-200 bg-orange-50 p-4 shadow-sm" aria-labelledby="fee-title">
-                        <h2 id="fee-title" className="flex items-center gap-2 text-[15px] font-extrabold text-orange-900">
+                    <section className="space-y-3 rounded-[24px] border-2 border-pd-line bg-pd-warning-soft p-4 shadow-sm" aria-labelledby="fee-title">
+                        <h2 id="fee-title" className="flex items-center gap-2 text-[15px] font-extrabold text-pd-warning">
                             <Landmark size={17} /> Pay the booking fee to confirm
                         </h2>
-                        <div className="space-y-1.5 rounded-2xl bg-white p-3.5 text-sm font-semibold">
-                            <p className="flex justify-between"><span className="text-slate-500">Booking fee due</span><span className="font-extrabold">{formatPKR(feeInfo?.bookingFee ?? booking.bookingFee)}</span></p>
-                            <p className="flex justify-between"><span className="text-slate-500">Status</span>
-                                <span className={feeStatus === "REJECTED" ? "font-extrabold text-red-600" : feeStatus === "SUBMITTED" ? "font-extrabold text-amber-600" : "font-bold"}>
+                        <div className="space-y-1.5 rounded-2xl bg-pd-surface p-3.5 text-sm font-semibold">
+                            <p className="flex justify-between"><span className="text-pd-muted">Booking fee due</span><span className="font-extrabold">{formatPKR(feeInfo?.bookingFee ?? booking.bookingFee)}</span></p>
+                            <p className="flex justify-between"><span className="text-pd-muted">Status</span>
+                                <span className={feeStatus === "REJECTED" ? "font-extrabold text-pd-danger" : feeStatus === "SUBMITTED" ? "font-extrabold text-pd-warning" : "font-bold"}>
                                     {feeStatus === "NOT_SUBMITTED" ? "Not submitted" : feeStatus === "SUBMITTED" ? "Submitted — verifying" : feeStatus === "VERIFIED" ? "Verified" : "Rejected — please resubmit"}
                                 </span>
                             </p>
                             {(feeInfo?.paymentDeadlineAt || booking.paymentDeadlineAt) && (
-                                <p className="flex justify-between"><span className="text-slate-500">Pay before</span>
-                                    <span className="font-bold text-orange-700">
+                                <p className="flex justify-between"><span className="text-pd-muted">Pay before</span>
+                                    <span className="font-bold text-pd-warning">
                                         {new Date(feeInfo?.paymentDeadlineAt || booking.paymentDeadlineAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                                         {" · "}{countdown(feeInfo?.paymentDeadlineAt || booking.paymentDeadlineAt, now)}
                                     </span>
                                 </p>
                             )}
                             {booking.feePayment?.rejectionReason && feeStatus === "REJECTED" && (
-                                <p className="pt-1 text-xs font-bold text-red-600">Reason: {booking.feePayment.rejectionReason}</p>
+                                <p className="pt-1 text-xs font-bold text-pd-danger">Reason: {booking.feePayment.rejectionReason}</p>
                             )}
                         </div>
 
                         {feeInfo?.bank && (feeInfo.bank.bankName || feeInfo.bank.bankAccountNumber) && (
-                            <div className="space-y-1 rounded-2xl bg-white p-3.5 text-sm">
+                            <div className="space-y-1 rounded-2xl bg-pd-surface p-3.5 text-sm">
                                 <p className="font-extrabold">Transfer to Safar</p>
                                 <p className="font-semibold">{feeInfo.bank.bankName}</p>
-                                <p className="font-medium text-slate-600">{feeInfo.bank.bankAccountTitle}</p>
+                                <p className="font-medium text-pd-muted">{feeInfo.bank.bankAccountTitle}</p>
                                 <p className="select-all font-mono text-[15px] font-bold tracking-wide">{feeInfo.bank.bankAccountNumber}</p>
-                                {feeInfo.bank.note && <p className="text-xs text-slate-400">{feeInfo.bank.note}</p>}
-                                <p className="text-xs text-slate-400">Write your booking ref <span className="font-bold text-slate-600">{booking.bookingRef}</span> in the transfer note.</p>
+                                {feeInfo.bank.note && <p className="text-xs text-pd-faint">{feeInfo.bank.note}</p>}
+                                <p className="text-xs text-pd-faint">Write your booking ref <span className="font-bold text-pd-muted">{booking.bookingRef}</span> in the transfer note.</p>
                             </div>
                         )}
 
                         {feeStatus === "SUBMITTED" && (
-                            <p className="flex items-center gap-2 rounded-2xl bg-white px-3.5 py-3 text-sm font-bold text-amber-700">
+                            <p className="flex items-center gap-2 rounded-2xl bg-pd-surface px-3.5 py-3 text-sm font-bold text-pd-warning">
                                 <Loader2 size={16} className="animate-spin" /> Proof received — Safar is verifying your payment.
                             </p>
                         )}
 
                         {showFeeForm && (
-                            <form onSubmit={submitFee} className="space-y-3 rounded-2xl bg-white p-3.5" noValidate>
+                            <form onSubmit={submitFee} className="space-y-3 rounded-2xl bg-pd-surface p-3.5" noValidate>
                                 <p className="text-sm font-extrabold">{feeStatus === "REJECTED" ? "Resubmit your payment proof" : "Already transferred? Send your proof"}</p>
                                 <div>
-                                    <label htmlFor="fee-ref" className="mb-1.5 block text-xs font-bold text-slate-600">Transfer reference / transaction ID</label>
+                                    <label htmlFor="fee-ref" className="mb-1.5 block text-xs font-bold text-pd-muted">Transfer reference / transaction ID</label>
                                     <input
                                         id="fee-ref"
                                         value={feeReference}
                                         onChange={(e) => setFeeReference(e.target.value)}
                                         maxLength={120}
                                         placeholder="e.g. FT123456789"
-                                        className="w-full rounded-2xl border border-slate-200 bg-[#F9FAFB] px-4 py-3 text-sm font-semibold outline-none focus:border-[#087F5B] focus:ring-2 focus:ring-[#087F5B]/25"
+                                        className="w-full rounded-2xl border border-pd-line bg-pd-surface-2 px-4 py-3 text-sm font-semibold text-pd-text outline-none focus:border-[#087F5B] focus:ring-2 focus:ring-[#087F5B]/25"
                                     />
                                 </div>
                                 <div>
-                                    <label htmlFor="fee-sender" className="mb-1.5 block text-xs font-bold text-slate-600">Your bank account title</label>
+                                    <label htmlFor="fee-sender" className="mb-1.5 block text-xs font-bold text-pd-muted">Your bank account title</label>
                                     <input
                                         id="fee-sender"
                                         value={feeSender}
                                         onChange={(e) => setFeeSender(e.target.value)}
                                         maxLength={120}
                                         placeholder="Name on the sending account"
-                                        className="w-full rounded-2xl border border-slate-200 bg-[#F9FAFB] px-4 py-3 text-sm font-semibold outline-none focus:border-[#087F5B] focus:ring-2 focus:ring-[#087F5B]/25"
+                                        className="w-full rounded-2xl border border-pd-line bg-pd-surface-2 px-4 py-3 text-sm font-semibold text-pd-text outline-none focus:border-[#087F5B] focus:ring-2 focus:ring-[#087F5B]/25"
                                     />
                                 </div>
                                 <div>
-                                    <p className="mb-1.5 text-xs font-bold text-slate-600">Payment proof (screenshot / receipt photo)</p>
+                                    <p className="mb-1.5 text-xs font-bold text-pd-muted">Payment proof (screenshot / receipt photo)</p>
                                     {proofUrl ? (
                                         <div className="relative">
                                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -393,7 +410,7 @@ function BookingDetail() {
                                             type="button"
                                             disabled={proofUploading}
                                             onClick={() => proofRef.current?.click()}
-                                            className="grid h-24 w-full place-items-center rounded-2xl border-2 border-dashed border-slate-200 text-sm font-bold text-slate-400 disabled:opacity-50"
+                                            className="grid h-24 w-full place-items-center rounded-2xl border-2 border-dashed border-pd-line text-sm font-bold text-pd-faint disabled:opacity-50"
                                         >
                                             {proofUploading ? <Loader2 size={20} className="animate-spin" /> : <span className="flex items-center gap-2"><ImagePlus size={18} /> Attach proof image</span>}
                                         </button>
@@ -423,20 +440,20 @@ function BookingDetail() {
                     </section>
                 )}
                 {booking.feePayment?.status === "VERIFIED" && (
-                    <p className="flex items-center gap-2 rounded-[24px] bg-white px-4 py-3 text-sm font-bold text-[#087F5B] shadow-sm">
+                    <p className="flex items-center gap-2 rounded-[24px] bg-pd-surface px-4 py-3 text-sm font-bold text-[#087F5B] shadow-sm">
                         <BadgeCheck size={17} /> Booking fee verified — you are all set.
                     </p>
                 )}
 
                 {/* Pickup details (unlocked after confirmation) */}
                 {vehicle?.contactUnlocked && (
-                    <section className="space-y-2 rounded-[24px] bg-white p-4 shadow-sm">
+                    <section className="space-y-2 rounded-[24px] bg-pd-surface p-4 shadow-sm">
                         <h2 className="flex items-center gap-2 text-[15px] font-extrabold">
                             <MapPin size={17} className="text-[#087F5B]" /> Pickup details
                         </h2>
                         <p className="text-sm font-semibold">{vehicle.exactPickupAddress || "Address shared by the owner in chat"}</p>
                         {(vehicle.pickupContactName || vehicle.pickupContactPhone) && (
-                            <p className="flex items-center justify-between gap-3 text-sm font-medium text-slate-600">
+                            <p className="flex items-center justify-between gap-3 text-sm font-medium text-pd-muted">
                                 <span>{vehicle.pickupContactName}{vehicle.pickupContactPhone ? ` · ${vehicle.pickupContactPhone}` : ""}</span>
                                 {vehicle.pickupContactPhone && (
                                     <a
@@ -454,15 +471,15 @@ function BookingDetail() {
 
                 {/* Pickup OTP */}
                 {booking.status === "CONFIRMED" && (
-                    <section className="rounded-[24px] bg-white p-4 shadow-sm">
+                    <section className="rounded-[24px] bg-pd-surface p-4 shadow-sm">
                         <h2 className="flex items-center gap-2 text-[15px] font-extrabold">
                             <KeyRound size={17} className="text-[#087F5B]" /> Pickup code
                         </h2>
-                        <p className="mt-1 text-sm text-slate-500">
+                        <p className="mt-1 text-sm text-pd-muted">
                             Share this code with the owner at handover so they can release the vehicle.
                         </p>
                         {otp ? (
-                            <p className="mt-3 rounded-2xl bg-[#111111] py-4 text-center text-3xl font-extrabold tracking-[0.35em] text-white">{otp}</p>
+                            <p className="mt-3 rounded-2xl bg-pd-ink py-4 text-center text-3xl font-extrabold tracking-[0.35em] text-pd-ink-text">{otp}</p>
                         ) : (
                             <button
                                 type="button"
@@ -478,16 +495,16 @@ function BookingDetail() {
 
                 {/* Return confirmation */}
                 {booking.status === "RETURN_PENDING" && (
-                    <section className="space-y-2 rounded-[24px] border-2 border-orange-200 bg-orange-50 p-4 shadow-sm">
-                        <h2 className="text-[15px] font-extrabold text-orange-900">Confirm the return</h2>
-                        <dl className="space-y-1.5 rounded-2xl bg-white p-3.5 text-sm font-semibold">
-                            <div className="flex justify-between"><dt className="text-slate-500">Driven</dt><dd>{dues.drivenKm ?? "—"} km</dd></div>
-                            <div className="flex justify-between"><dt className="text-slate-500">Extra km charges</dt><dd>{formatPKR(dues.extraKmCharges || 0)}</dd></div>
-                            <div className="flex justify-between"><dt className="text-slate-500">Overtime charges</dt><dd>{formatPKR(dues.overtimeCharges || 0)}</dd></div>
-                            <div className="flex justify-between"><dt className="text-slate-500">Other dues</dt><dd>{formatPKR(dues.otherDues || 0)}</dd></div>
-                            <div className="flex justify-between border-t border-slate-100 pt-2"><dt>Remaining dues</dt><dd className="font-extrabold">{formatPKR(dues.remainingDues || 0)}</dd></div>
+                    <section className="space-y-2 rounded-[24px] border-2 border-pd-line bg-pd-warning-soft p-4 shadow-sm">
+                        <h2 className="text-[15px] font-extrabold text-pd-warning">Confirm the return</h2>
+                        <dl className="space-y-1.5 rounded-2xl bg-pd-surface p-3.5 text-sm font-semibold">
+                            <div className="flex justify-between"><dt className="text-pd-muted">Driven</dt><dd>{dues.drivenKm ?? "—"} km</dd></div>
+                            <div className="flex justify-between"><dt className="text-pd-muted">Extra km charges</dt><dd>{formatPKR(dues.extraKmCharges || 0)}</dd></div>
+                            <div className="flex justify-between"><dt className="text-pd-muted">Overtime charges</dt><dd>{formatPKR(dues.overtimeCharges || 0)}</dd></div>
+                            <div className="flex justify-between"><dt className="text-pd-muted">Other dues</dt><dd>{formatPKR(dues.otherDues || 0)}</dd></div>
+                            <div className="flex justify-between border-t border-pd-line pt-2"><dt>Remaining dues</dt><dd className="font-extrabold">{formatPKR(dues.remainingDues || 0)}</dd></div>
                         </dl>
-                        <p className="text-xs text-orange-800">
+                        <p className="text-xs text-pd-warning">
                             Confirming means the vehicle is back with the owner and the dues above are settled. If anything looks wrong, raise a dispute instead.
                         </p>
                         <button
@@ -503,7 +520,7 @@ function BookingDetail() {
 
                 {/* Rating */}
                 {canRate && (
-                    <section className="space-y-3 rounded-[24px] bg-white p-4 shadow-sm">
+                    <section className="space-y-3 rounded-[24px] bg-pd-surface p-4 shadow-sm">
                         <h2 className="text-[15px] font-extrabold">Rate this rental</h2>
                         <div className="flex gap-1.5" role="radiogroup" aria-label="Your rating">
                             {[1, 2, 3, 4, 5].map((value) => (
@@ -514,9 +531,9 @@ function BookingDetail() {
                                     aria-checked={rating === value}
                                     aria-label={`${value} star${value > 1 ? "s" : ""}`}
                                     onClick={() => setRating(value)}
-                                    className="grid h-11 w-11 place-items-center rounded-xl bg-[#F9FAFB]"
+                                    className="grid h-11 w-11 place-items-center rounded-xl bg-pd-surface-2"
                                 >
-                                    <Star size={22} className={value <= rating ? "fill-amber-400 text-amber-400" : "text-slate-300"} />
+                                    <Star size={22} className={value <= rating ? "fill-amber-400 text-amber-400" : "text-pd-faint"} />
                                 </button>
                             ))}
                         </div>
@@ -526,20 +543,20 @@ function BookingDetail() {
                             rows={2}
                             maxLength={1000}
                             placeholder="How was the car and the owner? (optional)"
-                            className="w-full resize-none rounded-2xl border border-slate-200 bg-[#F9FAFB] px-4 py-3 text-[15px] outline-none placeholder:text-slate-400 focus:border-[#087F5B] focus:ring-2 focus:ring-[#087F5B]/25"
+                            className="w-full resize-none rounded-2xl border border-pd-line bg-pd-surface-2 px-4 py-3 text-[15px] text-pd-text outline-none placeholder:text-pd-faint focus:border-[#087F5B] focus:ring-2 focus:ring-[#087F5B]/25"
                         />
                         <button
                             type="button"
                             disabled={!rating || busy === "rate"}
                             onClick={() => void run("rate", () => rateRentalBooking(id, { rating, comment: ratingComment.trim() }, token), "Thanks for your feedback!")}
-                            className="h-12 w-full rounded-xl bg-[#111111] text-sm font-extrabold text-white disabled:opacity-50"
+                            className="h-12 w-full rounded-xl bg-pd-ink text-sm font-extrabold text-pd-ink-text disabled:opacity-50"
                         >
                             Submit rating
                         </button>
                     </section>
                 )}
                 {booking.ratedAt && (
-                    <p className="rounded-[24px] bg-white px-4 py-3 text-center text-sm font-bold text-[#087F5B] shadow-sm">
+                    <p className="rounded-[24px] bg-pd-surface px-4 py-3 text-center text-sm font-bold text-[#087F5B] shadow-sm">
                         ⭐ You rated this rental — thank you!
                     </p>
                 )}
@@ -552,7 +569,7 @@ function BookingDetail() {
                                 type="button"
                                 disabled={busy === "cancel"}
                                 onClick={() => void handleCancel()}
-                                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-white text-sm font-bold text-red-600 shadow-sm ring-1 ring-red-100 disabled:opacity-50"
+                                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-pd-surface text-sm font-bold text-pd-danger shadow-sm ring-1 ring-red-100 disabled:opacity-50"
                             >
                                 <XCircle size={17} /> Cancel booking
                             </button>
@@ -562,7 +579,7 @@ function BookingDetail() {
                                 type="button"
                                 disabled={busy === "dispute"}
                                 onClick={() => void handleDispute()}
-                                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-white text-sm font-bold text-amber-700 shadow-sm ring-1 ring-amber-100 disabled:opacity-50"
+                                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-pd-surface text-sm font-bold text-pd-warning shadow-sm ring-1 ring-amber-100 disabled:opacity-50"
                             >
                                 <TriangleAlert size={17} /> Raise a dispute
                             </button>
@@ -570,12 +587,12 @@ function BookingDetail() {
                     </section>
                 )}
                 {booking.status === "DISPUTED" && (
-                    <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                    <p className="rounded-2xl bg-pd-danger-soft px-4 py-3 text-sm font-semibold text-pd-danger">
                         This booking is under dispute review{booking.disputeReason ? ` — “${booking.disputeReason}”` : ""}. Our team will contact you.
                     </p>
                 )}
                 {booking.status === "CANCELLED" && booking.cancelReason && (
-                    <p className="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-600">
+                    <p className="rounded-2xl bg-pd-surface-3 px-4 py-3 text-sm font-semibold text-pd-muted">
                         Cancelled — {booking.cancelReason}
                         {booking.feeRefund?.amount > 0 && ` · Fee refund ${booking.feeRefund.status === "REFUNDED" ? "sent" : "due"}: ${formatPKR(booking.feeRefund.amount)}`}
                     </p>
