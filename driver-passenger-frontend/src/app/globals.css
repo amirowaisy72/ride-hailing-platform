@@ -371,6 +371,51 @@ select.pd-input {
   background-color: var(--pd-danger-soft);
 }
 
+/* Amir-test fix round (T-5/T-13 sweep): warning / info / violet
+   tint chips and cards that the first pass missed. */
+.dark .bg-orange-50,
+.dark .bg-amber-50,
+.dark .bg-yellow-50 {
+  background-color: var(--pd-warning-soft);
+}
+
+.dark .bg-sky-50,
+.dark .bg-blue-50,
+.dark .bg-cyan-50 {
+  background-color: var(--pd-info-soft);
+}
+
+.dark .bg-violet-50,
+.dark .bg-purple-50,
+.dark .bg-indigo-50 {
+  background-color: rgba(167, 139, 250, 0.14);
+}
+
+.dark .text-orange-700,
+.dark .text-orange-900,
+.dark .text-amber-700,
+.dark .text-amber-900,
+.dark .text-yellow-700 {
+  color: var(--pd-warning);
+}
+
+.dark .text-sky-700,
+.dark .text-blue-700 {
+  color: var(--pd-info);
+}
+
+.dark .text-violet-600,
+.dark .text-violet-700,
+.dark .text-purple-700 {
+  color: #c4b5fd;
+}
+
+.dark .border-orange-200,
+.dark .border-amber-200,
+.dark .border-yellow-200 {
+  border-color: var(--pd-line-strong);
+}
+
 .dark .bg-\[\#111111\] {
   background-color: #23262d;
 }
@@ -466,6 +511,23 @@ select.pd-input {
 .dark input::placeholder,
 .dark textarea::placeholder {
   color: var(--pd-faint);
+}
+
+/* Amir-test fix round (T-6): native number-input spinners must never
+   render — they overlap the value in WebView/Android and read as
+   garbled, overstruck digits (reported on the parcel "Your offer"
+   field; money fields are text inputs with a numeric keyboard, and
+   this covers every remaining number input too). */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 /* MapLibre UI chrome follows the theme (map tiles stay readable). */

@@ -169,13 +169,16 @@ const commissionSettingsSchema = new mongoose.Schema(
             max: 100,
         },
 
-        // Launch gate (Amir): With Driver rentals launch first.
-        // Self-Drive bookings stay impossible until an admin turns
-        // this ON after licence/insurance/inspection procedures are
-        // in place (Phase 8 gate).
+        // Self-Drive launch state (Amir decision, Amir-test fix
+        // round T-19): Self-Drive rentals are ENABLED and fully
+        // functional. This flag now defaults ON and acts only as an
+        // admin kill-switch — every reader treats "not explicitly
+        // false" as enabled. (It began as a Phase 8 launch gate that
+        // kept Self-Drive off until licence/insurance procedures
+        // existed; Amir superseded that gate.)
         rentalsSelfDriveEnabled: {
             type: Boolean,
-            default: false,
+            default: true,
         },
 
         // Hours the passenger has to submit the booking-fee payment

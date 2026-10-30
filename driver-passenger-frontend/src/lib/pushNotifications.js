@@ -1,7 +1,7 @@
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 
-export async function registerPushNotifications(onToken) {
+export async function registerPushNotifications(onToken, onAction) {
     if (!Capacitor.isNativePlatform()) return;
 
     const permission = await PushNotifications.requestPermissions();
@@ -29,6 +29,23 @@ export async function registerPushNotifications(onToken) {
     await PushNotifications.addListener("registrationError", (error) => {
         console.error("FCM registration failed:", error);
     });
+
+    // T-17: a tap on a push (e.g. a chat message that arrived while
+    // the app was closed) hands its data payload to the app, which
+    // routes straight to the relevant screen/chat.
+    if (onAction) {
+        await PushNotifications.addListener(
+            "pushNotificationActionPerformed",
+            (action) => {
+                const data = action?.notification?.data || {};
+                try {
+                    onAction(data);
+                } catch (error) {
+                    console.error("Push action handling failed:", error);
+                }
+            }
+        );
+    }
 
     await PushNotifications.register();
 }

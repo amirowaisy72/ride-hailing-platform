@@ -3,21 +3,28 @@
 import { MapPin, Navigation } from "lucide-react";
 
 // ---------------------------------------------------------------------------
-// DestinationMap (Amir review A15) — a small, dependency-free destination
-// preview + "Navigate" action for order/booking detail pages.
+// DestinationMap (Amir review A15; basemap unified in the Amir-test
+// fix round, T-14) — a small, dependency-free destination preview +
+// "Navigate" action for order/booking detail pages.
 //
 // Why not RideMap? RideMap is ride-coupled: it owns a MapLibre instance,
 // route fetching, driver tracking and navigation framing. Detail pages
 // here only need "where is it" + a hand-off to Google Maps for turn-by-
-// turn navigation, so this renders a static OpenStreetMap tile preview
-// (3×3 tiles at zoom 15 centred on the point, pure CSS pin overlay — no
-// API key, no JS map library) and a big Navigate button that deep-links
-// to Google Maps directions.
+// turn navigation, so this renders a static tile preview (3×3 tiles at
+// zoom 15 centred on the point, pure CSS pin overlay — no API key, no
+// JS map library) and a big Navigate button that deep-links to Google
+// Maps directions.
+//
+// T-14: the tiles are the app's OWN basemap — the same CARTO basemap
+// family RideMap uses (dark-matter in dark mode, its light counterpart
+// in light mode) — never the foreign default OSM look.
 //
 // Points arrive in two shapes across the app and both are accepted:
 //   GeoJSON  { coordinates: [lng, lat], address }
 //   plain    { latitude, longitude, address }
 // ---------------------------------------------------------------------------
+
+import { useTheme } from "@/components/theme/ThemeProvider";
 
 const ZOOM = 15;
 const TILE = 256;
@@ -61,7 +68,12 @@ export function NavigateButton({ latitude, longitude, label = "Navigate" }) {
     );
 }
 
-function tileGrid(latitude, longitude) {
+function tileUrl(theme, x, y) {
+    const style = theme === "dark" ? "dark_all" : "light_all";
+    return `https://basemaps.cartocdn.com/${style}/${ZOOM}/${x}/${y}.png`;
+}
+
+function tileGrid(latitude, longitude, theme) {
     const n = 2 ** ZOOM;
     const xFloat = ((longitude + 180) / 360) * n;
     const latRad = (latitude * Math.PI) / 180;
@@ -80,7 +92,7 @@ function tileGrid(latitude, longitude) {
             if (x < 0 || y < 0 || x >= n || y >= n) continue;
             tiles.push({
                 key: `${x}-${y}`,
-                src: `https://tile.openstreetmap.org/${ZOOM}/${x}/${y}.png`,
+                src: tileUrl(theme, x, y),
                 // Position relative to the container centre: the centre
                 // tile's top-left sits at 50%/50% minus the fractional
                 // offset of the point inside that tile.
@@ -100,10 +112,11 @@ export default function DestinationMap({
     navigateLabel = "Navigate",
     showNavigate = true,
 }) {
+    const { resolvedTheme } = useTheme();
     const coords =
         pointCoords(point) || pointCoords({ latitude, longitude });
     if (!coords) return null;
-    const tiles = tileGrid(coords.latitude, coords.longitude);
+    const tiles = tileGrid(coords.latitude, coords.longitude, resolvedTheme);
     return (
         <div className="space-y-2">
             <div

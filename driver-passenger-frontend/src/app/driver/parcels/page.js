@@ -292,10 +292,8 @@ function RequestCard({ order, value, onChange, sentPrice, busy, disabled, onSubm
                         <span className="sr-only">Your fare in PKR</span>
                         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-pd-muted">PKR</span>
                         <input
-                            type="number"
+                            type="text"
                             inputMode="numeric"
-                            min="1"
-                            step="1"
                             placeholder={String(order.requestedPrice ?? "")}
                             value={value}
                             onChange={(e) => onChange(e.target.value.replace(/[^\d]/g, ""))}

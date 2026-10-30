@@ -7,7 +7,7 @@ const PurchaseOffer = require("../models/PurchaseOffer");
 const RentalBooking = require("../models/RentalBooking");
 const Driver = require("../models/Driver");
 const User = require("../models/User");
-const { publishEvent } = require("../services/socketService");
+const { publishEvent, isUserConnected } = require("../services/socketService");
 const { sendPushToUser } = require("../services/pushService");
 const {
     uploadToCloudinary,
@@ -587,21 +587,35 @@ async function sendMessage(req, res) {
         publishEvent("chat:message:new", `chat:${conversation._id}`, payload);
         publishEvent("chat:message:new", `user:${otherUserId}`, payload);
 
-        void sendPushToUser(
-            otherUserId,
-            "New message",
-            validation.kind === "IMAGE"
-                ? "Sent a photo"
-                : validation.kind === "AUDIO"
-                  ? "🎤 Voice message"
-                  : validation.body.slice(0, 100),
-            {
-                type: "ORDER_CHAT",
-                conversationId: String(conversation._id),
-                orderType: conversation.orderType,
-                orderId: String(conversation.orderId),
-            }
-        );
+        // T-17: push only when the recipient has no live presence —
+        // an online recipient already got the socket event and the
+        // in-app alert (T-16), so pushing too would double-notify.
+        // The push carries the sender + order context and everything
+        // the client needs to deep-link straight into this chat.
+        if (!isUserConnected(otherUserId)) {
+            const sender = await User.findById(senderId)
+                .select("firstName lastName profileImage")
+                .lean()
+                .catch(() => null);
+            const senderName = userDisplay(sender).name || "Safar user";
+            void sendPushToUser(
+                otherUserId,
+                senderName,
+                validation.kind === "IMAGE"
+                    ? "Sent a photo"
+                    : validation.kind === "AUDIO"
+                      ? "🎤 Voice message"
+                      : validation.body.slice(0, 100),
+                {
+                    type: "ORDER_CHAT",
+                    conversationId: String(conversation._id),
+                    orderType: conversation.orderType,
+                    orderId: String(conversation.orderId),
+                    senderId: String(senderId),
+                    senderName,
+                }
+            );
+        }
 
         return res.status(201).json({ success: true, message: serialized });
     } catch (error) {

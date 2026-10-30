@@ -86,7 +86,7 @@ export default function DriverRequestCard({ ride, price, onPriceChange, onSend, 
                         onClick={() => onPriceChange(String(Math.max(1, current - step)))}><Minus size={16} /></button>
                     <label>
                         <small>Your fare · PKR{diff !== 0 && base ? <em data-up={diff > 0}>{diff > 0 ? "+" : ""}{diff}</em> : null}</small>
-                        <input type="number" inputMode="numeric" min="1" step="1"
+                        <input type="text" inputMode="numeric"
                             value={price ?? ride.requestedPrice ?? ""}
                             onChange={(e) => onPriceChange(e.target.value)}
                             aria-label={t("card.yourOfferPkr")} />

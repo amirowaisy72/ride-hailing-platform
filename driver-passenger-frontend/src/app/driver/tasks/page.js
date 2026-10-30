@@ -650,9 +650,7 @@ function TasksScreen() {
                                                                     {t("dTasks.yourDeliveryFee")}
                                                                 </span>
                                                                 <input
-                                                                    type="number"
-                                                                    min="1"
-                                                                    step="1"
+                                                                    type="text"
                                                                     inputMode="numeric"
                                                                     placeholder={t("dTasks.yourDeliveryFee")}
                                                                     value={fees[order._id] || ""}

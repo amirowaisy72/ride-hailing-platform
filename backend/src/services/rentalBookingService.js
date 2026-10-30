@@ -491,12 +491,13 @@ function isHoldExpired(booking, now = new Date()) {
 }
 
 // ---------------------------------------------------------------------------
-// Mode eligibility — Self-Drive is a launch-gated mode.
-// Launch order (Amir): With Driver first. Self-Drive bookings stay
-// impossible until an admin turns rentalsSelfDriveEnabled ON, however
-// the vehicle is configured. A self-drive renter must also present a
-// valid driving licence (pilot: declared number + future expiry,
-// checked here; document verification is a Phase 8 launch gate).
+// Mode eligibility — Self-Drive is ENABLED (Amir decision, Amir-test
+// fix round T-19, superseding the Phase 8 launch gate). Callers pass
+// selfDriveEnabled derived as "settings flag is not explicitly false",
+// so the mode works by default; the SELF_DRIVE_DISABLED branch below
+// now fires only when an admin has deliberately switched Self-Drive
+// off (kill-switch). A self-drive renter must also present a valid
+// driving licence (declared number + future expiry, checked here).
 // ---------------------------------------------------------------------------
 function evaluateModeEligibility({
     vehicle,

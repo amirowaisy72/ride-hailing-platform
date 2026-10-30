@@ -77,10 +77,6 @@ function VehicleDetail() {
     const [vehicle, setVehicle] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
-    // A17: platform Self-Drive launch gate, from the vehicle-detail
-    // response (backend rentalsSelfDriveEnabled, default OFF).
-    const [selfDriveEnabled, setSelfDriveEnabled] = useState(false);
-
     const [mode, setMode] = useState("");
     const [startAt, setStartAt] = useState(() => toLocalInput(new Date(Date.now() + 2 * 60 * 60 * 1000)));
     const [endAt, setEndAt] = useState(() => toLocalInput(new Date(Date.now() + 26 * 60 * 60 * 1000)));
@@ -99,19 +95,9 @@ function VehicleDetail() {
                 if (cancelled) return;
                 const v = data.vehicle || null;
                 setVehicle(v);
-                const sdEnabled = data.selfDriveEnabled === true;
-                setSelfDriveEnabled(sdEnabled);
                 if (v) {
                     const modes = v.rentalModes || [];
-                    // With Self-Drive gated OFF, land on With Driver when
-                    // the car offers it (today's first-mode default would
-                    // open the unavailable mode). When the gate is ON,
-                    // behaviour is exactly as before: first listed mode.
-                    setMode(
-                        !sdEnabled && modes.includes("WITH_DRIVER")
-                            ? "WITH_DRIVER"
-                            : modes[0] || "WITH_DRIVER"
-                    );
+                    setMode(modes[0] || "WITH_DRIVER");
                     const available = Object.keys(PRICING_KEY).find(
                         (unit) => Number(v.pricing?.[PRICING_KEY[unit]]) >= 1
                     );
@@ -133,8 +119,6 @@ function VehicleDetail() {
         [vehicle]
     );
 
-    const selfDriveBlocked = mode === "SELF_DRIVE" && !selfDriveEnabled;
-
     function validateWhenHow() {
         const start = new Date(startAt);
         const end = new Date(endAt);
@@ -148,10 +132,6 @@ function VehicleDetail() {
     }
 
     function validateDetails() {
-        if (selfDriveBlocked) {
-            setError(t("rentals.errSelfDriveOff"));
-            return false;
-        }
         if (mode === "SELF_DRIVE" && (!licenceNumber.trim() || !licenceExpiry)) {
             setError(t("rentals.errLicence"));
             return false;
@@ -383,18 +363,9 @@ function VehicleDetail() {
                                             className={`min-h-11 rounded-xl px-2 text-sm font-bold ${mode === m ? "bg-pd-surface text-pd-text shadow-sm" : "text-pd-muted"}`}
                                         >
                                             {m === "SELF_DRIVE" ? t("rentals.selfDrive") : t("rentals.withDriver")}
-                                            {m === "SELF_DRIVE" && !selfDriveEnabled && (
-                                                <span className="block text-[11px] font-bold text-pd-warning">{t("rentals.notAvailableYet")}</span>
-                                            )}
                                         </button>
                                     ))}
                                 </div>
-                                {!selfDriveEnabled && (vehicle.rentalModes || []).includes("SELF_DRIVE") && (
-                                    <p className="mt-2 flex items-start gap-2 rounded-xl bg-pd-warning-soft px-3 py-2.5 text-xs font-semibold leading-relaxed text-pd-warning">
-                                        <Clock size={14} className="mt-0.5 shrink-0" />
-                                        Self-Drive rentals are not available yet — Safar is launching With Driver first.
-                                    </p>
-                                )}
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
@@ -429,16 +400,7 @@ function VehicleDetail() {
 
                     {step === 2 && (
                         <>
-                            {selfDriveBlocked ? (
-                                <div className="space-y-2 rounded-2xl bg-pd-warning-soft p-4">
-                                    <p className="flex items-center gap-2 text-sm font-extrabold text-pd-warning">
-                                        <Clock size={16} /> {t("rentals.selfDriveNotYet")}
-                                    </p>
-                                    <p className="text-sm leading-relaxed text-pd-text-2">
-                                        {t("rentals.selfDriveNote")}
-                                    </p>
-                                </div>
-                            ) : mode === "SELF_DRIVE" ? (
+                            {mode === "SELF_DRIVE" ? (
                                 <div className="space-y-3 rounded-2xl bg-pd-surface-2 p-3.5">
                                     <p className="flex items-center gap-2 text-sm font-extrabold">
                                         <KeyRound size={15} className="text-[#087F5B]" /> {t("rentals.yourLicence")}
@@ -480,7 +442,7 @@ function VehicleDetail() {
                                 <button type="button" onClick={() => { setError(""); setStep(1); }} className={backBtnCls}>
                                     <ArrowLeft size={17} /> {t("common.back")}
                                 </button>
-                                <button type="button" onClick={goNext} disabled={selfDriveBlocked} className={`${primaryBtnCls} flex-1`}>
+                                <button type="button" onClick={goNext} className={`${primaryBtnCls} flex-1`}>
                                     Next
                                 </button>
                             </div>
@@ -509,7 +471,7 @@ function VehicleDetail() {
                                 </button>
                                 <button data-guide="rental-book"
                                     type="submit"
-                                    disabled={submitting || selfDriveBlocked}
+                                    disabled={submitting}
                                     className={`${primaryBtnCls} flex-1`}
                                 >
                                     {submitting ? (

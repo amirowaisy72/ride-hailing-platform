@@ -30,6 +30,7 @@ import {
 import {
     applyForRentalPartner,
     getMyRentalPartner,
+    updateMyChauffeurDetails,
 } from "@/lib/driverServicesService";
 import RentalFleetManager from "@/components/driver/RentalFleetManager";
 import RentalPartnerBookings from "@/components/driver/RentalPartnerBookings";
@@ -137,6 +138,131 @@ function BusinessFields({
                 />
             </div>
         </>
+    );
+}
+
+// T-20: chauffeur declaration form. The backend + admin approval
+// surface already existed, but a partner had no way to put their
+// chauffeur's name / licence number / licence expiry on file — and
+// admin approval is impossible without the licence number — so
+// With-Driver bookings could never open. This form is that link.
+function ChauffeurDetailsFields({ partner, token, notify, reload }) {
+    const [name, setName] = useState(partner.chauffeurName || "");
+    const [licenceNumber, setLicenceNumber] = useState(
+        partner.chauffeurLicenceNumber || ""
+    );
+    const [licenceExpiry, setLicenceExpiry] = useState(
+        partner.chauffeurLicenceExpiry
+            ? String(partner.chauffeurLicenceExpiry).slice(0, 10)
+            : ""
+    );
+    const [busy, setBusy] = useState(false);
+    const chauffeurStatus =
+        partner.chauffeurVerificationStatus || "NOT_APPLIED";
+    const meta = STATUS_META[chauffeurStatus] || STATUS_META.NOT_APPLIED;
+
+    const changed =
+        name.trim() !== (partner.chauffeurName || "") ||
+        licenceNumber.trim() !== (partner.chauffeurLicenceNumber || "") ||
+        licenceExpiry !==
+            (partner.chauffeurLicenceExpiry
+                ? String(partner.chauffeurLicenceExpiry).slice(0, 10)
+                : "");
+
+    async function saveChauffeur() {
+        if (busy) return;
+        setBusy(true);
+        notify(null);
+        try {
+            const data = await updateMyChauffeurDetails(
+                {
+                    chauffeurName: name.trim() || undefined,
+                    chauffeurLicenceNumber:
+                        licenceNumber.trim() || undefined,
+                    chauffeurLicenceExpiry: licenceExpiry || undefined,
+                },
+                token
+            );
+            notify({ kind: "success", text: data.message });
+            reload();
+        } catch (error) {
+            notify({ kind: "error", text: error.message });
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    return (
+        <div className="mt-4 rounded-xl border border-pd-line p-3">
+            <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-extrabold">Chauffeur details</p>
+                <span
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-extrabold ${meta.pill}`}
+                >
+                    <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+                    {meta.label}
+                </span>
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-pd-muted">
+                With Driver bookings open only after Safar verifies your
+                chauffeur. Enter the chauffeur&apos;s licence details
+                exactly as printed on the licence. Changing them after
+                approval sends the chauffeur back for review.
+            </p>
+            {chauffeurStatus === "REJECTED" &&
+                partner.chauffeurRejectionReason && (
+                    <p className="mt-2 rounded-lg bg-pd-danger-soft p-2.5 text-xs font-semibold text-pd-danger">
+                        Rejected: {partner.chauffeurRejectionReason}. Fix
+                        the details and save to apply again.
+                    </p>
+                )}
+            <label className="mt-3 block">
+                <span className="text-sm font-semibold">
+                    Chauffeur full name
+                </span>
+                <input
+                    type="text"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="e.g. Muhammad Ali"
+                    className="mt-2 h-12 w-full rounded-xl border px-4"
+                />
+            </label>
+            <label className="mt-3 block">
+                <span className="text-sm font-semibold">
+                    Driving licence number
+                </span>
+                <input
+                    type="text"
+                    value={licenceNumber}
+                    onChange={(event) => setLicenceNumber(event.target.value)}
+                    placeholder="As printed on the licence"
+                    className="mt-2 h-12 w-full rounded-xl border px-4"
+                />
+            </label>
+            <label className="mt-3 block">
+                <span className="text-sm font-semibold">Licence expiry</span>
+                <input
+                    type="date"
+                    dir="ltr"
+                    min={MIN_EXPIRY_DATE}
+                    value={licenceExpiry}
+                    onChange={(event) => setLicenceExpiry(event.target.value)}
+                    className="mt-2 h-12 w-full rounded-xl border px-4"
+                />
+            </label>
+            {changed && (
+                <button
+                    type="button"
+                    onClick={saveChauffeur}
+                    disabled={busy}
+                    className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#087F5B] font-bold text-white disabled:opacity-40"
+                >
+                    <ShieldCheck size={18} />
+                    {busy ? "Please wait…" : "Save chauffeur details"}
+                </button>
+            )}
+        </div>
     );
 }
 
@@ -376,6 +502,15 @@ function PartnerPanel({ partner, token, notify, reload }) {
                         <ShieldCheck size={18} />
                         {busy ? "Please wait…" : "Save & submit"}
                     </button>
+                )}
+
+                {partner.providesChauffeur && (
+                    <ChauffeurDetailsFields
+                        partner={partner}
+                        token={token}
+                        notify={notify}
+                        reload={reload}
+                    />
                 )}
             </section>
 

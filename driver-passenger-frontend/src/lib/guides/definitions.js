@@ -15,8 +15,8 @@ export const GUIDES = {
         },
         {
             target: "ride-destination",
-            en: "Write where you want to go. You can also tap the mic and speak it.",
-            ur: "یہاں لکھیں کہ آپ نے کہاں جانا ہے۔ آپ مائیک دبا کر بول بھی سکتے ہیں۔",
+            en: "Write where you want to go.",
+            ur: "یہاں لکھیں کہ آپ نے کہاں جانا ہے۔",
         },
         {
             target: "ride-vehicle",
@@ -38,8 +38,8 @@ export const GUIDES = {
     bdPassenger: [
         {
             target: "bd-list",
-            en: "Write everything you want to buy, one thing on each line. Or tap the mic and speak your list.",
-            ur: "جو کچھ خریدنا ہے وہ یہاں لکھیں، ہر چیز الگ لائن پر۔ یا مائیک دبا کر اپنی فہرست بولیں۔",
+            en: "Write everything you want to buy, one thing on each line.",
+            ur: "جو کچھ خریدنا ہے وہ یہاں لکھیں، ہر چیز الگ لائن پر۔",
         },
         {
             target: "bd-next",
@@ -99,8 +99,8 @@ export const GUIDES = {
         },
         {
             target: "rental-mode",
-            en: "\"With driver\" means the owner sends a driver with the car. Self-drive may not be open yet.",
-            ur: "”ڈرائیور کے ساتھ“ کا مطلب ہے کہ مالک گاڑی کے ساتھ ڈرائیور بھیجے گا۔ خود چلانا شاید ابھی کھلا نہ ہو۔",
+            en: "\"With driver\" means the owner sends a driver with the car. With \"Self-drive\" you drive it yourself — you will add your licence details in the next step.",
+            ur: "”ڈرائیور کے ساتھ“ کا مطلب ہے کہ مالک گاڑی کے ساتھ ڈرائیور بھیجے گا۔ ”خود چلانا“ میں آپ خود گاڑی چلاتے ہیں، اگلے مرحلے میں آپ اپنے لائسنس کی تفصیل دیں گے۔",
         },
     ],
 };

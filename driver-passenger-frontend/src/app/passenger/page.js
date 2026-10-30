@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { Geolocation } from "@capacitor/geolocation";
 import AuthGuard from "@/components/AuthGuard";
-import MicButton from "@/components/MicButton";
 import ServiceGuide from "@/components/guides/ServiceGuide";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import { recordFlowCompletion } from "@/lib/guides/guideStore";
@@ -1695,14 +1694,6 @@ function PassengerDashboard() {
                                         className="w-full min-w-0 bg-transparent text-[15px] font-semibold outline-none placeholder:font-medium placeholder:text-pd-faint"
                                     />
                                 </span>
-                                <MicButton
-                                    onAppend={(spoken) => {
-                                        setDestinationQuery((prev) => (prev.trim() ? `${prev.replace(/\s+$/, "")} ${spoken}` : spoken));
-                                        setDestination(null);
-                                        setDestinationSelected(false);
-                                        setDestinationFocused(true);
-                                    }}
-                                />
                                 {destinationQuery ? (
                                     <button
                                         type="button"
@@ -1923,10 +1914,8 @@ function PassengerDashboard() {
                                                     <span className="text-base font-bold text-pd-muted">PKR</span>
                                                     <span className="sr-only">{t("pHome.yourFareOffer")}</span>
                                                     <input
-                                                        type="number"
+                                                        type="text"
                                                         inputMode="numeric"
-                                                        min="1"
-                                                        step="1"
                                                         value={proposedFare}
                                                         onChange={(e) => setProposedFare(e.target.value)}
                                                         className="w-24 min-w-0 bg-transparent text-center text-2xl font-extrabold tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
@@ -2187,6 +2176,8 @@ function VehicleOption({ vehicle, selected, onSelect }) {
 }
 
 function BookingPeek({ destinationLabel, route, onOpen }) {
+    // Same T-10 defect class: t() was called with no hook in scope.
+    const { t } = useLanguage();
     return (
         <button
             type="button"
@@ -2624,9 +2615,9 @@ function TripCompletedDialog({ rideId, ride, token, pickupLabel, destinationLabe
                         </div>
 
                         {fare != null && (
-                            <div className="mt-5 rounded-2xl bg-pd-ink p-4 text-center text-pd-ink-text">
-                                <p className="text-xs font-semibold text-white/60">Total fare · Cash</p>
-                                <p className="mt-1 text-3xl font-extrabold tabular-nums text-[#087F5B]">{formatPKR(fare)}</p>
+                            <div className="mt-5 rounded-2xl border border-pd-line bg-pd-surface-2 p-4 text-center">
+                                <p className="text-xs font-semibold text-pd-muted">Total fare · Cash</p>
+                                <p className="mt-1 text-3xl font-extrabold tabular-nums text-pd-accent-text">{formatPKR(fare)}</p>
                             </div>
                         )}
 
