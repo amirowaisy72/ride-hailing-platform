@@ -60,16 +60,16 @@ export default function ForgotPasswordPage() {
     }
 
     return (
-        <main className="flex min-h-dvh items-center justify-center bg-[#F8FAF9] px-5 py-10">
+        <main className="flex min-h-dvh items-center justify-center bg-pd-bg px-5 py-10">
             <form
                 onSubmit={handleSubmit}
-                className="w-full max-w-md space-y-5 rounded-3xl bg-white p-7 shadow-lg"
+                className="w-full max-w-md space-y-5 rounded-3xl bg-pd-surface p-7 shadow-lg"
             >
-                <h1 className="text-2xl font-extrabold text-[#111827]">
+                <h1 className="text-2xl font-extrabold text-pd-text">
                     {step === 1 ? "Forgot Password?" : "Reset Password"}
                 </h1>
 
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-pd-muted">
                     {step === 1
                         ? "Enter your registered email address."
                         : "Enter the OTP sent to your email and set a new password."}
@@ -126,11 +126,11 @@ export default function ForgotPasswordPage() {
                 )}
 
                 {error && (
-                    <p className="text-sm text-red-600">{error}</p>
+                    <p className="text-sm text-pd-danger">{error}</p>
                 )}
 
                 {message && (
-                    <p className="text-sm text-emerald-700">{message}</p>
+                    <p className="text-sm text-pd-success">{message}</p>
                 )}
 
                 <button
@@ -148,7 +148,7 @@ export default function ForgotPasswordPage() {
                 <button
                     type="button"
                     onClick={() => router.push("/login")}
-                    className="w-full text-sm font-semibold text-gray-600"
+                    className="w-full text-sm font-semibold text-pd-text-2"
                 >
                     Back to Login
                 </button>

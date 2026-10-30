@@ -21,6 +21,8 @@ const {
     canDispute,
     isValidAmount,
     checkAmountWithinCaps,
+    evaluateBudgetCapApproval,
+    checkReceiptImageUrls,
     checkPurchaseWithinApproval,
     computeTotals,
     applyPayment,
@@ -44,7 +46,7 @@ const {
 // findOneAndUpdate calls guarded by the expected current status.
 // ---------------------------------------------------------------------------
 
-const OFFER_TTL_MS = 5 * 60 * 1000;
+const OFFER_TTL_MS = 30 * 60 * 1000;
 
 const hashPurchaseOtp = (otp) =>
     crypto.createHash("sha256").update(String(otp)).digest("hex");
@@ -479,10 +481,18 @@ const getPurchaseOffers = async (req, res) => {
             });
         }
 
+        // Live offers PLUS offers that expired within the last 60
+        // minutes: a lapsed offer must not vanish silently — the
+        // passenger should see that an offer existed and expired
+        // (marked `expired: true`; live offers carry `expired: false`).
+        // Offers older than that window stay hidden.
+        const now = new Date();
+        const RECENTLY_EXPIRED_MS = 60 * 60 * 1000;
+
         const offers = await PurchaseOffer.find({
             orderId: order._id,
             status: "PENDING",
-            expiresAt: { $gt: new Date() },
+            expiresAt: { $gt: new Date(now.getTime() - RECENTLY_EXPIRED_MS) },
         })
             .select("driverId deliveryFee status expiresAt createdAt")
             .sort({ deliveryFee: 1 })
@@ -515,8 +525,9 @@ const getPurchaseOffers = async (req, res) => {
         const vehicleById = new Map(vehicles.map((v) => [String(v._id), v]));
 
         const enrichedOffers = offers.map((offer) => {
+            const expired = new Date(offer.expiresAt) <= now;
             const driver = driverById.get(String(offer.driverId));
-            if (!driver) return offer;
+            if (!driver) return { ...offer, expired };
 
             const user = driver.userId ? userById.get(String(driver.userId)) : null;
             const vehicle = driver.currentVehicleId
@@ -525,6 +536,7 @@ const getPurchaseOffers = async (req, res) => {
 
             return {
                 ...offer,
+                expired,
                 driver: {
                     name: user
                         ? [user.firstName, user.lastName].filter(Boolean).join(" ") || null
@@ -740,6 +752,7 @@ const approvePurchaseAmount = async (req, res) => {
             toStatus: "PURCHASE_APPROVED",
             set: {
                 approvedMaxAmount: amount,
+                estimateApprovalSource: "PASSENGER",
                 // Approving the amount IS the COD acknowledgment: the
                 // passenger accepts they will pay actuals (up to this
                 // cap) + the delivery fee in cash at the door.
@@ -1452,26 +1465,36 @@ const getAvailablePurchaseRequests = async (req, res) => {
                 }).ok
         );
 
-        // Embed the caller's OWN live offer on each request (Phase 7
+        // Embed the caller's OWN offer on each request (Phase 7
         // fix): the driver feed kept its offer state only in memory,
         // so after an app restart a request the partner had already
-        // bid on looked un-bid and the withdraw action vanished. An
-        // expired PENDING offer is not embedded — mirroring the
-        // passenger offers view, it no longer counts as a live bid.
+        // bid on looked un-bid and the withdraw action vanished.
+        // The driver's most recent offer is embedded even after it
+        // has expired (marked `expired: true`; a live offer carries
+        // `expired: false`) so the Tasks card can show "offer
+        // expired — send again" instead of silently looking un-bid.
+        const now = new Date();
         const visibleIds = visible.map((order) => order._id);
         const myOffers = visibleIds.length
             ? await PurchaseOffer.find({
                   orderId: { $in: visibleIds },
                   driverId: driver._id,
                   status: "PENDING",
-                  expiresAt: { $gt: new Date() },
               })
                   .select("orderId deliveryFee status expiresAt createdAt")
+                  .sort({ createdAt: -1 })
                   .lean()
             : [];
-        const myOfferByOrderId = new Map(
-            myOffers.map((offer) => [String(offer.orderId), offer])
-        );
+        const myOfferByOrderId = new Map();
+        for (const offer of myOffers) {
+            const key = String(offer.orderId);
+            if (!myOfferByOrderId.has(key)) {
+                myOfferByOrderId.set(key, {
+                    ...offer,
+                    expired: new Date(offer.expiresAt) <= now,
+                });
+            }
+        }
 
         return res.json({
             success: true,
@@ -1714,6 +1737,7 @@ const getDriverPurchaseDetails = async (req, res) => {
             estimatedBudget: order.estimatedBudget,
             estimatedCost: order.estimatedCost,
             approvedMaxAmount: order.approvedMaxAmount,
+            estimateApprovalSource: order.estimateApprovalSource ?? null,
             // Shopping money (reimbursement side — NOT earnings):
             shoppingAdvanced: order.actualCost,
             reimbursementReceived: order.reimbursementReceived,
@@ -1870,10 +1894,19 @@ const updateShoppingLocation = async (req, res) => {
 };
 
 // Partner submits (or revises) the shopping-cost estimate. From
-// SHOPPING this asks the passenger to approve a purchase amount; from
-// PURCHASE_APPROVED an amount ABOVE the approved maximum is a cost-
-// increase request and goes back through approval — an amount at or
-// below the approved maximum is just an estimate refinement.
+// SHOPPING, an estimate at or below the budget the passenger stated at
+// creation is AUTO-APPROVED under that budget cap (Amir review A13 —
+// the stated budget IS the approval; see
+// purchaseOrderService.evaluateBudgetCapApproval): the order moves
+// straight to PURCHASE_APPROVED with approvedMaxAmount = the stated
+// budget and estimateApprovalSource = "BUDGET_CAP", no passenger
+// action needed. An estimate ABOVE the budget asks the passenger to
+// approve a purchase amount, exactly as before. From PURCHASE_APPROVED
+// an amount ABOVE the approved maximum is a cost-increase request and
+// goes back through approval — an amount at or below the approved
+// maximum is just an estimate refinement (so on a budget-cap-approved
+// order, a revised estimate still within the budget refines silently,
+// and only an above-budget increase reaches the passenger).
 const submitCostEstimate = async (req, res) => {
     try {
         const loaded = await loadAssignedOrder(req, res);
@@ -1935,6 +1968,71 @@ const submitCostEstimate = async (req, res) => {
             }
 
             return res.json({ success: true, order: updated });
+        }
+
+        // Budget-cap auto-approval (A13): only the FIRST estimate from
+        // SHOPPING can take this edge. codAcknowledgedAt is deliberately
+        // NOT set here — it records an explicit passenger approval
+        // action; on this path the authorisation is the budget the
+        // passenger stated when creating the order.
+        if (order.status === "SHOPPING") {
+            const capApproval = evaluateBudgetCapApproval({
+                estimatedCost: amount,
+                estimatedBudget: order.estimatedBudget,
+            });
+
+            if (capApproval.autoApproved) {
+                const updated = await transitionOrder({
+                    filter: { _id: order._id, driverId: driver._id },
+                    fromStatus: "SHOPPING",
+                    toStatus: "PURCHASE_APPROVED",
+                    set: {
+                        estimatedCost: amount,
+                        approvedMaxAmount: capApproval.approvedMaxAmount,
+                        estimateApprovalSource: capApproval.approvalSource,
+                    },
+                    event: {
+                        entry: makeEvent(
+                            "ESTIMATE_AUTO_APPROVED",
+                            "SYSTEM",
+                            req.user._id,
+                            {
+                                fromStatus: "SHOPPING",
+                                toStatus: "PURCHASE_APPROVED",
+                                amount,
+                                note:
+                                    `Estimate PKR ${amount} auto-approved under ` +
+                                    `the passenger's stated budget of PKR ${capApproval.approvedMaxAmount}`,
+                            }
+                        ),
+                    },
+                });
+
+                if (!updated) {
+                    return res.status(409).json({
+                        success: false,
+                        message: "Order status changed. Please refresh.",
+                    });
+                }
+
+                notifyPassenger(
+                    updated,
+                    "purchase:approval:auto-approved",
+                    {
+                        status: "PURCHASE_APPROVED",
+                        estimatedCost: amount,
+                        approvedMaxAmount: capApproval.approvedMaxAmount,
+                        estimateApprovalSource: capApproval.approvalSource,
+                        message:
+                            "Shopping estimate auto-approved under your stated budget",
+                    },
+                    "Estimate Approved",
+                    `Your partner's shopping estimate of PKR ${amount} is within your stated budget of PKR ${capApproval.approvedMaxAmount}, so it was approved automatically.`,
+                    "PURCHASE_ESTIMATE_AUTO_APPROVED"
+                );
+
+                return res.json({ success: true, order: updated });
+            }
         }
 
         const fromStatus = order.status;
@@ -2068,8 +2166,10 @@ const requestSubstitution = async (req, res) => {
     }
 };
 
-// Partner records the completed purchase: actual spend + receipt
-// evidence. The spend may NEVER exceed the passenger-approved maximum.
+// Partner records the completed purchase: actual spend + OPTIONAL
+// receipt evidence (Amir review A14 — zero receipt photos is valid;
+// at most 6, each a valid image URL, when provided). The spend may
+// NEVER exceed the passenger-approved maximum.
 const markPurchased = async (req, res) => {
     try {
         const loaded = await loadAssignedOrder(req, res);
@@ -2084,14 +2184,19 @@ const markPurchased = async (req, res) => {
         }
 
         const actualCost = Number(req.body?.actualCost);
-        const receiptImageUrls = req.body?.receiptImageUrls || [];
+        const receiptCheck = checkReceiptImageUrls(
+            req.body?.receiptImageUrls
+        );
 
-        if (!validImageUrls(receiptImageUrls, 6) || receiptImageUrls.length < 1) {
+        if (!receiptCheck.ok) {
             return res.status(400).json({
                 success: false,
-                message: "At least one receipt photo is required",
+                code: receiptCheck.code,
+                message: receiptCheck.message,
             });
         }
+
+        const receiptImageUrls = receiptCheck.receiptImageUrls;
 
         const approvalCheck = checkPurchaseWithinApproval(
             actualCost,
@@ -2151,7 +2256,9 @@ const markPurchased = async (req, res) => {
                 message: "Partner purchased your items",
             },
             "Items Purchased",
-            `Your partner purchased your items for PKR ${actualCost}. Receipt attached to the order.`,
+            receiptImageUrls.length
+                ? `Your partner purchased your items for PKR ${actualCost}. Receipt attached to the order.`
+                : `Your partner purchased your items for PKR ${actualCost}.`,
             "PURCHASE_PURCHASED"
         );
 

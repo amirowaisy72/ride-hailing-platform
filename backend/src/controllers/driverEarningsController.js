@@ -55,6 +55,31 @@ async function getMyEarnings(req, res) {
             },
         ]);
 
+        // Buy & Deliver settlements MUST be part of this summary:
+        // getMyEarningsByService counts them, and a summary that
+        // omits them understates the driver's net by exactly the BD
+        // delivery-fee earnings (the E2E mismatch: summary 1,450 vs
+        // by-service 1,700 — the missing 250 was the BD settlement).
+        // A PurchaseSettlement's fare/driverEarnings are delivery-fee
+        // money only; shopping reimbursement never appears here.
+        const [purchaseSummary] = await PurchaseSettlement.aggregate([
+            {
+                $match: {
+                    driverId: driver._id,
+                    status: "SETTLED",
+                },
+            },
+            {
+                $group: {
+                    _id: null,
+                    completedPurchases: { $sum: 1 },
+                    totalFares: { $sum: "$fare" },
+                    totalCommission: { $sum: "$commission" },
+                    netEarnings: { $sum: "$driverEarnings" },
+                },
+            },
+        ]);
+
         const rideRecent = await RideSettlement.find({
             driverId: driver._id,
             status: "SETTLED",
@@ -77,15 +102,28 @@ async function getMyEarnings(req, res) {
             )
             .lean();
 
+        const purchaseRecent = await PurchaseSettlement.find({
+            driverId: driver._id,
+            status: "SETTLED",
+        })
+            .sort({ createdAt: -1 })
+            .limit(20)
+            .select(
+                "purchaseOrderId fare commission driverEarnings createdAt"
+            )
+            .lean();
+
         const recentTrips = [
             ...rideRecent.map((trip) => ({ ...trip, type: "RIDE" })),
             ...parcelRecent.map((trip) => ({ ...trip, type: "PARCEL" })),
+            ...purchaseRecent.map((trip) => ({ ...trip, type: "BUY_DELIVER" })),
         ]
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
             .slice(0, 20);
 
         // Daily breakdown for the last 7 Karachi-local days (today
-        // included), merging settled rides and parcels. Day boundaries use
+        // included), merging settled rides, parcels and Buy & Deliver
+        // orders. Day boundaries use
         // Asia/Karachi because fares are earned on local days.
         const DAY_MS = 24 * 60 * 60 * 1000;
         const dayKeyFormat = new Intl.DateTimeFormat("en-CA", {
@@ -120,12 +158,13 @@ async function getMyEarnings(req, res) {
                 },
             },
         ];
-        const [rideDays, parcelDays] = await Promise.all([
+        const [rideDays, parcelDays, purchaseDays] = await Promise.all([
             RideSettlement.aggregate(dayPipeline),
             ParcelSettlement.aggregate(dayPipeline),
+            PurchaseSettlement.aggregate(dayPipeline),
         ]);
         const byDay = new Map();
-        for (const row of [...rideDays, ...parcelDays]) {
+        for (const row of [...rideDays, ...parcelDays, ...purchaseDays]) {
             const entry = byDay.get(row._id) || { earnings: 0, trips: 0 };
             entry.earnings += row.earnings || 0;
             entry.trips += row.trips || 0;
@@ -162,6 +201,11 @@ async function getMyEarnings(req, res) {
             status: "DELIVERED",
         });
 
+        const completedPurchases = await PurchaseOrder.countDocuments({
+            driverId: driver._id,
+            status: "COMPLETED",
+        });
+
         const rideSummary = summary || {
             completedTrips: 0,
             totalFares: 0,
@@ -176,17 +220,30 @@ async function getMyEarnings(req, res) {
             netEarnings: 0,
         };
 
+        const settledPurchases = purchaseSummary || {
+            completedPurchases: 0,
+            totalFares: 0,
+            totalCommission: 0,
+            netEarnings: 0,
+        };
+
         const settledSummary = {
             completedTrips:
                 rideSummary.completedTrips +
-                settledParcels.completedParcels,
+                settledParcels.completedParcels +
+                settledPurchases.completedPurchases,
             totalFares:
-                rideSummary.totalFares + settledParcels.totalFares,
+                rideSummary.totalFares +
+                settledParcels.totalFares +
+                settledPurchases.totalFares,
             totalCommission:
                 rideSummary.totalCommission +
-                settledParcels.totalCommission,
+                settledParcels.totalCommission +
+                settledPurchases.totalCommission,
             netEarnings:
-                rideSummary.netEarnings + settledParcels.netEarnings,
+                rideSummary.netEarnings +
+                settledParcels.netEarnings +
+                settledPurchases.netEarnings,
         };
 
         return res.json({
@@ -194,12 +251,14 @@ async function getMyEarnings(req, res) {
             currency: "PKR",
             summary: {
                 ...settledSummary,
-                completedTrips: completedTrips + completedParcels,
+                completedTrips:
+                    completedTrips + completedParcels + completedPurchases,
                 settledTrips: settledSummary.completedTrips,
                 unsettledTrips: Math.max(
                     0,
                     completedTrips +
-                        completedParcels -
+                        completedParcels +
+                        completedPurchases -
                         settledSummary.completedTrips
                 ),
             },

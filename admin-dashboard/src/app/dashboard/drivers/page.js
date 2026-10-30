@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 
 import AdminShell from "@/components/AdminShell";
+import { useAdminDialog } from "@/components/AdminDialog";
 import { authenticatedAdminRequest } from "@/lib/adminSession";
 import DriverDocumentReview from "@/components/DriverDocumentReview";
 import DriverServicesPanel from "@/components/DriverServicesPanel";
@@ -30,6 +31,7 @@ const nameOf = (driver) =>
     "Driver";
 
 export default function DriversPage() {
+    const { confirmDialog, promptDialog } = useAdminDialog();
     const [drivers, setDrivers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -73,10 +75,10 @@ export default function DriversPage() {
         let rejectionReason = "";
 
         if (action === "reject") {
-            const reason = window.prompt("Enter rejection reason:");
+            const reason = await promptDialog("Enter rejection reason:");
             if (!reason?.trim()) return;
             rejectionReason = reason.trim();
-        } else if (!window.confirm(`Are you sure you want to ${label} this driver?`)) {
+        } else if (!(await confirmDialog(`Are you sure you want to ${label} this driver?`))) {
             return;
         }
 

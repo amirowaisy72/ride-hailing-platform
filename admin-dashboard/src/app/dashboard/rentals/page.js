@@ -6,6 +6,7 @@ import {
     CheckCircle2, XCircle, Eye,
 } from "lucide-react";
 import AdminShell from "@/components/AdminShell";
+import { useAdminDialog } from "@/components/AdminDialog";
 import { authenticatedAdminRequest } from "@/lib/adminSession";
 
 const TABS = [
@@ -38,6 +39,8 @@ const STATUS_CLASSES = {
     NO_SHOW: "bg-slate-100 text-slate-600",
     DISPUTED: "bg-red-50 text-red-600",
     PENDING: "bg-amber-50 text-amber-700",
+    NOT_APPLIED: "bg-slate-100 text-slate-600",
+    INCOMPLETE: "bg-amber-50 text-amber-700",
     UNDER_REVIEW: "bg-amber-50 text-amber-700",
     APPROVED: "bg-emerald-50 text-[#087F5B]",
     REJECTED: "bg-red-50 text-red-600",
@@ -134,6 +137,7 @@ export default function RentalsAdminPage() {
 // ---------------------------------------------------------------------
 
 function PaymentsTab({ setError, setMessage }) {
+    const { confirmDialog } = useAdminDialog();
     const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [busyId, setBusyId] = useState("");
@@ -162,9 +166,9 @@ function PaymentsTab({ setError, setMessage }) {
     }, [load]);
 
     async function verify(payment) {
-        if (!window.confirm(
+        if (!(await confirmDialog(
             `Verify that the booking fee of ${money(payment.bookingFee)} for ${payment.bookingRef} was received in the platform bank account? This CONFIRMS the booking.`
-        )) return;
+        ))) return;
 
         setBusyId(payment.bookingId);
         setError("");
@@ -483,6 +487,7 @@ function InspectionBlock({ title, inspection }) {
 }
 
 function BookingDetailModal({ detail, loading, onClose, setError, setMessage, onChanged }) {
+    const { confirmDialog } = useAdminDialog();
     const [outcome, setOutcome] = useState("COMPLETED");
     const [fault, setFault] = useState("NONE");
     const [note, setNote] = useState("");
@@ -512,7 +517,7 @@ function BookingDetailModal({ detail, loading, onClose, setError, setMessage, on
             setLocalError("A resolution note is required.");
             return;
         }
-        if (!window.confirm(`Resolve this dispute as ${outcome}?`)) return;
+        if (!(await confirmDialog(`Resolve this dispute as ${outcome}?`))) return;
 
         setBusy(true);
         setLocalError("");
@@ -534,7 +539,7 @@ function BookingDetailModal({ detail, loading, onClose, setError, setMessage, on
     }
 
     async function markRefunded() {
-        if (!window.confirm("Confirm the booking-fee refund has actually been transferred back to the passenger?")) return;
+        if (!(await confirmDialog("Confirm the booking-fee refund has actually been transferred back to the passenger?"))) return;
 
         setBusy(true);
         setLocalError("");
@@ -728,6 +733,7 @@ function BookingDetailModal({ detail, loading, onClose, setError, setMessage, on
 // ---------------------------------------------------------------------
 
 function ListingsTab({ setError, setMessage }) {
+    const { confirmDialog, promptDialog } = useAdminDialog();
     const [vehicles, setVehicles] = useState([]);
     const [status, setStatus] = useState("PENDING");
     const [loading, setLoading] = useState(true);
@@ -760,10 +766,10 @@ function ListingsTab({ setError, setMessage }) {
     async function moderate(vehicle, nextStatus) {
         let note = "";
         if (nextStatus !== "APPROVED") {
-            const entered = window.prompt(`Note for ${nextStatus.toLowerCase()} this listing (optional):`, "");
+            const entered = await promptDialog(`Note for ${nextStatus.toLowerCase()} this listing (optional):`, { defaultValue: "" });
             if (entered === null) return;
             note = entered.trim();
-        } else if (!window.confirm("Approve this listing? The partner must have accepted the provider agreement.")) {
+        } else if (!(await confirmDialog("Approve this listing? The partner must have accepted the provider agreement."))) {
             return;
         }
 
@@ -901,8 +907,11 @@ function ListingsTab({ setError, setMessage }) {
 // ---------------------------------------------------------------------
 // Rental Partner approvals — KYC documents + application status.
 // Backend: /admin/rental-partners (Phase 2 admin API).
-// Chauffeur verification is display-only here: no admin endpoint
-// approves it yet, so With-Driver stays gated until that ships.
+// Chauffeur verification (A16): the partner list API returns the full
+// partner record, chauffeur declaration fields included, and the
+// Verify / Reject / Unverify actions below call
+// PATCH /admin/rental-partners/:id/chauffeur — the only route that can
+// move chauffeurVerificationStatus to APPROVED for With-Driver.
 // ---------------------------------------------------------------------
 
 const PARTNER_DOC_LABELS = {
@@ -916,6 +925,7 @@ const PARTNER_DOC_LABELS = {
 };
 
 function PartnersTab({ setError, setMessage }) {
+    const { confirmDialog, promptDialog } = useAdminDialog();
     const [mode, setMode] = useState("PENDING");
     const [partners, setPartners] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -952,22 +962,22 @@ function PartnersTab({ setError, setMessage }) {
         const body = { status: nextStatus };
         if (nextStatus === "APPROVED") {
             if (!partner.agreementAcceptedAt) {
-                if (!window.confirm("This partner has NOT accepted the provider agreement yet. Approve anyway?")) return;
-            } else if (!window.confirm(`Approve rental partner "${partner.businessName || "Unnamed"}"?`)) {
+                if (!(await confirmDialog("This partner has NOT accepted the provider agreement yet. Approve anyway?"))) return;
+            } else if (!(await confirmDialog(`Approve rental partner "${partner.businessName || "Unnamed"}"?`))) {
                 return;
             }
         }
         if (nextStatus === "REJECTED") {
-            const reason = window.prompt("Rejection reason (required):", "");
+            const reason = await promptDialog("Rejection reason (required):", {
+                defaultValue: "",
+                required: true,
+                requiredMessage: "A rejection reason is required.",
+            });
             if (reason === null) return;
-            if (!reason.trim()) {
-                setError("A rejection reason is required.");
-                return;
-            }
             body.rejectionReason = reason.trim();
         }
         if (nextStatus === "SUSPENDED") {
-            const reason = window.prompt("Suspension reason (optional):", "");
+            const reason = await promptDialog("Suspension reason (optional):", { defaultValue: "" });
             if (reason === null) return;
             body.suspensionReason = reason.trim();
         }
@@ -981,6 +991,48 @@ function PartnersTab({ setError, setMessage }) {
                 { method: "PATCH", body: JSON.stringify(body) }
             );
             setMessage(`Partner ${nextStatus.toLowerCase()}.`);
+            await load();
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setBusyId("");
+        }
+    }
+
+    async function setChauffeurStatus(partner, nextStatus) {
+        const body = { status: nextStatus };
+        const who = partner.chauffeurName || partner.businessName || "this partner";
+        if (nextStatus === "APPROVED") {
+            if (!(await confirmDialog(`Verify the chauffeur "${who}"? With-Driver bookings open for this partner once approved.`))) return;
+        }
+        if (nextStatus === "REJECTED") {
+            const reason = await promptDialog("Chauffeur rejection reason (required):", {
+                defaultValue: "",
+                required: true,
+                requiredMessage: "A rejection reason is required.",
+            });
+            if (reason === null) return;
+            body.rejectionReason = reason.trim();
+        }
+        if (nextStatus === "PENDING") {
+            if (!(await confirmDialog(`Unverify the chauffeur for "${partner.businessName || "Unnamed"}"? The declaration stays on file and must be re-approved before With-Driver bookings.`))) return;
+        }
+
+        setBusyId(partner._id);
+        setError("");
+        setMessage("");
+        try {
+            await authenticatedAdminRequest(
+                `/admin/rental-partners/${partner._id}/chauffeur`,
+                { method: "PATCH", body: JSON.stringify(body) }
+            );
+            setMessage(
+                nextStatus === "APPROVED"
+                    ? "Chauffeur verified."
+                    : nextStatus === "REJECTED"
+                      ? "Chauffeur rejected."
+                      : "Chauffeur unverified — back to pending review."
+            );
             await load();
         } catch (err) {
             setError(err.message);
@@ -1026,12 +1078,12 @@ function PartnersTab({ setError, setMessage }) {
     async function reviewDocument(partner, document, nextStatus) {
         const body = { status: nextStatus };
         if (nextStatus === "REJECTED") {
-            const reason = window.prompt("Document rejection reason (required):", "");
+            const reason = await promptDialog("Document rejection reason (required):", {
+                defaultValue: "",
+                required: true,
+                requiredMessage: "A rejection reason is required.",
+            });
             if (reason === null) return;
-            if (!reason.trim()) {
-                setError("A rejection reason is required.");
-                return;
-            }
             body.rejectionReason = reason.trim();
         }
         setBusyId(document._id);
@@ -1120,6 +1172,69 @@ function PartnersTab({ setError, setMessage }) {
                                     </div>
                                     <StatusChip status={partner.applicationStatus} />
                                 </div>
+
+                                {partner.providesChauffeur && (
+                                    <div className="mt-3 rounded-xl bg-slate-50 p-3">
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <p className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                                                Chauffeur declaration
+                                            </p>
+                                            <StatusChip status={partner.chauffeurVerificationStatus || "NOT_APPLIED"} />
+                                        </div>
+                                        <dl className="mt-2 space-y-1 text-xs text-slate-600">
+                                            <div className="flex gap-2">
+                                                <dt className="w-28 shrink-0 font-bold">Name</dt>
+                                                <dd>{partner.chauffeurName || "—"}</dd>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <dt className="w-28 shrink-0 font-bold">Licence no.</dt>
+                                                <dd>{partner.chauffeurLicenceNumber || "—"}</dd>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <dt className="w-28 shrink-0 font-bold">Licence expiry</dt>
+                                                <dd>{partner.chauffeurLicenceExpiry ? new Date(partner.chauffeurLicenceExpiry).toLocaleDateString("en-PK") : "—"}</dd>
+                                            </div>
+                                            {partner.chauffeurRejectionReason && (
+                                                <div className="flex gap-2">
+                                                    <dt className="w-28 shrink-0 font-bold">Rejection reason</dt>
+                                                    <dd className="text-red-500">{partner.chauffeurRejectionReason}</dd>
+                                                </div>
+                                            )}
+                                        </dl>
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            {partner.chauffeurVerificationStatus !== "APPROVED" && (
+                                                <button
+                                                    type="button"
+                                                    disabled={busyId === partner._id}
+                                                    onClick={() => setChauffeurStatus(partner, "APPROVED")}
+                                                    className="rounded-xl bg-[#087F5B] px-3.5 py-2 text-xs font-bold text-white disabled:opacity-50"
+                                                >
+                                                    <CheckCircle2 size={14} className="mr-1 inline" /> Verify chauffeur
+                                                </button>
+                                            )}
+                                            {partner.chauffeurVerificationStatus !== "REJECTED" && (
+                                                <button
+                                                    type="button"
+                                                    disabled={busyId === partner._id}
+                                                    onClick={() => setChauffeurStatus(partner, "REJECTED")}
+                                                    className="rounded-xl bg-red-50 px-3.5 py-2 text-xs font-bold text-red-600 disabled:opacity-50"
+                                                >
+                                                    <XCircle size={14} className="mr-1 inline" /> Reject chauffeur
+                                                </button>
+                                            )}
+                                            {partner.chauffeurVerificationStatus === "APPROVED" && (
+                                                <button
+                                                    type="button"
+                                                    disabled={busyId === partner._id}
+                                                    onClick={() => setChauffeurStatus(partner, "PENDING")}
+                                                    className="rounded-xl bg-slate-100 px-3.5 py-2 text-xs font-bold text-slate-600 disabled:opacity-50"
+                                                >
+                                                    Unverify chauffeur
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     <button

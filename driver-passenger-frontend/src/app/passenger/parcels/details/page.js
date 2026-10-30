@@ -6,10 +6,12 @@ import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { ArrowLeft, CheckCircle2, KeyRound, Phone, RefreshCw, Star, UserRound, XCircle } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
+import { useActionDialog } from "@/components/ActionDialog";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
 import { getRealtimeSocket } from "@/lib/socket";
 import BottomSheet from "@/components/parcel/BottomSheet";
+import { NavigateButton, pointCoords } from "@/components/DestinationMap";
 import {
     Button, InlineError, ParcelProgress, ParcelStatusBadge, ParcelTimeline, RouteSummary, Toast,
 } from "@/components/parcel/ParcelKit";
@@ -36,6 +38,7 @@ export default function ParcelDetailsPage() {
 function ParcelDetails() {
     const id = useSearchParams().get("parcelId");
     const { token } = useAuth();
+    const dialog = useActionDialog();
 
     const [order, setOrder] = useState(null);
     const [offers, setOffers] = useState([]);
@@ -206,7 +209,12 @@ function ParcelDetails() {
     }
 
     async function cancelOrder() {
-        if (!window.confirm("Cancel this parcel request?")) return;
+        if (!(await dialog.confirm({
+            title: "Cancel this parcel request?",
+            confirmLabel: "Cancel request",
+            cancelLabel: "Keep request",
+            danger: true,
+        }))) return;
 
         setBusy(true);
         try {
@@ -402,6 +410,15 @@ function ParcelDetails() {
                     <section>
                         <h2 className="mb-2 text-sm font-extrabold">Route</h2>
                         <RouteSummary pickup={order.pickup} destination={order.destination} />
+                        {pointCoords(order.destination) && (
+                            <div className="mt-3">
+                                <NavigateButton
+                                    latitude={pointCoords(order.destination).latitude}
+                                    longitude={pointCoords(order.destination).longitude}
+                                    label="Navigate to destination"
+                                />
+                            </div>
+                        )}
                     </section>
 
                     {!cancelled && (

@@ -8,6 +8,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 maplibregl.setWorkerUrl("/maplibre-worker.mjs");
 
 import AdminShell from "@/components/AdminShell";
+import { useAdminDialog } from "@/components/AdminDialog";
 import { authenticatedAdminRequest } from "@/lib/adminSession";
 
 const START_CENTER = [69.3451, 30.3753];
@@ -18,6 +19,7 @@ const emptyGeometry = {
 };
 
 export default function CitiesPage() {
+    const { confirmDialog } = useAdminDialog();
     const [mapContainer, setMapContainer] = useState(null);
     const containerRef = useRef(null);
     const mapRef = useRef(null);
@@ -605,7 +607,7 @@ export default function CitiesPage() {
                                 <button
                                     type="button"
                                     onClick={async () => {
-                                        if (!window.confirm(`Delete ${address.name}?`)) return;
+                                        if (!(await confirmDialog(`Delete ${address.name}?`, { danger: true }))) return;
                                         try {
                                             await authenticatedAdminRequest(
                                                 `/admin/service-areas/local-addresses/${address._id}`,

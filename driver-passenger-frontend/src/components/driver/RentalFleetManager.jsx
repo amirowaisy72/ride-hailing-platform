@@ -33,11 +33,21 @@ import {
 // pill on every card says exactly where a listing stands.
 
 const LISTING_META = {
-    PENDING: { label: "In moderation", pill: "bg-amber-50 text-amber-700" },
-    APPROVED: { label: "Live", pill: "bg-emerald-50 text-[#087F5B]" },
-    REJECTED: { label: "Rejected", pill: "bg-red-50 text-red-600" },
-    SUSPENDED: { label: "Suspended", pill: "bg-red-50 text-red-600" },
+    PENDING: { label: "In moderation", pill: "bg-pd-warning-soft text-pd-warning" },
+    APPROVED: { label: "Live", pill: "bg-pd-success-soft text-[#087F5B]" },
+    REJECTED: { label: "Rejected", pill: "bg-pd-danger-soft text-pd-danger" },
+    SUSPENDED: { label: "Suspended", pill: "bg-pd-danger-soft text-pd-danger" },
 };
+
+// Presentation-only steps for the listing form (A18). All fields keep
+// living in the single `form` state below — a step only shows or hides
+// its group, so switching steps never loses input and validation /
+// payload building in saveVehicle are untouched.
+const FORM_STEPS = [
+    { label: "Vehicle" },
+    { label: "Pricing & options" },
+    { label: "Photos & publish" },
+];
 
 const money = (value) =>
     value == null ? "Not offered" : `PKR ${Number(value).toLocaleString("en-PK")}`;
@@ -172,6 +182,7 @@ export default function RentalFleetManager({ token, notify }) {
     const [busy, setBusy] = useState("");
     const [formOpen, setFormOpen] = useState(false);
     const [editingId, setEditingId] = useState(null);
+    const [formStep, setFormStep] = useState(0);
     const [form, setForm] = useState(EMPTY_FORM);
     const [blockedDraft, setBlockedDraft] = useState({});
     const [newBlockedDate, setNewBlockedDate] = useState({});
@@ -250,12 +261,14 @@ export default function RentalFleetManager({ token, notify }) {
     function openCreate() {
         setEditingId(null);
         setForm(EMPTY_FORM);
+        setFormStep(0);
         setFormOpen(true);
     }
 
     function openEdit(vehicle) {
         setEditingId(vehicle.id);
         setForm(vehicleToForm(vehicle));
+        setFormStep(0);
         setFormOpen(true);
     }
 
@@ -357,6 +370,7 @@ export default function RentalFleetManager({ token, notify }) {
             }
             setFormOpen(false);
             setEditingId(null);
+            setFormStep(0);
             void load();
         } catch (err) {
             notify({ kind: "error", text: err.message });
@@ -423,7 +437,7 @@ export default function RentalFleetManager({ token, notify }) {
     if (loading) {
         return (
             <div
-                className="h-56 animate-pulse rounded-[24px] bg-white shadow-sm"
+                className="h-56 animate-pulse rounded-[24px] bg-pd-surface shadow-sm"
                 aria-busy="true"
             />
         );
@@ -432,11 +446,11 @@ export default function RentalFleetManager({ token, notify }) {
     return (
         <div className="space-y-5">
             {agreement !== undefined && !agreementAccepted && (
-                <section className="rounded-[24px] border border-amber-200 bg-amber-50 p-5 shadow-sm">
-                    <h3 className="flex items-center gap-2 text-base font-extrabold text-amber-900">
+                <section className="rounded-[24px] bg-pd-warning-soft p-5 shadow-sm">
+                    <h3 className="flex items-center gap-2 text-base font-extrabold text-pd-warning">
                         <FileCheck2 size={19} /> Rental Partner Agreement
                     </h3>
-                    <p className="mt-2 text-sm leading-6 text-amber-800">
+                    <p className="mt-2 text-sm leading-6 text-pd-warning">
                         Before listing vehicles, accept the Safar Rentals
                         partner agreement: bookings are completed inside Safar,
                         the platform booking fee is collected by Safar at
@@ -461,7 +475,7 @@ export default function RentalFleetManager({ token, notify }) {
             {error && (
                 <p
                     role="alert"
-                    className="flex items-start gap-2 rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-600"
+                    className="flex items-start gap-2 rounded-xl bg-pd-danger-soft p-4 text-sm font-semibold text-pd-danger"
                 >
                     <CircleAlert size={17} className="mt-0.5 shrink-0" />
                     {error}
@@ -470,7 +484,7 @@ export default function RentalFleetManager({ token, notify }) {
 
             <section>
                 <div className="flex items-center justify-between px-1">
-                    <h3 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                    <h3 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-pd-muted">
                         <CarFront size={14} /> My vehicles ({vehicles.length})
                     </h3>
                     <button
@@ -483,19 +497,19 @@ export default function RentalFleetManager({ token, notify }) {
                     </button>
                 </div>
                 {!agreementAccepted && (
-                    <p className="mt-2 px-1 text-xs font-semibold text-slate-400">
+                    <p className="mt-2 px-1 text-xs font-semibold text-pd-faint">
                         Accept the agreement above to list vehicles.
                     </p>
                 )}
 
                 <div className="mt-3 space-y-3">
                     {vehicles.length === 0 && !formOpen && (
-                        <div className="rounded-[24px] bg-white p-6 text-center shadow-sm">
+                        <div className="rounded-[24px] bg-pd-surface p-6 text-center shadow-sm">
                             <CarFront size={30} className="mx-auto text-[#087F5B]" />
                             <p className="mt-2 text-sm font-bold">
                                 No vehicles listed yet
                             </p>
-                            <p className="mt-1 text-xs text-slate-500">
+                            <p className="mt-1 text-xs text-pd-muted">
                                 Add your first car — listings pass a quick
                                 moderation check before they go live.
                             </p>
@@ -517,7 +531,7 @@ export default function RentalFleetManager({ token, notify }) {
                         return (
                             <article
                                 key={vehicle.id}
-                                className="overflow-hidden rounded-[24px] bg-white shadow-sm"
+                                className="overflow-hidden rounded-[24px] bg-pd-surface shadow-sm"
                             >
                                 <div className="flex gap-3 p-4">
                                     {cover ? (
@@ -528,7 +542,7 @@ export default function RentalFleetManager({ token, notify }) {
                                             className="h-20 w-24 shrink-0 rounded-2xl object-cover"
                                         />
                                     ) : (
-                                        <span className="flex h-20 w-24 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#087F5B]">
+                                        <span className="flex h-20 w-24 shrink-0 items-center justify-center rounded-2xl bg-pd-success-soft text-[#087F5B]">
                                             <CarFront size={28} />
                                         </span>
                                     )}
@@ -544,7 +558,7 @@ export default function RentalFleetManager({ token, notify }) {
                                                 {meta.label}
                                             </span>
                                         </div>
-                                        <p className="mt-0.5 text-xs font-semibold text-slate-500">
+                                        <p className="mt-0.5 text-xs font-semibold text-pd-muted">
                                             {vehicle.transmission === "AUTOMATIC"
                                                 ? "Automatic"
                                                 : "Manual"}{" "}
@@ -572,7 +586,7 @@ export default function RentalFleetManager({ token, notify }) {
                                                 .filter(Boolean)
                                                 .join(" · ") || "No pricing set"}
                                         </p>
-                                        <p className="mt-0.5 text-[11px] font-semibold text-slate-400">
+                                        <p className="mt-0.5 text-[11px] font-semibold text-pd-faint">
                                             Deposit {money(vehicle.securityDeposit)}
                                             {vehicle.pickupAreaLabel
                                                 ? ` · Pickup: ${vehicle.pickupAreaLabel}`
@@ -581,8 +595,8 @@ export default function RentalFleetManager({ token, notify }) {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 border-t border-slate-100 px-4 py-3">
-                                    <span className="text-xs font-bold text-slate-600">
+                                <div className="flex items-center gap-2 border-t border-pd-line px-4 py-3">
+                                    <span className="text-xs font-bold text-pd-text-2">
                                         {vehicle.isActive
                                             ? "Accepting bookings"
                                             : "Paused"}
@@ -597,7 +611,7 @@ export default function RentalFleetManager({ token, notify }) {
                                         className={`relative ml-auto h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-40 ${
                                             vehicle.isActive
                                                 ? "bg-[#087F5B]"
-                                                : "bg-slate-300"
+                                                : "bg-pd-surface-3"
                                         }`}
                                     >
                                         <span
@@ -611,7 +625,7 @@ export default function RentalFleetManager({ token, notify }) {
                                     <button
                                         type="button"
                                         onClick={() => openEdit(vehicle)}
-                                        className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-slate-100 px-3 text-xs font-extrabold text-slate-700"
+                                        className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-pd-surface-3 px-3 text-xs font-extrabold text-pd-text-2"
                                     >
                                         <Pencil size={13} /> Edit
                                     </button>
@@ -628,7 +642,7 @@ export default function RentalFleetManager({ token, notify }) {
                                             <button
                                                 type="button"
                                                 onClick={() => setConfirmDeleteId("")}
-                                                className="inline-flex h-9 items-center rounded-xl bg-slate-100 px-3 text-xs font-extrabold text-slate-600"
+                                                className="inline-flex h-9 items-center rounded-xl bg-pd-surface-3 px-3 text-xs font-extrabold text-pd-text-2"
                                             >
                                                 Keep
                                             </button>
@@ -637,28 +651,28 @@ export default function RentalFleetManager({ token, notify }) {
                                         <button
                                             type="button"
                                             onClick={() => setConfirmDeleteId(vehicle.id)}
-                                            className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-red-50 px-3 text-xs font-extrabold text-red-600"
+                                            className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-pd-danger-soft px-3 text-xs font-extrabold text-pd-danger"
                                         >
                                             <Trash2 size={13} /> Delete
                                         </button>
                                     )}
                                 </div>
 
-                                <div className="border-t border-slate-100 px-4 py-3">
-                                    <p className="flex items-center gap-1.5 text-xs font-extrabold text-slate-600">
+                                <div className="border-t border-pd-line px-4 py-3">
+                                    <p className="flex items-center gap-1.5 text-xs font-extrabold text-pd-text-2">
                                         <CalendarDays size={14} className="text-[#087F5B]" />
                                         Blocked dates — vehicle unavailable
                                     </p>
                                     <div className="mt-2 flex flex-wrap gap-1.5">
                                         {blocked.length === 0 && (
-                                            <span className="text-[11px] font-semibold text-slate-400">
+                                            <span className="text-[11px] font-semibold text-pd-faint">
                                                 None — available every day.
                                             </span>
                                         )}
                                         {blocked.map((date) => (
                                             <span
                                                 key={date}
-                                                className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700"
+                                                className="inline-flex items-center gap-1 rounded-full bg-pd-surface-3 px-2.5 py-1 text-[11px] font-bold text-pd-text-2"
                                             >
                                                 {date}
                                                 <button
@@ -672,7 +686,7 @@ export default function RentalFleetManager({ token, notify }) {
                                                             ),
                                                         }))
                                                     }
-                                                    className="text-slate-400"
+                                                    className="text-pd-faint"
                                                 >
                                                     <X size={12} />
                                                 </button>
@@ -706,7 +720,7 @@ export default function RentalFleetManager({ token, notify }) {
                                                     [vehicle.id]: "",
                                                 }));
                                             }}
-                                            className="h-10 shrink-0 rounded-xl bg-slate-100 px-3 text-xs font-extrabold text-slate-700 disabled:opacity-40"
+                                            className="h-10 shrink-0 rounded-xl bg-pd-surface-3 px-3 text-xs font-extrabold text-pd-text-2 disabled:opacity-40"
                                         >
                                             Block date
                                         </button>
@@ -729,7 +743,7 @@ export default function RentalFleetManager({ token, notify }) {
             </section>
 
             {formOpen && (
-                <section className="rounded-[24px] bg-white p-5 shadow-sm">
+                <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                     <div className="flex items-center justify-between">
                         <h3 className="text-base font-extrabold">
                             {editingId ? "Edit vehicle" : "Add a vehicle"}
@@ -740,14 +754,15 @@ export default function RentalFleetManager({ token, notify }) {
                             onClick={() => {
                                 setFormOpen(false);
                                 setEditingId(null);
+                                setFormStep(0);
                             }}
-                            className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600"
+                            className="flex h-9 w-9 items-center justify-center rounded-xl bg-pd-surface-3 text-pd-text-2"
                         >
                             <X size={16} />
                         </button>
                     </div>
                     {editingId && (
-                        <p className="mt-2 rounded-xl bg-amber-50 p-3 text-xs leading-5 font-semibold text-amber-800">
+                        <p className="mt-2 rounded-xl bg-pd-warning-soft p-3 text-xs leading-5 font-semibold text-pd-warning">
                             Saving an edit sends the listing back through
                             moderation. Registration number and pickup contact
                             are never shown back — re-enter them only if they
@@ -755,7 +770,51 @@ export default function RentalFleetManager({ token, notify }) {
                         </p>
                     )}
 
+                    <ol
+                        className="mt-4 flex items-center gap-2"
+                        aria-label="Vehicle listing steps"
+                    >
+                        {FORM_STEPS.map((step, index) => (
+                            <li
+                                key={step.label}
+                                className="flex items-center gap-2"
+                                aria-current={
+                                    formStep === index ? "step" : undefined
+                                }
+                            >
+                                <span
+                                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold ${
+                                        index === formStep
+                                            ? "bg-[#087F5B] text-white"
+                                            : index < formStep
+                                              ? "bg-pd-success-soft text-[#087F5B]"
+                                              : "bg-pd-surface-3 text-pd-muted"
+                                    }`}
+                                >
+                                    {index + 1}
+                                </span>
+                                <span
+                                    className={`text-[11px] font-extrabold ${
+                                        index === formStep
+                                            ? ""
+                                            : "text-pd-muted"
+                                    }`}
+                                >
+                                    {step.label}
+                                </span>
+                                {index < FORM_STEPS.length - 1 && (
+                                    <span
+                                        className="h-px w-3 bg-pd-line"
+                                        aria-hidden="true"
+                                    />
+                                )}
+                            </li>
+                        ))}
+                    </ol>
+
                     <div className="mt-4 space-y-3">
+                        {formStep === 0 && (
+                            <>
                         <div className="grid grid-cols-2 gap-2">
                             <TextField label="Brand *" value={form.brand} onChange={(v) => set("brand", v)} placeholder="Toyota" />
                             <TextField label="Model *" value={form.model} onChange={(v) => set("model", v)} placeholder="Corolla" />
@@ -767,7 +826,7 @@ export default function RentalFleetManager({ token, notify }) {
                                 placeholder="LEA-21-1234"
                             />
                             <label className="block">
-                                <span className="text-xs font-semibold text-slate-500">Transmission</span>
+                                <span className="text-xs font-semibold text-pd-muted">Transmission</span>
                                 <select
                                     value={form.transmission}
                                     onChange={(e) => set("transmission", e.target.value)}
@@ -779,7 +838,11 @@ export default function RentalFleetManager({ token, notify }) {
                             </label>
                             <TextField label="Seats" type="number" value={form.seats} onChange={(v) => set("seats", v)} placeholder="4" />
                         </div>
+                            </>
+                        )}
 
+                        {formStep === 1 && (
+                            <>
                         <div className="flex flex-wrap gap-2">
                             {[
                                 { value: "WITH_DRIVER", label: "With Driver" },
@@ -803,7 +866,7 @@ export default function RentalFleetManager({ token, notify }) {
                                         className={`rounded-full px-3.5 py-2 text-xs font-extrabold ${
                                             active
                                                 ? "bg-[#087F5B] text-white"
-                                                : "bg-slate-100 text-slate-600"
+                                                : "bg-pd-surface-3 text-pd-text-2"
                                         }`}
                                     >
                                         {mode.label}
@@ -816,7 +879,7 @@ export default function RentalFleetManager({ token, notify }) {
                                 className={`rounded-full px-3.5 py-2 text-xs font-extrabold ${
                                     form.hasAC
                                         ? "bg-[#087F5B] text-white"
-                                        : "bg-slate-100 text-slate-600"
+                                        : "bg-pd-surface-3 text-pd-text-2"
                                 }`}
                             >
                                 Air conditioning
@@ -824,7 +887,7 @@ export default function RentalFleetManager({ token, notify }) {
                         </div>
 
                         <div>
-                            <p className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                            <p className="text-xs font-extrabold uppercase tracking-wider text-pd-muted">
                                 Pricing (PKR) — blank = not offered
                             </p>
                             <div className="mt-2 grid grid-cols-2 gap-2">
@@ -839,13 +902,35 @@ export default function RentalFleetManager({ token, notify }) {
                             </div>
                         </div>
 
+                        <div className="space-y-2">
+                            <TextField label="Fuel policy" value={form.fuelPolicy} onChange={(v) => set("fuelPolicy", v)} placeholder="e.g. Return with same fuel level" />
+                            <TextField label="Tolls note" value={form.tollsNote} onChange={(v) => set("tollsNote", v)} placeholder="e.g. Tolls paid by customer" />
+                            <TextField label="Insurance note" value={form.insuranceNote} onChange={(v) => set("insuranceNote", v)} placeholder="Insurance details (optional)" />
+                            <label className="block">
+                                <span className="text-xs font-semibold text-pd-muted">Cancellation policy</span>
+                                <select
+                                    value={form.cancellationPolicy}
+                                    onChange={(e) => set("cancellationPolicy", e.target.value)}
+                                    className="mt-1 h-11 w-full rounded-xl border px-3 text-sm font-semibold"
+                                >
+                                    <option value="FLEXIBLE">Flexible</option>
+                                    <option value="MODERATE">Moderate</option>
+                                    <option value="STRICT">Strict</option>
+                                </select>
+                            </label>
+                        </div>
+                            </>
+                        )}
+
+                        {formStep === 2 && (
+                            <>
                         {[
                             ["exterior", "Exterior photos"],
                             ["interior", "Interior photos"],
                             ["condition", "Condition photos"],
                         ].map(([group, label]) => (
                             <div key={group}>
-                                <p className="text-xs font-semibold text-slate-500">{label}</p>
+                                <p className="text-xs font-semibold text-pd-muted">{label}</p>
                                 <div className="mt-1.5 flex flex-wrap gap-2">
                                     {form.photos[group].map((url) => (
                                         <span key={url} className="relative">
@@ -869,13 +954,13 @@ export default function RentalFleetManager({ token, notify }) {
                                                         },
                                                     }))
                                                 }
-                                                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-white"
+                                                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-pd-ink text-pd-ink-text"
                                             >
                                                 <X size={11} />
                                             </button>
                                         </span>
                                     ))}
-                                    <label className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 text-[#087F5B]">
+                                    <label className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-pd-line bg-pd-success-soft/40 text-[#087F5B]">
                                         <Camera size={18} />
                                         <input
                                             type="file"
@@ -890,33 +975,15 @@ export default function RentalFleetManager({ token, notify }) {
                                     </label>
                                 </div>
                                 {uploadingGroup === group && (
-                                    <p className="mt-1 text-[11px] font-semibold text-slate-400">
+                                    <p className="mt-1 text-[11px] font-semibold text-pd-faint">
                                         Uploading…
                                     </p>
                                 )}
                             </div>
                         ))}
 
-                        <div className="space-y-2">
-                            <TextField label="Fuel policy" value={form.fuelPolicy} onChange={(v) => set("fuelPolicy", v)} placeholder="e.g. Return with same fuel level" />
-                            <TextField label="Tolls note" value={form.tollsNote} onChange={(v) => set("tollsNote", v)} placeholder="e.g. Tolls paid by customer" />
-                            <TextField label="Insurance note" value={form.insuranceNote} onChange={(v) => set("insuranceNote", v)} placeholder="Insurance details (optional)" />
-                            <label className="block">
-                                <span className="text-xs font-semibold text-slate-500">Cancellation policy</span>
-                                <select
-                                    value={form.cancellationPolicy}
-                                    onChange={(e) => set("cancellationPolicy", e.target.value)}
-                                    className="mt-1 h-11 w-full rounded-xl border px-3 text-sm font-semibold"
-                                >
-                                    <option value="FLEXIBLE">Flexible</option>
-                                    <option value="MODERATE">Moderate</option>
-                                    <option value="STRICT">Strict</option>
-                                </select>
-                            </label>
-                        </div>
-
-                        <div className="space-y-2 rounded-2xl bg-slate-50 p-3">
-                            <p className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                        <div className="space-y-2 rounded-2xl bg-pd-surface-2 p-3">
+                            <p className="text-xs font-extrabold uppercase tracking-wider text-pd-muted">
                                 Pickup area
                             </p>
                             <TextField label="Area label" value={form.pickupAreaLabel} onChange={(v) => set("pickupAreaLabel", v)} placeholder="e.g. Model Town, Khanpur" />
@@ -928,7 +995,7 @@ export default function RentalFleetManager({ token, notify }) {
                             <button
                                 type="button"
                                 onClick={useCurrentLocation}
-                                className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-white px-3 text-xs font-extrabold text-[#087F5B] shadow-sm"
+                                className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-pd-surface px-3 text-xs font-extrabold text-[#087F5B] shadow-sm"
                             >
                                 <LocateFixed size={14} /> Use my current location
                             </button>
@@ -939,19 +1006,107 @@ export default function RentalFleetManager({ token, notify }) {
                             </div>
                         </div>
 
-                        <button
-                            type="button"
-                            disabled={busy === "save"}
-                            onClick={() => void saveVehicle()}
-                            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#087F5B] font-bold text-white disabled:opacity-40"
-                        >
-                            <CheckCircle2 size={18} />
-                            {busy === "save"
-                                ? "Saving…"
-                                : editingId
-                                  ? "Save changes"
-                                  : "List this vehicle"}
-                        </button>
+                        <div className="space-y-1.5 rounded-2xl bg-pd-surface-2 p-3">
+                            <p className="text-xs font-extrabold uppercase tracking-wider text-pd-muted">
+                                Review
+                            </p>
+                            <p className="text-sm font-extrabold">
+                                {form.brand || "Brand"}{" "}
+                                {form.model || "Model"} ·{" "}
+                                {form.year || "Year"}
+                            </p>
+                            <p className="text-xs font-semibold text-pd-muted">
+                                {form.transmission === "AUTOMATIC"
+                                    ? "Automatic"
+                                    : "Manual"}{" "}
+                                · {form.seats || "—"} seats
+                                {form.hasAC ? " · AC" : ""} ·{" "}
+                                {form.rentalModes.length
+                                    ? form.rentalModes
+                                          .map((m) =>
+                                              m === "WITH_DRIVER"
+                                                  ? "With Driver"
+                                                  : "Self-Drive"
+                                          )
+                                          .join(", ")
+                                    : "No rental mode selected"}
+                            </p>
+                            <p className="text-xs font-bold text-[#087F5B]">
+                                {[
+                                    form.daily !== "" &&
+                                        `${money(Number(form.daily))}/day`,
+                                    form.hourly !== "" &&
+                                        `${money(Number(form.hourly))}/hr`,
+                                    form.weekly !== "" &&
+                                        `${money(Number(form.weekly))}/week`,
+                                    form.monthly !== "" &&
+                                        `${money(Number(form.monthly))}/month`,
+                                ]
+                                    .filter(Boolean)
+                                    .join(" · ") || "No pricing set"}
+                            </p>
+                            <p className="text-[11px] font-semibold text-pd-faint">
+                                Deposit{" "}
+                                {money(Number(form.securityDeposit || 0))}
+                                {form.pickupAreaLabel
+                                    ? ` · Pickup: ${form.pickupAreaLabel}`
+                                    : ""}{" "}
+                                · Photos:{" "}
+                                {form.photos.exterior.length +
+                                    form.photos.interior.length +
+                                    form.photos.condition.length}
+                            </p>
+                        </div>
+
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setFormStep(1)}
+                                className="flex h-12 items-center justify-center rounded-xl bg-pd-surface-3 px-5 font-bold text-pd-text-2"
+                            >
+                                Back
+                            </button>
+                            <button
+                                type="button"
+                                disabled={busy === "save"}
+                                onClick={() => void saveVehicle()}
+                                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[#087F5B] font-bold text-white disabled:opacity-40"
+                            >
+                                <CheckCircle2 size={18} />
+                                {busy === "save"
+                                    ? "Saving…"
+                                    : editingId
+                                      ? "Save changes"
+                                      : "List this vehicle"}
+                            </button>
+                        </div>
+                            </>
+                        )}
+
+                        {formStep < 2 && (
+                            <div className="flex gap-2">
+                                {formStep > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormStep(0)}
+                                        className="flex h-12 items-center justify-center rounded-xl bg-pd-surface-3 px-5 font-bold text-pd-text-2"
+                                    >
+                                        Back
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setFormStep((step) =>
+                                            Math.min(2, step + 1)
+                                        )
+                                    }
+                                    className="flex h-12 flex-1 items-center justify-center rounded-xl bg-[#087F5B] font-bold text-white"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </section>
             )}
@@ -962,7 +1117,7 @@ export default function RentalFleetManager({ token, notify }) {
 function TextField({ label, value, onChange, placeholder, type = "text" }) {
     return (
         <label className="block">
-            <span className="text-xs font-semibold text-slate-500">{label}</span>
+            <span className="text-xs font-semibold text-pd-muted">{label}</span>
             <input
                 type={type}
                 value={value}

@@ -7,11 +7,13 @@ import { apiRequest } from "@/lib/api";
 import { BRAND } from "@/config/brand";
 import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 import "@/lib/firebase";
 
 export default function SignupPage() {
     const router = useRouter();
     const { login } = useAuth();
+    const { t } = useLanguage();
     const [form, setForm] = useState({
         firstName: "",
         lastName: "",
@@ -157,7 +159,7 @@ export default function SignupPage() {
 
 
     return (
-        <main className="min-h-dvh bg-[#F8FAF9] text-[#111827]">
+        <main className="min-h-dvh bg-pd-bg text-pd-text">
             <header className="px-6 pb-8 pt-12">
                 <div className="mb-8 flex items-center gap-2">
                     <img
@@ -165,25 +167,25 @@ export default function SignupPage() {
                         alt="Safar logo"
                         className="h-15 w-15 rounded-2xl object-cover"
                     />
-                    <span className="text-2xl font-extrabold tracking-tight text-[#111827] dark:text-white">
+                    <span className="text-2xl font-extrabold tracking-tight text-pd-text dark:text-white">
                         {BRAND.name}
                     </span>
                 </div>
                 <h1 className="text-4xl font-extrabold">
-                    Create Account
+                    {t("auth.createAccount")}
                 </h1>
-                <p className="mt-3 text-gray-500">
-                    Start your journey with {BRAND.name}.
+                <p className="mt-3 text-pd-muted">
+                    {t("auth.startJourney", { brand: BRAND.name })}
                 </p>
             </header>
 
-            <section className="rounded-t-[36px] bg-white px-6 py-9">
+            <section className="rounded-t-[36px] bg-pd-surface px-6 py-9">
                 <form onSubmit={submit} className="mx-auto max-w-md space-y-4">
                     {[
-                        ["firstName", "First Name"],
-                        ["lastName", "Last Name"],
-                        ["email", "Email Address"],
-                        ["password", "Password"],
+                        ["firstName", t("auth.firstName")],
+                        ["lastName", t("auth.lastName")],
+                        ["email", t("auth.emailAddress")],
+                        ["password", t("auth.password")],
                     ].map(([key, label]) => (
                         <label key={key} className="block">
                             <span className="mb-2 block text-sm font-semibold">
@@ -200,13 +202,13 @@ export default function SignupPage() {
                                     ...form,
                                     [key]: e.target.value,
                                 })}
-                                className="h-14 w-full rounded-2xl border bg-[#F8FAF9] px-4 outline-none focus:border-[#087F5B]"
+                                className="h-14 w-full rounded-2xl border bg-pd-surface-2 px-4 outline-none focus:border-[#087F5B]"
                             />
                         </label>
                     ))}
 
                     {error && (
-                        <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-600">
+                        <p role="alert" className="rounded-xl bg-pd-danger-soft p-3 text-sm text-pd-danger">
                             {error}
                         </p>
                     )}
@@ -215,23 +217,23 @@ export default function SignupPage() {
                         disabled={loading}
                         className="h-14 w-full rounded-2xl bg-[#087F5B] font-bold text-white disabled:opacity-50"
                     >
-                        {loading ? (signupStep || "Checking...") : "Create Account →"}
+                        {loading ? (signupStep || t("auth.checking")) : `${t("auth.createAccount")} →`}
                     </button>
 
                     <button
                         type="button"
                         onClick={handleGoogleSignup}
                         disabled={loading}
-                        className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white font-semibold text-gray-800 disabled:opacity-50"
+                        className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-pd-line bg-pd-surface font-semibold text-pd-text disabled:opacity-50"
                     >
                         <span className="text-xl font-bold text-[#4285F4]">G</span>
-                        Continue with Google
+                        {t("auth.continueWithGoogle")}
                     </button>
 
                     <p className="text-center text-sm">
-                        Already have an account?{" "}
+                        {t("auth.alreadyHaveAccount")}{" "}
                         <Link href="/login" className="font-bold text-[#087F5B]">
-                            Sign In
+                            {t("auth.signIn")}
                         </Link>
                     </p>
                 </form>

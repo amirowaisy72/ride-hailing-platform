@@ -45,37 +45,37 @@ export const SERVICE_ORDER = ["RIDE", "PARCEL", "BUY_DELIVER"];
 export const STATUS_META = {
     NOT_APPLIED: {
         label: "Not applied",
-        pill: "bg-slate-100 text-slate-600",
-        dot: "bg-slate-400",
+        pill: "bg-pd-surface-2 text-pd-text-2",
+        dot: "bg-pd-faint",
     },
     INCOMPLETE: {
         label: "Incomplete",
-        pill: "bg-amber-50 text-amber-700",
+        pill: "bg-pd-warning-soft text-pd-warning",
         dot: "bg-amber-500",
     },
     PENDING: {
         label: "Under review",
-        pill: "bg-amber-50 text-amber-700",
+        pill: "bg-pd-warning-soft text-pd-warning",
         dot: "bg-amber-500",
     },
     UNDER_REVIEW: {
         label: "Under review",
-        pill: "bg-amber-50 text-amber-700",
+        pill: "bg-pd-warning-soft text-pd-warning",
         dot: "bg-amber-500",
     },
     APPROVED: {
         label: "Approved",
-        pill: "bg-emerald-50 text-[#087F5B]",
+        pill: "bg-pd-success-soft text-[#087F5B]",
         dot: "bg-[#087F5B]",
     },
     REJECTED: {
         label: "Rejected",
-        pill: "bg-red-50 text-red-600",
+        pill: "bg-pd-danger-soft text-pd-danger",
         dot: "bg-red-500",
     },
     SUSPENDED: {
         label: "Suspended",
-        pill: "bg-red-50 text-red-600",
+        pill: "bg-pd-danger-soft text-pd-danger",
         dot: "bg-red-500",
     },
 };

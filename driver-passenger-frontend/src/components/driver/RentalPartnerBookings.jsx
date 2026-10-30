@@ -23,17 +23,17 @@ const fmtDateTime = (value) =>
         : "—";
 
 export const RENTAL_BOOKING_META = {
-    REQUESTED: { label: "New request", pill: "bg-amber-50 text-amber-700" },
-    PROVIDER_ACCEPTED: { label: "Accepted", pill: "bg-blue-50 text-blue-700" },
-    PAYMENT_PENDING: { label: "Fee payment pending", pill: "bg-blue-50 text-blue-700" },
-    CONFIRMED: { label: "Confirmed", pill: "bg-emerald-50 text-[#087F5B]" },
-    PICKUP_VERIFIED: { label: "Pickup verified", pill: "bg-emerald-50 text-[#087F5B]" },
+    REQUESTED: { label: "New request", pill: "bg-pd-warning-soft text-pd-warning" },
+    PROVIDER_ACCEPTED: { label: "Accepted", pill: "bg-pd-info-soft text-pd-info" },
+    PAYMENT_PENDING: { label: "Fee payment pending", pill: "bg-pd-info-soft text-pd-info" },
+    CONFIRMED: { label: "Confirmed", pill: "bg-pd-success-soft text-[#087F5B]" },
+    PICKUP_VERIFIED: { label: "Pickup verified", pill: "bg-pd-success-soft text-[#087F5B]" },
     RENTAL_ACTIVE: { label: "Rental active", pill: "bg-[#087F5B] text-white" },
-    RETURN_PENDING: { label: "Return pending", pill: "bg-amber-50 text-amber-700" },
-    COMPLETED: { label: "Completed", pill: "bg-slate-100 text-slate-600" },
-    CANCELLED: { label: "Cancelled", pill: "bg-slate-100 text-slate-500" },
-    NO_SHOW: { label: "No show", pill: "bg-red-50 text-red-600" },
-    DISPUTED: { label: "Disputed", pill: "bg-red-50 text-red-600" },
+    RETURN_PENDING: { label: "Return pending", pill: "bg-pd-warning-soft text-pd-warning" },
+    COMPLETED: { label: "Completed", pill: "bg-pd-surface-3 text-pd-muted" },
+    CANCELLED: { label: "Cancelled", pill: "bg-pd-surface-3 text-pd-faint" },
+    NO_SHOW: { label: "No show", pill: "bg-pd-danger-soft text-pd-danger" },
+    DISPUTED: { label: "Disputed", pill: "bg-pd-danger-soft text-pd-danger" },
 };
 
 export default function RentalPartnerBookings({ token }) {
@@ -69,7 +69,7 @@ export default function RentalPartnerBookings({ token }) {
     return (
         <section>
             <div className="flex items-center gap-2 px-1">
-                <h3 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                <h3 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-pd-muted">
                     <KeyRound size={14} /> Bookings ({visibleBookings.length})
                 </h3>
                 <select
@@ -79,7 +79,7 @@ export default function RentalPartnerBookings({ token }) {
                         setStatusFilter(e.target.value);
                     }}
                     aria-label="Filter bookings by status"
-                    className="ml-auto h-9 rounded-xl border bg-white px-2 text-xs font-bold text-slate-600"
+                    className="ml-auto h-9 rounded-xl border bg-pd-surface px-2 text-xs font-bold text-pd-text-2"
                 >
                     <option value="">All statuses</option>
                     {Object.entries(RENTAL_BOOKING_META).map(([key, meta]) => (
@@ -91,19 +91,19 @@ export default function RentalPartnerBookings({ token }) {
             </div>
 
             {error && (
-                <p role="alert" className="mt-3 rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-600">
+                <p role="alert" className="mt-3 rounded-xl bg-pd-danger-soft p-4 text-sm font-semibold text-pd-danger">
                     {error}
                 </p>
             )}
 
             <div className="mt-3 space-y-3">
                 {loading ? (
-                    <div className="h-40 animate-pulse rounded-[24px] bg-white shadow-sm" aria-busy="true" />
+                    <div className="h-40 animate-pulse rounded-[24px] bg-pd-surface shadow-sm" aria-busy="true" />
                 ) : visibleBookings.length === 0 ? (
-                    <div className="rounded-[24px] bg-white p-6 text-center shadow-sm">
+                    <div className="rounded-[24px] bg-pd-surface p-6 text-center shadow-sm">
                         <KeyRound size={30} className="mx-auto text-[#087F5B]" />
                         <p className="mt-2 text-sm font-bold">No bookings yet</p>
-                        <p className="mt-1 text-xs text-slate-500">
+                        <p className="mt-1 text-xs text-pd-muted">
                             Bookings for your vehicles will appear here.
                         </p>
                     </div>
@@ -112,13 +112,13 @@ export default function RentalPartnerBookings({ token }) {
                         const meta =
                             RENTAL_BOOKING_META[booking.status] || {
                                 label: booking.status,
-                                pill: "bg-slate-100 text-slate-600",
+                                pill: "bg-pd-surface-3 text-pd-muted",
                             };
                         return (
                             <Link
                                 key={booking._id}
                                 href={`/driver/rentals/bookings/details?id=${booking._id}`}
-                                className="block rounded-[24px] bg-white p-5 shadow-sm"
+                                className="block rounded-[24px] bg-pd-surface p-5 shadow-sm"
                             >
                                 <div className="flex items-center gap-2">
                                     <span className="text-sm font-extrabold">
@@ -129,24 +129,24 @@ export default function RentalPartnerBookings({ token }) {
                                     >
                                         {meta.label}
                                     </span>
-                                    <ChevronRight size={16} className="ml-auto text-slate-400" />
+                                    <ChevronRight size={16} className="ml-auto text-pd-faint" />
                                 </div>
                                 <p className="mt-2 text-sm font-bold">
                                     {booking.vehicle
                                         ? `${booking.vehicle.brand} ${booking.vehicle.model} (${booking.vehicle.year})`
                                         : "Vehicle"}
-                                    <span className="ml-2 text-xs font-semibold text-slate-400">
+                                    <span className="ml-2 text-xs font-semibold text-pd-faint">
                                         {booking.mode === "WITH_DRIVER"
                                             ? "With Driver"
                                             : "Self-Drive"}
                                     </span>
                                 </p>
-                                <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-slate-500">
+                                <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-pd-muted">
                                     <CalendarClock size={13} />
                                     {fmtDateTime(booking.startAt)} →{" "}
                                     {fmtDateTime(booking.endAt)}
                                 </p>
-                                <p className="mt-1.5 text-xs font-semibold text-slate-500">
+                                <p className="mt-1.5 text-xs font-semibold text-pd-muted">
                                     Rental {money(booking.rentalCharges)} ·
                                     Deposit {money(booking.securityDeposit)}
                                 </p>

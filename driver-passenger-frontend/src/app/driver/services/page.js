@@ -67,7 +67,7 @@ function Toggle({ checked, disabled, onChange, label }) {
             disabled={disabled}
             onClick={() => onChange(!checked)}
             className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-                checked ? "bg-[#087F5B]" : "bg-slate-300"
+                checked ? "bg-[#087F5B]" : "bg-pd-surface-3"
             } ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
         >
             <span
@@ -89,7 +89,7 @@ function RequirementRow({ done, label, actionHref, actionLabel }) {
             )}
             <span
                 className={`min-w-0 flex-1 text-sm font-semibold ${
-                    done ? "text-slate-700" : "text-slate-900"
+                    done ? "text-pd-text-2" : "text-pd-text"
                 }`}
             >
                 {label}
@@ -97,7 +97,7 @@ function RequirementRow({ done, label, actionHref, actionLabel }) {
             {!done && actionHref && (
                 <Link
                     href={actionHref}
-                    className="shrink-0 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-extrabold text-[#087F5B]"
+                    className="shrink-0 rounded-lg bg-pd-success-soft px-2.5 py-1.5 text-xs font-extrabold text-[#087F5B]"
                 >
                     {actionLabel || "Fix"}
                 </Link>
@@ -215,9 +215,9 @@ function ServiceCard({ state, token, onChanged, notify }) {
               : `Activate ${meta.short}`;
 
     return (
-        <section className="rounded-[24px] bg-white p-5 shadow-sm">
+        <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
             <div className="flex items-start gap-3">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#087F5B]">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-pd-success-soft text-[#087F5B]">
                     <Icon size={24} />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -230,19 +230,19 @@ function ServiceCard({ state, token, onChanged, notify }) {
                             </span>
                         )}
                     </div>
-                    <p className="mt-1 text-sm text-slate-500">{meta.blurb}</p>
+                    <p className="mt-1 text-sm text-pd-muted">{meta.blurb}</p>
                 </div>
             </div>
 
             {status === "REJECTED" && (
-                <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">
+                <p className="mt-4 rounded-xl bg-pd-danger-soft p-3 text-sm font-semibold text-pd-danger">
                     Application rejected
                     {state.rejectionReason ? ` — ${state.rejectionReason}` : ""}.
                     Fix the requirements below and apply again.
                 </p>
             )}
             {status === "SUSPENDED" && (
-                <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">
+                <p className="mt-4 rounded-xl bg-pd-danger-soft p-3 text-sm font-semibold text-pd-danger">
                     This service is suspended
                     {state.suspensionReason
                         ? ` — ${state.suspensionReason}`
@@ -251,7 +251,7 @@ function ServiceCard({ state, token, onChanged, notify }) {
                 </p>
             )}
             {(status === "PENDING" || status === "UNDER_REVIEW") && (
-                <p className="mt-4 flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-800">
+                <p className="mt-4 flex items-start gap-2 rounded-xl bg-pd-warning-soft p-3 text-sm font-semibold text-pd-warning">
                     <Hourglass size={16} className="mt-0.5 shrink-0" />
                     Safar is reviewing your documents. You will be notified
                     when this service is approved.
@@ -260,10 +260,10 @@ function ServiceCard({ state, token, onChanged, notify }) {
 
             {/* Requirements — identical verification for every service:
                 approved documents + an approved vehicle. */}
-            <h3 className="mt-5 flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-slate-500">
+            <h3 className="mt-5 flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-pd-muted">
                 <ClipboardList size={14} /> Requirements
             </h3>
-            <ul className="mt-1 divide-y divide-slate-100">
+            <ul className="mt-1 divide-y divide-pd-line">
                 {(state.requiredDocuments || []).map((doc) => {
                     const missing = (state.missingDocuments || []).includes(
                         doc
@@ -298,7 +298,7 @@ function ServiceCard({ state, token, onChanged, notify }) {
 
             {isBuyDeliver && (
                 <>
-                    <h3 className="mt-5 text-xs font-extrabold uppercase tracking-wider text-slate-500">
+                    <h3 className="mt-5 text-xs font-extrabold uppercase tracking-wider text-pd-muted">
                         How will you travel for deliveries?
                     </h3>
                     <div className="mt-2 grid grid-cols-4 gap-2" role="radiogroup" aria-label="Buy & Deliver transport mode">
@@ -314,8 +314,8 @@ function ServiceCard({ state, token, onChanged, notify }) {
                                     onClick={() => chooseMode(value)}
                                     className={`flex flex-col items-center gap-1.5 rounded-2xl border-2 px-2 py-3 text-[11px] font-extrabold transition-colors ${
                                         activeMode
-                                            ? "border-[#087F5B] bg-emerald-50 text-[#087F5B]"
-                                            : "border-slate-200 bg-white text-slate-600"
+                                            ? "border-[#087F5B] bg-pd-success-soft text-[#087F5B]"
+                                            : "border-pd-line bg-pd-surface text-pd-text-2"
                                     }`}
                                 >
                                     <ModeIcon size={20} />
@@ -324,7 +324,7 @@ function ServiceCard({ state, token, onChanged, notify }) {
                             );
                         })}
                     </div>
-                    <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-slate-500">
+                    <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-pd-muted">
                         <CarFront size={14} className="mt-0.5 shrink-0" />
                         Your travel mode is only for planning. Buy &amp; Deliver
                         needs the same verification as Rides and Parcels — an
@@ -332,14 +332,14 @@ function ServiceCard({ state, token, onChanged, notify }) {
                         registration.
                     </p>
                     {applied && status === "APPROVED" && (
-                        <p className="mt-1 text-xs font-semibold text-amber-700">
+                        <p className="mt-1 text-xs font-semibold text-pd-warning">
                             Changing your travel mode sends this service back
                             for a quick re-review.
                         </p>
                     )}
 
                     {typeof state.purchaseLimit === "number" && (
-                        <p className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-bold text-[#087F5B]">
+                        <p className="mt-4 flex items-center gap-2 rounded-xl bg-pd-success-soft p-3 text-sm font-bold text-[#087F5B]">
                             <Banknote size={17} />
                             Approved shopping limit: {money(state.purchaseLimit)}{" "}
                             per order
@@ -347,7 +347,7 @@ function ServiceCard({ state, token, onChanged, notify }) {
                     )}
 
                     {!state.policyAcknowledged && status !== "SUSPENDED" && (
-                        <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3">
+                        <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-pd-line p-3">
                             <input
                                 type="checkbox"
                                 checked={policyChecked}
@@ -356,7 +356,7 @@ function ServiceCard({ state, token, onChanged, notify }) {
                                 }
                                 className="mt-1 h-4 w-4 shrink-0 accent-[#087F5B]"
                             />
-                            <span className="text-xs leading-5 text-slate-600">
+                            <span className="text-xs leading-5 text-pd-text-2">
                                 I accept the purchase-handling &amp;
                                 reimbursement policy: I will buy only the items
                                 the customer approves, stay within the approved
@@ -374,7 +374,7 @@ function ServiceCard({ state, token, onChanged, notify }) {
                     {extraReasons.map((reason) => (
                         <p
                             key={reason}
-                            className="flex items-start gap-1.5 text-xs font-semibold text-amber-700"
+                            className="flex items-start gap-1.5 text-xs font-semibold text-pd-warning"
                         >
                             <CircleAlert size={13} className="mt-0.5 shrink-0" />
                             {reason}
@@ -388,8 +388,8 @@ function ServiceCard({ state, token, onChanged, notify }) {
                     role={cardNotice.kind === "error" ? "alert" : "status"}
                     className={`mt-4 rounded-xl p-3 text-sm font-semibold ${
                         cardNotice.kind === "error"
-                            ? "bg-red-50 text-red-700"
-                            : "bg-emerald-50 text-[#087F5B]"
+                            ? "bg-pd-danger-soft text-pd-danger"
+                            : "bg-pd-success-soft text-[#087F5B]"
                     }`}
                 >
                     {cardNotice.text}
@@ -412,12 +412,12 @@ function ServiceCard({ state, token, onChanged, notify }) {
 
             {/* Availability — a preference only. The server still checks
                 approval + documents + vehicle on every request. */}
-            <div className="mt-5 flex items-center gap-3 border-t border-slate-100 pt-4">
+            <div className="mt-5 flex items-center gap-3 border-t border-pd-line pt-4">
                 <div className="min-w-0 flex-1">
                     <p className="text-sm font-extrabold">
                         Available for {meta.short}
                     </p>
-                    <p className="mt-0.5 text-xs text-slate-500">
+                    <p className="mt-0.5 text-xs text-pd-muted">
                         {status !== "APPROVED"
                             ? "Turns on once this service is approved."
                             : state.eligible
@@ -505,7 +505,7 @@ function MyServicesScreen() {
     const readyCount = (services || []).filter((s) => s.eligible).length;
 
     return (
-        <main className="driver-subpage min-h-dvh bg-[#F7F9F8] pb-28 text-slate-900">
+        <main className="driver-subpage min-h-dvh bg-pd-bg pb-28 text-pd-text">
             <MobileBottomNav role="DRIVER" />
 
             <header className="bg-[#087F5B] px-5 pb-8 pt-[max(24px,env(safe-area-inset-top))] text-white">
@@ -539,16 +539,16 @@ function MyServicesScreen() {
                         role={notice.kind === "error" ? "alert" : "status"}
                         className={`rounded-xl p-4 text-sm font-semibold ${
                             notice.kind === "error"
-                                ? "bg-red-50 text-red-600"
-                                : "bg-emerald-50 text-[#087F5B]"
+                                ? "bg-pd-danger-soft text-pd-danger"
+                                : "bg-pd-success-soft text-[#087F5B]"
                         }`}
                     >
                         {notice.text}
                     </p>
                 )}
                 {error && (
-                    <div className="rounded-[24px] bg-white p-5 shadow-sm">
-                        <p role="alert" className="text-sm font-semibold text-red-600">
+                    <div className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
+                        <p role="alert" className="text-sm font-semibold text-pd-danger">
                             {error}
                         </p>
                         <button
@@ -566,7 +566,7 @@ function MyServicesScreen() {
                         {[0, 1, 2].map((i) => (
                             <div
                                 key={i}
-                                className="h-56 animate-pulse rounded-[24px] bg-white shadow-sm"
+                                className="h-56 animate-pulse rounded-[24px] bg-pd-surface shadow-sm"
                             />
                         ))}
                     </div>
@@ -585,22 +585,22 @@ function MyServicesScreen() {
                 {services && (
                     <Link
                         href="/driver/rentals"
-                        className="flex items-center gap-3 rounded-[24px] bg-white p-5 shadow-sm"
+                        className="flex items-center gap-3 rounded-[24px] bg-pd-surface p-5 shadow-sm"
                     >
-                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-[#087F5B]">
+                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-pd-success-soft text-[#087F5B]">
                             <Store size={24} />
                         </span>
                         <span className="min-w-0 flex-1">
                             <span className="block font-extrabold">
                                 My Rental Business
                             </span>
-                            <span className="mt-0.5 block text-sm text-slate-500">
+                            <span className="mt-0.5 block text-sm text-pd-muted">
                                 {rentalPartner
                                     ? `Safar Rentals partner · ${(STATUS_META[rentalPartner.applicationStatus] || STATUS_META.NOT_APPLIED).label}`
                                     : "Rent out your car with Safar Rentals — separate partner approval."}
                             </span>
                         </span>
-                        <ChevronRight size={18} className="shrink-0 text-slate-400" />
+                        <ChevronRight size={18} className="shrink-0 text-pd-faint" />
                     </Link>
                 )}
             </div>

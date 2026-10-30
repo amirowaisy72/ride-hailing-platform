@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import RideMap from "@/components/RideMap";
+import { NavigateButton, pointCoords } from "@/components/DestinationMap";
 import { useDriverPosition } from "@/hooks/useDriverPosition";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -304,6 +305,14 @@ function DriverParcelDetails() {
                                         {busy ? "Updating…" : action[1]}
                                     </Button>
                                 </div>
+                            )}
+
+                            {!ended && pointCoords(navigationTarget) && (
+                                <NavigateButton
+                                    latitude={pointCoords(navigationTarget).latitude}
+                                    longitude={pointCoords(navigationTarget).longitude}
+                                    label={`Navigate to ${targetLabel.toLowerCase()}`}
+                                />
                             )}
 
                             {ended && !delivered && (

@@ -9,7 +9,10 @@ const Driver = require("../models/Driver");
 const User = require("../models/User");
 const { publishEvent } = require("../services/socketService");
 const { sendPushToUser } = require("../services/pushService");
-const { uploadToCloudinary } = require("../integrations/cloudinary/uploadService");
+const {
+    uploadToCloudinary,
+    uploadAudioToCloudinary,
+} = require("../integrations/cloudinary/uploadService");
 const {
     mapEventType,
     mapSenderRole,
@@ -114,6 +117,9 @@ function serializeMessage(doc) {
         kind: m.kind,
         body: m.body || "",
         imageUrl: m.imageUrl || "",
+        audioUrl: m.audioUrl || "",
+        audioMime: m.audioMime || "",
+        audioDurationSec: m.audioDurationSec ?? null,
         eventType: m.eventType || null,
         event: m.event || null,
         clientMessageId: m.clientMessageId || null,
@@ -543,6 +549,9 @@ async function sendMessage(req, res) {
                 kind: validation.kind,
                 body: validation.body,
                 imageUrl: validation.imageUrl,
+                audioUrl: validation.audioUrl || "",
+                audioMime: validation.audioMime || "",
+                audioDurationSec: validation.audioDurationSec ?? null,
                 clientMessageId,
             });
         } catch (error) {
@@ -581,7 +590,11 @@ async function sendMessage(req, res) {
         void sendPushToUser(
             otherUserId,
             "New message",
-            validation.kind === "IMAGE" ? "Sent a photo" : validation.body.slice(0, 100),
+            validation.kind === "IMAGE"
+                ? "Sent a photo"
+                : validation.kind === "AUDIO"
+                  ? "🎤 Voice message"
+                  : validation.body.slice(0, 100),
             {
                 type: "ORDER_CHAT",
                 conversationId: String(conversation._id),
@@ -673,6 +686,28 @@ async function uploadChatImage(req, res) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// 8. POST /order-chats/upload-audio — audio upload for chat voice messages
+// ---------------------------------------------------------------------------
+async function uploadChatAudio(req, res) {
+    try {
+        if (!req.file?.buffer) {
+            return res.status(400).json({ success: false, message: "An audio file is required" });
+        }
+        const { audioUrl } = await uploadAudioToCloudinary(
+            req.file.buffer,
+            String(req.user._id)
+        );
+        return res.json({ success: true, audioUrl });
+    } catch (error) {
+        console.error("Order chat audio upload", error);
+        return res.status(error.statusCode || 500).json({
+            success: false,
+            message: error.message || "Upload failed",
+        });
+    }
+}
+
 module.exports = {
     listConversations,
     getOrCreateConversation,
@@ -681,4 +716,5 @@ module.exports = {
     markRead,
     getUnreadCounts,
     uploadChatImage,
+    uploadChatAudio,
 };

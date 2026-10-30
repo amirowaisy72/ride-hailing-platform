@@ -19,6 +19,9 @@ import ParcelActivityBar from "@/components/ParcelActivityBar";
 import { Package } from "lucide-react";
 import Link from "next/link";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import ServiceGuide from "@/components/guides/ServiceGuide";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
+import { recordFlowCompletion } from "@/lib/guides/guideStore";
 import DriverSheet from "@/components/driver/DriverSheet";
 import DriverRequestCard, { money, placeText, vehicleNames } from "@/components/driver/DriverRequestCard";
 import DriverRequestOverlay from "@/components/driver/DriverRequestOverlay";
@@ -115,6 +118,7 @@ const REQUEST_FOCUS_SECONDS = 45;
 
 function DriverDashboard() {
     const { user, token } = useAuth();
+    const { t } = useLanguage();
     const notifications = useDriverNotifications();
     const { notify } = notifications;
     const notifyRef = useRef(notify);
@@ -741,6 +745,7 @@ function DriverDashboard() {
         setOfferBusy(ride.rideId);
         try {
             await submitDriverOffer(ride.rideId, price, token);
+            recordFlowCompletion(user?._id, "driverRequests");
             setSubmittedIds((previous) => [...new Set([...previous, ride.rideId])]);
             setNextBidAt((previous) => ({ ...previous, [ride.rideId]: Date.now() + 15000 }));
             notify({
@@ -844,19 +849,19 @@ function DriverDashboard() {
                     {isOnline && <span className="dx-gps" data-ok={gps.accuracy != null && gps.accuracy <= 100}><Satellite size={12} /> {gps.accuracy != null ? `±${gps.accuracy} m` : "GPS…"}</span>}
                 </div>
                 <p className="dx-duty-title">
-                    {loading ? "Loading…" : isOnline
-                        ? (requests.length ? `${requests.length} request${requests.length > 1 ? "s" : ""} nearby` : "Looking for rides…")
-                        : activeVehicle ? `Hi ${firstName}, ready to drive?` : "Select an approved vehicle"}
+                    {loading ? t("common.loading") : isOnline
+                        ? (requests.length ? (requests.length > 1 ? t("dHome.requestsNearby", { count: requests.length }) : t("dHome.requestNearby", { count: requests.length })) : t("dHome.lookingForRides"))
+                        : activeVehicle ? t("dHome.hiReady", { name: firstName }) : t("dHome.selectVehicle")}
                 </p>
                 <p className="dx-duty-sub">
-                    {activeVehicle ? `${vehicleNames[activeVehicle.vehicleType] || activeVehicle.vehicleType} · ${activeVehicle.registrationNumber}` : "Vehicle required to go online"}
+                    {activeVehicle ? `${vehicleNames[activeVehicle.vehicleType] || activeVehicle.vehicleType} · ${activeVehicle.registrationNumber}` : t("dHome.vehicleRequired")}
                 </p>
             </div>
-            <button type="button" className="dx-power" data-on={isOnline} onClick={toggleOnline}
+            <button type="button" data-guide="driver-online" className="dx-power" data-on={isOnline} onClick={toggleOnline}
                 disabled={loading || busy || (!isOnline && !activeVehicle)}
-                aria-label={isOnline ? "Go offline" : "Go online"}>
+                aria-label={isOnline ? t("dHome.goOffline") : t("dHome.goOnline")}>
                 <Power size={20} />
-                <span>{busy ? "Wait" : isOnline ? "Go offline" : "Go online"}</span>
+                <span>{busy ? t("dHome.wait") : isOnline ? t("dHome.goOffline") : t("dHome.goOnline")}</span>
             </button>
         </div>
     );
@@ -866,11 +871,11 @@ function DriverDashboard() {
                 <div className="grid grid-cols-2 gap-2 rounded-xl bg-pd-surface-2 p-1">
                     <button type="button" onClick={() => setRequestType("rides")}
                         className={`rounded-lg py-2.5 text-sm font-bold ${requestType === "rides" ? "bg-pd-surface text-pd-text shadow-sm" : "text-pd-muted"}`}>
-                        Rides ({requests.length})
+                        {t("dHome.ridesCount", { count: requests.length })}
                     </button>
                     <button type="button" onClick={() => setRequestType("parcels")}
                         className={`rounded-lg py-2.5 text-sm font-bold ${requestType === "parcels" ? "bg-pd-surface text-pd-text shadow-sm" : "text-pd-muted"}`}>
-                        Parcels ({parcelRequests.length})
+                        {t("dHome.parcelsCount", { count: parcelRequests.length })}
                     </button>
                 </div>
             )}
@@ -884,19 +889,19 @@ function DriverDashboard() {
                         <Link
                             key={parcel._id}
                             href="/driver/parcels"
-                            className="block rounded-2xl border border-[#E9EBEE] bg-white p-4"
+                            className="block rounded-2xl border border-pd-line bg-pd-surface p-4"
                         >
                             <p className="font-bold">
                                 {parcel.serviceType?.replaceAll("_", " ")}
                             </p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-pd-muted">
                                 {parcel.parcel?.category} · {parcel.parcel?.weightKg} kg
                             </p>
                             <p className="mt-2 font-extrabold">
                                 PKR {parcel.requestedPrice}
                             </p>
                             <span className="text-xs font-bold underline">
-                                View & Send Offer →
+                                {t("dHome.viewSendOffer")}
                             </span>
                         </Link>
                     ))}
@@ -906,24 +911,24 @@ function DriverDashboard() {
             <div className={requestType === "parcels" && parcelRequests.length > 0 ? "hidden" : "flex items-center justify-between"}>
                 <div className="flex min-w-0 items-center gap-2">
                     <h2 className="dx-h2">
-                        Ride requests
+                        {t("dHome.rideRequests")}
                         {requests.length > 0 && <span className="dx-count">{requests.length}</span>}
                     </h2>
                 </div>
-                <button type="button" className="dx-btn-ghost" onClick={refreshNow} disabled={!isOnline || refreshing} aria-label="Refresh requests">
-                    <RefreshCw size={15} className={refreshing ? "dx-spin" : ""} /> Refresh
+                <button type="button" className="dx-btn-ghost" onClick={refreshNow} disabled={!isOnline || refreshing} aria-label={t("dHome.refreshRequests")}>
+                    <RefreshCw size={15} className={refreshing ? "dx-spin" : ""} /> {t("dHome.refresh")}
                 </button>
             </div>
             {requestType !== "parcels" && !socketConnected && isOnline && (
-                <p className="dx-inline-warn"><WifiOff size={14} /> Live updates paused — checking every 12 s.</p>
+                <p className="dx-inline-warn"><WifiOff size={14} /> {t("dHome.livePaused")}</p>
             )}
             {loading ? (
                 <div className="space-y-3" aria-busy="true">{[0, 1].map((i) => <div key={i} className="dx-skeleton" />)}</div>
             ) : requests.length === 0 ? (
                 <div className="dx-empty">
                     <span className="dx-empty-icon" data-on={isOnline}>{isOnline ? <Compass size={26} /> : <Power size={24} />}</span>
-                    <p className="font-extrabold">{isOnline ? (isAvailable ? "No nearby requests yet" : "Finish your current trip") : "You're offline"}</p>
-                    <p className="dx-muted">{isOnline ? "New requests appear here automatically." : "Go online to start receiving rides."}</p>
+                    <p className="font-extrabold">{isOnline ? (isAvailable ? t("dHome.noNearbyRequests") : t("dHome.finishCurrentTrip")) : t("dHome.youreOffline")}</p>
+                    <p className="dx-muted">{isOnline ? t("dHome.requestsAppear") : t("dHome.goOnlineHint")}</p>
                 </div>
             ) : (
                 namedRequests.map((ride) => {
@@ -944,12 +949,12 @@ function DriverDashboard() {
     );
     const vehicleView = (
         <div className="space-y-3">
-            <h2 className="dx-h2">Active vehicle</h2>
+            <h2 className="dx-h2">{t("dHome.activeVehicle")}</h2>
             {vehicles.length === 0 ? (
                 <div className="dx-empty">
                     <span className="dx-empty-icon"><CarFront size={24} /></span>
-                    <p className="font-extrabold">No approved vehicles</p>
-                    <p className="dx-muted">Register a vehicle and upload documents for approval.</p>
+                    <p className="font-extrabold">{t("dHome.noApprovedVehicles")}</p>
+                    <p className="dx-muted">{t("dHome.registerVehicle")}</p>
                 </div>
             ) : (
                 <div className="space-y-2" role="radiogroup" aria-label="Approved vehicles">
@@ -966,7 +971,7 @@ function DriverDashboard() {
                     ))}
                 </div>
             )}
-            {isOnline && <p className="dx-inline-warn">Go offline to change your active vehicle.</p>}
+            {isOnline && <p className="dx-inline-warn">{t("dHome.goOfflineToChange")}</p>}
             <button type="button" className="dx-btn dx-btn-lime w-full" onClick={saveVehicle}
                 disabled={isOnline || busy || !selectedVehicle || selectedVehicle === savedVehicle}>
                 {selectedVehicle && selectedVehicle === savedVehicle ? "Active vehicle set" : "Set active vehicle"}
@@ -985,13 +990,13 @@ function DriverDashboard() {
                 <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                         <p className="text-[11px] font-bold uppercase tracking-wider text-white/75">
-                            Today&apos;s earnings
+                            {t("dHome.todaysEarnings")}
                         </p>
                         <p className="mt-1 text-4xl font-black tracking-tight">
                             {money(homeEarnings?.daily?.today?.earnings ?? 0)}
                         </p>
                         <p className="mt-1.5 text-xs font-semibold text-white/85">
-                            {homeEarnings?.daily?.today?.trips ?? 0} trips today · This week {money(homeEarnings?.daily?.week?.earnings ?? 0)}
+                            {t("dHome.tripsToday", { trips: homeEarnings?.daily?.today?.trips ?? 0, week: money(homeEarnings?.daily?.week?.earnings ?? 0) })}
                         </p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-2">
@@ -999,24 +1004,25 @@ function DriverDashboard() {
                             <Star size={13} className="fill-amber-300 text-amber-300" />
                             {driverProfile?.ratingCount
                                 ? `${Number(driverProfile.rating).toFixed(1)} (${driverProfile.ratingCount})`
-                                : "New"}
+                                : t("dHome.newDriver")}
                         </span>
-                        <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-extrabold ${isOnline ? "bg-white text-[#087F5B]" : "bg-black/25 text-white"}`}>
+                        <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-extrabold ${isOnline ? "bg-pd-surface text-[#087F5B]" : "bg-black/25 text-white"}`}>
                             <span className={`h-2 w-2 rounded-full ${isOnline ? "bg-[#087F5B]" : "bg-white/60"}`} />
-                            {isOnline ? "Online" : "Offline"}
+                            {isOnline ? t("dHome.online") : t("dHome.offline")}
                         </span>
                     </div>
                 </div>
                 <div className="mt-4 flex items-center justify-between border-t border-white/20 pt-3 text-xs font-semibold text-white/85">
-                    <span>All-time net {money(homeEarnings?.summary?.netEarnings ?? 0)} · {homeEarnings?.summary?.completedTrips ?? 0} trips</span>
+                    <span>{t("dHome.allTimeNet", { amount: money(homeEarnings?.summary?.netEarnings ?? 0), trips: homeEarnings?.summary?.completedTrips ?? 0 })}</span>
                     <Link href="/driver/earnings" className="flex items-center gap-1 font-extrabold text-white">
-                        View earnings <ChevronRight size={14} />
+                        {t("dHome.viewEarnings")} <ChevronRight size={14} />
                     </Link>
                 </div>
             </section>
 
             {/* Active Tasks + earnings-by-service shortcuts */}
             <Link
+                data-guide="driver-requests"
                 href="/driver/tasks"
                 className="flex items-center gap-3 rounded-2xl border border-pd-line bg-pd-surface p-3 text-pd-text shadow-sm"
             >
@@ -1025,10 +1031,10 @@ function DriverDashboard() {
                 </span>
                 <span className="min-w-0 flex-1">
                     <span className="block text-xs font-bold text-pd-muted">
-                        Active Tasks
+                        {t("dHome.activeTasks")}
                     </span>
                     <span className="block truncate text-sm font-extrabold">
-                        Shopping, rentals, rides & parcels in one queue
+                        {t("dHome.activeTasksHint")}
                     </span>
                 </span>
                 <ChevronRight size={16} className="shrink-0 text-pd-muted" />
@@ -1038,12 +1044,12 @@ function DriverDashboard() {
 
             {/* Blocked from going online: the specific per-service reasons */}
             {onlineBlock && (
-                <section className="rounded-2xl border border-red-200 bg-red-50 p-3 text-slate-900">
+                <section className="rounded-2xl border border-red-200 bg-pd-danger-soft p-3 text-pd-text">
                     <div className="flex items-start gap-2">
-                        <CircleAlert size={18} className="mt-0.5 shrink-0 text-red-500" />
+                        <CircleAlert size={18} className="mt-0.5 shrink-0 text-pd-danger" />
                         <div className="min-w-0 flex-1">
-                            <p className="text-sm font-extrabold">You can&apos;t go online yet</p>
-                            <p className="mt-0.5 text-xs font-semibold text-slate-600">{onlineBlock.message}</p>
+                            <p className="text-sm font-extrabold">{t("dHome.cantGoOnline")}</p>
+                            <p className="mt-0.5 text-xs font-semibold text-pd-text-2">{onlineBlock.message}</p>
                             {onlineBlock.services.map((service) => (
                                 <p key={service.service} className="mt-1.5 text-xs font-semibold">
                                     {SERVICE_META[service.service]?.short}:{" "}
@@ -1052,7 +1058,7 @@ function DriverDashboard() {
                                 </p>
                             ))}
                             <Link href="/driver/services" className="mt-2.5 inline-block rounded-lg bg-[#087F5B] px-3 py-1.5 text-xs font-extrabold text-white">
-                                Fix in My Services
+                                {t("dHome.fixInServices")}
                             </Link>
                         </div>
                     </div>
@@ -1065,16 +1071,16 @@ function DriverDashboard() {
                     <div className="flex min-w-0 items-center gap-3">
                         <LayoutGrid size={20} className="shrink-0 text-pd-accent-text" />
                         <div className="min-w-0">
-                            <p className="text-xs font-bold text-pd-muted">My Services</p>
+                            <p className="text-xs font-bold text-pd-muted">{t("dHome.myServices")}</p>
                             <p className="truncate text-sm font-extrabold">
                                 {myServices
-                                    ? `${myServices.filter((s) => s.eligible).length} of ${myServices.length} services ready to earn`
-                                    : "Loading services…"}
+                                    ? t("dHome.servicesReady", { ready: myServices.filter((sv) => sv.eligible).length, total: myServices.length })
+                                    : t("dHome.loadingServices")}
                             </p>
                         </div>
                     </div>
                     <Link href="/driver/services" className="shrink-0 rounded-xl bg-pd-surface-2 px-3 py-2 text-xs font-bold">
-                        Manage
+                        {t("dHome.manage")}
                     </Link>
                 </div>
                 {myServices && (
@@ -1090,7 +1096,7 @@ function DriverDashboard() {
                                     <ServiceIcon size={14} className="text-pd-accent-text" />
                                     {meta.short}
                                     <span className={`h-2 w-2 rounded-full ${service.eligible ? "bg-[#087F5B]" : statusMeta.dot}`} />
-                                    <span className="font-semibold text-pd-muted">{service.eligible ? "Ready" : statusMeta.label}</span>
+                                    <span className="font-semibold text-pd-muted">{service.eligible ? t("dHome.ready") : statusMeta.label}</span>
                                 </span>
                             );
                         })}
@@ -1100,10 +1106,10 @@ function DriverDashboard() {
 
             {/* Pending actions: service-specific, never a generic prompt */}
             {myServices && pendingActionsFor(myServices).length > 0 && (
-                <section className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-slate-900">
+                <section className="rounded-2xl border border-amber-200 bg-pd-warning-soft p-3 text-pd-text">
                     <div className="flex items-center gap-2">
-                        <CircleAlert size={18} className="shrink-0 text-amber-600" />
-                        <p className="text-sm font-extrabold">Pending actions</p>
+                        <CircleAlert size={18} className="shrink-0 text-pd-warning" />
+                        <p className="text-sm font-extrabold">{t("dHome.pendingActions")}</p>
                         <span className="flex min-h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-extrabold text-white">
                             {pendingActionsFor(myServices).length}
                         </span>
@@ -1112,12 +1118,12 @@ function DriverDashboard() {
                         {pendingActionsFor(myServices).slice(0, 4).map((action) => (
                             <Link key={action.key} href={action.href} className="flex items-center gap-2 py-2 text-sm font-semibold">
                                 <span className="min-w-0 flex-1">{action.text}</span>
-                                <ChevronRight size={15} className="shrink-0 text-amber-600" />
+                                <ChevronRight size={15} className="shrink-0 text-pd-warning" />
                             </Link>
                         ))}
                     </div>
                     <Link href="/driver/services" className="mt-1 inline-block text-xs font-extrabold text-[#087F5B]">
-                        Open My Services →
+                        {t("dHome.openMyServices")}
                     </Link>
                 </section>
             )}
@@ -1125,11 +1131,11 @@ function DriverDashboard() {
             {/* Quick Actions */}
             <section className="grid grid-cols-5 gap-2">
                 {[
-                    { href: "/driver/parcels", icon: Package, label: "Parcels", count: parcelRequests.length, active: true },
-                    { href: "/driver/services", icon: LayoutGrid, label: "Services" },
-                    { href: "/driver/earnings", icon: Wallet, label: "Earnings" },
-                    { href: "/driver/vehicles", icon: CarFront, label: "Vehicles" },
-                    { href: "/driver/documents", icon: FileCheck2, label: "Documents" },
+                    { href: "/driver/parcels", icon: Package, label: t("dHome.parcels"), count: parcelRequests.length, active: true },
+                    { href: "/driver/services", icon: LayoutGrid, label: t("dHome.services") },
+                    { href: "/driver/earnings", icon: Wallet, label: t("dHome.earnings") },
+                    { href: "/driver/vehicles", icon: CarFront, label: t("dHome.vehicles") },
+                    { href: "/driver/documents", icon: FileCheck2, label: t("dHome.documents") },
                 ].map(({ href, icon: Icon, label, count, active }) => (
                     <Link
                         key={href}
@@ -1163,11 +1169,11 @@ function DriverDashboard() {
                     <div className="flex min-w-0 items-center gap-3">
                         <CarFront size={20} className="shrink-0 text-pd-accent-text" />
                         <div className="min-w-0">
-                            <p className="text-xs font-bold text-pd-muted">Active vehicle</p>
+                            <p className="text-xs font-bold text-pd-muted">{t("dHome.activeVehicle")}</p>
                             <p className="truncate text-sm font-extrabold">
                                 {activeVehicle
                                     ? `${vehicleNames[activeVehicle.vehicleType] || activeVehicle.vehicleType} · ${activeVehicle.registrationNumber}`
-                                    : "No vehicle selected"}
+                                    : t("dHome.noVehicleSelected")}
                             </p>
                         </div>
                     </div>
@@ -1176,7 +1182,7 @@ function DriverDashboard() {
                         onClick={() => setTab(tab === "vehicle" ? "requests" : "vehicle")}
                         className="shrink-0 rounded-xl bg-pd-surface-2 px-3 py-2 text-xs font-bold"
                     >
-                        {tab === "vehicle" ? "Close" : "Change"}
+                        {tab === "vehicle" ? t("common.close") : t("dHome.change")}
                     </button>
                 </div>
                 {tab === "vehicle" && (
@@ -1192,7 +1198,7 @@ function DriverDashboard() {
                     <div className="flex min-w-0 items-center gap-3">
                         <LifeBuoy size={20} className="shrink-0 text-pd-accent-text" />
                         <div className="min-w-0">
-                            <p className="text-xs font-bold text-pd-muted">Help & Complaints</p>
+                            <p className="text-xs font-bold text-pd-muted">{t("dHome.helpComplaints")}</p>
                             <p className="truncate text-sm font-extrabold">
                                 {myComplaints.length === 0
                                     ? "No complaints filed"
@@ -1252,7 +1258,7 @@ function DriverDashboard() {
             <span className="h-3 w-3 shrink-0 rounded-full bg-[#087F5B] ring-4 ring-[#087F5B]/20" />
             <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-extrabold">{STATUS_LABEL[selectedRide.status]}</p>
-                <p className="truncate text-xs text-[#6B7280]">
+                <p className="truncate text-xs text-pd-muted">
                     {navigationInfo ? `${navigationInfo.distanceKm} km · approx. ${navigationInfo.durationMinutes} min · ${targetTitle}` : targetTitle}
                 </p>
             </div>
@@ -1364,14 +1370,14 @@ function DriverDashboard() {
             </div>
             {/* Minimal passenger-style map controls: menu at top-left, GPS bottom-right. */}
             {rideInProgress && navigating && navigationInfo?.nextStep && (
-                <div className="pointer-events-none absolute left-[76px] right-4 top-[calc(max(16px,env(safe-area-inset-top)))] z-20 rounded-xl bg-[#111111]/90 px-3 py-2 text-white shadow-md">
+                <div className="pointer-events-none absolute left-[76px] right-4 top-[calc(max(16px,env(safe-area-inset-top)))] z-20 rounded-xl bg-pd-ink/90 px-3 py-2 text-pd-ink-text shadow-md">
                     <p className="truncate text-xs font-semibold">{turnDistance ? `${turnDistance} · ` : ""}{navigationInfo.nextStep}</p>
                 </div>
             )}
             <div className="absolute left-4 top-[calc(max(16px,env(safe-area-inset-top)))] z-50">
                 <button type="button" aria-label="Open driver menu" aria-expanded={mapMenuOpen}
                     onClick={() => { setMapMenuOpen((open) => !open); notifications.markRead(); }}
-                    className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#111111] shadow-[0_6px_24px_rgba(17,17,17,0.12)]">
+                    className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-pd-surface text-pd-text shadow-[0_6px_24px_rgba(17,17,17,0.12)]">
                     {mapMenuOpen ? <X size={23} /> : <Menu size={23} />}
                     {!mapMenuOpen && notifications.unread > 0 && <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-[#087F5B] ring-2 ring-white" />}
                 </button>
@@ -1380,41 +1386,41 @@ function DriverDashboard() {
                 <>
                     <button type="button" aria-label="Close driver menu" onClick={() => setMapMenuOpen(false)}
                         className="absolute inset-0 z-40 bg-black/20" />
-                    <nav aria-label="Driver menu" className="absolute left-4 top-[calc(max(16px,env(safe-area-inset-top))+60px)] z-50 w-72 max-w-[calc(100vw-32px)] rounded-2xl bg-white p-2 text-[#111111] shadow-xl">
-                        <Link href="/driver/account" onClick={() => setMapMenuOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-[#F4F5F7]">
-                            <UserRound size={19} /> My account
+                    <nav aria-label="Driver menu" className="absolute left-4 top-[calc(max(16px,env(safe-area-inset-top))+60px)] z-50 w-72 max-w-[calc(100vw-32px)] rounded-2xl bg-pd-surface p-2 text-pd-text shadow-xl">
+                        <Link href="/driver/account" onClick={() => setMapMenuOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-pd-surface-2">
+                            <UserRound size={19} /> {t("dHome.myAccount")}
                         </Link>
                         <Link
                             href="/driver/parcels"
                             onClick={() => setMapMenuOpen(false)}
-                            className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-[#F4F5F7]"
+                            className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-pd-surface-2"
                         >
                             <Package size={19} />
-                            <span className="flex-1">Parcel Deliveries</span>
+                            <span className="flex-1">{t("dHome.parcelDeliveries")}</span>
                             <ParcelActivityBar token={token} role="DRIVER" variant="badge" />
                         </Link>
-                        <Link href="/driver/services" onClick={() => setMapMenuOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-[#F4F5F7]">
+                        <Link href="/driver/services" onClick={() => setMapMenuOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-pd-surface-2">
                             <LayoutGrid size={19} />
-                            <span className="flex-1">My Services</span>
+                            <span className="flex-1">{t("dHome.myServices")}</span>
                         </Link>
-                        <Link href="/driver/rentals" onClick={() => setMapMenuOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-[#F4F5F7]">
+                        <Link href="/driver/rentals" onClick={() => setMapMenuOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-pd-surface-2">
                             <Store size={19} />
-                            <span className="flex-1">My Rental Business</span>
+                            <span className="flex-1">{t("dHome.myRentalBusiness")}</span>
                         </Link>
-                        <button type="button" onClick={notifications.toggleSound} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold hover:bg-[#F4F5F7]">
+                        <button type="button" onClick={notifications.toggleSound} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold hover:bg-pd-surface-2">
                             {notifications.soundEnabled ? <Volume2 size={19} /> : <VolumeX size={19} />}
-                            {notifications.soundEnabled ? "Mute ride alerts" : "Enable ride alert sounds"}
+                            {notifications.soundEnabled ? t("dHome.muteAlerts") : t("dHome.enableAlertSounds")}
                         </button>
-                        <div className="border-t border-[#E9EBEE] px-3 py-2">
+                        <div className="border-t border-pd-line px-3 py-2">
                             <div className="flex items-center justify-between gap-2">
-                                <span className="flex items-center gap-2 text-sm font-semibold"><Bell size={19} /> Notifications</span>
-                                {notifications.items.length > 0 && <button type="button" onClick={notifications.clear} className="text-xs font-semibold text-[#6B7280]">Clear</button>}
+                                <span className="flex items-center gap-2 text-sm font-semibold"><Bell size={19} /> {t("dHome.notifications")}</span>
+                                {notifications.items.length > 0 && <button type="button" onClick={notifications.clear} className="text-xs font-semibold text-pd-muted">{t("dHome.clear")}</button>}
                             </div>
                             <div className="mt-2 max-h-60 space-y-1 overflow-y-auto">
-                                {notifications.items.length === 0 ? <p className="py-2 text-xs text-[#6B7280]">No notifications yet</p> : notifications.items.map((item) => (
-                                    <div key={item.id} className="rounded-xl bg-[#F4F5F7] p-2.5">
+                                {notifications.items.length === 0 ? <p className="py-2 text-xs text-pd-muted">{t("dHome.noNotifications")}</p> : notifications.items.map((item) => (
+                                    <div key={item.id} className="rounded-xl bg-pd-surface-2 p-2.5">
                                         <p className="text-xs font-bold">{item.title}</p>
-                                        {item.body && <p className="mt-0.5 text-xs text-[#6B7280]">{item.body}</p>}
+                                        {item.body && <p className="mt-0.5 text-xs text-pd-muted">{item.body}</p>}
                                     </div>
                                 ))}
                             </div>
@@ -1424,7 +1430,7 @@ function DriverDashboard() {
             )}
             <button type="button" onClick={locateMe} disabled={locating} aria-label="Centre on my location"
                 style={{ bottom: `calc(${heights[sheet]} + ${rideInProgress ? "18px" : "78px"})` }}
-                className="absolute right-4 z-30 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#111111] shadow-[0_6px_24px_rgba(17,17,17,0.12)] disabled:opacity-60">
+                className="absolute right-4 z-30 flex h-12 w-12 items-center justify-center rounded-2xl bg-pd-surface text-pd-text shadow-[0_6px_24px_rgba(17,17,17,0.12)] disabled:opacity-60">
                 <LocateFixed size={21} className={locating ? "animate-pulse" : ""} />
             </button>
             <DriverToast toast={notifications.toast} onDismiss={notifications.dismissToast} />
@@ -1492,6 +1498,7 @@ function DriverDashboard() {
                 />
             )}
             {!rideInProgress && <MobileBottomNav role="DRIVER" />}
+            <ServiceGuide serviceId="driverRequests" userId={user?._id} />
         </main>
     );
 }

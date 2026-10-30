@@ -79,6 +79,9 @@ const searchLocations = async (req, res) => {
 };
 
 const { reverseGeocode } = require("../integrations/maps/mapService");
+const {
+    nearestSavedPlaceLocation,
+} = require("../services/nearestSavedPlaceService");
 
 const getAddressFromCoordinates = async (req, res) => {
     try {
@@ -104,6 +107,34 @@ const getAddressFromCoordinates = async (req, res) => {
         });
     } catch (error) {
         const invalid = error.message === "Invalid coordinates";
+
+        // A4 fallback: every geocoding provider failed, but the caller
+        // (route is behind `protect`, so req.user is the signed-in user)
+        // may be standing next to one of their own saved places. Answer
+        // 200 with "Near <place>" instead of a bare 502 that makes the
+        // app show raw coordinates. Never applied to invalid input or to
+        // the admin maps-disabled 503 — those keep their exact behaviour.
+        if (!invalid && error.statusCode !== 503 && req.user?._id) {
+            try {
+                const fallback = await nearestSavedPlaceLocation(
+                    req.user._id,
+                    req.query.latitude,
+                    req.query.longitude
+                );
+
+                if (fallback) {
+                    return res.json({
+                        success: true,
+                        location: fallback,
+                    });
+                }
+            } catch (fallbackError) {
+                console.error(
+                    "[REVERSE GEOCODE SAVED-PLACE FALLBACK ERROR]",
+                    fallbackError
+                );
+            }
+        }
 
         return res.status(error.statusCode || (invalid ? 400 : 502)).json({
             success: false,

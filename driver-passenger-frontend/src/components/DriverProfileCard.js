@@ -42,7 +42,7 @@ export default function DriverProfileCard({
 
     if (loading) {
         return (
-            <div className="rounded-2xl border p-4 text-sm text-slate-500">
+            <div className="rounded-2xl border p-4 text-sm text-pd-muted">
                 Loading driver details...
             </div>
         );
@@ -50,7 +50,7 @@ export default function DriverProfileCard({
 
     if (error) {
         return (
-            <div role="alert" className="rounded-2xl bg-red-50 p-4 text-sm text-red-600">
+            <div role="alert" className="rounded-2xl bg-pd-danger-soft p-4 text-sm text-pd-danger">
                 {error}
             </div>
         );
@@ -60,12 +60,12 @@ export default function DriverProfileCard({
 
     return (
         <>
-            <section className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+            <section className="rounded-2xl border border-emerald-100 bg-pd-surface p-4 shadow-sm">
                 <div className="flex items-center gap-3">
                     <button
                         type="button"
                         onClick={() => profile.profileImage && setPhotoOpen(true)}
-                        className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-50 text-[#087F5B]"
+                        className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-pd-success-soft text-[#087F5B]"
                     >
                         {profile.profileImage ? (
                             <img src={profile.profileImage} alt={profile.name} className="h-full w-full object-cover" />
@@ -88,21 +88,21 @@ export default function DriverProfileCard({
                                 ? Number(profile.rating).toFixed(1)
                                 : "New"}
                         </span>
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-pd-muted">
                             ({profile.ratingCount})
                         </span>
                     </div>
                 </div>
 
                 {profile.vehicle && (
-                    <div className="mt-4 flex items-center gap-3 rounded-xl bg-slate-50 p-3">
+                    <div className="mt-4 flex items-center gap-3 rounded-xl bg-pd-surface-2 p-3">
                         <CarFront size={22} className="text-[#087F5B]" />
 
                         <div>
                             <p className="font-semibold">
                                 {profile.vehicle.make} {profile.vehicle.model}
                             </p>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-pd-muted">
                                 {profile.vehicle.vehicleType?.replaceAll("_", " ")}
                                 {profile.vehicle.color
                                     ? ` · ${profile.vehicle.color}`
@@ -131,7 +131,7 @@ export default function DriverProfileCard({
                                 </div>
 
                                 {review.comment && (
-                                    <p className="mt-1 text-sm text-slate-600">
+                                    <p className="mt-1 text-sm text-pd-text-2">
                                         {review.comment}
                                     </p>
                                 )}

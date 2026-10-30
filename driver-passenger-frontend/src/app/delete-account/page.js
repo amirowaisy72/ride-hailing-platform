@@ -13,7 +13,7 @@ export default function DeleteAccountPage() {
     );
 
     return (
-        <main className="min-h-screen bg-white px-5 py-12 text-gray-900">
+        <main className="min-h-screen bg-pd-surface px-5 py-12 text-pd-text">
             <div className="mx-auto max-w-xl">
                 <h1 className="mb-5 text-3xl font-bold">
                     Safar - Delete Account
@@ -61,7 +61,7 @@ export default function DeleteAccountPage() {
                     Request Account Deletion
                 </a>
 
-                <p className="mt-6 text-sm text-gray-600">
+                <p className="mt-6 text-sm text-pd-text-2">
                     Support Email: {email}
                 </p>
             </div>

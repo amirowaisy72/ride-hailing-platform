@@ -379,9 +379,15 @@ const getRentalVehicleDetails = async (req, res) => {
 
         // Browsing is NEVER unlocked — exact details only ever travel
         // inside a confirmed booking's serializer.
+        // selfDriveEnabled (A17): the booking page needs the platform
+        // launch gate to present Self-Drive honestly (upfront
+        // "not available yet", no licence form) instead of letting a
+        // passenger fill a licence form the create call will reject.
+        const settings = await getGlobalSettings();
         return res.json({
             success: true,
             vehicle: serializeRentalVehicle(vehicle),
+            selfDriveEnabled: settings?.rentalsSelfDriveEnabled === true,
         });
     } catch {
         return res.status(400).json({

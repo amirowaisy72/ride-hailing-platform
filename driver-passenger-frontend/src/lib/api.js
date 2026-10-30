@@ -52,7 +52,15 @@ export async function apiRequest(path, options = {}) {
     }
 
     if (!response.ok) {
-        throw new Error(data.message || `Request failed: ${response.status}`);
+        const error = new Error(
+            data.message || `Request failed: ${response.status}`
+        );
+        // Keep the machine-readable contract (e.g. code "GPS_STALE" on a
+        // 403) alongside the message, so callers can match the code first
+        // and fall back to the message text on older servers.
+        if (data.code) error.code = data.code;
+        error.status = response.status;
+        throw error;
     }
 
     return data;

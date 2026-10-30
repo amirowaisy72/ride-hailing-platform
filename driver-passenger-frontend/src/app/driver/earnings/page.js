@@ -290,7 +290,7 @@ function EarningsScreen() {
             Number(tx.balanceAfter) > Number(tx.balanceBefore));
 
     return (
-        <main className="driver-subpage min-h-dvh bg-[#F7F9F8] pb-[calc(100px+env(safe-area-inset-bottom))] text-slate-900">
+        <main className="driver-subpage min-h-dvh bg-pd-bg pb-[calc(100px+env(safe-area-inset-bottom))] text-pd-text">
             <MobileBottomNav role="DRIVER" />
 
             <header className="bg-[#087F5B] px-5 pb-32 pt-[max(24px,env(safe-area-inset-top))] text-white">
@@ -325,14 +325,14 @@ function EarningsScreen() {
             </header>
 
             <div className="mx-auto -mt-24 max-w-xl space-y-5 px-4">
-                <section className="relative overflow-hidden rounded-[28px] bg-white p-6 shadow-lg shadow-slate-900/10">
+                <section className="relative overflow-hidden rounded-[28px] bg-pd-surface p-6 shadow-lg shadow-slate-900/10">
                     <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-2 text-sm font-semibold text-slate-500">
+                        <span className="flex items-center gap-2 text-sm font-semibold text-pd-muted">
                             <Wallet size={19} className="text-[#087F5B]" />
                             Available Wallet Balance
                         </span>
 
-                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-[#087F5B]">
+                        <span className="rounded-full bg-pd-success-soft px-3 py-1 text-[11px] font-bold text-[#087F5B]">
                             PKR
                         </span>
                     </div>
@@ -341,20 +341,20 @@ function EarningsScreen() {
                         {loading ? "Loading..." : money(wallet?.balance)}
                     </p>
 
-                    <p className="mt-2 text-xs text-slate-500">
+                    <p className="mt-2 text-xs text-pd-muted">
                         {topUpRequired
                             ? "Prepaid balance for platform commissions"
                             : "Free Mode — No wallet top-up required"}
                     </p>
 
                     {walletMessage && (
-                        <p className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
+                        <p className="mt-3 rounded-xl bg-pd-success-soft p-3 text-sm text-pd-success">
                             {walletMessage}
                         </p>
                     )}
 
-                    <div className="mt-6 rounded-xl bg-emerald-50 p-4">
-                        <p className="flex items-center gap-2 text-xs font-semibold text-[#065F46]">
+                    <div className="mt-6 rounded-xl bg-pd-success-soft p-4">
+                        <p className="flex items-center gap-2 text-xs font-semibold text-pd-accent-text">
                             <ShieldCheck size={16} />
                             Wallet transactions are recorded by the platform
                         </p>
@@ -362,9 +362,9 @@ function EarningsScreen() {
                 </section>
 
                 {paymentMethods.length > 0 && (
-                    <section className="rounded-2xl bg-white p-5 shadow-sm">
+                    <section className="rounded-2xl bg-pd-surface p-5 shadow-sm">
                         <h2 className="text-lg font-extrabold">Top Up Wallet</h2>
-                        <p className="mt-2 text-sm text-slate-500">
+                        <p className="mt-2 text-sm text-pd-muted">
                             Top-up amount future ride commissions ke liye wallet balance mein add hogi.
                         </p>
 
@@ -401,32 +401,32 @@ function EarningsScreen() {
                             </label>
 
                             {paymentMethods.length === 0 && (
-                                <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+                                <p className="rounded-xl bg-pd-warning-soft p-3 text-sm text-pd-warning">
                                     Online payments abhi configure aur verify nahi huin.
                                 </p>
                             )}
 
                             {paymentNotice && (
-                                <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
+                                <p role="status" className="rounded-xl bg-pd-success-soft p-3 text-sm text-pd-success">
                                     {paymentNotice}
                                 </p>
                             )}
 
                             {topUpMessage && (
-                                <p role="status" className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+                                <p role="status" className="rounded-xl bg-pd-surface-2 p-3 text-sm text-pd-text-2">
                                     {topUpMessage}
                                 </p>
                             )}
 
                             {bankTransfer && (
-                                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-slate-800">
+                                <div className="rounded-xl border border-emerald-100 bg-pd-success-soft p-4 text-sm text-pd-text">
                                     <p className="mb-2 font-bold">Bank Transfer Details</p>
                                     <p>Bank: <strong>{bankTransfer.bankName}</strong></p>
                                     <p>Account Title: <strong>{bankTransfer.accountTitle}</strong></p>
                                     <p>Account Number: <strong>{bankTransfer.accountNumber}</strong></p>
                                     <p>Reference: <strong>{bankTransfer.reference}</strong></p>
                                     {bankTransfer.note && <p className="mt-2">{bankTransfer.note}</p>}
-                                    <p className="mt-2 text-slate-600">
+                                    <p className="mt-2 text-pd-text-2">
                                         Isi amount ki transfer karein aur reference lazmi
                                         likhein. Admin verification ke baad wallet credit
                                         ho jayega.
@@ -448,7 +448,7 @@ function EarningsScreen() {
                 {error && (
                     <div
                         role="alert"
-                        className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm text-red-600"
+                        className="rounded-2xl border border-red-100 bg-pd-danger-soft p-4 text-sm text-pd-danger"
                     >
                         <p>{error}</p>
                         <button
@@ -462,11 +462,11 @@ function EarningsScreen() {
                 )}
 
                 <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-[22px] bg-white p-5 shadow-sm">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-[#087F5B]">
+                    <div className="rounded-[22px] bg-pd-surface p-5 shadow-sm">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pd-success-soft text-[#087F5B]">
                             <TrendingUp size={21} />
                         </div>
-                        <p className="mt-4 text-xs text-slate-500">
+                        <p className="mt-4 text-xs text-pd-muted">
                             Net Trip Earnings
                         </p>
                         <p className="mt-1 text-xl font-extrabold">
@@ -474,11 +474,11 @@ function EarningsScreen() {
                         </p>
                     </div>
 
-                    <div className="rounded-[22px] bg-white p-5 shadow-sm">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                    <div className="rounded-[22px] bg-pd-surface p-5 shadow-sm">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pd-warning-soft text-pd-warning">
                             <CarFront size={21} />
                         </div>
-                        <p className="mt-4 text-xs text-slate-500">
+                        <p className="mt-4 text-xs text-pd-muted">
                             Completed Trips
                         </p>
                         <p className="mt-1 text-xl font-extrabold">
@@ -486,11 +486,11 @@ function EarningsScreen() {
                         </p>
                     </div>
 
-                    <div className="rounded-[22px] bg-white p-5 shadow-sm">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                    <div className="rounded-[22px] bg-pd-surface p-5 shadow-sm">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pd-info-soft text-pd-info">
                             <Banknote size={21} />
                         </div>
-                        <p className="mt-4 text-xs text-slate-500">
+                        <p className="mt-4 text-xs text-pd-muted">
                             Total Cash Fares
                         </p>
                         <p className="mt-1 text-xl font-extrabold">
@@ -498,11 +498,11 @@ function EarningsScreen() {
                         </p>
                     </div>
 
-                    <div className="rounded-[22px] bg-white p-5 shadow-sm">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-500">
+                    <div className="rounded-[22px] bg-pd-surface p-5 shadow-sm">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pd-danger-soft text-pd-danger">
                             <ReceiptText size={21} />
                         </div>
-                        <p className="mt-4 text-xs text-slate-500">
+                        <p className="mt-4 text-xs text-pd-muted">
                             Platform Commission
                         </p>
                         <p className="mt-1 text-xl font-extrabold">
@@ -512,22 +512,22 @@ function EarningsScreen() {
                 </div>
 
                 {daily && (
-                    <section className="overflow-hidden rounded-[26px] bg-white p-5 shadow-sm">
+                    <section className="overflow-hidden rounded-[26px] bg-pd-surface p-5 shadow-sm">
                         <div className="flex items-start justify-between gap-3">
                             <div>
                                 <h3 className="text-lg font-extrabold">This Week</h3>
-                                <p className="mt-0.5 text-xs text-slate-500">
+                                <p className="mt-0.5 text-xs text-pd-muted">
                                     Settled earnings, last 7 days
                                 </p>
                             </div>
                             <div className="text-right">
-                                <p className="text-[11px] font-semibold text-slate-500">
+                                <p className="text-[11px] font-semibold text-pd-muted">
                                     Today · {daily.today.trips} trips
                                 </p>
                                 <p className="text-base font-extrabold text-[#087F5B]">
                                     {money(daily.today.earnings)}
                                 </p>
-                                <p className="mt-0.5 text-[11px] font-semibold text-slate-500">
+                                <p className="mt-0.5 text-[11px] font-semibold text-pd-muted">
                                     Week · {daily.week.trips} trips · {money(daily.week.earnings)}
                                 </p>
                             </div>
@@ -539,16 +539,16 @@ function EarningsScreen() {
 
                 <ServiceEarnings token={token} />
 
-                <section className="overflow-hidden rounded-[26px] bg-white p-5 shadow-sm">
+                <section className="overflow-hidden rounded-[26px] bg-pd-surface p-5 shadow-sm">
                     <h3 className="mb-4 text-lg font-extrabold">Financial Activity</h3>
 
-                    <div className="mb-5 grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
+                    <div className="mb-5 grid grid-cols-2 gap-2 rounded-xl bg-pd-surface-2 p-1">
                         <button
                             type="button"
                             onClick={() => setActiveTab("transactions")}
                             className={`rounded-lg py-3 text-xs font-bold ${activeTab === "transactions"
-                                ? "bg-white text-[#087F5B] shadow-sm"
-                                : "text-slate-500"
+                                ? "bg-pd-surface text-[#087F5B] shadow-sm"
+                                : "text-pd-muted"
                                 }`}
                         >
                             Wallet Transactions
@@ -558,8 +558,8 @@ function EarningsScreen() {
                             type="button"
                             onClick={() => setActiveTab("rides")}
                             className={`rounded-lg py-3 text-xs font-bold ${activeTab === "rides"
-                                ? "bg-white text-[#087F5B] shadow-sm"
-                                : "text-slate-500"
+                                ? "bg-pd-surface text-[#087F5B] shadow-sm"
+                                : "text-pd-muted"
                                 }`}
                         >
                             Trip Earnings
@@ -567,7 +567,7 @@ function EarningsScreen() {
                     </div>
 
                     {loading ? (
-                        <p className="py-8 text-center text-sm text-slate-500">
+                        <p className="py-8 text-center text-sm text-pd-muted">
                             Loading financial records...
                         </p>
                     ) : activeTab === "transactions" ? (
@@ -575,20 +575,20 @@ function EarningsScreen() {
                             <div className="py-10 text-center">
                                 <Wallet size={32} className="mx-auto text-[#087F5B]" />
                                 <p className="mt-3 font-bold">No transactions yet</p>
-                                <p className="mt-2 text-sm text-slate-500">
+                                <p className="mt-2 text-sm text-pd-muted">
                                     Wallet activity will appear here.
                                 </p>
                             </div>
                         ) : (
-                            <div className="divide-y divide-slate-100">
+                            <div className="divide-y divide-pd-line">
                                 {transactions.map((tx) => {
                                     const credit = isCredit(tx.type, tx);
 
                                     return (
                                         <div key={tx._id} className="flex items-center gap-3 py-4">
                                             <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${credit
-                                                ? "bg-emerald-50 text-[#087F5B]"
-                                                : "bg-red-50 text-red-500"
+                                                ? "bg-pd-success-soft text-[#087F5B]"
+                                                : "bg-pd-danger-soft text-pd-danger"
                                                 }`}>
                                                 {credit
                                                     ? <ArrowDownRight size={22} />
@@ -599,12 +599,12 @@ function EarningsScreen() {
                                                 <p className="text-sm font-bold">
                                                     {transactionLabels[tx.type] || tx.type}
                                                 </p>
-                                                <p className="mt-1 text-xs text-slate-500">
+                                                <p className="mt-1 text-xs text-pd-muted">
                                                     {formatDate(tx.createdAt)}
                                                 </p>
                                             </div>
 
-                                            <p className={`text-sm font-extrabold ${credit ? "text-[#087F5B]" : "text-red-500"
+                                            <p className={`text-sm font-extrabold ${credit ? "text-[#087F5B]" : "text-pd-danger"
                                                 }`}>
                                                 {credit ? "+" : "-"}{money(tx.amount)}
                                             </p>
@@ -618,12 +618,12 @@ function EarningsScreen() {
                             <div className="py-10 text-center">
                                 <CarFront size={32} className="mx-auto text-[#087F5B]" />
                                 <p className="mt-3 font-bold">No Completed Trips yet</p>
-                                <p className="mt-2 text-sm text-slate-500">
+                                <p className="mt-2 text-sm text-pd-muted">
                                     Completed Trips will appear here.
                                 </p>
                             </div>
                         ) : (
-                            <div className="divide-y divide-slate-100">
+                            <div className="divide-y divide-pd-line">
                                 {recentTrips.map((trip) => (
                                     <div key={trip._id} className="py-4">
                                         <div className="flex justify-between gap-3">
@@ -632,7 +632,7 @@ function EarningsScreen() {
                                                     <CheckCircle2 size={17} className="text-[#087F5B]" />
                                                     Settled Ride
                                                 </p>
-                                                <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
+                                                <p className="mt-1 flex items-center gap-1 text-xs text-pd-muted">
                                                     <Clock3 size={13} />
                                                     {formatDate(trip.createdAt)}
                                                 </p>
@@ -643,13 +643,13 @@ function EarningsScreen() {
                                             </p>
                                         </div>
 
-                                        <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3 text-xs">
+                                        <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-pd-surface-2 p-3 text-xs">
                                             <div>
-                                                <p className="text-slate-500">Cash fare</p>
+                                                <p className="text-pd-muted">Cash fare</p>
                                                 <p className="mt-1 font-bold">{money(trip.fare)}</p>
                                             </div>
                                             <div>
-                                                <p className="text-slate-500">Commission</p>
+                                                <p className="text-pd-muted">Commission</p>
                                                 <p className="mt-1 font-bold">{money(trip.commission)}</p>
                                             </div>
                                         </div>
@@ -660,7 +660,7 @@ function EarningsScreen() {
                     )}
                 </section>
 
-                <p className="px-2 text-center text-xs leading-5 text-slate-500">
+                <p className="px-2 text-center text-xs leading-5 text-pd-muted">
                     Trip earnings reflect recorded cash fares minus platform commission.
                     Wallet balance represents prepaid funds, not cash collected.
                 </p>

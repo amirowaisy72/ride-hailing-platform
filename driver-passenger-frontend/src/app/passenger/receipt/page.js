@@ -44,9 +44,9 @@ function displayLocation(point) {
 
 function DetailRow({ label, value }) {
     return (
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 py-3 last:border-0">
-            <span className="text-sm text-slate-500">{label}</span>
-            <span className="text-right text-sm font-semibold text-slate-800">
+        <div className="flex items-start justify-between gap-4 border-b border-pd-line py-3 last:border-0">
+            <span className="text-sm text-pd-muted">{label}</span>
+            <span className="text-right text-sm font-semibold text-pd-text">
                 {value ?? "—"}
             </span>
         </div>
@@ -103,7 +103,7 @@ function ReceiptScreen() {
     }, [rideId, token]);
 
     return (
-        <main className="min-h-dvh bg-[#F8FAF9] pb-10 text-slate-900">
+        <main className="min-h-dvh bg-pd-bg pb-10 text-pd-text">
             <header className="bg-[#087F5B] px-5 pb-24 pt-[max(24px,env(safe-area-inset-top))] text-white">
                 <div className="mx-auto flex max-w-xl items-center gap-4">
                     <Link
@@ -128,16 +128,16 @@ function ReceiptScreen() {
 
             <div className="mx-auto -mt-16 max-w-xl space-y-5 px-4">
                 {loading && (
-                    <div className="rounded-3xl bg-white p-8 text-center shadow-sm">
-                        <p className="text-sm text-slate-500">
+                    <div className="rounded-3xl bg-pd-surface p-8 text-center shadow-sm">
+                        <p className="text-sm text-pd-muted">
                             Loading your receipt...
                         </p>
                     </div>
                 )}
 
                 {error && (
-                    <div role="alert" className="rounded-3xl bg-white p-6 shadow-sm">
-                        <p className="font-semibold text-red-600">{error}</p>
+                    <div role="alert" className="rounded-3xl bg-pd-surface p-6 shadow-sm">
+                        <p className="font-semibold text-pd-danger">{error}</p>
                         <Link
                             href="/passenger/account"
                             className="mt-4 inline-block text-sm font-bold text-[#087F5B]"
@@ -149,8 +149,8 @@ function ReceiptScreen() {
 
                 {!loading && !error && receipt && (
                     <>
-                        <section className="rounded-[28px] bg-white p-6 text-center shadow-lg shadow-slate-900/5">
-                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-[#087F5B]">
+                        <section className="rounded-[28px] bg-pd-surface p-6 text-center shadow-lg shadow-slate-900/5">
+                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-pd-success-soft text-[#087F5B]">
                                 <CheckCircle2 size={34} />
                             </div>
 
@@ -162,17 +162,17 @@ function ReceiptScreen() {
                                 {formatMoney(receipt.finalPrice)}
                             </p>
 
-                            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-slate-500">
+                            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-pd-muted">
                                 <Wallet size={16} />
                                 Cash payment
                             </div>
 
-                            <p className="mt-4 break-all text-xs text-slate-400">
+                            <p className="mt-4 break-all text-xs text-pd-faint">
                                 Ride ID: {receipt.rideId}
                             </p>
                         </section>
 
-                        <section className="rounded-3xl bg-white p-5 shadow-sm">
+                        <section className="rounded-3xl bg-pd-surface p-5 shadow-sm">
                             <h3 className="mb-5 flex items-center gap-2 text-lg font-extrabold">
                                 <Navigation size={20} className="text-[#087F5B]" />
                                 Journey
@@ -181,13 +181,13 @@ function ReceiptScreen() {
                             <div className="flex gap-4">
                                 <div className="flex flex-col items-center">
                                     <span className="h-3 w-3 rounded-full bg-[#087F5B]" />
-                                    <div className="my-2 min-h-12 w-0.5 flex-1 bg-slate-200" />
-                                    <MapPin size={19} className="text-red-500" />
+                                    <div className="my-2 min-h-12 w-0.5 flex-1 bg-pd-surface-3" />
+                                    <MapPin size={19} className="text-pd-danger" />
                                 </div>
 
                                 <div className="min-w-0 flex-1 space-y-6">
                                     <div>
-                                        <p className="text-xs font-semibold text-slate-500">
+                                        <p className="text-xs font-semibold text-pd-muted">
                                             Pickup
                                         </p>
                                         <p className="mt-1 break-words text-sm font-medium">
@@ -196,7 +196,7 @@ function ReceiptScreen() {
                                     </div>
 
                                     <div>
-                                        <p className="text-xs font-semibold text-slate-500">
+                                        <p className="text-xs font-semibold text-pd-muted">
                                             Destination
                                         </p>
                                         <p className="mt-1 break-words text-sm font-medium">
@@ -207,7 +207,7 @@ function ReceiptScreen() {
                             </div>
                         </section>
 
-                        <section className="rounded-3xl bg-white p-5 shadow-sm">
+                        <section className="rounded-3xl bg-pd-surface p-5 shadow-sm">
                             <h3 className="mb-3 flex items-center gap-2 text-lg font-extrabold">
                                 <ReceiptText size={20} className="text-[#087F5B]" />
                                 Receipt Details
@@ -257,7 +257,7 @@ function ReceiptScreen() {
                         </section>
 
                         {receipt.driver && (
-                            <section className="rounded-3xl bg-white p-5 shadow-sm">
+                            <section className="rounded-3xl bg-pd-surface p-5 shadow-sm">
                                 <h3 className="mb-4 flex items-center gap-2 font-extrabold">
                                     <CarFront size={20} className="text-[#087F5B]" />
                                     Driver
@@ -273,14 +273,14 @@ function ReceiptScreen() {
                                             ? Number(receipt.driver.rating).toFixed(1)
                                             : "New driver"}
                                     </p>
-                                    <span className="text-sm text-slate-500">
+                                    <span className="text-sm text-pd-muted">
                                         ({receipt.driver.ratingCount} reviews)
                                     </span>
                                 </div>
                             </section>
                         )}
 
-                        <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
+                        <div className="flex items-center justify-center gap-2 text-xs text-pd-muted">
                             <Clock3 size={14} />
                             Receipt generated from recorded trip details
                         </div>

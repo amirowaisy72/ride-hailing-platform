@@ -1,8 +1,11 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { ActionDialogProvider } from "@/components/ActionDialog";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { themeBootScript } from "@/components/theme/themeScript";
+import { LanguageProvider } from "@/components/i18n/LanguageProvider";
+import { languageBootScript } from "@/components/i18n/languageScript";
 import { BRAND } from "@/config/brand";
 
 const geistSans = Geist({
@@ -49,10 +52,24 @@ export default function RootLayout({ children }) {
       <head>
         {/* Applies the saved/system theme before first paint (prevents flashing). */}
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+        {/* Applies the saved language (dir/lang/font) before first paint. */}
+        <script dangerouslySetInnerHTML={{ __html: languageBootScript }} />
+        {/* Noto Nastaliq Urdu — used only when Urdu mode is active
+            (html.lang-ur); display=swap keeps Latin UI instant. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
       </head>
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <LanguageProvider>
+            <AuthProvider>
+              <ActionDialogProvider>{children}</ActionDialogProvider>
+            </AuthProvider>
+          </LanguageProvider>
         </ThemeProvider>
       </body>
     </html>

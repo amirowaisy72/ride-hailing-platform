@@ -18,15 +18,19 @@ import {
     XCircle,
 } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
+import { useActionDialog } from "@/components/ActionDialog";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import OrderChat from "@/components/OrderChat";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
+import { storedLanguage } from "@/components/i18n/LanguageProvider";
 import { getRealtimeSocket } from "@/lib/socket";
 import { formatPKR } from "@/lib/rideDisplay";
 import PurchaseTimeline, {
     StatusPill,
     purchaseStatusMeta,
 } from "@/components/order/PurchaseTimeline";
+import DestinationMap from "@/components/DestinationMap";
 import {
     acceptPurchaseOffer,
     approvePurchaseAmount,
@@ -61,7 +65,7 @@ function offerPartnerUserId(offer) {
 }
 
 function offerPartnerName(offer) {
-    return offer?.driver?.name || "Safar partner";
+    return offer?.driver?.name || (storedLanguage() === "ur" ? "سفر ساتھی" : "Safar partner");
 }
 
 function vehicleText(vehicle) {
@@ -70,16 +74,19 @@ function vehicleText(vehicle) {
         vehicle.type || vehicle.vehicleType || "";
 }
 
-function expiryText(expiresAt, now) {
+function expiryText(expiresAt, now, lang) {
     if (!expiresAt) return "";
     const ms = new Date(expiresAt).getTime() - now;
-    if (ms <= 0) return "Expired";
+    if (ms <= 0) return lang === "ur" ? "وقت ختم" : "Expired";
     const totalSeconds = Math.floor(ms / 1000);
-    return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")} left`;
+    const time = `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
+    return lang === "ur" ? `${time} باقی` : `${time} left`;
 }
 
 function OrderDetail() {
     const { token, user } = useAuth();
+    const { t, lang } = useLanguage();
+    const dialog = useActionDialog();
     const searchParams = useSearchParams();
     const id = String(searchParams.get("id") || "");
 
@@ -175,11 +182,15 @@ function OrderDetail() {
     }
 
     async function acceptOffer(offer) {
-        if (!window.confirm(`Accept ${offerPartnerName(offer)}'s offer of ${formatPKR(offer.deliveryFee)} delivery fee? Other offers will be closed.`)) return;
+        if (!(await dialog.confirm({
+            title: t("bdDetails.acceptTitle"),
+            message: t("bdDetails.acceptMessage", { name: offerPartnerName(offer), fee: formatPKR(offer.deliveryFee) }),
+            confirmLabel: t("bdDetails.acceptConfirm"),
+        }))) return;
         await run(
             `accept:${offer._id}`,
             () => acceptPurchaseOffer(id, offer._id, token),
-            "Partner selected. They will start shopping shortly."
+            t("bdDetails.partnerSelected")
         );
     }
 
@@ -188,26 +199,40 @@ function OrderDetail() {
             const data = await regeneratePurchaseOtp(id, token);
             // Verified response: { success, stage: "DELIVERY", otp }
             setOtp(data.otp || "");
-            if (!data.otp) throw new Error("OTP unavailable at this stage");
+            if (!data.otp) throw new Error(t("bdDetails.otpUnavailable"));
         });
     }
 
     async function handleCancel() {
-        const reason = window.prompt("Why are you cancelling? (optional)", "");
+        const reason = await dialog.prompt({
+            title: t("bdDetails.cancelTitle"),
+            label: t("bdDetails.cancelReasonLabel"),
+            confirmLabel: t("bdDetails.cancelContinue"),
+        });
         if (reason === null) return;
-        if (!window.confirm("Cancel this shopping request?")) return;
-        await run("cancel", () => cancelPurchaseOrder(id, reason || "", token), "Request cancelled.");
+        if (!(await dialog.confirm({
+            title: "Cancel this shopping request?",
+            confirmLabel: t("bdDetails.cancelConfirm"),
+            cancelLabel: t("bdDetails.keepRequest"),
+            danger: true,
+        }))) return;
+        await run("cancel", () => cancelPurchaseOrder(id, reason || "", token), t("bdDetails.cancelledNotice"));
     }
 
     async function handleDispute() {
-        const reason = window.prompt("Tell us what went wrong — our team will review this order.", "");
+        const reason = await dialog.prompt({
+            title: t("bdDetails.disputeTitle"),
+            label: t("bdDetails.disputeLabel"),
+            optional: false,
+            confirmLabel: t("bdDetails.disputeConfirm"),
+        });
         if (!reason?.trim()) return;
-        await run("dispute", () => raisePurchaseDispute(id, reason.trim(), token), "Dispute raised. Our team will review it.");
+        await run("dispute", () => raisePurchaseDispute(id, reason.trim(), token), t("bdDetails.disputeNotice"));
     }
 
     if (loading && !order) {
         return (
-            <main className="flex min-h-dvh items-center justify-center bg-[#F4F5F7] text-sm font-semibold text-slate-500">
+            <main className="flex min-h-dvh items-center justify-center bg-pd-bg text-sm font-semibold text-pd-muted">
                 Loading your request…
             </main>
         );
@@ -215,9 +240,9 @@ function OrderDetail() {
 
     if (!order) {
         return (
-            <main className="min-h-dvh bg-[#F4F5F7] pb-28 text-[#111111]">
+            <main className="min-h-dvh bg-pd-bg pb-28 text-pd-text">
                 <div className="mx-auto max-w-xl px-4 pt-16 text-center">
-                    <p className="font-extrabold">Request not found</p>
+                    <p className="font-extrabold">{t("bdDetails.notFound")}</p>
                     {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
                     <Link href="/passenger/buy-deliver" className="mt-4 inline-block rounded-2xl bg-[#087F5B] px-5 py-3 text-sm font-extrabold text-white">
                         Back to Buy & Deliver
@@ -235,20 +260,20 @@ function OrderDetail() {
     const deliveryAddressText = order.deliveryAddress?.address || "";
 
     return (
-        <main className="min-h-dvh bg-[#F4F5F7] pb-28 text-[#111111]">
-            <div className="sticky top-0 z-20 border-b border-slate-100 bg-white/95 backdrop-blur-xl">
+        <main className="min-h-dvh bg-pd-bg pb-28 text-pd-text">
+            <div className="sticky top-0 z-20 border-b border-pd-line bg-pd-elevated backdrop-blur-xl">
                 <div className="mx-auto flex max-w-xl items-center gap-2 px-3 pb-3 pt-[max(12px,env(safe-area-inset-top))]">
-                    <Link href="/passenger/buy-deliver" aria-label="Back to Buy & Deliver" className="grid h-11 w-11 place-items-center rounded-2xl hover:bg-[#F4F5F7]">
+                    <Link href="/passenger/buy-deliver" aria-label="Back to Buy & Deliver" className="grid h-11 w-11 place-items-center rounded-2xl hover:bg-pd-surface-2">
                         <ArrowLeft size={21} />
                     </Link>
                     <div className="min-w-0 flex-1">
-                        <h1 className="truncate text-lg font-extrabold leading-tight tracking-tight">Shopping request</h1>
-                        <p className="text-xs text-slate-500">
+                        <h1 className="truncate text-lg font-extrabold leading-tight tracking-tight">{t("bdDetails.title")}</h1>
+                        <p className="text-xs text-pd-muted">
                             {order.createdAt ? new Date(order.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
                         </p>
                     </div>
                     <StatusPill meta={meta} />
-                    <button type="button" aria-label="Refresh" onClick={() => void load()} className="grid h-11 w-11 place-items-center rounded-2xl text-slate-500 hover:bg-[#F4F5F7]">
+                    <button type="button" aria-label={t("common.refresh")} onClick={() => void load()} className="grid h-11 w-11 place-items-center rounded-2xl text-pd-muted hover:bg-pd-surface-2">
                         <RefreshCw size={18} />
                     </button>
                 </div>
@@ -258,41 +283,41 @@ function OrderDetail() {
                 {error && <p role="alert" className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">{error}</p>}
                 {notice && <p role="status" className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-[#087F5B]">{notice}</p>}
 
-                <section className="rounded-[24px] bg-white p-4 shadow-sm">
+                <section className="rounded-[24px] bg-pd-surface p-4 shadow-sm">
                     <PurchaseTimeline status={order.status} />
                 </section>
 
                 {/* Offers */}
                 {(order.status === "REQUESTED" || order.status === "BIDDING") && (
-                    <section className="space-y-3 rounded-[24px] bg-white p-4 shadow-sm" aria-labelledby="offers-title">
+                    <section className="space-y-3 rounded-[24px] bg-pd-surface p-4 shadow-sm" aria-labelledby="offers-title">
                         <h2 id="offers-title" className="flex items-center gap-2 text-[15px] font-extrabold">
                             <Banknote size={17} className="text-[#087F5B]" />
-                            Partner offers {offers.length > 0 && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-extrabold text-[#087F5B]">{offers.length}</span>}
+                            {t("bdDetails.offers")} {offers.length > 0 && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-extrabold text-[#087F5B]">{offers.length}</span>}
                         </h2>
                         {offers.length === 0 ? (
-                            <div className="rounded-2xl bg-[#F9FAFB] px-4 py-5 text-center">
+                            <div className="rounded-2xl bg-pd-surface-2 px-4 py-5 text-center">
                                 <span className="relative mx-auto flex h-3 w-3">
                                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#087F5B] opacity-60" />
                                     <span className="relative inline-flex h-3 w-3 rounded-full bg-[#087F5B]" />
                                 </span>
-                                <p className="mt-3 text-sm font-bold">Waiting for nearby partners…</p>
-                                <p className="mt-1 text-xs text-slate-500">Offers appear here with each partner&apos;s delivery fee. This page updates automatically.</p>
+                                <p className="mt-3 text-sm font-bold">{t("bdDetails.waitingPartners")}</p>
+                                <p className="mt-1 text-xs text-pd-muted">{t("bdDetails.waitingHint")}</p>
                             </div>
                         ) : (
                             <div className="space-y-3">
                                 {offers.map((offer) => (
-                                    <article key={offer._id} className="rounded-2xl border border-slate-100 bg-[#F9FAFB] p-3.5">
+                                    <article key={offer._id} className="rounded-2xl border border-pd-line bg-pd-surface-2 p-3.5">
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="min-w-0">
                                                 <p className="truncate text-[15px] font-extrabold">{offerPartnerName(offer)}</p>
-                                                <p className="mt-0.5 text-xs font-semibold text-slate-500">
-                                                    {offer.driver?.rating ? `★ ${Number(offer.driver.rating).toFixed(1)} (${offer.driver.ratingCount || 0})` : "New partner"}
+                                                <p className="mt-0.5 text-xs font-semibold text-pd-muted">
+                                                    {offer.driver?.rating ? `★ ${Number(offer.driver.rating).toFixed(1)} (${offer.driver.ratingCount || 0})` : t("bdDetails.newPartner")}
                                                     {vehicleText(offer.driver?.vehicle) ? ` · ${vehicleText(offer.driver.vehicle)}` : ""}
                                                 </p>
                                             </div>
                                             <div className="shrink-0 text-right">
                                                 <p className="text-lg font-extrabold text-[#087F5B]">{formatPKR(offer.deliveryFee)}</p>
-                                                <p className="text-[11px] font-bold text-amber-600">{expiryText(offer.expiresAt, now)}</p>
+                                                <p className="text-[11px] font-bold text-amber-600">{expiryText(offer.expiresAt, now, lang)}</p>
                                             </div>
                                         </div>
                                         <div className="mt-3 flex gap-2">
@@ -302,7 +327,7 @@ function OrderDetail() {
                                                 onClick={() => setChatPartner({ partnerUserId: String(offerPartnerUserId(offer)), label: offerPartnerName(offer) })}
                                                 className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#111111] text-sm font-bold text-white disabled:opacity-40"
                                             >
-                                                <MessageCircle size={16} /> Chat
+                                                <MessageCircle size={16} /> {t("bdDetails.chat")}
                                             </button>
                                             <button
                                                 type="button"
@@ -310,7 +335,7 @@ function OrderDetail() {
                                                 onClick={() => void acceptOffer(offer)}
                                                 className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#087F5B] text-sm font-extrabold text-white disabled:opacity-50"
                                             >
-                                                <BadgeCheck size={16} /> Accept
+                                                <BadgeCheck size={16} /> {t("bdDetails.accept")}
                                             </button>
                                         </div>
                                     </article>
@@ -322,23 +347,23 @@ function OrderDetail() {
 
                 {/* Assigned partner */}
                 {order.driverId && !["REQUESTED", "BIDDING", "CANCELLED", "FAILED"].includes(order.status) && (
-                    <section className="flex items-center gap-3 rounded-[24px] bg-white p-4 shadow-sm">
+                    <section className="flex items-center gap-3 rounded-[24px] bg-pd-surface p-4 shadow-sm">
                         <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-emerald-50 text-[#087F5B]">
                             <ShoppingBag size={22} />
                         </span>
                         <div className="min-w-0 flex-1">
-                            <p className="text-[15px] font-extrabold">Your shopping partner</p>
-                            <p className="text-xs font-semibold text-slate-500">
-                                {order.shoppingLocation?.name ? `Shopping at ${order.shoppingLocation.name} · ` : ""}
-                                Delivery fee {formatPKR(order.deliveryFee)}
+                            <p className="text-[15px] font-extrabold">{t("bdDetails.yourPartner")}</p>
+                            <p className="text-xs font-semibold text-pd-muted">
+                                {order.shoppingLocation?.name ? t("bdDetails.shoppingAt", { shop: order.shoppingLocation.name }) : ""}
+                                {t("bdDetails.deliveryFeeLine", { fee: formatPKR(order.deliveryFee) })}
                             </p>
                         </div>
                         <button
                             type="button"
-                            onClick={() => setChatPartner({ partnerUserId: String(order.driverId), label: "your shopping partner" })}
+                            onClick={() => setChatPartner({ partnerUserId: String(order.driverId), label: t("bdDetails.chatLabelPartner") })}
                             className="flex h-11 shrink-0 items-center gap-2 rounded-xl bg-[#111111] px-4 text-sm font-bold text-white"
                         >
-                            <MessageCircle size={16} /> Chat
+                            <MessageCircle size={16} /> {t("bdDetails.chat")}
                         </button>
                     </section>
                 )}
@@ -346,39 +371,43 @@ function OrderDetail() {
                 {/* Approval */}
                 {order.status === "AWAITING_APPROVAL" && (
                     <section className="space-y-3 rounded-[24px] border-2 border-orange-200 bg-orange-50 p-4 shadow-sm" aria-labelledby="approval-title">
-                        <h2 id="approval-title" className="text-[15px] font-extrabold text-orange-900">Approve the shopping cost</h2>
-                        <div className="space-y-1.5 rounded-2xl bg-white p-3.5 text-sm font-semibold">
-                            <p className="flex justify-between"><span className="text-slate-500">Partner&apos;s estimate</span><span className="font-extrabold">{formatPKR(order.estimatedCost)}</span></p>
-                            <p className="flex justify-between"><span className="text-slate-500">Your budget</span><span>{formatPKR(order.estimatedBudget)}</span></p>
+                        <h2 id="approval-title" className="text-[15px] font-extrabold text-orange-900">{t("bdDetails.approveTitle")}</h2>
+                        <div className="space-y-1.5 rounded-2xl bg-pd-surface p-3.5 text-sm font-semibold">
+                            <p className="flex justify-between"><span className="text-pd-muted">{t("bdDetails.partnerEstimate")}</span><span className="font-extrabold">{formatPKR(order.estimatedCost)}</span></p>
+                            <p className="flex justify-between"><span className="text-pd-muted">{t("bdDetails.yourBudget")}</span><span>{formatPKR(order.estimatedBudget)}</span></p>
                             {order.estimatedCost > order.estimatedBudget && (
                                 <p className="pt-1 text-xs font-bold text-orange-700">
-                                    This is {formatPKR(order.estimatedCost - order.estimatedBudget)} above your budget — approve only if you are happy with it.
+                                    {t("bdDetails.aboveBudget", { amount: formatPKR(order.estimatedCost - order.estimatedBudget) })}
                                 </p>
                             )}
-                            <p className="pt-1 text-xs text-slate-500">
-                                Approving means the partner may spend up to {formatPKR(order.estimatedCost)}. You pay the actual items cost + {formatPKR(order.deliveryFee)} delivery fee in cash at delivery.
+                            <p className="pt-1 text-xs text-pd-muted">
+                                {t("bdDetails.approveHint", { amount: formatPKR(order.estimatedCost), fee: formatPKR(order.deliveryFee) })}
                             </p>
                         </div>
                         <div className="flex gap-2">
                             <button
                                 type="button"
                                 disabled={busy === "approve"}
-                                onClick={() => void run("approve", () => approvePurchaseAmount(id, order.estimatedCost, token), "Amount approved — your partner can buy your items now.")}
+                                onClick={() => void run("approve", () => approvePurchaseAmount(id, order.estimatedCost, token), t("bdDetails.approvedNotice"))}
                                 className="h-12 flex-1 rounded-xl bg-[#087F5B] text-sm font-extrabold text-white disabled:opacity-50"
                             >
-                                Approve {formatPKR(order.estimatedCost)}
+                                {t("bdDetails.approveAmount", { amount: formatPKR(order.estimatedCost) })}
                             </button>
                             <button
                                 type="button"
                                 disabled={busy === "reject"}
-                                onClick={() => {
-                                    const note = window.prompt("Anything the partner should change? (optional)", "");
+                                onClick={async () => {
+                                    const note = await dialog.prompt({
+                                        title: t("bdDetails.sendBackTitle"),
+                                        label: t("bdDetails.sendBackLabel"),
+                                        confirmLabel: t("bdDetails.sendBackConfirm"),
+                                    });
                                     if (note === null) return;
-                                    void run("reject", () => rejectPurchaseEstimate(id, note || "", token), "Estimate sent back — your partner will revise it.");
+                                    void run("reject", () => rejectPurchaseEstimate(id, note || "", token), t("bdDetails.sentBackNotice"));
                                 }}
-                                className="h-12 flex-1 rounded-xl bg-white text-sm font-bold text-slate-700 ring-1 ring-slate-200 disabled:opacity-50"
+                                className="h-12 flex-1 rounded-xl bg-pd-surface text-sm font-bold text-pd-text-2 ring-1 ring-pd-line disabled:opacity-50"
                             >
-                                Not yet
+                                {t("bdDetails.notYet")}
                             </button>
                         </div>
                     </section>
@@ -386,19 +415,19 @@ function OrderDetail() {
 
                 {/* Substitutions */}
                 {pendingSubstitutions.length > 0 && (
-                    <section className="space-y-3 rounded-[24px] bg-white p-4 shadow-sm" aria-labelledby="subs-title">
-                        <h2 id="subs-title" className="text-[15px] font-extrabold">Substitution requests</h2>
+                    <section className="space-y-3 rounded-[24px] bg-pd-surface p-4 shadow-sm" aria-labelledby="subs-title">
+                        <h2 id="subs-title" className="text-[15px] font-extrabold">{t("bdDetails.subsTitle")}</h2>
                         {pendingSubstitutions.map((sub) => (
-                            <article key={sub._id} className="rounded-2xl bg-[#F9FAFB] p-3.5">
+                            <article key={sub._id} className="rounded-2xl bg-pd-surface-2 p-3.5">
                                 <p className="text-sm font-semibold leading-relaxed">{sub.description}</p>
-                                <p className="mt-1 text-[11px] font-medium text-slate-400">
+                                <p className="mt-1 text-[11px] font-medium text-pd-faint">
                                     {sub.createdAt ? new Date(sub.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
                                 </p>
                                 <div className="mt-3 flex gap-2">
                                     <button
                                         type="button"
                                         disabled={busy === `sub:${sub._id}`}
-                                        onClick={() => void run(`sub:${sub._id}`, () => decideSubstitution(id, { substitutionId: sub._id, approved: true }, token), "Substitution approved.")}
+                                        onClick={() => void run(`sub:${sub._id}`, () => decideSubstitution(id, { substitutionId: sub._id, approved: true }, token), t("bdDetails.subApprovedNotice"))}
                                         className="h-10 flex-1 rounded-xl bg-[#087F5B] text-sm font-extrabold text-white disabled:opacity-50"
                                     >
                                         Approve
@@ -406,8 +435,8 @@ function OrderDetail() {
                                     <button
                                         type="button"
                                         disabled={busy === `sub:${sub._id}`}
-                                        onClick={() => void run(`sub:${sub._id}`, () => decideSubstitution(id, { substitutionId: sub._id, approved: false }, token), "Substitution declined.")}
-                                        className="h-10 flex-1 rounded-xl bg-white text-sm font-bold text-slate-700 ring-1 ring-slate-200 disabled:opacity-50"
+                                        onClick={() => void run(`sub:${sub._id}`, () => decideSubstitution(id, { substitutionId: sub._id, approved: false }, token), t("bdDetails.subDeclinedNotice"))}
+                                        className="h-10 flex-1 rounded-xl bg-pd-surface text-sm font-bold text-pd-text-2 ring-1 ring-pd-line disabled:opacity-50"
                                     >
                                         Reject
                                     </button>
@@ -417,12 +446,12 @@ function OrderDetail() {
                     </section>
                 )}
                 {decidedSubstitutions.length > 0 && (
-                    <section className="rounded-[24px] bg-white p-4 shadow-sm">
-                        <h2 className="mb-2 text-[15px] font-extrabold">Substitutions decided</h2>
+                    <section className="rounded-[24px] bg-pd-surface p-4 shadow-sm">
+                        <h2 className="mb-2 text-[15px] font-extrabold">{t("bdDetails.subsDecided")}</h2>
                         <ul className="space-y-2">
                             {decidedSubstitutions.map((sub) => (
                                 <li key={sub._id} className="flex items-start justify-between gap-3 text-sm">
-                                    <span className="min-w-0 flex-1 font-medium text-slate-600">{sub.description}</span>
+                                    <span className="min-w-0 flex-1 font-medium text-pd-text-2">{sub.description}</span>
                                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-extrabold ${sub.status === "APPROVED" ? "bg-emerald-50 text-[#087F5B]" : "bg-red-50 text-red-600"}`}>
                                         {sub.status}
                                     </span>
@@ -433,42 +462,47 @@ function OrderDetail() {
                 )}
 
                 {/* Items */}
-                <section className="space-y-3 rounded-[24px] bg-white p-4 shadow-sm">
-                    <h2 className="text-[15px] font-extrabold">Shopping list</h2>
-                    <p className="whitespace-pre-wrap rounded-2xl bg-[#F9FAFB] p-3.5 text-sm leading-relaxed">{order.itemsText}</p>
+                <section className="space-y-3 rounded-[24px] bg-pd-surface p-4 shadow-sm">
+                    <h2 className="text-[15px] font-extrabold">{t("bdDetails.shoppingList")}</h2>
+                    <p className="whitespace-pre-wrap rounded-2xl bg-pd-surface-2 p-3.5 text-sm leading-relaxed">{order.itemsText}</p>
                     {(order.imageUrls || []).length > 0 && (
                         <div className="flex flex-wrap gap-2">
                             {order.imageUrls.map((url) => (
                                 // eslint-disable-next-line @next/next/no-img-element
-                                <img key={url} src={url} alt="Reference" className="h-20 w-20 rounded-2xl object-cover" />
+                                <img key={url} src={url} alt={t("bdDetails.reference")} className="h-20 w-20 rounded-2xl object-cover" />
                             ))}
                         </div>
                     )}
                     <dl className="space-y-1.5 text-sm">
-                        <div className="flex justify-between gap-3"><dt className="text-slate-500">Budget</dt><dd className="font-bold">{formatPKR(order.estimatedBudget)}</dd></div>
-                        {order.preferences?.preferredShop && <div className="flex justify-between gap-3"><dt className="text-slate-500">Preferred shop</dt><dd className="font-semibold">{order.preferences.preferredShop}</dd></div>}
-                        {order.preferences?.preferredBrand && <div className="flex justify-between gap-3"><dt className="text-slate-500">Preferred brand</dt><dd className="font-semibold">{order.preferences.preferredBrand}</dd></div>}
-                        <div className="flex justify-between gap-3"><dt className="text-slate-500">Alternatives</dt><dd className="font-semibold">{order.preferences?.alternativesAllowed ? "Allowed" : "Not allowed"}</dd></div>
-                        {order.preferences?.alternativesNote && <div className="flex justify-between gap-3"><dt className="text-slate-500">Alternatives note</dt><dd className="text-right font-medium">{order.preferences.alternativesNote}</dd></div>}
-                        {order.deliveryNotes && <div className="flex justify-between gap-3"><dt className="text-slate-500">Delivery notes</dt><dd className="text-right font-medium">{order.deliveryNotes}</dd></div>}
+                        <div className="flex justify-between gap-3"><dt className="text-pd-muted">{t("bdDetails.budget")}</dt><dd className="font-bold">{formatPKR(order.estimatedBudget)}</dd></div>
+                        {order.preferences?.preferredShop && <div className="flex justify-between gap-3"><dt className="text-pd-muted">{t("bdDetails.preferredShop")}</dt><dd className="font-semibold">{order.preferences.preferredShop}</dd></div>}
+                        {order.preferences?.preferredBrand && <div className="flex justify-between gap-3"><dt className="text-pd-muted">{t("bdDetails.preferredBrand")}</dt><dd className="font-semibold">{order.preferences.preferredBrand}</dd></div>}
+                        <div className="flex justify-between gap-3"><dt className="text-pd-muted">{t("bdDetails.alternatives")}</dt><dd className="font-semibold">{order.preferences?.alternativesAllowed ? t("bdDetails.allowed") : t("bdDetails.notAllowed")}</dd></div>
+                        {order.preferences?.alternativesNote && <div className="flex justify-between gap-3"><dt className="text-pd-muted">{t("bdDetails.alternativesNote")}</dt><dd className="text-right font-medium">{order.preferences.alternativesNote}</dd></div>}
+                        {order.deliveryNotes && <div className="flex justify-between gap-3"><dt className="text-pd-muted">{t("bdDetails.deliveryNotes")}</dt><dd className="text-right font-medium">{order.deliveryNotes}</dd></div>}
                     </dl>
-                    <p className="flex items-start gap-2 rounded-2xl bg-[#F9FAFB] px-3.5 py-3 text-sm font-medium text-slate-600">
+                    <p className="flex items-start gap-2 rounded-2xl bg-pd-surface-2 px-3.5 py-3 text-sm font-medium text-pd-text-2">
                         <MapPin size={16} className="mt-0.5 shrink-0 text-[#087F5B]" />
-                        <span>{order.deliveryLabel ? `${order.deliveryLabel} — ` : ""}{deliveryAddressText || "Delivery address on file"}</span>
+                        <span>{order.deliveryLabel ? `${order.deliveryLabel} — ` : ""}{deliveryAddressText || t("bdDetails.addressOnFile")}</span>
                     </p>
+                    <DestinationMap
+                        point={order.deliveryAddress}
+                        label={order.deliveryLabel || deliveryAddressText || t("bdDetails.deliveryLocation")}
+                        navigateLabel={t("bdDetails.navigate")}
+                    />
                 </section>
 
                 {/* Receipts */}
                 {(order.receiptImageUrls || []).length > 0 && (
-                    <section className="rounded-[24px] bg-white p-4 shadow-sm">
+                    <section className="rounded-[24px] bg-pd-surface p-4 shadow-sm">
                         <h2 className="mb-3 flex items-center gap-2 text-[15px] font-extrabold">
-                            <ReceiptText size={17} className="text-[#087F5B]" /> Receipts
+                            <ReceiptText size={17} className="text-[#087F5B]" /> {t("bdDetails.receipts")}
                         </h2>
                         <div className="flex flex-wrap gap-2">
                             {order.receiptImageUrls.map((url) => (
                                 <a key={url} href={url} target="_blank" rel="noreferrer" className="block">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={url} alt="Purchase receipt" className="h-24 w-24 rounded-2xl object-cover" />
+                                    <img src={url} alt={t("bdDetails.purchaseReceipt")} className="h-24 w-24 rounded-2xl object-cover" />
                                 </a>
                             ))}
                         </div>
@@ -477,12 +511,12 @@ function OrderDetail() {
 
                 {/* Delivery OTP */}
                 {OTP_STAGES.includes(order.status) && (
-                    <section className="rounded-[24px] bg-white p-4 shadow-sm">
+                    <section className="rounded-[24px] bg-pd-surface p-4 shadow-sm">
                         <h2 className="flex items-center gap-2 text-[15px] font-extrabold">
-                            <KeyRound size={17} className="text-[#087F5B]" /> Delivery code
+                            <KeyRound size={17} className="text-[#087F5B]" /> {t("bdDetails.deliveryCode")}
                         </h2>
-                        <p className="mt-1 text-sm text-slate-500">
-                            Share this code with your partner only when your items are at your door.
+                        <p className="mt-1 text-sm text-pd-muted">
+                            {t("bdDetails.codeHint")}
                         </p>
                         {otp ? (
                             <p className="mt-3 rounded-2xl bg-[#111111] py-4 text-center text-3xl font-extrabold tracking-[0.35em] text-white">
@@ -495,7 +529,7 @@ function OrderDetail() {
                                 onClick={() => void showOtp()}
                                 className="mt-3 h-12 w-full rounded-xl bg-[#087F5B] text-sm font-extrabold text-white disabled:opacity-50"
                             >
-                                {busy === "otp" ? "Generating…" : "Show my delivery code"}
+                                {busy === "otp" ? t("bdDetails.generating") : t("bdDetails.showCode")}
                             </button>
                         )}
                     </section>
@@ -503,30 +537,30 @@ function OrderDetail() {
 
                 {/* COD breakdown + confirm payment */}
                 {(order.status === "DELIVERED" || order.status === "COMPLETED") && (
-                    <section className="space-y-2 rounded-[24px] bg-white p-4 shadow-sm">
+                    <section className="space-y-2 rounded-[24px] bg-pd-surface p-4 shadow-sm">
                         <h2 className="flex items-center gap-2 text-[15px] font-extrabold">
-                            <Banknote size={17} className="text-[#087F5B]" /> Cash on delivery
+                            <Banknote size={17} className="text-[#087F5B]" /> {t("bdDetails.cod")}
                         </h2>
                         <dl className="space-y-1.5 pt-1 text-sm font-semibold">
-                            <div className="flex justify-between"><dt className="text-slate-500">Shopping (actual)</dt><dd>{formatPKR(order.actualCost)}</dd></div>
-                            <div className="flex justify-between"><dt className="text-slate-500">Delivery fee</dt><dd>{formatPKR(order.deliveryFee)}</dd></div>
-                            <div className="flex justify-between border-t border-slate-100 pt-2 text-[15px]"><dt>Total payable</dt><dd className="font-extrabold">{formatPKR(order.customerTotalPayable)}</dd></div>
-                            <div className="flex justify-between"><dt className="text-slate-500">Paid so far</dt><dd>{formatPKR(order.reimbursementReceived || 0)}</dd></div>
-                            <div className="flex justify-between"><dt className="text-slate-500">Still unpaid</dt><dd className={order.unpaidAmount > 0 ? "font-extrabold text-red-600" : "font-bold text-[#087F5B]"}>{formatPKR(order.unpaidAmount || 0)}</dd></div>
+                            <div className="flex justify-between"><dt className="text-pd-muted">{t("bdDetails.shoppingActual")}</dt><dd>{formatPKR(order.actualCost)}</dd></div>
+                            <div className="flex justify-between"><dt className="text-pd-muted">{t("bdDetails.deliveryFee")}</dt><dd>{formatPKR(order.deliveryFee)}</dd></div>
+                            <div className="flex justify-between border-t border-pd-line pt-2 text-[15px]"><dt>{t("bdDetails.totalPayable")}</dt><dd className="font-extrabold">{formatPKR(order.customerTotalPayable)}</dd></div>
+                            <div className="flex justify-between"><dt className="text-pd-muted">{t("bdDetails.paidSoFar")}</dt><dd>{formatPKR(order.reimbursementReceived || 0)}</dd></div>
+                            <div className="flex justify-between"><dt className="text-pd-muted">{t("bdDetails.stillUnpaid")}</dt><dd className={order.unpaidAmount > 0 ? "font-extrabold text-red-600" : "font-bold text-[#087F5B]"}>{formatPKR(order.unpaidAmount || 0)}</dd></div>
                         </dl>
                         {order.status === "DELIVERED" && (order.unpaidAmount || 0) > 0 && (
                             <button
                                 type="button"
                                 disabled={busy === "pay"}
-                                onClick={() => void run("pay", () => confirmPurchasePayment(id, order.customerTotalPayable, token), "Payment confirmed — thank you!")}
+                                onClick={() => void run("pay", () => confirmPurchasePayment(id, order.customerTotalPayable, token), t("bdDetails.paymentConfirmed"))}
                                 className="h-12 w-full rounded-xl bg-[#087F5B] text-sm font-extrabold text-white disabled:opacity-50"
                             >
-                                I paid {formatPKR(order.customerTotalPayable)} in cash
+                                {t("bdDetails.iPaid", { amount: formatPKR(order.customerTotalPayable) })}
                             </button>
                         )}
                         {order.status === "COMPLETED" && (
                             <p className="flex items-center gap-2 pt-1 text-sm font-bold text-[#087F5B]">
-                                <BadgeCheck size={17} /> Fully paid — order complete.
+                                <BadgeCheck size={17} /> {t("bdDetails.fullyPaid")}
                             </p>
                         )}
                     </section>
@@ -534,9 +568,9 @@ function OrderDetail() {
 
                 {/* Rating */}
                 {canRate && (
-                    <section className="space-y-3 rounded-[24px] bg-white p-4 shadow-sm">
-                        <h2 className="text-[15px] font-extrabold">Rate your partner</h2>
-                        <div className="flex gap-1.5" role="radiogroup" aria-label="Your rating">
+                    <section className="space-y-3 rounded-[24px] bg-pd-surface p-4 shadow-sm">
+                        <h2 className="text-[15px] font-extrabold">{t("bdDetails.ratePartner")}</h2>
+                        <div className="flex gap-1.5" role="radiogroup" aria-label={t("bdDetails.yourRating")}>
                             {[1, 2, 3, 4, 5].map((value) => (
                                 <button
                                     key={value}
@@ -545,9 +579,9 @@ function OrderDetail() {
                                     aria-checked={rating === value}
                                     aria-label={`${value} star${value > 1 ? "s" : ""}`}
                                     onClick={() => setRating(value)}
-                                    className="grid h-11 w-11 place-items-center rounded-xl bg-[#F9FAFB]"
+                                    className="grid h-11 w-11 place-items-center rounded-xl bg-pd-surface-2"
                                 >
-                                    <Star size={22} className={value <= rating ? "fill-amber-400 text-amber-400" : "text-slate-300"} />
+                                    <Star size={22} className={value <= rating ? "fill-amber-400 text-amber-400" : "text-pd-faint"} />
                                 </button>
                             ))}
                         </div>
@@ -556,21 +590,21 @@ function OrderDetail() {
                             onChange={(e) => setRatingComment(e.target.value)}
                             rows={2}
                             maxLength={1000}
-                            placeholder="How was the shopping and delivery? (optional)"
-                            className="w-full resize-none rounded-2xl border border-slate-200 bg-[#F9FAFB] px-4 py-3 text-[15px] outline-none placeholder:text-slate-400 focus:border-[#087F5B] focus:ring-2 focus:ring-[#087F5B]/25"
+                            placeholder={t("bdDetails.ratePlaceholder")}
+                            className="w-full resize-none rounded-2xl border border-pd-line bg-pd-surface-2 px-4 py-3 text-[15px] outline-none placeholder:text-pd-faint focus:border-[#087F5B] focus:ring-2 focus:ring-[#087F5B]/25"
                         />
                         <button
                             type="button"
                             disabled={!rating || busy === "rate"}
-                            onClick={() => void run("rate", () => ratePurchasePartner(id, { rating, comment: ratingComment.trim() }, token), "Thanks for your feedback!")}
+                            onClick={() => void run("rate", () => ratePurchasePartner(id, { rating, comment: ratingComment.trim() }, token), t("bdDetails.thanksFeedback"))}
                             className="h-12 w-full rounded-xl bg-[#111111] text-sm font-extrabold text-white disabled:opacity-50"
                         >
-                            Submit rating
+                            {t("bdDetails.submitRating")}
                         </button>
                     </section>
                 )}
                 {order.ratedAt && (
-                    <p className="rounded-[24px] bg-white px-4 py-3 text-center text-sm font-bold text-[#087F5B] shadow-sm">
+                    <p className="rounded-[24px] bg-pd-surface px-4 py-3 text-center text-sm font-bold text-[#087F5B] shadow-sm">
                         ⭐ You rated this order — thank you!
                     </p>
                 )}
@@ -583,9 +617,9 @@ function OrderDetail() {
                                 type="button"
                                 disabled={busy === "cancel"}
                                 onClick={() => void handleCancel()}
-                                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-white text-sm font-bold text-red-600 shadow-sm ring-1 ring-red-100 disabled:opacity-50"
+                                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-pd-surface text-sm font-bold text-pd-danger shadow-sm ring-1 ring-pd-line disabled:opacity-50"
                             >
-                                <XCircle size={17} /> Cancel request
+                                <XCircle size={17} /> {t("bdDetails.cancelConfirm")}
                             </button>
                         )}
                         {DISPUTABLE.includes(order.status) && (
@@ -593,16 +627,16 @@ function OrderDetail() {
                                 type="button"
                                 disabled={busy === "dispute"}
                                 onClick={() => void handleDispute()}
-                                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-white text-sm font-bold text-amber-700 shadow-sm ring-1 ring-amber-100 disabled:opacity-50"
+                                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-pd-surface text-sm font-bold text-pd-warning shadow-sm ring-1 ring-pd-line disabled:opacity-50"
                             >
-                                <TriangleAlert size={17} /> Raise a dispute
+                                <TriangleAlert size={17} /> {t("bdDetails.disputeTitle")}
                             </button>
                         )}
                     </section>
                 )}
                 {order.status === "DISPUTED" && (
                     <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-                        This order is under dispute review{order.disputeReason ? ` — “${order.disputeReason}”` : ""}. Our team will contact you.
+                        {t("bdDetails.disputedReview", { suffix: order.disputeReason ? ` — “${order.disputeReason}”` : "" })}
                     </p>
                 )}
             </div>

@@ -98,7 +98,7 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
         {!directOpen && <button
             type="button"
             onClick={() => setOpen(true)}
-            className="relative flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#111111] px-4 text-sm font-bold text-white transition-transform active:scale-[0.98]"
+            className="relative flex h-12 items-center justify-center gap-2 rounded-2xl bg-pd-ink px-4 text-sm font-bold text-pd-ink-text transition-transform active:scale-[0.98]"
         >
             <MessageCircle size={18} aria-hidden="true" />
             Message {participantLabel}
@@ -109,13 +109,13 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                 </span>
             )}
         </button>}
-        {isOpen && createPortal(<div style={visibleViewportSurfaceStyle(visibleViewport)} className="fixed inset-0 z-[100] flex h-dvh flex-col overflow-hidden bg-white text-[#111111] dark:!bg-[#101216] dark:!text-[#F5F7FA]" role="dialog" aria-modal="true" aria-label="Ride messages">
-            <header className="flex shrink-0 items-center gap-3 border-b border-[#EEF0F2] bg-white px-4 pb-3 pt-[max(12px,env(safe-area-inset-top))] shadow-sm">
+        {isOpen && createPortal(<div style={visibleViewportSurfaceStyle(visibleViewport)} className="fixed inset-0 z-[100] flex h-dvh flex-col overflow-hidden bg-pd-surface text-pd-text dark:!bg-[#101216] dark:!text-[#F5F7FA]" role="dialog" aria-modal="true" aria-label="Ride messages">
+            <header className="flex shrink-0 items-center gap-3 border-b border-pd-line bg-pd-surface px-4 pb-3 pt-[max(12px,env(safe-area-inset-top))] shadow-sm">
                 <button
                     type="button"
                     onClick={closeChat}
                     aria-label="Close chat"
-                    className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F4F5F7] hover:bg-[#E9EBEE]"
+                    className="flex h-11 w-11 items-center justify-center rounded-full bg-pd-surface-2 hover:bg-pd-surface-3"
                 >
                     <ArrowLeft size={20} />
                 </button>
@@ -144,7 +144,7 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                     <p className="truncate font-extrabold tracking-tight">
                         Chat with {participantLabel}
                     </p>
-                    <p className="text-xs text-[#9CA3AF]">
+                    <p className="text-xs text-pd-faint">
                         Tap to view passenger profile
                     </p>
                 </button>
@@ -155,7 +155,7 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                     </a>
                 ) : (
                     <button type="button" disabled title="Driver phone number unavailable" aria-label="Call unavailable"
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#F4F5F7] text-[#9CA3AF]">
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-pd-surface-2 text-pd-faint">
                         <Phone size={19} />
                     </button>
                 )}
@@ -206,27 +206,27 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                 </div>
             )}
 
-            <main className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-[#F4F5F7] p-4 pb-6" aria-live="polite">
+            <main className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain bg-pd-surface-2 p-4 pb-6" aria-live="polite">
                 {loadingMessages && messages.length === 0 ? (
-                    <div role="status" aria-label="Loading messages" className="mx-auto mt-12 flex flex-col items-center gap-3 text-sm font-semibold text-[#6B7280]">
-                        <span className="h-9 w-9 animate-spin rounded-full border-[3px] border-[#E5E7EB] border-t-[#111111]" />
+                    <div role="status" aria-label="Loading messages" className="mx-auto mt-12 flex flex-col items-center gap-3 text-sm font-semibold text-pd-muted">
+                        <span className="h-9 w-9 animate-spin rounded-full border-[3px] border-pd-line border-t-pd-text" />
                         Loading messages…
                     </div>
                 ) : !error && messages.length === 0 ? (
-                    <div className="mx-auto mt-10 max-w-xs rounded-3xl bg-white p-7 text-center shadow-sm">
+                    <div className="mx-auto mt-10 max-w-xs rounded-3xl bg-pd-surface p-7 text-center shadow-sm">
                         <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#EFFFBE]">
                             <MessageCircle size={24} aria-hidden="true" />
                         </span>
                         <p className="text-sm font-semibold">No messages yet</p>
-                        <p className="mt-1 text-xs text-[#6B7280]">Send a quick note to coordinate your pickup.</p>
+                        <p className="mt-1 text-xs text-pd-muted">Send a quick note to coordinate your pickup.</p>
                     </div>
                 ) : null}
                 {messages.map((m) => {
                     const mine = same(m.senderId, userId);
                     return <div key={m._id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                        <div className={`max-w-[82%] px-4 py-3 text-[14px] leading-relaxed shadow-sm ${mine ? "rounded-2xl rounded-br-md bg-[#087F5B] text-white" : "rounded-2xl rounded-bl-md bg-white"}`}>
+                        <div className={`max-w-[82%] px-4 py-3 text-[14px] leading-relaxed shadow-sm ${mine ? "rounded-2xl rounded-br-md bg-[#087F5B] text-white" : "rounded-2xl rounded-bl-md bg-pd-surface"}`}>
                             <p className="whitespace-pre-wrap break-words">{m.body}</p>
-                            <p className={`mt-1 text-right text-[10px] ${mine ? "text-[#4B5563]" : "text-[#9CA3AF]"}`}>
+                            <p className={`mt-1 text-right text-[10px] ${mine ? "text-pd-text-2" : "text-pd-faint"}`}>
                                 {new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </p>
                         </div>
@@ -234,34 +234,34 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
                 })}
                 <div ref={endRef} />
             </main>
-            <div className="flex shrink-0 gap-2 overflow-x-auto border-t border-[#EEF0F2] bg-white px-3 py-2.5" style={{ scrollbarWidth: "none" }}>
+            <div className="flex shrink-0 gap-2 overflow-x-auto border-t border-pd-line bg-pd-surface px-3 py-2.5" style={{ scrollbarWidth: "none" }}>
                 {QUICK.map((q) => (
                     <button
                         key={q}
                         type="button"
                         disabled={sending}
                         onClick={() => send(q)}
-                        className="shrink-0 whitespace-nowrap rounded-full border border-[#E9EBEE] bg-[#F9FAFB] px-3.5 py-2 text-xs font-semibold text-[#111111] transition-colors hover:bg-[#E9EBEE] disabled:opacity-50 dark:!border-[#434B57] dark:!bg-[#252B34] dark:!text-[#F5F7FA] dark:hover:!bg-[#343D49]"
+                        className="shrink-0 whitespace-nowrap rounded-full border border-pd-line bg-pd-surface-2 px-3.5 py-2 text-xs font-semibold text-pd-text transition-colors hover:bg-pd-surface-3 disabled:opacity-50 dark:!border-[#434B57] dark:!bg-[#252B34] dark:!text-[#F5F7FA] dark:hover:!bg-[#343D49]"
                     >
                         {q}
                     </button>
                 ))}
             </div>
-            {error && <p role="alert" className="shrink-0 bg-white px-4 py-2 text-xs font-medium text-[#E5484D]">{error}</p>}
-            <form onSubmit={(e) => { e.preventDefault(); send(text); }} className="flex shrink-0 items-end gap-2 border-t border-[#EEF0F2] bg-white px-3 pb-[max(14px,env(safe-area-inset-bottom))] pt-3">
+            {error && <p role="alert" className="shrink-0 bg-pd-surface px-4 py-2 text-xs font-medium text-pd-danger">{error}</p>}
+            <form onSubmit={(e) => { e.preventDefault(); send(text); }} className="flex shrink-0 items-end gap-2 border-t border-pd-line bg-pd-surface px-3 pb-[max(14px,env(safe-area-inset-bottom))] pt-3">
                 <input
                     value={text}
                     maxLength={1000}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Write a message..."
-                    className="min-h-12 min-w-0 flex-1 rounded-2xl border border-[#E5E7EB] bg-[#F4F5F7] px-4 text-base text-[#111111] outline-none placeholder:text-[#9CA3AF] focus:border-[#087F5B] focus:ring-2 focus:ring-[#087F5B]/30 dark:!border-[#505968] dark:!bg-[#222831] dark:!text-white dark:placeholder:!text-[#AAB4C2] dark:focus:!border-[#087F5B]"
+                    className="min-h-12 min-w-0 flex-1 rounded-2xl border border-pd-line bg-pd-surface-2 px-4 text-base text-pd-text outline-none placeholder:text-pd-faint focus:border-[#087F5B] focus:ring-2 focus:ring-[#087F5B]/30 dark:!border-[#505968] dark:!bg-[#222831] dark:!text-white dark:placeholder:!text-[#AAB4C2] dark:focus:!border-[#087F5B]"
                     aria-label="Message"
                 />
                 <button
                     type="submit"
                     disabled={sending || !text.trim()}
                     aria-label="Send message"
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#087F5B] text-white transition-transform active:scale-95 disabled:bg-[#E9EBEE] disabled:text-[#9CA3AF] dark:!bg-[#087F5B] dark:!text-white dark:disabled:!bg-[#303741] dark:disabled:!text-[#8793A3]"
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#087F5B] text-white transition-transform active:scale-95 disabled:bg-[#E9EBEE] disabled:text-pd-faint dark:!bg-[#087F5B] dark:!text-white dark:disabled:!bg-[#303741] dark:disabled:!text-[#8793A3]"
                 >
                     <Send size={19} />
                 </button>

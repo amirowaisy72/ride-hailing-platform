@@ -702,7 +702,14 @@ async function waitForServer(timeoutMs = 90000) {
             token: tokens.passenger,
             body: {
                 itemsText: "2 kg sugar, 1 litre milk, 1 dozen eggs",
-                estimatedBudget: 3000,
+                // Budget 2000 is DELIBERATELY below the PKR 2500
+                // estimate INT-22 submits: since the budget-cap
+                // auto-approval model (Amir review A13), a within-budget
+                // estimate auto-approves, so exercising the passenger
+                // approval gate in INT-22/23 requires an over-budget
+                // estimate. The within-cap path is covered by
+                // tests/purchaseBudgetCap.integration.test.js.
+                estimatedBudget: 2000,
                 delivery,
                 deliveryLabel: "Home",
             },
@@ -803,6 +810,71 @@ async function waitForServer(timeoutMs = 90000) {
         const history = await api("GET", `/order-chats/${loserConversation._id}/messages`, { token: tokens.passenger });
         assert.strictEqual(history.json.messages.filter((m) => m.kind === "TEXT").length, 2);
         return "retry returned duplicate:true; history unchanged";
+    });
+
+    await check("INT-49", "voice messages: an AUDIO message round-trips with its audio fields intact (A11b)", async () => {
+        const sent = await api("POST", `/order-chats/${loserConversation._id}/messages`, {
+            token: tokens.passenger,
+            body: {
+                kind: "AUDIO",
+                audioUrl: "https://res.cloudinary.com/demo/video/upload/v1/ride-hailing/chat-audio/voice.webm",
+                audioMime: "audio/webm",
+                audioDurationSec: 7.5,
+                body: "voice note",
+                clientMessageId: "p1-c2-audio-1",
+            },
+        });
+        assert.strictEqual(sent.status, 201, JSON.stringify(sent.json));
+        assert.strictEqual(sent.json.message.kind, "AUDIO");
+        assert.strictEqual(sent.json.message.audioMime, "audio/webm");
+        assert.strictEqual(sent.json.message.audioDurationSec, 7.5);
+
+        const missing = await api("POST", `/order-chats/${loserConversation._id}/messages`, {
+            token: tokens.passenger,
+            body: { kind: "AUDIO", clientMessageId: "p1-c2-audio-2" },
+        });
+        assert.strictEqual(missing.status, 400, "AUDIO without audioUrl must be refused");
+
+        const badDuration = await api("POST", `/order-chats/${loserConversation._id}/messages`, {
+            token: tokens.passenger,
+            body: {
+                kind: "AUDIO",
+                audioUrl: "https://cdn.example/v.webm",
+                audioDurationSec: 9999,
+                clientMessageId: "p1-c2-audio-3",
+            },
+        });
+        assert.strictEqual(badDuration.status, 400, "out-of-range duration must be refused");
+
+        const history = await api("GET", `/order-chats/${loserConversation._id}/messages`, { token: tokens.driver2 });
+        const audio = history.json.messages.filter((m) => m.kind === "AUDIO");
+        assert.strictEqual(audio.length, 1);
+        assert.strictEqual(
+            audio[0].audioUrl,
+            "https://res.cloudinary.com/demo/video/upload/v1/ride-hailing/chat-audio/voice.webm"
+        );
+        assert.strictEqual(audio[0].audioMime, "audio/webm");
+        assert.strictEqual(audio[0].audioDurationSec, 7.5);
+        assert.strictEqual(audio[0].body, "voice note");
+        return "AUDIO sent + read back with url/mime/duration intact; invalid AUDIO sends 400";
+    });
+
+    await check("INT-50", "upload-audio rejects a non-audio file before any Cloudinary call (A11b)", async () => {
+        const form = new FormData();
+        form.append(
+            "audio",
+            new Blob(["not audio"], { type: "text/plain" }),
+            "note.txt"
+        );
+        const response = await fetch(`${BASE}/order-chats/upload-audio`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${tokens.passenger}` },
+            body: form,
+        });
+        const text = await response.text();
+        assert.ok(response.status >= 400, `expected rejection, got ${response.status}: ${text.slice(0, 200)}`);
+        assert.ok(!text.includes('"audioUrl"'), "a rejected upload must not return an audioUrl");
+        return `non-audio mime rejected with HTTP ${response.status}`;
     });
 
     await check("INT-20", "exactly one offer can be accepted; the second acceptance is refused (BD-10)", async () => {

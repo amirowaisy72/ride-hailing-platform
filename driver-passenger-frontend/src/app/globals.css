@@ -167,6 +167,23 @@ body {
   overscroll-behavior-y: none;
 }
 
+/* Native-Urdu mode (Phase 3): the LanguageProvider adds `lang-ur`
+   to <html>. Nastaliq needs a taller line box than Latin fonts, so
+   body copy gets extra leading; elements with their own Tailwind
+   leading utilities keep theirs. If the webfont cannot load, the
+   stack falls back to system fonts that can render Urdu script. */
+html.lang-ur body {
+  font-family: "Noto Nastaliq Urdu", var(--font-geist-sans), system-ui, "Segoe UI", Arial, sans-serif;
+  line-height: 1.85;
+}
+
+html.lang-ur input,
+html.lang-ur textarea,
+html.lang-ur select,
+html.lang-ur button {
+  font-family: inherit;
+}
+
 /* Smooth theme switch without animating every first paint. */
 html.theme-ready body,
 html.theme-ready main,

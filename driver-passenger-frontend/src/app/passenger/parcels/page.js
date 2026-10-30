@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, ChevronRight, Package, RefreshCw, ShoppingBag, WifiOff } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 import { apiRequest } from "@/lib/api";
 import {
     CardSkeleton, EmptyState, InlineError, ParcelProgress, ParcelStatusBadge, RouteSummary,
@@ -23,6 +24,7 @@ export default function PassengerParcelsPage() {
 
 function ParcelDashboard() {
     const { token } = useAuth();
+    const { t } = useLanguage();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -72,13 +74,13 @@ function ParcelDashboard() {
         <main className="min-h-dvh bg-pd-bg text-pd-text">
             <div className="sticky top-0 z-20 border-b border-pd-line bg-pd-elevated backdrop-blur-xl pd-safe-top">
                 <div className="mx-auto flex max-w-xl items-center gap-2 px-3 pb-2.5">
-                    <Link href="/passenger" aria-label="Back to home" className="grid h-11 w-11 place-items-center rounded-2xl text-pd-text">
+                    <Link href="/passenger" aria-label={t("parcels.backHome")} className="grid h-11 w-11 place-items-center rounded-2xl text-pd-text">
                         <ArrowLeft size={21} />
                     </Link>
-                    <h1 className="flex-1 text-lg font-extrabold tracking-tight">Parcels</h1>
+                    <h1 className="flex-1 text-lg font-extrabold tracking-tight">{t("parcels.title")}</h1>
                     <button
                         type="button"
-                        aria-label="Refresh"
+                        aria-label={t("common.refresh")}
                         onClick={() => { setRefreshing(true); load(); }}
                         className="grid h-11 w-11 place-items-center rounded-2xl text-pd-muted"
                     >
@@ -101,8 +103,8 @@ function ParcelDashboard() {
                         className="group relative overflow-hidden rounded-3xl bg-pd-accent p-4 text-pd-accent-ink shadow-pd active:scale-[.98]"
                     >
                         <Package size={24} strokeWidth={2.2} />
-                        <p className="mt-6 text-base font-extrabold leading-tight">Send a parcel</p>
-                        <p className="mt-0.5 text-xs font-semibold opacity-70">Door to door</p>
+                        <p className="mt-6 text-base font-extrabold leading-tight">{t("parcels.sendParcel")}</p>
+                        <p className="mt-0.5 text-xs font-semibold opacity-70">{t("parcels.doorToDoor")}</p>
                         <ChevronRight size={18} className="absolute right-3 top-4 opacity-60" />
                     </Link>
                     <Link
@@ -110,8 +112,8 @@ function ParcelDashboard() {
                         className="group relative overflow-hidden rounded-3xl border border-pd-line bg-pd-surface p-4 shadow-pd active:scale-[.98]"
                     >
                         <ShoppingBag size={24} strokeWidth={2} />
-                        <p className="mt-6 text-base font-extrabold leading-tight">Shop pickup</p>
-                        <p className="mt-0.5 text-xs font-semibold text-pd-muted">Collect an order</p>
+                        <p className="mt-6 text-base font-extrabold leading-tight">{t("parcels.shopPickup")}</p>
+                        <p className="mt-0.5 text-xs font-semibold text-pd-muted">{t("parcels.collectOrder")}</p>
                         <ChevronRight size={18} className="absolute right-3 top-4 text-pd-faint" />
                     </Link>
                 </section>
@@ -123,11 +125,11 @@ function ParcelDashboard() {
                 ) : (
                     <>
                         <section aria-labelledby="active-title">
-                            <SectionTitle id="active-title" count={active.length}>Active</SectionTitle>
+                            <SectionTitle id="active-title" count={active.length}>{t("parcels.active")}</SectionTitle>
                             {active.length === 0 ? (
                                 <EmptyState
-                                    title="No active deliveries"
-                                    body="Book a parcel and nearby drivers will send you offers."
+                                    title={t("parcels.noActiveTitle")}
+                                    body={t("parcels.noActiveBody")}
                                 />
                             ) : (
                                 <div className="space-y-3">
@@ -138,7 +140,7 @@ function ParcelDashboard() {
 
                         {history.length > 0 && (
                             <section aria-labelledby="history-title">
-                                <SectionTitle id="history-title" count={history.length}>History</SectionTitle>
+                                <SectionTitle id="history-title" count={history.length}>{t("parcels.history")}</SectionTitle>
                                 <div className="divide-y divide-pd-line overflow-hidden rounded-3xl border border-pd-line bg-pd-surface">
                                     {history.map((order) => <HistoryRow key={order._id} order={order} />)}
                                 </div>
@@ -183,7 +185,7 @@ function ActiveCard({ order }) {
             <div className="mt-4 flex items-center justify-between border-t border-pd-line pt-3">
                 <strong className="text-base">{formatPKR(orderPrice(order))}</strong>
                 <span className="inline-flex items-center gap-1 text-sm font-bold text-pd-text">
-                    {order.status === "REQUESTED" ? "View offers" : "Track"}
+                    {order.status === "REQUESTED" ? t("parcels.viewOffers") : t("parcels.track")}
                     <ChevronRight size={16} />
                 </span>
             </div>

@@ -4,6 +4,7 @@ const cloudinary = require("../integrations/cloudinary/cloudinary");
 const {
     missingKycDocuments,
     loadRentalPartnerDocuments,
+    applyChauffeurVerification,
 } = require("../services/rentalPartnerService");
 
 // ---------------------------------------------------------------------------
@@ -270,10 +271,68 @@ const viewRentalPartnerDocument = async (req, res) => {
     }
 };
 
+// Chauffeur verification review (Amir review A16) — the admin half of
+// the flow that can move chauffeurVerificationStatus to APPROVED, which
+// the With-Driver booking gate requires. All validation and transition
+// rules live in rentalPartnerService.applyChauffeurVerification; this
+// handler only loads, delegates, saves and shapes the response. On a
+// validation error nothing is saved.
+const updateRentalPartnerChauffeur = async (req, res) => {
+    try {
+        const partner = await RentalPartner.findById(req.params.id);
+
+        if (!partner) {
+            return res.status(404).json({
+                success: false,
+                message: "Rental partner not found",
+            });
+        }
+
+        const result = applyChauffeurVerification(
+            partner,
+            req.body || {},
+            req.user._id
+        );
+
+        if (!result.ok) {
+            return res.status(result.error.status).json({
+                success: false,
+                message: result.error.message,
+            });
+        }
+
+        await partner.save();
+
+        return res.json({
+            success: true,
+            message: "Chauffeur verification updated",
+            rentalPartner: {
+                id: partner._id,
+                providesChauffeur: partner.providesChauffeur,
+                chauffeurVerificationStatus: partner.chauffeurVerificationStatus,
+                chauffeurName: partner.chauffeurName,
+                chauffeurLicenceNumber: partner.chauffeurLicenceNumber,
+                chauffeurLicenceExpiry: partner.chauffeurLicenceExpiry,
+                chauffeurRejectionReason: partner.chauffeurRejectionReason,
+                chauffeurVerifiedBy: partner.chauffeurVerifiedBy,
+                chauffeurVerifiedAt: partner.chauffeurVerifiedAt,
+            },
+        });
+    } catch (error) {
+        console.error("Chauffeur verification error:", error.message);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update chauffeur verification",
+        });
+    }
+};
+
 module.exports = {
     getAllRentalPartners,
     getPendingRentalPartners,
     updateRentalPartnerStatus,
+    updateRentalPartnerChauffeur,
     reviewRentalPartnerDocument,
     getRentalPartnerDocuments,
     viewRentalPartnerDocument,

@@ -6,6 +6,7 @@ import {
     AlertCircle, CheckCircle2, Eye,
 } from "lucide-react";
 import AdminShell from "@/components/AdminShell";
+import { useAdminDialog } from "@/components/AdminDialog";
 import { authenticatedAdminRequest } from "@/lib/adminSession";
 
 const ORDER_STATUSES = [
@@ -439,6 +440,7 @@ export default function BuyDeliverAdminPage() {
 }
 
 function OrderDetailModal({ detail, loading, onClose, onChanged }) {
+    const { confirmDialog } = useAdminDialog();
     const [conversations, setConversations] = useState(null);
     const [activeConversation, setActiveConversation] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -508,7 +510,7 @@ function OrderDetailModal({ detail, loading, onClose, onChanged }) {
             setActionError("A resolution note is required.");
             return;
         }
-        if (!window.confirm(`Resolve this dispute as ${outcome}? This closes the order.`)) return;
+        if (!(await confirmDialog(`Resolve this dispute as ${outcome}? This closes the order.`))) return;
 
         setResolving(true);
         setActionError("");
@@ -541,7 +543,7 @@ function OrderDetailModal({ detail, loading, onClose, onChanged }) {
             setActionError("A restriction reason is required.");
             return;
         }
-        if (!window.confirm("Suspend this partner's Buy & Deliver service? Their other services stay untouched.")) return;
+        if (!(await confirmDialog("Suspend this partner's Buy & Deliver service? Their other services stay untouched.", { danger: true }))) return;
 
         setRestricting(true);
         setActionError("");

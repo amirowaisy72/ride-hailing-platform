@@ -7,6 +7,7 @@ const Vehicle = require("../models/Vehicle");
 const { publishEvent } = require("../services/socketService");
 const { findNearbyDrivers } = require("../services/driverMatchingService");
 const { sendPushToUser } = require("../services/pushService");
+const { canReceiveRideRequests } = require("../services/eligibilityService");
 
 const selectDriver = async (req, res) => {
     const { rideId } = req.params;
@@ -43,10 +44,26 @@ const selectDriver = async (req, res) => {
 
                 if (!offer) return { error: "Offer unavailable" };
 
+                // Eligibility via eligibilityService (single source of
+                // truth), NOT the legacy global verificationStatus: a
+                // driver approved only per-service for RIDE (global
+                // status PENDING) must be selectable, while a driver
+                // with no RIDE eligibility must not. The eligibility
+                // context (vehicle + documents) is loaded outside the
+                // transaction's write set; the claim below stays atomic.
+                const candidate = await Driver.findById(
+                    offer.driverId
+                ).session(session);
+
+                if (!candidate) return { error: "Driver unavailable" };
+
+                if (!(await canReceiveRideRequests(candidate))) {
+                    return { error: "Driver unavailable" };
+                }
+
                 const driver = await Driver.findOneAndUpdate(
                     {
                         _id: offer.driverId,
-                        verificationStatus: "APPROVED",
                         isOnline: true,
                         isAvailable: true,
                     },

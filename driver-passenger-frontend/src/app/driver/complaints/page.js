@@ -21,7 +21,7 @@ function ComplaintsScreen() {
     const { token } = useAuth();
 
     return (
-        <main className="driver-subpage min-h-dvh bg-[#F8FAF9] pb-[calc(100px+env(safe-area-inset-bottom))] text-slate-900">
+        <main className="driver-subpage min-h-dvh bg-pd-bg pb-[calc(100px+env(safe-area-inset-bottom))] text-pd-text">
             <MobileBottomNav role="DRIVER" />
             <header className="bg-[#087F5B] px-5 pb-8 pt-[max(24px,env(safe-area-inset-top))] text-white">
                 <div className="mx-auto flex max-w-xl items-center justify-between">

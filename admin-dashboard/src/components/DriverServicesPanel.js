@@ -6,6 +6,7 @@ import {
     AlertTriangle, ShieldCheck, CirclePause,
 } from "lucide-react";
 import { authenticatedAdminRequest } from "@/lib/adminSession";
+import { useAdminDialog } from "@/components/AdminDialog";
 
 // Phase 7 — Driver Management per-service panel.
 //
@@ -45,6 +46,7 @@ export default function DriverServicesPanel({
     onClose,
     onUpdated,
 }) {
+    const { confirmDialog, promptDialog } = useAdminDialog();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [busyKey, setBusyKey] = useState("");
@@ -82,17 +84,17 @@ export default function DriverServicesPanel({
         let body = { status: nextStatus };
 
         if (nextStatus === "REJECTED") {
-            const reason = window.prompt(`Rejection reason for ${SERVICE_LABELS[service]}:`);
+            const reason = await promptDialog(`Rejection reason for ${SERVICE_LABELS[service]}:`);
             if (!reason?.trim()) return;
             body.rejectionReason = reason.trim();
         } else if (nextStatus === "SUSPENDED") {
-            const reason = window.prompt(`Suspension reason for ${SERVICE_LABELS[service]} (optional):`, "");
+            const reason = await promptDialog(`Suspension reason for ${SERVICE_LABELS[service]} (optional):`, { defaultValue: "" });
             if (reason === null) return;
             if (reason.trim()) body.suspensionReason = reason.trim();
         } else if (
-            !window.confirm(
+            !(await confirmDialog(
                 `Set ${SERVICE_LABELS[service]} to ${nextStatus} for this driver? Other services are not affected.`
-            )
+            ))
         ) {
             return;
         }

@@ -111,7 +111,7 @@ export default function RideJourneyExperience({
 
             {arrived && (
                 <div role="alert" className="rj-pop mx-3 mb-3 flex items-center gap-3 rounded-2xl bg-[#087F5B] p-4 text-white shadow-[0_12px_32px_rgba(17,17,17,0.22)] sm:mx-auto sm:max-w-lg">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#111111]">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-pd-ink">
                         <MapPin size={20} className="text-[#087F5B]" aria-hidden="true" />
                     </span>
                     <div className="min-w-0">
@@ -123,18 +123,18 @@ export default function RideJourneyExperience({
                 </div>
             )}
 
-            <div className="max-h-[calc(62dvh-68px)] overflow-y-auto overscroll-contain rounded-t-[28px] bg-white px-4 pb-5 pt-3 shadow-[0_-16px_48px_rgba(17,17,17,0.16)] sm:px-6">
+            <div className="max-h-[calc(62dvh-68px)] overflow-y-auto overscroll-contain rounded-t-[28px] bg-pd-surface px-4 pb-5 pt-3 shadow-[0_-16px_48px_rgba(17,17,17,0.16)] sm:px-6">
                 <div className="mx-auto max-w-lg">
                     <button
                         type="button"
                         onClick={onShowMap}
                         aria-label="Minimise ride details and show map"
-                        className="mx-auto mb-4 block h-1.5 w-10 rounded-full bg-[#E3E5E8]"
+                        className="mx-auto mb-4 block h-1.5 w-10 rounded-full bg-pd-surface-3"
                     />
 
                     <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0" aria-live="polite">
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F4F5F7] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-[#374151]">
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-pd-surface-2 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-pd-text-2">
                                 <span className="relative flex h-2 w-2">
                                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
                                     <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
@@ -142,10 +142,10 @@ export default function RideJourneyExperience({
                                 Live
                             </span>
                             <h1 className="mt-2 text-pretty text-[22px] font-extrabold leading-tight tracking-tight">{title}</h1>
-                            <p className="mt-0.5 text-sm text-[#6B7280]">{subtitle}</p>
+                            <p className="mt-0.5 text-sm text-pd-muted">{subtitle}</p>
                         </div>
                         {showEta ? (
-                            <div className="shrink-0 rounded-2xl bg-[#111111] px-3.5 py-2.5 text-center text-white">
+                            <div className="shrink-0 rounded-2xl bg-pd-ink px-3.5 py-2.5 text-center text-pd-ink-text">
                                 <p className="text-2xl font-extrabold leading-none tabular-nums text-[#087F5B]">
                                     {routeInfo.durationMinutes}<span className="ml-0.5 text-xs font-bold">min</span>
                                 </p>
@@ -165,11 +165,11 @@ export default function RideJourneyExperience({
                                 const current = index === stepIndex;
                                 return (
                                     <li key={step.status} aria-current={current ? "step" : undefined}>
-                                        <div className="h-1.5 overflow-hidden rounded-full bg-[#F1F2F4]">
+                                        <div className="h-1.5 overflow-hidden rounded-full bg-pd-surface-2">
                                             {done && <div className="h-full w-full bg-[#087F5B]" />}
                                             {current && <div className="rj-indeterminate h-full w-1/2 rounded-full bg-[#087F5B]" />}
                                         </div>
-                                        <p className={`mt-1.5 text-[11px] font-bold ${done || current ? "text-[#111111]" : "text-[#9CA3AF]"}`}>{step.label}</p>
+                                        <p className={`mt-1.5 text-[11px] font-bold ${done || current ? "text-pd-text" : "text-pd-faint"}`}>{step.label}</p>
                                     </li>
                                 );
                             })}
@@ -177,7 +177,7 @@ export default function RideJourneyExperience({
                     )}
 
                     {showEta && (
-                        <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-[#374151]">
+                        <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-pd-text-2">
                             <Clock3 size={13} aria-hidden="true" />
                             {tripStarted
                                 ? <>Estimated arrival at {nextStop
@@ -189,10 +189,10 @@ export default function RideJourneyExperience({
                         </p>
                     )}
 
-                    <div className="mt-4 rounded-2xl border border-[#EEF0F2] p-3.5">
+                    <div className="mt-4 rounded-2xl border border-pd-line p-3.5">
                         <div className="flex items-center gap-3">
                             <span className="relative flex h-13 w-13 shrink-0 items-center justify-center" aria-hidden="true">
-                                <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#111111] text-sm font-extrabold text-[#087F5B]">
+                                <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-pd-ink text-sm font-extrabold text-[#087F5B]">
                                     {driverProfile?.profileImage ? (
                                         <img
                                             src={driverProfile.profileImage}
@@ -211,14 +211,14 @@ export default function RideJourneyExperience({
                                 <p className="truncate font-bold">
                                     {driverProfile?.name || driver.name || "Your driver"}
                                 </p>
-                                <p className="mt-0.5 flex items-center gap-1.5 text-xs text-[#6B7280]">
-                                    <span className="flex items-center gap-0.5 font-semibold text-[#111111]">
+                                <p className="mt-0.5 flex items-center gap-1.5 text-xs text-pd-muted">
+                                    <span className="flex items-center gap-0.5 font-semibold text-pd-text">
                                         <Star size={12} className="fill-[#F5A524] text-[#F5A524]" aria-hidden="true" />
                                         {driver.rating != null ? Number(driver.rating).toFixed(1) : "New"}
                                     </span>
                                     {driver.trips != null && <span>· {driver.trips} trips</span>}
                                 </p>
-                                <p className="truncate text-xs font-medium text-[#374151]">
+                                <p className="truncate text-xs font-medium text-pd-text-2">
                                     {vehicleLine}
                                     {driverProfile?.vehicle?.color &&
                                         !vehicleLine.toLowerCase().includes(driverProfile.vehicle.color.toLowerCase())
@@ -227,7 +227,7 @@ export default function RideJourneyExperience({
                                 </p>
                             </div>
                             {driver.plate && (
-                                <span className="shrink-0 rounded-lg border border-[#E3E5E8] bg-[#F7F8F9] px-2 py-1 font-mono text-xs font-bold tracking-wider">
+                                <span className="shrink-0 rounded-lg border border-pd-line bg-pd-surface-2 px-2 py-1 font-mono text-xs font-bold tracking-wider">
                                     {driver.plate}
                                 </span>
                             )}
@@ -239,7 +239,7 @@ export default function RideJourneyExperience({
                                 <a
                                     href={`tel:${driver.phone}`}
                                     aria-label="Call driver"
-                                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#F4F5F7] transition-colors hover:bg-[#E9EBEE]"
+                                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-pd-surface-2 transition-colors hover:bg-pd-surface-3"
                                 >
                                     <Phone size={19} />
                                 </a>
@@ -248,25 +248,25 @@ export default function RideJourneyExperience({
                                 type="button"
                                 onClick={onShowMap}
                                 aria-label="Show full map"
-                                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#F4F5F7] transition-colors hover:bg-[#E9EBEE]"
+                                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-pd-surface-2 transition-colors hover:bg-pd-surface-3"
                             >
                                 <MapIcon size={19} />
                             </button>
                         </div>
 
                         {driver.id && token && (
-                            <div className="mt-3 border-t border-[#EEF0F2] pt-2.5">
+                            <div className="mt-3 border-t border-pd-line pt-2.5">
                                 <button
                                     type="button"
                                     onClick={() => setShowProfile((value) => !value)}
                                     aria-expanded={showProfile}
-                                    className="flex items-center gap-1 text-xs font-bold text-[#374151] hover:text-[#111111]"
+                                    className="flex items-center gap-1 text-xs font-bold text-pd-text-2 hover:text-pd-text"
                                 >
                                     {showProfile ? "Hide driver profile" : "View driver profile"}
                                     <ChevronDown size={14} className={`transition-transform ${showProfile ? "rotate-180" : ""}`} aria-hidden="true" />
                                 </button>
                                 {showProfile && (
-                                    <div className="mt-2 rounded-xl bg-[#F7F8F9] p-2">
+                                    <div className="mt-2 rounded-xl bg-pd-surface-2 p-2">
                                         <DriverProfileCard driverId={driver.id} token={token} />
                                     </div>
                                 )}
@@ -276,11 +276,11 @@ export default function RideJourneyExperience({
 
                     {tripStarted && stops.length > 0 && (
                         <div className="mt-4">
-                            <div className="flex items-center justify-between text-xs font-semibold text-[#6B7280]">
+                            <div className="flex items-center justify-between text-xs font-semibold text-pd-muted">
                                 <span>Journey progress</span>
                                 <span className="tabular-nums">{stopsCompleted}/{stops.length} stops completed</span>
                             </div>
-                            <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[#F1F2F4]">
+                            <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-pd-surface-2">
                                 <div
                                     className="h-full rounded-full bg-[#087F5B] transition-[width] duration-700"
                                     style={{ width: `${(stopsCompleted / (stops.length + 1)) * 100}%` }}
@@ -289,7 +289,7 @@ export default function RideJourneyExperience({
                         </div>
                     )}
 
-                    <ol className="mt-4 rounded-2xl bg-[#F4F5F7] p-4" aria-label="Trip route">
+                    <ol className="mt-4 rounded-2xl bg-pd-surface-2 p-4" aria-label="Trip route">
                         <TimelineItem kind="pickup" label="Pickup" text={pickupText} done={tripStarted} />
                         {stops.map((stop, index) => (
                             <TimelineItem
@@ -318,8 +318,8 @@ export default function RideJourneyExperience({
                         />
                     </ol>
 
-                    <div className="mt-3 flex items-center justify-between rounded-2xl border border-[#EEF0F2] px-4 py-3">
-                        <span className="flex items-center gap-2 text-sm font-semibold text-[#374151]">
+                    <div className="mt-3 flex items-center justify-between rounded-2xl border border-pd-line px-4 py-3">
+                        <span className="flex items-center gap-2 text-sm font-semibold text-pd-text-2">
                             <VehicleIcon size={17} aria-hidden="true" />
                             {vehicle?.name || String(ride.vehicleType || "Ride").replaceAll("_", " ")}
                             <span className="text-[#D1D5DB]">·</span>
@@ -328,7 +328,7 @@ export default function RideJourneyExperience({
                         <span className="text-lg font-extrabold tabular-nums">{formatPKR(ride.finalPrice || ride.requestedPrice)}</span>
                     </div>
 
-                    <p className="mt-3 flex items-center gap-1.5 text-xs text-[#6B7280]">
+                    <p className="mt-3 flex items-center gap-1.5 text-xs text-pd-muted">
                         <span className={`h-2 w-2 rounded-full ${driverLocationFresh ? "bg-emerald-500" : "bg-amber-500"}`} aria-hidden="true" />
                         {driverLocationFresh
                             ? `Live driver GPS${lastFix ? ` · updated ${lastFix}` : ""}`
@@ -336,7 +336,7 @@ export default function RideJourneyExperience({
                                 ? `Last known · ${lastFixAge}`
                                 : "Waiting for your driver's live location"}
                     </p>
-                    {showEta && <p className="mt-1 text-[11px] text-[#9CA3AF]">Times are road-route estimates and may change with traffic.</p>}
+                    {showEta && <p className="mt-1 text-[11px] text-pd-faint">Times are road-route estimates and may change with traffic.</p>}
                 </div>
             </div>
         </section>
@@ -345,27 +345,27 @@ export default function RideJourneyExperience({
 
 function TimelineItem({ kind, index, label, text, done = false, active = false, meta = "", last = false }) {
     const marker = kind === "pickup"
-        ? <span className={`h-3.5 w-3.5 rounded-full border-[4px] ${done ? "border-[#9CA3AF]" : "border-[#111111]"}`} />
+        ? <span className={`h-3.5 w-3.5 rounded-full border-[4px] ${done ? "border-pd-faint" : "border-pd-ink"}`} />
         : kind === "destination"
-            ? <span className="flex h-4 w-4 items-center justify-center rounded-[4px] bg-[#E5484D]"><Flag size={9} className="text-white" /></span>
+            ? <span className="flex h-4 w-4 items-center justify-center rounded-[4px] bg-pd-danger"><Flag size={9} className="text-white" /></span>
             : done
-                ? <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#111111]"><Check size={10} strokeWidth={3} className="text-[#087F5B]" /></span>
-                : <span className={`flex h-4 w-4 items-center justify-center rounded-full border-2 text-[9px] font-extrabold ${active ? "border-[#111111] bg-[#087F5B] text-white" : "border-[#9CA3AF] bg-white"}`}>{index + 1}</span>;
+                ? <span className="flex h-4 w-4 items-center justify-center rounded-full bg-pd-ink"><Check size={10} strokeWidth={3} className="text-[#087F5B]" /></span>
+                : <span className={`flex h-4 w-4 items-center justify-center rounded-full border-2 text-[9px] font-extrabold ${active ? "border-pd-ink bg-[#087F5B] text-white" : "border-pd-faint bg-pd-surface"}`}>{index + 1}</span>;
 
     return (
         <li className="flex gap-3">
             <div className="flex flex-col items-center pt-0.5" aria-hidden="true">
                 {marker}
-                {!last && <span className="my-1 w-0.5 flex-1 rounded-full bg-[#D9DCE0]" />}
+                {!last && <span className="my-1 w-0.5 flex-1 rounded-full bg-pd-surface-3" />}
             </div>
             <div className={`min-w-0 flex-1 ${last ? "" : "pb-3"}`}>
-                <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-pd-faint">
                     {label}
-                    {active && <span className="rounded-full bg-[#111111] px-1.5 py-0.5 text-[9px] font-bold text-[#087F5B]">Next</span>}
+                    {active && <span className="rounded-full bg-pd-ink px-1.5 py-0.5 text-[9px] font-bold text-[#087F5B]">Next</span>}
                     {done && <span className="sr-only">(completed)</span>}
                 </p>
-                <p className={`truncate text-sm font-semibold ${done ? "text-[#9CA3AF] line-through" : "text-[#111111]"}`} title={text}>{text}</p>
-                {meta && <p className="mt-0.5 text-xs font-medium text-[#374151]">{meta}</p>}
+                <p className={`truncate text-sm font-semibold ${done ? "text-pd-faint line-through" : "text-pd-text"}`} title={text}>{text}</p>
+                {meta && <p className="mt-0.5 text-xs font-medium text-pd-text-2">{meta}</p>}
             </div>
         </li>
     );
@@ -375,40 +375,40 @@ function TimelineItem({ kind, index, label, text, done = false, active = false, 
 function SearchingFallback({ ride, offers, now, busyId, onAccept, onReject, onCancel, cancelling, onShowMap, notification }) {
     const visibleOffers = offers.filter((offer) => offer && offer.status !== "REJECTED" && (!offer.expiresAt || new Date(offer.expiresAt).getTime() > now));
     return (
-        <section aria-label="Finding a driver" className="rj-sheet-in absolute inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] z-20 max-h-[calc(70dvh-68px)] overflow-y-auto rounded-t-[28px] bg-white px-4 pb-5 pt-3 shadow-[0_-16px_48px_rgba(17,17,17,0.16)]">
+        <section aria-label="Finding a driver" className="rj-sheet-in absolute inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] z-20 max-h-[calc(70dvh-68px)] overflow-y-auto rounded-t-[28px] bg-pd-surface px-4 pb-5 pt-3 shadow-[0_-16px_48px_rgba(17,17,17,0.16)]">
             <style>{STYLES}</style>
             <div className="mx-auto max-w-lg">
-                <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-[#E3E5E8]" />
+                <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-pd-surface-3" />
                 <div className="flex items-center justify-between gap-3">
                     <div>
                         <h1 className="text-xl font-extrabold tracking-tight">Finding your driver</h1>
-                        <p className="text-sm text-[#6B7280]">Your fare: {formatPKR(ride.requestedPrice)}</p>
+                        <p className="text-sm text-pd-muted">Your fare: {formatPKR(ride.requestedPrice)}</p>
                     </div>
-                    <button type="button" onClick={onShowMap} aria-label="View map" className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F4F5F7]">
+                    <button type="button" onClick={onShowMap} aria-label="View map" className="flex h-11 w-11 items-center justify-center rounded-full bg-pd-surface-2">
                         <Navigation size={18} />
                     </button>
                 </div>
-                <div className="mt-4 h-1 overflow-hidden rounded-full bg-[#F1F2F4]"><div className="rj-indeterminate h-full w-2/5 rounded-full bg-[#111111]" /></div>
-                {notification && <p role="status" className="mt-3 rounded-xl bg-[#F4F5F7] px-3 py-2 text-xs text-[#374151]">{notification}</p>}
+                <div className="mt-4 h-1 overflow-hidden rounded-full bg-pd-surface-2"><div className="rj-indeterminate h-full w-2/5 rounded-full bg-pd-ink" /></div>
+                {notification && <p role="status" className="mt-3 rounded-xl bg-pd-surface-2 px-3 py-2 text-xs text-pd-text-2">{notification}</p>}
                 <ul className="mt-4 space-y-2.5">
                     {visibleOffers.map((offer) => {
                         const key = offerKey(offer);
                         const name = describeDriver(offer.driverId).name || "Nearby driver";
                         return (
-                            <li key={key} className="rounded-2xl border border-[#EEF0F2] p-3.5">
+                            <li key={key} className="rounded-2xl border border-pd-line p-3.5">
                                 <div className="flex items-center justify-between gap-2">
                                     <p className="truncate font-bold">{name}</p>
                                     <p className="text-lg font-extrabold tabular-nums">{formatPKR(offer.price)}</p>
                                 </div>
                                 <div className="mt-3 flex gap-2">
-                                    <button type="button" disabled={!!busyId} onClick={() => onReject(key)} className="h-11 flex-1 rounded-xl bg-[#F4F5F7] text-sm font-bold text-[#374151] disabled:opacity-50">Decline</button>
+                                    <button type="button" disabled={!!busyId} onClick={() => onReject(key)} className="h-11 flex-1 rounded-xl bg-pd-surface-2 text-sm font-bold text-pd-text-2 disabled:opacity-50">Decline</button>
                                     <button type="button" disabled={!!busyId} onClick={() => onAccept(key)} className="h-11 flex-[2] rounded-xl bg-[#087F5B] text-sm font-extrabold text-white disabled:opacity-50">Accept</button>
                                 </div>
                             </li>
                         );
                     })}
                 </ul>
-                <button type="button" disabled={cancelling} onClick={onCancel} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#F4F5F7] text-sm font-bold text-[#E5484D] disabled:opacity-50">
+                <button type="button" disabled={cancelling} onClick={onCancel} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-pd-surface-2 text-sm font-bold text-pd-danger disabled:opacity-50">
                     <X size={17} aria-hidden="true" />
                     {cancelling ? "Cancelling..." : "Cancel ride request"}
                 </button>

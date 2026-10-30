@@ -7,10 +7,16 @@ import {
     Trash2, ChevronUp, Clock, Crosshair, LocateFixed,
     Map as MapIcon, MapPin, Minimize2, Minus, Navigation, Plus, Radio, Route as RouteIcon,
     ShieldCheck, Star, UserRound, Users, Volume2, VolumeX, X, Car, Menu, MessageCircle,
+    ChevronRight, Package, ShoppingBag,
 } from "lucide-react";
 import { Geolocation } from "@capacitor/geolocation";
 import AuthGuard from "@/components/AuthGuard";
+import MicButton from "@/components/MicButton";
+import ServiceGuide from "@/components/guides/ServiceGuide";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
+import { recordFlowCompletion } from "@/lib/guides/guideStore";
 import { useAuth } from "@/context/AuthContext";
+import { useActionDialog } from "@/components/ActionDialog";
 import { getRealtimeSocket } from "@/lib/socket";
 import { BRAND } from "@/config/brand";
 import DriverRating from "@/components/DriverRating";
@@ -34,6 +40,12 @@ import RideChat from "@/components/RideChat";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { PickupLocationSearch } from "@/components/PassengerBookingExperience";
 import RideStopsEditor from "@/components/RideStopsEditor";
+import { getMyPurchaseOrders, getPurchaseOffers } from "@/lib/purchaseService";
+import { purchaseStatusMeta } from "@/components/order/PurchaseTimeline";
+import {
+    isActive as isParcelActive,
+    statusMeta as parcelStatusMeta,
+} from "@/components/parcel/parcelUi";
 import {
     VEHICLES, describeDriver, formatArrival, formatClock, formatPKR, getInitials, getVehicle, placeLabel,
 } from "@/lib/rideDisplay";
@@ -86,8 +98,68 @@ export default function PassengerPage() {
     );
 }
 
+const BD_TERMINAL = ["COMPLETED", "CANCELLED", "DELIVERED", "FAILED"];
+
 function PassengerDashboard() {
     const { user, token } = useAuth();
+    const { t } = useLanguage();
+    const dialog = useActionDialog();
+    // Active non-ride requests (Buy & Deliver + parcels) for the strip
+    // on the home panel; the ride itself is already surfaced elsewhere.
+    const [activeRequests, setActiveRequests] = useState([]);
+
+    useEffect(() => {
+        if (!token) return;
+        let cancelled = false;
+        (async () => {
+            const rows = [];
+            try {
+                const data = await getMyPurchaseOrders(token);
+                const live = (data.orders || []).filter(
+                    (order) => !BD_TERMINAL.includes(order.status)
+                );
+                for (const order of live) {
+                    let note = purchaseStatusMeta(order.status).label;
+                    if (order.status === "BIDDING") {
+                        try {
+                            const offersData = await getPurchaseOffers(order._id, token);
+                            const count = (offersData.offers || []).filter(
+                                (offer) =>
+                                    !offer.expiresAt ||
+                                    new Date(offer.expiresAt).getTime() > Date.now()
+                            ).length;
+                            if (count > 0) {
+                                note = count === 1 ? t("pHome.offerReceived", { count }) : t("pHome.offersReceived", { count });
+                            }
+                        } catch { /* Keep the status label. */ }
+                    }
+                    rows.push({
+                        key: `bd:${order._id}`,
+                        kind: "BD",
+                        title:
+                            String(order.itemsText || "").split("\n")[0] ||
+                            t("pHome.shoppingRequest"),
+                        note,
+                        href: `/passenger/buy-deliver/details?id=${order._id}`,
+                    });
+                }
+            } catch { /* Strip simply omits Buy & Deliver on failure. */ }
+            try {
+                const data = await apiRequest("/parcels/my", { token });
+                for (const order of (data.orders || []).filter(isParcelActive)) {
+                    rows.push({
+                        key: `parcel:${order._id}`,
+                        kind: "PARCEL",
+                        title: order.destination?.address || t("pHome.parcelDelivery"),
+                        note: parcelStatusMeta(order.status).label,
+                        href: `/passenger/parcels/details?parcelId=${order._id}`,
+                    });
+                }
+            } catch { /* Strip simply omits parcels on failure. */ }
+            if (!cancelled) setActiveRequests(rows.slice(0, 5));
+        })();
+        return () => { cancelled = true; };
+    }, [token]);
     const [notification, setNotification] = useState("");
     const [toast, setToast] = useState(null);
     const [offers, setOffers] = useState([]);
@@ -242,15 +314,23 @@ function PassengerDashboard() {
                     token
                 );
                 if (!cancelled) {
+                    // The backend reverse-geocode contract returns the
+                    // human-readable label as `name` — including
+                    // source:"saved-place" answers like "Near <place>"
+                    // (A4). It carries no display_name, so `name` must
+                    // win: never drop a returned name for the generic
+                    // fallback (and never raw coordinates).
                     setPickupAddress(
+                        result?.name ||
                         result?.display_name ||
                         result?.displayName ||
+                        result?.address ||
                         "Selected pickup location"
                     );
                 }
             } catch {
                 if (!cancelled) {
-                    setPickupAddress("Selected pickup location");
+                    setPickupAddress(t("pHome.selectedPickup"));
                 }
             }
         }
@@ -321,7 +401,13 @@ function PassengerDashboard() {
     const [cancelling, setCancelling] = useState(false);
     async function cancelRide() {
         if (!activeRide?._id || cancelling) return;
-        if (!window.confirm("Are you sure you want to cancel this ride?")) return;
+        if (!(await dialog.confirm({
+            title: "Cancel this ride?",
+            message: "Are you sure you want to cancel this ride?",
+            confirmLabel: t("pHome.cancelRide"),
+            cancelLabel: t("pHome.keepRide"),
+            danger: true,
+        }))) return;
         setCancelling(true);
         try {
             await apiRequest(`/rides/${activeRide._id}/cancel`, {
@@ -330,7 +416,7 @@ function PassengerDashboard() {
             });
             setActiveRide(null);
             setOffers([]);
-            setNotification("Ride cancelled successfully.");
+            setNotification(t("pHome.notifRideCancelled"));
         } catch (error) {
             setNotification(error.message);
         } finally {
@@ -569,7 +655,7 @@ function PassengerDashboard() {
                         String(offer._id || offer.offerId) !== String(offerId)
                 )
             );
-            setNotification("Offer rejected.");
+            setNotification(t("pHome.notifOfferRejected"));
         } catch (error) {
             setNotification(error.message);
         } finally {
@@ -630,9 +716,10 @@ function PassengerDashboard() {
             });
             setOffers([]);
             setActiveRide(data.ride);
+            recordFlowCompletion(user?._id, "ridePassenger");
             setBookingOpen(false);
             setFullScreenMap(true);
-            setNotification("Ride requested! Waiting for driver offers.");
+            setNotification(t("pHome.notifRideRequested"));
         } catch (error) {
             setNotification(error.message);
         } finally {
@@ -764,7 +851,7 @@ function PassengerDashboard() {
             setNotification("New driver offer received!");
         };
         const handleRide = () => {
-            setNotification("Your ride request is active.");
+            setNotification(t("pHome.notifRequestActive"));
         };
         const handleCompleted = (data) => {
             if (String(data.rideId) !== String(activeRideId)) return;
@@ -805,9 +892,9 @@ function PassengerDashboard() {
                 };
             });
             const messages = {
-                DRIVER_EN_ROUTE: "Your driver is heading to your pickup location.",
-                DRIVER_ARRIVED: "Your driver has arrived!",
-                TRIP_STARTED: "Your trip has started. Have a safe journey!",
+                DRIVER_EN_ROUTE: t("pHome.notifDriverEnRoute"),
+                DRIVER_ARRIVED: t("pHome.notifDriverArrived"),
+                TRIP_STARTED: t("pHome.notifTripStarted"),
             };
             if (messages[data.status]) {
                 setNotification(messages[data.status]);
@@ -920,10 +1007,13 @@ function PassengerDashboard() {
         setMapPickTarget(null);
         setFullScreenMap(false);
         setBookingOpen(true);
-        let name = target === "pickup" ? "Pinned pickup" : "Pinned destination";
+        let name = target === "pickup" ? t("pHome.pinnedPickup") : t("pHome.pinnedDestination");
         try {
             const result = await reverseGeocode(position.latitude, position.longitude, token);
-            name = result?.display_name || result?.displayName || name;
+            // Same A4 contract as the current-location label above:
+            // the backend returns the name as `name` (e.g. the
+            // saved-place fallback "Near <place>") — display it as-is.
+            name = result?.name || result?.display_name || result?.displayName || result?.address || name;
         } catch { /* Keep the pinned label when the address lookup fails. */ }
         if (target === "pickup") {
             setManualPickup(true);
@@ -931,7 +1021,7 @@ function PassengerDashboard() {
             setUserLocation({ latitude: position.latitude, longitude: position.longitude });
             setRoute(null);
             setFare(null);
-            setNotification("Pickup set on the map.");
+            setNotification(t("pHome.pickupSetOnMap"));
         } else {
             setDestination({ latitude: position.latitude, longitude: position.longitude, name, display_name: name });
             setDestinationSelected(true);
@@ -973,15 +1063,15 @@ function PassengerDashboard() {
     const onlineNearby = Number(nearbyDrivers?.onlineDrivers || 0);
     const selectedVehicle = getVehicle(vehicleType) || VEHICLES[2];
     const bookingHint = !destination
-        ? "Enter a destination to see rides and fares"
-        : routeLoading ? "Calculating your route..."
-            : fareLoading ? "Calculating your fare..."
-                : !fareIsValid && fare ? "Enter a valid fare" : "";
+        ? t("pHome.hintDestination")
+        : routeLoading ? t("pHome.hintRoute")
+            : fareLoading ? t("pHome.hintFare")
+                : !fareIsValid && fare ? t("pHome.hintValidFare") : "";
     const sheetRatio = mapPickTarget || (!activeRide && !bookingOpen) || fullScreenMap
         ? 0.12
         : !activeRide ? 0.12 : searchingForDriver ? 0.58 : 0.46;
     useEffect(() => { if (activeRide) setBookingOpen(false); }, [activeRide?._id]);
-    const pickupLabel = activeRide ? placeLabel(activeRide.pickup, pickupAddress || "Pickup location") : pickupAddress;
+    const pickupLabel = activeRide ? placeLabel(activeRide.pickup, pickupAddress || t("pHome.pickupLocation")) : pickupAddress;
     const destinationLabel = activeRide
         ? placeLabel(
             activeRide.tripType === "ROUND_TRIP"
@@ -992,7 +1082,7 @@ function PassengerDashboard() {
         : destinationQuery;
 
     return (
-        <main className="relative h-dvh w-full overflow-hidden bg-[#F4F5F7] text-[#111111]">
+        <main className="relative h-dvh w-full overflow-hidden bg-pd-bg text-pd-text">
             <style>{MOTION_STYLES}</style>
 
             {deletingPlace && (
@@ -1005,7 +1095,7 @@ function PassengerDashboard() {
                         className="w-full max-w-sm rounded-[28px] border border-[#373B44] bg-[#202329] p-6 text-white shadow-2xl"
                     >
                         <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10">
-                            <Trash2 size={26} className="text-red-400" />
+                            <Trash2 size={26} className="text-pd-danger" />
                         </div>
 
                         <h2 id="delete-place-title" className="text-xl font-extrabold">
@@ -1118,7 +1208,7 @@ function PassengerDashboard() {
                                 <h2 className="text-xl font-extrabold">
                                     Edit Location
                                 </h2>
-                                <p className="mt-1 text-xs text-[#9CA3AF]">
+                                <p className="mt-1 text-xs text-pd-faint">
                                     Update your saved place name
                                 </p>
                             </div>
@@ -1263,13 +1353,13 @@ function PassengerDashboard() {
                 <div className="pointer-events-auto relative">
                     <button type="button" aria-label="Open menu" aria-expanded={menuOpen}
                         onClick={() => setMenuOpen((open) => !open)}
-                        className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#111111] transition-transform active:scale-95 ${FLOATING_SHADOW}`}>
+                        className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-pd-surface text-pd-text transition-transform active:scale-95 ${FLOATING_SHADOW}`}>
                         {menuOpen ? <X size={23} /> : <Menu size={23} />}
                     </button>
                 </div>
 
                 {searchingForDriver && (
-                    <div className="flex min-w-0 items-center gap-2 rounded-full bg-[#111111] px-3.5 py-2 text-xs font-semibold text-white shadow-lg">
+                    <div className="flex min-w-0 items-center gap-2 rounded-full bg-pd-ink px-3.5 py-2 text-xs font-semibold text-pd-ink-text shadow-lg">
                         <span className="relative flex h-2.5 w-2.5 shrink-0">
                             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#087F5B] opacity-75" />
                             <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#087F5B]" />
@@ -1285,22 +1375,22 @@ function PassengerDashboard() {
                     <button type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)}
                         className="absolute inset-0 z-30 bg-black/20" />
                     <nav aria-label="Passenger menu"
-                        className={`absolute left-4 top-[calc(max(16px,env(safe-area-inset-top))+60px)] z-40 w-64 max-w-[calc(100vw-32px)] space-y-1 rounded-2xl bg-white p-2 text-[#111111] ${FLOATING_SHADOW}`}>
+                        className={`absolute left-4 top-[calc(max(16px,env(safe-area-inset-top))+60px)] z-40 w-64 max-w-[calc(100vw-32px)] space-y-1 rounded-2xl bg-pd-surface p-2 text-pd-text ${FLOATING_SHADOW}`}>
                         <Link href="/passenger/account" onClick={() => setMenuOpen(false)}
-                            className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-[#F4F5F7]">
+                            className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-pd-surface-2">
                             <UserRound size={19} /> My account
                         </Link>
                         <button type="button" onClick={toggleSound}
-                            className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold hover:bg-[#F4F5F7]">
+                            className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold hover:bg-pd-surface-2">
                             {soundEnabled ? <Volume2 size={19} /> : <VolumeX size={19} />}
                             {soundEnabled ? "Mute alerts" : "Enable sound"}
                         </button>
                         <button type="button" onClick={() => {
                             setNotification((message) => message || "No new notifications");
                             setMenuOpen(false);
-                        }} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold hover:bg-[#F4F5F7]">
+                        }} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold hover:bg-pd-surface-2">
                             <Bell size={19} /> Notifications
-                            {notification && <span className="ml-auto h-2 w-2 rounded-full bg-[#E5484D]" />}
+                            {notification && <span className="ml-auto h-2 w-2 rounded-full bg-pd-danger" />}
                         </button>
                     </nav>
                 </>
@@ -1313,7 +1403,7 @@ function PassengerDashboard() {
                         aria-label={activeRide ? "Recenter map" : "Locate me"}
                         onClick={activeRide ? () => setMapLocateRequest((n) => n + 1) : locateMe}
                         disabled={locating}
-                        className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-white transition-transform active:scale-95 disabled:opacity-60 ${FLOATING_SHADOW}`}
+                        className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-pd-surface transition-transform active:scale-95 disabled:opacity-60 ${FLOATING_SHADOW}`}
                     >
                         <LocateFixed size={21} className={locating ? "animate-pulse" : ""} />
                     </button>
@@ -1325,7 +1415,7 @@ function PassengerDashboard() {
                     key={toast.id}
                     role="status"
                     aria-live="polite"
-                    className="rx-slide-down pointer-events-none absolute left-4 right-[76px] top-[calc(max(16px,env(safe-area-inset-top))+64px)] z-40 mx-auto max-w-md rounded-2xl bg-[#111111] px-4 py-3 text-sm font-semibold text-white shadow-xl"
+                    className="rx-slide-down pointer-events-none absolute left-4 right-[76px] top-[calc(max(16px,env(safe-area-inset-top))+64px)] z-40 mx-auto max-w-md rounded-2xl bg-pd-ink px-4 py-3 text-sm font-semibold text-pd-ink-text shadow-xl"
                 >
                     {toast.text}
                 </div>
@@ -1336,38 +1426,61 @@ function PassengerDashboard() {
             )}
 
             {!activeRide && !mapPickTarget && !bookingOpen && (
-                <div className="absolute inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] z-20 rounded-t-[30px] bg-white px-4 pb-5 pt-4 shadow-[0_-14px_44px_rgba(17,17,17,0.12)]">
+                <div className="absolute inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] z-20 rounded-t-[30px] bg-pd-surface px-4 pb-5 pt-4 shadow-[0_-14px_44px_rgba(17,17,17,0.12)]">
                     <div className="mx-auto max-w-lg space-y-3">
                         <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                            <span className="shrink-0 rounded-xl bg-[#087F5B] px-4 py-2.5 text-sm font-extrabold text-white"><Car size={17} className="mr-1 inline" /> Ride</span>
+                            <span className="shrink-0 rounded-xl bg-[#087F5B] px-4 py-2.5 text-sm font-extrabold text-white"><Car size={17} className="mr-1 inline" /> {t("pHome.tabRide")}</span>
                             <Link
                                 href="/passenger/parcels"
-                                className="shrink-0 rounded-xl bg-[#F4F5F7] px-4 py-2.5 text-sm font-bold text-[#111111]"
+                                className="shrink-0 rounded-xl bg-pd-surface-2 px-4 py-2.5 text-sm font-bold text-pd-text"
                             >
-                                📦 Parcel Delivery
+                                📦 {t("pHome.tabParcel")}
                                 <ParcelActivityBar token={token} role="PASSENGER" variant="badge" />
                             </Link>
                             <Link
                                 href="/passenger/buy-deliver"
-                                className="shrink-0 rounded-xl bg-[#F4F5F7] px-4 py-2.5 text-sm font-bold text-[#111111]"
+                                className="shrink-0 rounded-xl bg-pd-surface-2 px-4 py-2.5 text-sm font-bold text-pd-text"
                             >
-                                🛒 Buy &amp; Deliver
+                                🛒 {t("pHome.tabBuyDeliver")}
                             </Link>
                             <Link
                                 href="/passenger/rentals"
-                                className="shrink-0 rounded-xl bg-[#F4F5F7] px-4 py-2.5 text-sm font-bold text-[#111111]"
+                                className="shrink-0 rounded-xl bg-pd-surface-2 px-4 py-2.5 text-sm font-bold text-pd-text"
                             >
-                                🚗 Rentals
+                                🚗 {t("pHome.tabRentals")}
                             </Link>
                         </div>
+                        {activeRequests.length > 0 && (
+                            <section aria-label={t("pHome.activeRequests")} className="space-y-2">
+                                <h2 className="px-1 text-xs font-extrabold uppercase tracking-wider text-pd-muted">
+                                    {t("pHome.activeRequests")}
+                                </h2>
+                                {activeRequests.map((row) => (
+                                    <Link
+                                        key={row.key}
+                                        href={row.href}
+                                        className="flex items-center gap-3 rounded-2xl bg-pd-surface-2 px-3 py-2.5 text-pd-text transition-transform active:scale-[0.99]"
+                                    >
+                                        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${row.kind === "BD" ? "bg-pd-accent-soft text-pd-accent-text" : "bg-pd-info-soft text-pd-info"}`}>
+                                            {row.kind === "BD" ? <ShoppingBag size={17} /> : <Package size={17} />}
+                                        </span>
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block truncate text-sm font-bold">{row.title}</span>
+                                            <span className="block truncate text-xs text-pd-muted">{row.note}</span>
+                                        </span>
+                                        <ChevronRight size={16} className="shrink-0 text-pd-faint" />
+                                    </Link>
+                                ))}
+                            </section>
+                        )}
                         <button type="button" onClick={() => setBookingOpen(true)}
-                            className="flex w-full items-center gap-3 rounded-2xl bg-[#F4F5F7] px-4 py-4 text-left shadow-sm transition-transform active:scale-[0.98]"
-                            aria-label="Where to and for how much? Open ride booking">
-                            <Crosshair size={22} className="shrink-0 text-[#111111]" />
-                            <span className="min-w-0 flex-1 truncate text-base font-extrabold">Where to &amp; for how much?</span>
+                            className="flex w-full items-center gap-3 rounded-2xl bg-pd-surface-2 px-4 py-4 text-left shadow-sm transition-transform active:scale-[0.98]"
+                            aria-label={t("ride.whereToHowMuchAria")}>
+                            <Crosshair size={22} className="shrink-0 text-pd-text" />
+                            <span className="min-w-0 flex-1 truncate text-base font-extrabold">{t("ride.whereToHowMuch")}</span>
                             <ArrowRight size={20} className="shrink-0" />
                         </button>
-                        {destinationSelected && destinationQuery && <p className="truncate px-1 text-xs text-[#6B7280]">Last selected: {destinationQuery}</p>}
+                        {destinationSelected && destinationQuery && <p className="truncate px-1 text-xs text-pd-muted">Last selected: {destinationQuery}</p>}
                     </div>
                 </div>
             )}
@@ -1380,14 +1493,14 @@ function PassengerDashboard() {
                 // open, pin the sheet to the visible viewport (above
                 // the keyboard) instead of its full layout height.
                 style={bookingSheetSearchStyle}
-                className={`absolute inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] top-0 z-30 flex flex-col bg-white shadow-xl transition-transform duration-300 ease-out ${(!bookingOpen || fullScreenMap || activeRide) ? "pointer-events-none translate-y-[120%]" : ""}`}
+                className={`absolute inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] top-0 z-30 flex flex-col bg-pd-surface shadow-xl transition-transform duration-300 ease-out ${(!bookingOpen || fullScreenMap || activeRide) ? "pointer-events-none translate-y-[120%]" : ""}`}
             >
-                <div className="flex shrink-0 items-center justify-between border-b border-[#EEF0F2] px-5 pb-3 pt-[max(16px,env(safe-area-inset-top))]">
+                <div className="flex shrink-0 items-center justify-between border-b border-pd-line px-5 pb-3 pt-[max(16px,env(safe-area-inset-top))]">
                     <button type="button" onClick={() => setBookingOpen(false)} aria-label="Back to map"
-                        className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F4F5F7]">
+                        className="flex h-11 w-11 items-center justify-center rounded-xl bg-pd-surface-2">
                         <ChevronDown size={22} />
                     </button>
-                    <strong className="text-base font-extrabold">Book your ride</strong>
+                    <strong className="text-base font-extrabold">{t("pHome.bookYourRide")}</strong>
                     <span className="w-11" />
                 </div>
 
@@ -1453,7 +1566,7 @@ function PassengerDashboard() {
                                                             setNotification(error.message);
                                                         }
                                                     }}
-                                                    className="shrink-0 text-xs font-semibold text-red-400"
+                                                    className="shrink-0 text-xs font-semibold text-pd-danger"
                                                 >
                                                     Delete
                                                 </button>
@@ -1533,15 +1646,15 @@ function PassengerDashboard() {
                             </div>
                         )}
 
-                        <div className={`rounded-2xl border border-[#EEF0F2] bg-white shadow-[0_4px_18px_rgba(17,17,17,0.05)] ${destinationSearchMode ? "shrink-0" : ""}`}>
+                        <div className={`rounded-2xl border border-pd-line bg-pd-surface shadow-[0_4px_18px_rgba(17,17,17,0.05)] ${destinationSearchMode ? "shrink-0" : ""}`}>
                             {/* While picking a destination, the pickup row
                                 collapses so results get the room (it
                                 returns untouched on selection/clear). */}
-                            <div className={`px-3.5 py-3 ${destinationSearchMode ? "hidden" : ""}`}>
+                            <div data-guide="ride-pickup" className={`px-3.5 py-3 ${destinationSearchMode ? "hidden" : ""}`}>
                                 <PickupLocationSearch
                                     token={token}
                                     currentLocation={userLocation}
-                                    pickupAddress={pickupAddress || (locating ? "Detecting location..." : "")}
+                                    pickupAddress={pickupAddress || (locating ? t("pHome.detectingLocation") : "")}
                                     disabled={Boolean(activeRide) || booking}
                                     onUseGPS={locateMe}
                                     onEditingChange={handlePickupSearchChange}
@@ -1557,15 +1670,15 @@ function PassengerDashboard() {
                                     }}
                                 />
                             </div>
-                            <div className={`relative mx-3.5 border-t border-[#EEF0F2] ${destinationSearchMode ? "hidden" : ""}`}>
+                            <div className={`relative mx-3.5 border-t border-pd-line ${destinationSearchMode ? "hidden" : ""}`}>
                                 <span className="absolute -top-3 left-[9px] h-6 border-l-2 border-dotted border-[#C7CBD1]" aria-hidden="true" />
                             </div>
-                            <label className="flex items-center gap-3 px-3.5 py-3">
+                            <label data-guide="ride-destination" className="flex items-center gap-3 px-3.5 py-3">
                                 <span className="flex h-5 w-5 shrink-0 items-center justify-center" aria-hidden="true">
-                                    <span className="h-3.5 w-3.5 rounded-[4px] bg-[#E5484D]" />
+                                    <span className="h-3.5 w-3.5 rounded-[4px] bg-pd-danger" />
                                 </span>
                                 <span className="min-w-0 flex-1">
-                                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">Destination</span>
+                                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-pd-faint">{t("pHome.destination")}</span>
                                     <input
                                         type="text"
                                         value={destinationQuery}
@@ -1578,29 +1691,37 @@ function PassengerDashboard() {
                                             setDestination(null);
                                             setDestinationSelected(false);
                                         }}
-                                        placeholder="Where do you want to go?"
-                                        className="w-full min-w-0 bg-transparent text-[15px] font-semibold outline-none placeholder:font-medium placeholder:text-[#9CA3AF]"
+                                        placeholder={t("pHome.whereTo")}
+                                        className="w-full min-w-0 bg-transparent text-[15px] font-semibold outline-none placeholder:font-medium placeholder:text-pd-faint"
                                     />
                                 </span>
+                                <MicButton
+                                    onAppend={(spoken) => {
+                                        setDestinationQuery((prev) => (prev.trim() ? `${prev.replace(/\s+$/, "")} ${spoken}` : spoken));
+                                        setDestination(null);
+                                        setDestinationSelected(false);
+                                        setDestinationFocused(true);
+                                    }}
+                                />
                                 {destinationQuery ? (
                                     <button
                                         type="button"
-                                        aria-label="Clear destination"
+                                        aria-label={t("pHome.clearDestination")}
                                         onClick={() => {
                                             setDestinationQuery("");
                                             setDestination(null);
                                             setDestinationSelected(false);
                                         }}
-                                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F4F5F7] text-[#6B7280]"
+                                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pd-surface-2 text-pd-muted"
                                     >
                                         <X size={15} />
                                     </button>
                                 ) : (
                                     <button
                                         type="button"
-                                        aria-label="Choose destination on the map"
+                                        aria-label={t("pHome.chooseOnMap")}
                                         onClick={() => startMapPick("destination")}
-                                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#F4F5F7] text-[#111111] hover:bg-[#E9EBEE]"
+                                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pd-surface-2 text-pd-text hover:bg-pd-surface-3"
                                     >
                                         <Crosshair size={16} />
                                     </button>
@@ -1615,9 +1736,9 @@ function PassengerDashboard() {
                             </div>
                         )}
                         {!searching && searchResults.length > 0 && (
-                            <ul className={`rx-slide-up mt-3 overflow-y-auto overscroll-contain rounded-2xl border border-[#E9EBEE] bg-white shadow-[0_12px_36px_rgba(17,17,17,0.09)] ${destinationSearchMode ? "min-h-0 flex-1" : "max-h-[45dvh]"}`} aria-label="Destination search results">
+                            <ul className={`rx-slide-up mt-3 overflow-y-auto overscroll-contain rounded-2xl border border-pd-line bg-pd-surface shadow-[0_12px_36px_rgba(17,17,17,0.09)] ${destinationSearchMode ? "min-h-0 flex-1" : "max-h-[45dvh]"}`} aria-label="Destination search results">
                                 {searchResults.map((place, index) => (
-                                    <li key={place.place_id || index} className="border-b border-[#F1F2F4] last:border-b-0">
+                                    <li key={place.place_id || index} className="border-b border-pd-line last:border-b-0">
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -1626,19 +1747,19 @@ function PassengerDashboard() {
                                                 setDestinationQuery(place.name);
                                                 setSearchResults([]);
                                             }}
-                                            className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-[#F7F8F9] focus-visible:outline-2 focus-visible:outline-[#087F5B]"
+                                            className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-pd-surface-2 focus-visible:outline-2 focus-visible:outline-[#087F5B]"
                                         >
-                                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F4F5F7]">
-                                                <MapPin size={19} className="text-[#111111]" aria-hidden="true" />
+                                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-pd-surface-2">
+                                                <MapPin size={19} className="text-pd-text" aria-hidden="true" />
                                             </span>
                                             <span className="min-w-0 flex-1">
-                                                <span className="block truncate text-[15px] font-bold text-[#111111]">{place.shortName || place.name || "Selected location"}</span>
-                                                <span className="mt-1 block truncate text-xs text-[#6B7280]" title={place.display_name}>
-                                                    {place.city || place.subtitle || "Nearby place"}
+                                                <span className="block truncate text-[15px] font-bold text-pd-text">{place.shortName || place.name || t("pHome.selectedLocation")}</span>
+                                                <span className="mt-1 block truncate text-xs text-pd-muted" title={place.display_name}>
+                                                    {place.city || place.subtitle || t("pHome.nearbyPlace")}
                                                 </span>
                                             </span>
                                             {placeDistanceKm(userLocation, place) != null && (
-                                                <span className="shrink-0 text-xs font-bold tabular-nums text-[#6B7280]">
+                                                <span className="shrink-0 text-xs font-bold tabular-nums text-pd-muted">
                                                     {placeDistanceKm(userLocation, place) < 1
                                                         ? `${Math.round(placeDistanceKm(userLocation, place) * 1000)} m`
                                                         : `${placeDistanceKm(userLocation, place).toFixed(1)} km`}
@@ -1651,7 +1772,7 @@ function PassengerDashboard() {
                         )}
 
                         {!searching && destinationQuery.trim().length >= 3 && !destinationSelected && searchResults.length === 0 && (
-                            <div className="mt-3 rounded-2xl bg-[#F4F5F7] px-4 py-4 text-sm text-[#6B7280]">
+                            <div className="mt-3 rounded-2xl bg-pd-surface-2 px-4 py-4 text-sm text-pd-muted">
                                 No matching places found. Try the business name with its area or city.
                             </div>
                         )}
@@ -1673,7 +1794,7 @@ function PassengerDashboard() {
 
 
                         {citySupported === false && !destinationSearchMode && (
-                            <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                            <p className="mt-3 rounded-2xl border border-amber-200 bg-pd-warning-soft p-3 text-sm text-pd-warning">
                                 Service is currently unavailable at your pickup location. Please select a pickup inside an active service area.
                             </p>
                         )}
@@ -1694,19 +1815,19 @@ function PassengerDashboard() {
                                 <div className="grid grid-cols-3 gap-2">
                                     <TripStat
                                         icon={RouteIcon}
-                                        label={tripType === "ROUND_TRIP" ? "Round Trip Distance" : "Distance"}
+                                        label={tripType === "ROUND_TRIP" ? t("pHome.roundTripDistance") : t("pHome.distance")}
                                         value={`${route.distanceKm} km`}
                                     />
-                                    <TripStat icon={Clock} label="Duration" value={`${route.durationMinutes} min`} />
-                                    <TripStat icon={MapPin} label="Arrive by" value={formatArrival(route.durationMinutes, offerClock)} />
+                                    <TripStat icon={Clock} label={t("pHome.duration")} value={t("pHome.minutes", { count: route.durationMinutes })} />
+                                    <TripStat icon={MapPin} label={t("pHome.arriveBy")} value={formatArrival(route.durationMinutes, offerClock)} />
                                 </div>
 
                                 <div>
-                                    <h2 className="mb-2.5 text-sm font-bold uppercase tracking-wide text-[#6B7280]">Trip type</h2>
+                                    <h2 className="mb-2.5 text-sm font-bold uppercase tracking-wide text-pd-muted">{t("pHome.tripType")}</h2>
                                     <div className="grid grid-cols-2 gap-2">
                                         {[
-                                            { id: "ONE_WAY", label: "One Way" },
-                                            { id: "ROUND_TRIP", label: "Round Trip" },
+                                            { id: "ONE_WAY", label: t("pHome.oneWay") },
+                                            { id: "ROUND_TRIP", label: t("pHome.roundTrip") },
                                         ].map((option) => (
                                             <button
                                                 key={option.id}
@@ -1714,8 +1835,8 @@ function PassengerDashboard() {
                                                 onClick={() => setTripType(option.id)}
                                                 aria-pressed={tripType === option.id}
                                                 className={`rounded-2xl border-2 px-4 py-3 text-sm font-bold ${tripType === option.id
-                                                    ? "border-[#111111] bg-[#087F5B] text-white"
-                                                    : "border-[#E5E7EB] bg-white text-[#6B7280]"
+                                                    ? "border-pd-ink bg-[#087F5B] text-white"
+                                                    : "border-pd-line bg-pd-surface text-pd-muted"
                                                     }`}
                                             >
                                                 {option.label}
@@ -1723,15 +1844,15 @@ function PassengerDashboard() {
                                         ))}
                                     </div>
                                     {tripType === "ROUND_TRIP" && (
-                                        <p className="mt-2 text-xs text-[#6B7280]">
-                                            Driver will bring you back to your original pickup location.
+                                        <p className="mt-2 text-xs text-pd-muted">
+                                            {t("pHome.roundTripHint")}
                                         </p>
                                     )}
                                 </div>
 
                                 <div>
-                                    <h2 className="mb-2.5 text-sm font-bold uppercase tracking-wide text-[#6B7280]">Choose a ride</h2>
-                                    <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="Vehicle type">
+                                    <h2 className="mb-2.5 text-sm font-bold uppercase tracking-wide text-pd-muted">{t("pHome.chooseRide")}</h2>
+                                    <div data-guide="ride-vehicle" className="grid grid-cols-4 gap-2" role="radiogroup" aria-label={t("pHome.vehicleType")}>
                                         {VEHICLES.map((vehicle) => (
                                             <VehicleOption
                                                 key={vehicle.id}
@@ -1741,46 +1862,46 @@ function PassengerDashboard() {
                                             />
                                         ))}
                                     </div>
-                                    <p className="mt-2 text-xs font-medium text-[#6B7280]">{selectedVehicle.name} · {selectedVehicle.description}</p>
+                                    <p className="mt-2 text-xs font-medium text-pd-muted">{selectedVehicle.name} · {selectedVehicle.description}</p>
                                 </div>
 
-                                <div className="flex items-center justify-between rounded-2xl bg-[#F4F5F7] px-4 py-3">
+                                <div className="flex items-center justify-between rounded-2xl bg-pd-surface-2 px-4 py-3">
                                     <span className="flex items-center gap-2 text-sm font-bold">
-                                        <Users size={17} aria-hidden="true" /> Passengers
+                                        <Users size={17} aria-hidden="true" /> {t("pHome.passengers")}
                                     </span>
                                     <div className="flex items-center gap-3">
                                         <button
                                             type="button"
-                                            aria-label="Fewer passengers"
+                                            aria-label={t("pHome.fewerPassengers")}
                                             disabled={passengerCount <= 1}
                                             onClick={() => setPassengerCount((count) => Math.max(1, count - 1))}
-                                            className="flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm transition-transform active:scale-95 disabled:opacity-40"
+                                            className="flex h-9 w-9 items-center justify-center rounded-full bg-pd-surface shadow-sm transition-transform active:scale-95 disabled:opacity-40"
                                         >
                                             <Minus size={16} />
                                         </button>
                                         <span className="w-4 text-center text-base font-extrabold tabular-nums" aria-live="polite">{passengerCount}</span>
                                         <button
                                             type="button"
-                                            aria-label="More passengers"
+                                            aria-label={t("pHome.morePassengers")}
                                             disabled={passengerCount >= selectedVehicle.seats}
                                             onClick={() => setPassengerCount((count) => Math.min(selectedVehicle.seats, count + 1))}
-                                            className="flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm transition-transform active:scale-95 disabled:opacity-40"
+                                            className="flex h-9 w-9 items-center justify-center rounded-full bg-pd-surface shadow-sm transition-transform active:scale-95 disabled:opacity-40"
                                         >
                                             <Plus size={16} />
                                         </button>
                                     </div>
                                 </div>
 
-                                <div className="rounded-2xl bg-[#F4F5F7] p-4">
+                                <div data-guide="ride-fare" className="rounded-2xl bg-pd-surface-2 p-4">
                                     <div className="flex items-center justify-between">
-                                        <p className="text-sm font-bold">Offer your fare</p>
+                                        <p className="text-sm font-bold">{t("pHome.offerYourFare")}</p>
                                         {fare && (
                                             <button
                                                 type="button"
                                                 onClick={() => setProposedFare(String(fare.suggestedFare))}
-                                                className="text-xs font-medium text-[#6B7280] hover:text-[#111111]"
+                                                className="text-xs font-medium text-pd-muted hover:text-pd-text"
                                             >
-                                                Recommended <span className="font-bold text-[#111111]">{formatPKR(fare.suggestedFare)}</span>
+                                                {t("pHome.recommended")} <span className="font-bold text-pd-text">{formatPKR(fare.suggestedFare)}</span>
                                             </button>
                                         )}
                                     </div>
@@ -1794,13 +1915,13 @@ function PassengerDashboard() {
                                                     type="button"
                                                     aria-label={`Decrease fare by ${FARE_STEP}`}
                                                     onClick={() => adjustFare(-FARE_STEP)}
-                                                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm transition-transform active:scale-95"
+                                                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-pd-surface shadow-sm transition-transform active:scale-95"
                                                 >
                                                     <Minus size={20} />
                                                 </button>
-                                                <label className="flex h-14 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-white px-3 shadow-sm focus-within:ring-2 focus-within:ring-[#111111]">
-                                                    <span className="text-base font-bold text-[#6B7280]">PKR</span>
-                                                    <span className="sr-only">Your fare offer in PKR</span>
+                                                <label className="flex h-14 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-pd-surface px-3 shadow-sm focus-within:ring-2 focus-within:ring-pd-text">
+                                                    <span className="text-base font-bold text-pd-muted">PKR</span>
+                                                    <span className="sr-only">{t("pHome.yourFareOffer")}</span>
                                                     <input
                                                         type="number"
                                                         inputMode="numeric"
@@ -1815,30 +1936,30 @@ function PassengerDashboard() {
                                                     type="button"
                                                     aria-label={`Increase fare by ${FARE_STEP}`}
                                                     onClick={() => adjustFare(FARE_STEP)}
-                                                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm transition-transform active:scale-95"
+                                                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-pd-surface shadow-sm transition-transform active:scale-95"
                                                 >
                                                     <Plus size={20} />
                                                 </button>
                                             </div>
-                                            <p className={`mt-2.5 text-center text-xs font-medium ${fareDelta < 0 ? "text-amber-700" : "text-[#6B7280]"}`}>
+                                            <p className={`mt-2.5 text-center text-xs font-medium ${fareDelta < 0 ? "text-pd-warning" : "text-pd-muted"}`}>
                                                 {fareDelta < 0
-                                                    ? "Lower fares may take longer to get offers"
+                                                    ? t("pHome.fareHintLow")
                                                     : fareDelta > 0
-                                                        ? "A higher fare helps you get a driver faster"
-                                                        : "Drivers nearby will see your offer and respond"}
+                                                        ? t("pHome.fareHintHigh")
+                                                        : t("pHome.fareHintOk")}
                                             </p>
                                         </>
                                     ) : (
-                                        <p className="mt-2 text-sm text-[#6B7280]">Fare unavailable for this route.</p>
+                                        <p className="mt-2 text-sm text-pd-muted">{t("pHome.fareUnavailable")}</p>
                                     )}
                                 </div>
 
-                                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-[#6B7280]">
-                                    <span className="flex items-center gap-1.5 rounded-full bg-[#F4F5F7] px-3 py-1.5">
-                                        <Banknote size={14} aria-hidden="true" /> Cash
+                                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-pd-muted">
+                                    <span className="flex items-center gap-1.5 rounded-full bg-pd-surface-2 px-3 py-1.5">
+                                        <Banknote size={14} aria-hidden="true" /> {t("pHome.cash")}
                                     </span>
-                                    <span className="flex items-center gap-1.5 rounded-full bg-[#F4F5F7] px-3 py-1.5">
-                                        <ShieldCheck size={14} aria-hidden="true" /> Verified drivers
+                                    <span className="flex items-center gap-1.5 rounded-full bg-pd-surface-2 px-3 py-1.5">
+                                        <ShieldCheck size={14} aria-hidden="true" /> {t("pHome.verifiedDrivers")}
                                     </span>
                                 </div>
                             </div>
@@ -1846,20 +1967,21 @@ function PassengerDashboard() {
                     </div>
                 </div>
 
-                <div className={`shrink-0 border-t border-[#F1F2F4] bg-white px-4 pb-4 pt-3 sm:px-6 ${destinationSearchMode ? "hidden" : ""}`}>
+                <div className={`shrink-0 border-t border-pd-line bg-pd-surface px-4 pb-4 pt-3 sm:px-6 ${destinationSearchMode ? "hidden" : ""}`}>
                     <div className="mx-auto max-w-lg">
-                        {bookingHint && <p className="mb-2 text-center text-xs font-medium text-[#6B7280]">{bookingHint}</p>}
+                        {bookingHint && <p className="mb-2 text-center text-xs font-medium text-pd-muted">{bookingHint}</p>}
                         <button
                             type="button"
+                            data-guide="ride-request"
                             onClick={bookRide}
                             disabled={!canBook}
                             className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#087F5B] text-base font-extrabold text-white shadow-[0_8px_24px_rgba(8,127,91,0.35)] transition-all active:scale-[0.98] disabled:bg-[#087F5B]/60 disabled:text-white/70 disabled:shadow-none"
                         >
                             {booking
-                                ? "Requesting ride..."
+                                ? t("pHome.requesting")
                                 : activeRide
-                                    ? "Ride requested"
-                                    : fare && fareIsValid ? `Find a driver · ${formatPKR(fareValue)}` : "Find a driver"}
+                                    ? t("pHome.rideRequested")
+                                    : fare && fareIsValid ? `${t("pHome.findDriver")} · ${formatPKR(fareValue)}` : t("pHome.findDriver")}
                             {!booking && <ArrowRight size={20} aria-hidden="true" />}
                         </button>
                     </div>
@@ -1868,43 +1990,43 @@ function PassengerDashboard() {
 
             {activeRide && fullScreenMap && (
                 <div className="pointer-events-none absolute inset-x-4 bottom-[calc(84px+env(safe-area-inset-bottom))] z-30 mx-auto max-w-lg space-y-2">
-                    <div role="status" aria-live="polite" className="rounded-2xl border border-[#E9EBEE] bg-white/95 px-4 py-3 shadow-xl backdrop-blur-sm">
+                    <div role="status" aria-live="polite" className="rounded-2xl border border-pd-line bg-pd-elevated px-4 py-3 shadow-xl backdrop-blur-sm">
                         <div className="flex items-center gap-3">
                             <span className="relative flex h-3 w-3 shrink-0 rounded-full bg-[#087F5B] ring-4 ring-[#087F5B]/20">
                                 {searchingForDriver && <span className="absolute inset-0 animate-ping rounded-full bg-[#087F5B] opacity-60" />}
                             </span>
                             <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-extrabold text-[#111111]">
+                                <p className="truncate text-sm font-extrabold text-pd-text">
                                     {searchingForDriver
                                         ? validOffers.length > 0
-                                            ? `${validOffers.length} driver offer${validOffers.length > 1 ? "s" : ""} received`
-                                            : "Searching for drivers..."
-                                        : activeRide.status === "DRIVER_SELECTED" ? "Driver confirmed · awaiting departure"
-                                            : activeRide.status === "DRIVER_EN_ROUTE" ? "Driver heading to you"
-                                                : activeRide.status === "DRIVER_ARRIVED" ? "Driver has arrived"
-                                                    : activeRide.status === "TRIP_STARTED" ? "Trip in progress"
-                                                        : "Ride status"}
+                                            ? (validOffers.length > 1 ? t("pHome.driverOffersReceived", { count: validOffers.length }) : t("pHome.driverOfferReceived", { count: validOffers.length }))
+                                            : t("pHome.searchingDrivers")
+                                        : activeRide.status === "DRIVER_SELECTED" ? t("pHome.driverConfirmed")
+                                            : activeRide.status === "DRIVER_EN_ROUTE" ? t("pHome.driverHeading")
+                                                : activeRide.status === "DRIVER_ARRIVED" ? t("pHome.driverArrived")
+                                                    : activeRide.status === "TRIP_STARTED" ? t("pHome.tripInProgress")
+                                                        : t("pHome.rideStatus")}
                                 </p>
-                                <p className="truncate text-xs text-[#6B7280]">
+                                <p className="truncate text-xs text-pd-muted">
                                     {searchingForDriver
-                                        ? validOffers.length > 0 ? "View and compare your offers" : `${onlineNearby} online within range · Drivers can view your request`
-                                        : activeRide.status === "DRIVER_ARRIVED" ? "Meet your driver at the pickup point"
+                                        ? validOffers.length > 0 ? t("pHome.viewCompareOffers") : t("pHome.onlineWithinRange", { count: onlineNearby })
+                                        : activeRide.status === "DRIVER_ARRIVED" ? t("pHome.meetDriver")
                                             : liveRoute?.distanceKm != null
-                                                ? `${liveRoute.distanceKm} km · approx. ${liveRoute.durationMinutes} min remaining`
-                                                : driverLocationFresh ? "Live driver location updating" : driverLocation ? "Showing last known driver location" : "Waiting for live driver location"}
+                                                ? t("pHome.kmRemaining", { km: liveRoute.distanceKm, min: liveRoute.durationMinutes })
+                                                : driverLocationFresh ? t("pHome.liveLocation") : driverLocation ? t("pHome.lastKnownLocation") : t("pHome.waitingLocation")}
                                 </p>
                             </div>
                             {rideAssigned && (
-                                <button type="button" aria-label="Message driver" title="Message driver"
+                                <button type="button" aria-label={t("pHome.messageDriver")} title={t("pHome.messageDriver")}
                                     onClick={() => { markMessagesRead(); setMapChatOpen(true); }}
-                                    className="pointer-events-auto relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F4F5F7] text-[#111111]">
+                                    className="pointer-events-auto relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-pd-surface-2 text-pd-text">
                                     <MessageCircle size={19} />
                                     {unreadMessages > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#087F5B] px-1 text-[11px] font-extrabold text-white ring-2 ring-white">{unreadMessages === 99 ? "99+" : unreadMessages}</span>}
                                 </button>
                             )}
                             <button type="button" onClick={() => { setMapChatOpen(false); setFullScreenMap(false); }}
                                 className="pointer-events-auto shrink-0 rounded-xl bg-[#087F5B] px-3 py-2 text-xs font-extrabold text-white">
-                                {validOffers.length > 0 && searchingForDriver ? "View offers" : "Details"}
+                                {validOffers.length > 0 && searchingForDriver ? t("pHome.viewOffers") : t("pHome.details")}
                             </button>
                         </div>
                     </div>
@@ -1915,14 +2037,14 @@ function PassengerDashboard() {
                 <div
                     role="status"
                     aria-live="off"
-                    className="absolute inset-x-4 top-[calc(max(16px,env(safe-area-inset-top))+80px)] z-30 mx-auto max-w-md rounded-2xl border border-amber-200 bg-white p-4 shadow-xl"
+                    className="absolute inset-x-4 top-[calc(max(16px,env(safe-area-inset-top))+80px)] z-30 mx-auto max-w-md rounded-2xl border border-amber-200 bg-pd-surface p-4 shadow-xl"
                 >
                     <p className="text-sm font-extrabold">
                         ⏱ Driver is waiting · {Math.floor(waitingSeconds / 60)}m {waitingSeconds % 60}s
                     </p>
 
                     {overtimeMinutes > 0 ? (
-                        <div className="mt-2 text-sm font-bold text-red-600">
+                        <div className="mt-2 text-sm font-bold text-pd-danger">
                             <p>⚠️ Overtime charges are applying!</p>
                             <p>
                                 {activeRide.status === "DRIVER_ARRIVED"
@@ -1937,7 +2059,7 @@ function PassengerDashboard() {
                             <p>Extra charge: Rs. {liveWaitingCharge.toFixed(2)}</p>
                         </div>
                     ) : (
-                        <div className="mt-2 text-xs font-semibold text-amber-800">
+                        <div className="mt-2 text-xs font-semibold text-pd-warning">
                             <p>
                                 Free waiting remaining: {Math.max(
                                     0,
@@ -2019,14 +2141,15 @@ function PassengerDashboard() {
                 />
             )}
             <MobileBottomNav role="PASSENGER" />
+            <ServiceGuide serviceId="ridePassenger" userId={user?._id} />
         </main>
     );
 }
 
 function TripStat({ icon: Icon, label, value }) {
     return (
-        <div className="rounded-2xl bg-[#F4F5F7] px-3 py-2.5">
-            <p className="flex items-center gap-1 text-[11px] font-semibold text-[#6B7280]">
+        <div className="rounded-2xl bg-pd-surface-2 px-3 py-2.5">
+            <p className="flex items-center gap-1 text-[11px] font-semibold text-pd-muted">
                 <Icon size={12} aria-hidden="true" /> {label}
             </p>
             <p className="mt-0.5 truncate text-sm font-extrabold tabular-nums">{value}</p>
@@ -2043,20 +2166,20 @@ function VehicleOption({ vehicle, selected, onSelect }) {
             aria-checked={selected}
             onClick={onSelect}
             className={`relative flex flex-col items-center gap-1 rounded-2xl border-2 px-1 py-3 transition-all active:scale-95 ${selected
-                ? "border-[#111111] bg-[#E3F6EE]"
-                : "border-transparent bg-[#F4F5F7] hover:bg-[#EEF0F2]"
+                ? "border-pd-ink bg-pd-accent-soft"
+                : "border-transparent bg-pd-surface-2 hover:bg-pd-surface-3"
                 }`}
         >
             {selected && (
-                <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#111111]">
+                <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-pd-ink">
                     <Check size={10} className="text-[#087F5B]" strokeWidth={3} />
                 </span>
             )}
-            <span className={`flex h-10 w-10 items-center justify-center rounded-full ${selected ? "bg-[#087F5B] text-white" : "bg-white"}`}>
+            <span className={`flex h-10 w-10 items-center justify-center rounded-full ${selected ? "bg-[#087F5B] text-white" : "bg-pd-surface"}`}>
                 <Icon size={22} strokeWidth={1.9} aria-hidden="true" />
             </span>
             <span className="text-xs font-bold">{name}</span>
-            <span className="flex items-center gap-0.5 text-[10px] font-medium text-[#6B7280]">
+            <span className="flex items-center gap-0.5 text-[10px] font-medium text-pd-muted">
                 <Users size={10} aria-hidden="true" /> {seats}
             </span>
         </button>
@@ -2068,16 +2191,16 @@ function BookingPeek({ destinationLabel, route, onOpen }) {
         <button
             type="button"
             onClick={onOpen}
-            className={`rx-sheet-in absolute inset-x-3 bottom-[calc(80px+env(safe-area-inset-bottom))] z-20 mx-auto flex max-w-lg items-center gap-3 rounded-2xl bg-white p-3 text-left ${FLOATING_SHADOW}`}
+            className={`rx-sheet-in absolute inset-x-3 bottom-[calc(80px+env(safe-area-inset-bottom))] z-20 mx-auto flex max-w-lg items-center gap-3 rounded-2xl bg-pd-surface p-3 text-left ${FLOATING_SHADOW}`}
         >
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#087F5B] text-white">
                 <MapPin size={20} aria-hidden="true" />
             </span>
             <span className="min-w-0 flex-1">
-                <span className="block text-xs font-semibold text-[#6B7280]">{destinationLabel ? "Your trip" : "Ready to ride?"}</span>
-                <span className="block truncate text-[15px] font-bold">{destinationLabel || "Where to?"}</span>
+                <span className="block text-xs font-semibold text-pd-muted">{destinationLabel ? "Your trip" : "Ready to ride?"}</span>
+                <span className="block truncate text-[15px] font-bold">{destinationLabel || t("ride.whereTo")}</span>
             </span>
-            {route && <span className="shrink-0 text-xs font-bold text-[#6B7280]">{route.distanceKm} km · {route.durationMinutes} min</span>}
+            {route && <span className="shrink-0 text-xs font-bold text-pd-muted">{route.distanceKm} km · {route.durationMinutes} min</span>}
             <ChevronUp size={20} className="shrink-0" aria-hidden="true" />
             <span className="sr-only">Open booking panel</span>
         </button>
@@ -2087,7 +2210,7 @@ function BookingPeek({ destinationLabel, route, onOpen }) {
 function MapPickBanner({ target, onCancel }) {
     return (
         <>
-            <div className="rx-slide-down absolute inset-x-4 top-[calc(max(16px,env(safe-area-inset-top))+64px)] z-40 mx-auto flex max-w-md items-center gap-3 rounded-2xl bg-[#111111] p-3 pl-4 text-white shadow-xl">
+            <div className="rx-slide-down absolute inset-x-4 top-[calc(max(16px,env(safe-area-inset-top))+64px)] z-40 mx-auto flex max-w-md items-center gap-3 rounded-2xl bg-pd-ink p-3 pl-4 text-pd-ink-text shadow-xl">
                 <Crosshair size={20} className="shrink-0 text-[#087F5B]" aria-hidden="true" />
                 <p className="min-w-0 flex-1 text-sm font-semibold">
                     Tap the map to set your {target === "pickup" ? "pickup point" : "destination"}
@@ -2101,7 +2224,7 @@ function MapPickBanner({ target, onCancel }) {
                 </button>
             </div>
             <div className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2" aria-hidden="true">
-                <span className="block h-10 w-10 rounded-full border-2 border-dashed border-[#111111]/50" />
+                <span className="block h-10 w-10 rounded-full border-2 border-dashed border-pd-ink/50" />
             </div>
         </>
     );
@@ -2134,14 +2257,14 @@ function DriverSearchSheet({
     return (
         <section
             aria-label="Finding your drivers"
-            className="rx-sheet-in absolute inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] z-20 flex max-h-[calc(78dvh-68px)] flex-col rounded-t-[28px] bg-white shadow-[0_-16px_48px_rgba(17,17,17,0.18)]"
+            className="rx-sheet-in absolute inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] z-20 flex max-h-[calc(78dvh-68px)] flex-col rounded-t-[28px] bg-pd-surface shadow-[0_-16px_48px_rgba(17,17,17,0.18)]"
         >
             <div className="mx-auto w-full max-w-lg shrink-0 px-4 sm:px-6">
                 <button
                     type="button"
                     onClick={onShowMap}
                     aria-label="Minimise and show map"
-                    className="mx-auto mb-4 mt-3 block h-1.5 w-10 rounded-full bg-[#E3E5E8]"
+                    className="mx-auto mb-4 mt-3 block h-1.5 w-10 rounded-full bg-pd-surface-3"
                 />
                 <div className="flex items-center gap-4">
                     <div className="relative flex h-14 w-14 shrink-0 items-center justify-center" aria-hidden="true">
@@ -2151,7 +2274,7 @@ function DriverSearchSheet({
                                 <span className="rx-radar rx-radar-delay absolute inset-0 rounded-full bg-[#087F5B]" />
                             </>
                         )}
-                        <span className="relative flex h-14 w-14 items-center justify-center rounded-full bg-[#111111]">
+                        <span className="relative flex h-14 w-14 items-center justify-center rounded-full bg-pd-ink">
                             {hasOffers
                                 ? <Users size={24} className="text-[#087F5B]" />
                                 : <Radio size={24} className="text-[#087F5B]" />}
@@ -2159,23 +2282,23 @@ function DriverSearchSheet({
                     </div>
                     <div className="min-w-0 flex-1" aria-live="polite">
                         <h2 className="truncate text-xl font-extrabold tracking-tight">{title}</h2>
-                        <p className="mt-0.5 text-sm text-[#6B7280]">{subtitle}</p>
+                        <p className="mt-0.5 text-sm text-pd-muted">{subtitle}</p>
                     </div>
                     <button
                         type="button"
                         onClick={onShowMap}
                         aria-label="View map"
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#F4F5F7] transition-colors hover:bg-[#E9EBEE]"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-pd-surface-2 transition-colors hover:bg-pd-surface-3"
                     >
                         <MapIcon size={19} />
                     </button>
                 </div>
 
-                <div className="mt-4 h-1 overflow-hidden rounded-full bg-[#F1F2F4]" role="progressbar" aria-label="Searching for drivers" aria-busy="true">
-                    <div className="rx-indeterminate h-full w-2/5 rounded-full bg-[#111111]" />
+                <div className="mt-4 h-1 overflow-hidden rounded-full bg-pd-surface-2" role="progressbar" aria-label="Searching for drivers" aria-busy="true">
+                    <div className="rx-indeterminate h-full w-2/5 rounded-full bg-pd-ink" />
                 </div>
 
-                <div className="mt-3 flex items-center justify-between text-xs font-semibold text-[#6B7280]">
+                <div className="mt-3 flex items-center justify-between text-xs font-semibold text-pd-muted">
                     <span className="flex items-center gap-1.5">
                         <span className="relative flex h-2 w-2">
                             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
@@ -2214,30 +2337,30 @@ function DriverSearchSheet({
                     )}
 
                     {searchingLong && (
-                        <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
+                        <p className="mt-3 rounded-2xl border border-amber-200 bg-pd-warning-soft p-3 text-xs leading-relaxed text-pd-warning">
                             No offers yet. Drivers may be busy. You can keep waiting, or cancel and request again with a higher fare.
                         </p>
                     )}
 
-                    <div className="mt-4 rounded-2xl border border-[#EEF0F2] p-4">
+                    <div className="mt-4 rounded-2xl border border-pd-line p-4">
                         <div className="flex gap-3">
                             <div className="flex flex-col items-center pt-1" aria-hidden="true">
-                                <span className="h-3 w-3 rounded-full border-[3px] border-[#111111]" />
-                                <span className="my-1 w-0.5 flex-1 rounded-full bg-[#D9DCE0]" />
-                                <span className="h-3 w-3 rounded-[3px] bg-[#E5484D]" />
+                                <span className="h-3 w-3 rounded-full border-[3px] border-pd-ink" />
+                                <span className="my-1 w-0.5 flex-1 rounded-full bg-pd-surface-3" />
+                                <span className="h-3 w-3 rounded-[3px] bg-pd-danger" />
                             </div>
                             <div className="min-w-0 flex-1 space-y-3">
                                 <div>
-                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">Pickup</p>
+                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-pd-faint">Pickup</p>
                                     <p className="truncate text-sm font-semibold" title={pickupLabel}>{pickupLabel}</p>
                                 </div>
                                 {(ride.stops || []).length > 0 && (
-                                    <p className="text-xs font-semibold text-[#6B7280]">
+                                    <p className="text-xs font-semibold text-pd-muted">
                                         + {ride.stops.length} stop{ride.stops.length > 1 ? "s" : ""}
                                     </p>
                                 )}
                                 <div>
-                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-pd-faint">
                                         {ride.tripType === "ROUND_TRIP" ? "Return to Pickup" : "Drop-off"}
                                     </p>
                                     <p className="truncate text-sm font-semibold" title={ride.tripType === "ROUND_TRIP" ? pickupLabel : destinationLabel}>
@@ -2246,14 +2369,14 @@ function DriverSearchSheet({
                                 </div>
                             </div>
                         </div>
-                        <div className="mt-4 flex items-center justify-between border-t border-[#EEF0F2] pt-3">
-                            <span className="flex items-center gap-2 text-sm font-semibold text-[#374151]">
+                        <div className="mt-4 flex items-center justify-between border-t border-pd-line pt-3">
+                            <span className="flex items-center gap-2 text-sm font-semibold text-pd-text-2">
                                 <VehicleIcon size={18} aria-hidden="true" />
                                 {vehicle?.name || "Ride"}
                                 <span className="text-[#D1D5DB]">·</span>
                                 <Banknote size={16} aria-hidden="true" /> Cash
                             </span>
-                            <span className="rounded-full bg-[#E3F6EE] px-3 py-1 text-sm font-extrabold">
+                            <span className="rounded-full bg-pd-accent-soft px-3 py-1 text-sm font-extrabold">
                                 {formatPKR(ride.requestedPrice)}
                             </span>
                         </div>
@@ -2263,7 +2386,7 @@ function DriverSearchSheet({
                         type="button"
                         onClick={onCancel}
                         disabled={cancelling}
-                        className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#F4F5F7] text-sm font-bold text-[#E5484D] transition-colors hover:bg-[#FDECEC] disabled:opacity-50"
+                        className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-pd-surface-2 text-sm font-bold text-pd-danger transition-colors hover:bg-pd-danger-soft disabled:opacity-50"
                     >
                         <X size={18} aria-hidden="true" />
                         {cancelling ? "Cancelling..." : "Cancel request"}
@@ -2280,12 +2403,12 @@ function NearbyDriversWaiting({ onlineDrivers, radiusKm, vehicleType }) {
 
     if (onlineDrivers === 0) {
         return (
-            <div className="rounded-2xl border border-[#EEF0F2] bg-[#F7F8F9] p-5 text-center">
-                <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
-                    <VehicleIcon size={22} className="text-[#6B7280]" aria-hidden="true" />
+            <div className="rounded-2xl border border-pd-line bg-pd-surface-2 p-5 text-center">
+                <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-pd-surface shadow-sm">
+                    <VehicleIcon size={22} className="text-pd-muted" aria-hidden="true" />
                 </span>
                 <p className="mt-3 text-sm font-bold">No drivers online in your area yet</p>
-                <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-[#6B7280]">
+                <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-pd-muted">
                     We&apos;re still searching within {radiusKm} km and will alert you the moment a driver sends an offer.
                 </p>
             </div>
@@ -2294,31 +2417,31 @@ function NearbyDriversWaiting({ onlineDrivers, radiusKm, vehicleType }) {
 
     return (
         <div>
-            <div className="flex items-center gap-3 rounded-2xl bg-[#F4F5F7] p-4">
+            <div className="flex items-center gap-3 rounded-2xl bg-pd-surface-2 p-4">
                 <div className="flex -space-x-2.5" aria-hidden="true">
                     {Array.from({ length: visibleAvatars }).map((_, index) => (
                         <span
                             key={index}
-                            className="rx-slide-up flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#F4F5F7] bg-[#111111]"
+                            className="rx-slide-up flex h-9 w-9 items-center justify-center rounded-full border-2 border-pd-line bg-pd-ink"
                             style={{ animationDelay: `${index * 90}ms` }}
                         >
                             <VehicleIcon size={15} className="text-[#087F5B]" />
                         </span>
                     ))}
                     {onlineDrivers > visibleAvatars && (
-                        <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#F4F5F7] bg-white text-[11px] font-extrabold">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-pd-line bg-pd-surface text-[11px] font-extrabold">
                             +{onlineDrivers - visibleAvatars}
                         </span>
                     )}
                 </div>
-                <p className="min-w-0 text-xs font-medium leading-relaxed text-[#374151]">
+                <p className="min-w-0 text-xs font-medium leading-relaxed text-pd-text-2">
                     {onlineDrivers} driver{onlineDrivers > 1 ? "s are" : " is"} online within range and can see your request. Map pins show approximate areas only.
                 </p>
             </div>
 
             <div className="mt-3 space-y-2.5" aria-hidden="true">
                 {[0, 1].map((item) => (
-                    <div key={item} className="flex items-center gap-3 rounded-2xl border border-[#EEF0F2] p-3.5" style={{ opacity: 1 - item * 0.4 }}>
+                    <div key={item} className="flex items-center gap-3 rounded-2xl border border-pd-line p-3.5" style={{ opacity: 1 - item * 0.4 }}>
                         <div className="rx-shimmer h-11 w-11 shrink-0 rounded-full" />
                         <div className="flex-1 space-y-2">
                             <div className="rx-shimmer h-3 w-2/5 rounded-full" />
@@ -2355,13 +2478,13 @@ function OfferCard({ offer, requestedPrice, rideVehicleType, isBest, clock, busy
 
     return (
         <article
-            className={`rx-slide-up overflow-hidden rounded-2xl border bg-white shadow-[0_4px_18px_rgba(17,17,17,0.06)] ${isBest ? "border-[#111111]" : "border-[#EEF0F2]"}`}
+            className={`rx-slide-up overflow-hidden rounded-2xl border bg-pd-surface shadow-[0_4px_18px_rgba(17,17,17,0.06)] ${isBest ? "border-pd-ink" : "border-pd-line"}`}
             aria-label={`Offer from ${name}, ${formatPKR(price)}`}
         >
             {remainingRatio != null && (
-                <div className="h-1 bg-[#F1F2F4]" aria-hidden="true">
+                <div className="h-1 bg-pd-surface-2" aria-hidden="true">
                     <div
-                        className={`h-full transition-[width] duration-1000 ease-linear ${urgent ? "bg-[#E5484D]" : "bg-[#111111]"}`}
+                        className={`h-full transition-[width] duration-1000 ease-linear ${urgent ? "bg-pd-danger" : "bg-pd-ink"}`}
                         style={{ width: `${remainingRatio * 100}%` }}
                     />
                 </div>
@@ -2370,7 +2493,7 @@ function OfferCard({ offer, requestedPrice, rideVehicleType, isBest, clock, busy
             <div className="p-4">
                 <div className="flex items-start gap-3">
                     <span className="relative shrink-0" aria-hidden="true">
-                        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#111111] text-sm font-extrabold text-[#087F5B]">
+                        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-pd-ink text-sm font-extrabold text-[#087F5B]">
                             {getInitials(name)}
                         </span>
                         <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-[#087F5B] text-white">
@@ -2386,8 +2509,8 @@ function OfferCard({ offer, requestedPrice, rideVehicleType, isBest, clock, busy
                                 </span>
                             )}
                         </div>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[#6B7280]">
-                            <span className="flex items-center gap-1 font-semibold text-[#111111]">
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-pd-muted">
+                            <span className="flex items-center gap-1 font-semibold text-pd-text">
                                 <Star size={12} className="fill-[#F5A524] text-[#F5A524]" aria-hidden="true" />
                                 {driver.rating != null ? Number(driver.rating).toFixed(1) : "New"}
                             </span>
@@ -2395,7 +2518,7 @@ function OfferCard({ offer, requestedPrice, rideVehicleType, isBest, clock, busy
                             {driver.vehicleText && <span className="truncate">{driver.vehicleText}</span>}
                         </div>
                         {driver.plate && (
-                            <span className="mt-1.5 inline-block rounded-md border border-[#E3E5E8] bg-[#F7F8F9] px-1.5 py-0.5 font-mono text-[11px] font-bold tracking-wider">
+                            <span className="mt-1.5 inline-block rounded-md border border-pd-line bg-pd-surface-2 px-1.5 py-0.5 font-mono text-[11px] font-bold tracking-wider">
                                 {driver.plate}
                             </span>
                         )}
@@ -2403,28 +2526,28 @@ function OfferCard({ offer, requestedPrice, rideVehicleType, isBest, clock, busy
                     <div className="shrink-0 text-right">
                         <p className="text-xl font-extrabold tabular-nums tracking-tight">{formatPKR(price)}</p>
                         {priceDiff !== 0 && Number.isFinite(priceDiff) && (
-                            <p className={`text-[11px] font-bold ${priceDiff > 0 ? "text-amber-700" : "text-emerald-700"}`}>
+                            <p className={`text-[11px] font-bold ${priceDiff > 0 ? "text-pd-warning" : "text-pd-success"}`}>
                                 {priceDiff > 0 ? `+${priceDiff}` : priceDiff} vs your fare
                             </p>
                         )}
-                        {priceDiff === 0 && <p className="text-[11px] font-bold text-emerald-700">Your fare</p>}
+                        {priceDiff === 0 && <p className="text-[11px] font-bold text-pd-success">Your fare</p>}
                     </div>
                 </div>
 
                 {(eta != null || distance != null || remainingMs != null) && (
                     <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold">
                         {eta != null && (
-                            <span className="flex items-center gap-1 rounded-full bg-[#F4F5F7] px-2.5 py-1">
+                            <span className="flex items-center gap-1 rounded-full bg-pd-surface-2 px-2.5 py-1">
                                 <Clock size={12} aria-hidden="true" /> {eta} min away
                             </span>
                         )}
                         {distance != null && (
-                            <span className="flex items-center gap-1 rounded-full bg-[#F4F5F7] px-2.5 py-1">
+                            <span className="flex items-center gap-1 rounded-full bg-pd-surface-2 px-2.5 py-1">
                                 <Navigation size={12} aria-hidden="true" /> {Number(distance).toFixed(1)} km
                             </span>
                         )}
                         {remainingMs != null && (
-                            <span className={`ml-auto tabular-nums ${urgent ? "text-[#E5484D]" : "text-[#6B7280]"}`} aria-live="off">
+                            <span className={`ml-auto tabular-nums ${urgent ? "text-pd-danger" : "text-pd-muted"}`} aria-live="off">
                                 Expires in {formatClock(remainingMs)}
                             </span>
                         )}
@@ -2437,13 +2560,13 @@ function OfferCard({ offer, requestedPrice, rideVehicleType, isBest, clock, busy
                             type="button"
                             onClick={() => setShowProfile((value) => !value)}
                             aria-expanded={showProfile}
-                            className="flex items-center gap-1 text-xs font-bold text-[#374151] hover:text-[#111111]"
+                            className="flex items-center gap-1 text-xs font-bold text-pd-text-2 hover:text-pd-text"
                         >
                             {showProfile ? "Hide driver profile" : "View driver profile"}
                             <ChevronDown size={14} className={`transition-transform ${showProfile ? "rotate-180" : ""}`} aria-hidden="true" />
                         </button>
                         {showProfile && (
-                            <div className="mt-2 rounded-xl bg-[#F7F8F9] p-2">
+                            <div className="mt-2 rounded-xl bg-pd-surface-2 p-2">
                                 <DriverProfileCard driverId={driver.id} token={token} />
                             </div>
                         )}
@@ -2455,7 +2578,7 @@ function OfferCard({ offer, requestedPrice, rideVehicleType, isBest, clock, busy
                         type="button"
                         disabled={busy}
                         onClick={() => onReject(offerId)}
-                        className="h-12 flex-1 rounded-xl bg-[#F4F5F7] text-sm font-bold text-[#374151] transition-colors hover:bg-[#E9EBEE] disabled:opacity-50"
+                        className="h-12 flex-1 rounded-xl bg-pd-surface-2 text-sm font-bold text-pd-text-2 transition-colors hover:bg-pd-surface-3 disabled:opacity-50"
                     >
                         Decline
                     </button>
@@ -2484,12 +2607,12 @@ function TripCompletedDialog({ rideId, ride, token, pickupLabel, destinationLabe
 
     return (
         <div
-            className="fixed inset-0 z-[90] flex items-end justify-center bg-[#111111]/60 px-3 pb-3 backdrop-blur-sm sm:items-center sm:py-8"
+            className="fixed inset-0 z-[90] flex items-end justify-center bg-pd-scrim px-3 pb-3 backdrop-blur-sm sm:items-center sm:py-8"
             role="dialog"
             aria-modal="true"
             aria-label={step === "summary" ? "Trip completed" : "Rate your driver"}
         >
-            <div className="rx-sheet-in max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-[28px] bg-white p-5 shadow-2xl">
+            <div className="rx-sheet-in max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-[28px] bg-pd-surface p-5 shadow-2xl">
                 {step === "summary" ? (
                     <>
                         <div className="text-center">
@@ -2497,40 +2620,40 @@ function TripCompletedDialog({ rideId, ride, token, pickupLabel, destinationLabe
                                 <Check size={30} strokeWidth={3} className="text-white" aria-hidden="true" />
                             </span>
                             <h2 className="text-xl font-extrabold tracking-tight">You&apos;ve arrived!</h2>
-                            <p className="mt-1 text-sm text-[#6B7280]">Thanks for riding with us.</p>
+                            <p className="mt-1 text-sm text-pd-muted">Thanks for riding with us.</p>
                         </div>
 
                         {fare != null && (
-                            <div className="mt-5 rounded-2xl bg-[#111111] p-4 text-center text-white">
+                            <div className="mt-5 rounded-2xl bg-pd-ink p-4 text-center text-pd-ink-text">
                                 <p className="text-xs font-semibold text-white/60">Total fare · Cash</p>
                                 <p className="mt-1 text-3xl font-extrabold tabular-nums text-[#087F5B]">{formatPKR(fare)}</p>
                             </div>
                         )}
 
-                        <div className="mt-4 rounded-2xl border border-[#EEF0F2] p-4">
+                        <div className="mt-4 rounded-2xl border border-pd-line p-4">
                             <div className="flex gap-3">
                                 <div className="flex flex-col items-center pt-1" aria-hidden="true">
-                                    <span className="h-3 w-3 rounded-full border-[3px] border-[#111111]" />
-                                    <span className="my-1 w-0.5 flex-1 rounded-full bg-[#D9DCE0]" />
-                                    <span className="h-3 w-3 rounded-[3px] bg-[#E5484D]" />
+                                    <span className="h-3 w-3 rounded-full border-[3px] border-pd-ink" />
+                                    <span className="my-1 w-0.5 flex-1 rounded-full bg-pd-surface-3" />
+                                    <span className="h-3 w-3 rounded-[3px] bg-pd-danger" />
                                 </div>
                                 <div className="min-w-0 flex-1 space-y-2.5">
                                     <p className="truncate text-sm font-semibold" title={pickupLabel}>{pickupLabel}</p>
-                                    {stopCount > 0 && <p className="text-xs font-semibold text-[#6B7280]">{stopCount} stop{stopCount > 1 ? "s" : ""} on the way</p>}
+                                    {stopCount > 0 && <p className="text-xs font-semibold text-pd-muted">{stopCount} stop{stopCount > 1 ? "s" : ""} on the way</p>}
                                     <p className="truncate text-sm font-semibold" title={destinationLabel}>{destinationLabel}</p>
                                 </div>
                             </div>
-                            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#EEF0F2] pt-3 text-xs font-semibold text-[#374151]">
-                                <span className="flex items-center gap-1.5 rounded-full bg-[#F4F5F7] px-2.5 py-1">
+                            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-pd-line pt-3 text-xs font-semibold text-pd-text-2">
+                                <span className="flex items-center gap-1.5 rounded-full bg-pd-surface-2 px-2.5 py-1">
                                     <VehicleIcon size={13} aria-hidden="true" /> {vehicle?.name || "Ride"}
                                 </span>
                                 {Number.isFinite(distanceKm) && distanceKm > 0 && (
-                                    <span className="flex items-center gap-1.5 rounded-full bg-[#F4F5F7] px-2.5 py-1">
+                                    <span className="flex items-center gap-1.5 rounded-full bg-pd-surface-2 px-2.5 py-1">
                                         <RouteIcon size={13} aria-hidden="true" /> {distanceKm} km
                                     </span>
                                 )}
                                 {driver.name && (
-                                    <span className="flex items-center gap-1.5 rounded-full bg-[#F4F5F7] px-2.5 py-1">
+                                    <span className="flex items-center gap-1.5 rounded-full bg-pd-surface-2 px-2.5 py-1">
                                         <UserRound size={13} aria-hidden="true" /> {driver.name}
                                     </span>
                                 )}
@@ -2547,7 +2670,7 @@ function TripCompletedDialog({ rideId, ride, token, pickupLabel, destinationLabe
                         <button
                             type="button"
                             onClick={() => onFinish({ rated: false })}
-                            className="mt-2 w-full rounded-2xl bg-[#F4F5F7] py-3.5 font-bold text-[#374151] transition-colors hover:bg-[#E9EBEE]"
+                            className="mt-2 w-full rounded-2xl bg-pd-surface-2 py-3.5 font-bold text-pd-text-2 transition-colors hover:bg-pd-surface-3"
                         >
                             Done
                         </button>
@@ -2555,17 +2678,17 @@ function TripCompletedDialog({ rideId, ride, token, pickupLabel, destinationLabe
                 ) : (
                     <>
                         <div className="mb-4 text-center">
-                            <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-[#111111] text-sm font-extrabold text-[#087F5B]" aria-hidden="true">
+                            <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-pd-ink text-sm font-extrabold text-[#087F5B]" aria-hidden="true">
                                 {getInitials(driver.name)}
                             </span>
                             <h2 className="text-xl font-extrabold tracking-tight">How was {driver.name || "your driver"}?</h2>
-                            <p className="mt-1 text-sm text-[#6B7280]">Your review is optional and helps other passengers.</p>
+                            <p className="mt-1 text-sm text-pd-muted">Your review is optional and helps other passengers.</p>
                         </div>
                         <DriverRating rideId={rideId} token={token} onSuccess={() => onFinish({ rated: true })} />
                         <button
                             type="button"
                             onClick={() => onFinish({ rated: false })}
-                            className="mt-3 w-full rounded-2xl bg-[#F4F5F7] py-3.5 font-bold text-[#374151] transition-colors hover:bg-[#E9EBEE]"
+                            className="mt-3 w-full rounded-2xl bg-pd-surface-2 py-3.5 font-bold text-pd-text-2 transition-colors hover:bg-pd-surface-3"
                         >
                             Skip for now
                         </button>

@@ -1,17 +1,20 @@
 "use client";
 
+import { useLanguage } from "@/components/i18n/LanguageProvider";
+
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "@/components/theme/ThemeProvider";
 
 const OPTIONS = [
-    { value: "system", label: "System", icon: Monitor },
-    { value: "light", label: "Light", icon: Sun },
-    { value: "dark", label: "Dark", icon: Moon },
+    { value: "system", labelKey: "theme.system", icon: Monitor },
+    { value: "light", labelKey: "theme.light", icon: Sun },
+    { value: "dark", labelKey: "theme.dark", icon: Moon },
 ];
 
 /** Segmented Appearance control used in Passenger and Driver account pages. */
 export default function ThemeSelector({ className = "" }) {
     const { preference, resolvedTheme, setPreference } = useTheme();
+    const { t } = useLanguage();
 
     return (
         <section
@@ -20,17 +23,17 @@ export default function ThemeSelector({ className = "" }) {
         >
             <div className="flex items-start justify-between gap-3">
                 <div>
-                    <h2 id="appearance-title" className="text-base font-extrabold">Appearance</h2>
+                    <h2 id="appearance-title" className="text-base font-extrabold">{t("theme.appearance")}</h2>
                     <p className="mt-0.5 text-xs text-pd-muted">
                         {preference === "system"
-                            ? `Following your phone · currently ${resolvedTheme}`
-                            : `Always ${preference}`}
+                            ? t("theme.followingPhone", { theme: resolvedTheme })
+                            : t("theme.always", { theme: preference })}
                     </p>
                 </div>
             </div>
 
-            <div role="radiogroup" aria-label="Theme preference" className="mt-4 grid grid-cols-3 gap-1 rounded-2xl bg-pd-surface-2 p-1">
-                {OPTIONS.map(({ value, label, icon: Icon }) => {
+            <div role="radiogroup" aria-label={t("theme.preference")} className="mt-4 grid grid-cols-3 gap-1 rounded-2xl bg-pd-surface-2 p-1">
+                {OPTIONS.map(({ value, labelKey, icon: Icon }) => {
                     const active = preference === value;
                     return (
                         <button
@@ -45,7 +48,7 @@ export default function ThemeSelector({ className = "" }) {
                                 }`}
                         >
                             <Icon size={18} strokeWidth={active ? 2.4 : 1.8} />
-                            {label}
+                            {t(labelKey)}
                         </button>
                     );
                 })}

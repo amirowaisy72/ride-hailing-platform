@@ -993,14 +993,14 @@ export default function RideMap({
         Math.round((navigationMode && getPoint(driverLocation) ? getPoint(driverLocation)[1] : (getPoint(userLocation)?.[1] || 0)) * 2000),
         JSON.stringify(stops)]);
     const statusPillClass = passengerView
-        ? "pointer-events-none absolute left-1/2 top-[calc(max(16px,env(safe-area-inset-top))+128px)] z-10 -translate-x-1/2 rounded-full bg-white/95 px-3.5 py-1.5 text-xs font-semibold text-[#374151] shadow-md"
-        : "absolute bottom-28 left-3 rounded-xl bg-white/90 px-3 py-2 text-xs shadow";
+        ? "pointer-events-none absolute left-1/2 top-[calc(max(16px,env(safe-area-inset-top))+128px)] z-10 -translate-x-1/2 rounded-full bg-pd-elevated px-3.5 py-1.5 text-xs font-semibold text-pd-text-2 shadow-md"
+        : "absolute bottom-28 left-3 rounded-xl bg-pd-elevated px-3 py-2 text-xs shadow";
     return (
         <div className="relative h-full w-full">
             <style>{MAP_STYLES + PLACE_POPUP_STYLES}</style>
             <div ref={node} className="h-full w-full" />
             {routing && !error && <div className={statusPillClass}>Loading road route…</div>}
-            {error && <div role="status" className={`${statusPillClass} text-amber-700`}>{error}</div>}
+            {error && <div role="status" className={`${statusPillClass} text-pd-warning`}>{error}</div>}
         </div>
     );
 }

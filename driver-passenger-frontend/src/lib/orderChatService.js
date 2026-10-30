@@ -64,3 +64,16 @@ export const uploadOrderImage = (file, token) => {
         body: formData,
     });
 };
+
+// Voice-message upload (Phase 3, A11b): POST /order-chats/upload-audio
+// (multipart, field "audio") -> { audioUrl }. The message itself is
+// then sent with kind "AUDIO" through sendOrderMessage.
+export const uploadOrderAudio = (file, token) => {
+    const formData = new FormData();
+    formData.append("audio", file);
+    return apiRequest("/order-chats/upload-audio", {
+        method: "POST",
+        token,
+        body: formData,
+    });
+};

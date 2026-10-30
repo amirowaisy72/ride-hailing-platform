@@ -10,10 +10,12 @@ import {
 
 import AuthGuard from "@/components/AuthGuard";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/components/i18n/LanguageProvider";
 import { apiRequest } from "@/lib/api";
 import { BRAND } from "@/config/brand";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import ThemeSelector from "@/components/theme/ThemeSelector";
+import LanguageSelector from "@/components/i18n/LanguageSelector";
 import ProfilePicture from "@/components/ProfilePicture";
 
 const formatFare = (ride) =>
@@ -36,6 +38,7 @@ export default function PassengerAccountPage() {
 
 function AccountScreen() {
     const { user, token, logout, switchMode } = useAuth();
+    const { t } = useLanguage();
     const [driver, setDriver] = useState(null);
     const [switching, setSwitching] = useState(false);
     const [driverError, setDriverError] = useState("");
@@ -106,7 +109,7 @@ function AccountScreen() {
             .filter(Boolean)
             .join(" ") ||
         displayUser?.name ||
-        "Passenger";
+        t("account.passengerFallback");
 
     useEffect(() => {
         if (!token) return;
@@ -134,19 +137,19 @@ function AccountScreen() {
     }, [token, page]);
 
     return (
-        <main className="min-h-dvh bg-[#F8FAF9] pb-[calc(100px+env(safe-area-inset-bottom))] text-slate-900">
+        <main className="min-h-dvh bg-pd-bg pb-[calc(100px+env(safe-area-inset-bottom))] text-pd-text">
             <MobileBottomNav role="PASSENGER" />
             <header className="bg-[#087F5B] px-5 pb-24 pt-[max(24px,env(safe-area-inset-top))] text-white">
                 <div className="mx-auto flex max-w-xl items-center justify-between">
                     <Link
                         href="/passenger"
-                        aria-label="Back to rides"
+                        aria-label={t("account.backToRides")}
                         className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15"
                     >
                         <ArrowLeft size={21} />
                     </Link>
 
-                    <h1 className="text-lg font-bold">My Account</h1>
+                    <h1 className="text-lg font-bold">{t("account.myAccount")}</h1>
 
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
                         <UserRound size={21} />
@@ -162,7 +165,7 @@ function AccountScreen() {
             </header>
 
             <div className="mx-auto -mt-16 max-w-xl space-y-5 px-4">
-                <section className="rounded-[28px] bg-white p-5 shadow-lg shadow-slate-900/5">
+                <section className="rounded-[28px] bg-pd-surface p-5 shadow-lg shadow-slate-900/5">
                     <div className="flex items-center gap-4">
                         <ProfilePicture
                             token={token}
@@ -179,7 +182,7 @@ function AccountScreen() {
                             <h3 className="truncate text-xl font-extrabold">
                                 {fullName}
                             </h3>
-                            <p className="mt-1 truncate text-sm text-slate-500">
+                            <p className="mt-1 truncate text-sm text-pd-muted">
                                 {user?.email}
                             </p>
                             <div className="mt-2 flex items-center gap-1 text-xs font-semibold text-[#087F5B]">
@@ -190,22 +193,22 @@ function AccountScreen() {
                     </div>
                 </section>
 
-                <section className="rounded-2xl bg-white p-5 shadow-sm">
-                    <h3 className="font-bold">Driver Account</h3>
-                    <p className="mt-2 text-sm text-slate-500">
+                <section className="rounded-2xl bg-pd-surface p-5 shadow-sm">
+                    <h3 className="font-bold">{t("account.driverAccount")}</h3>
+                    <p className="mt-2 text-sm text-pd-muted">
                         {driver
                             ? `Status: ${driver.verificationStatus}`
-                            : "Earn by becoming a driver."}
+                            : t("account.earnDriver")}
                     </p>
 
                     {driver?.rejectionReason && (
-                        <p className="mt-2 text-sm text-red-600">
+                        <p className="mt-2 text-sm text-pd-danger">
                             {driver.rejectionReason}
                         </p>
                     )}
 
                     {driverError && (
-                        <p className="mt-2 text-sm text-red-600">
+                        <p className="mt-2 text-sm text-pd-danger">
                             {driverError}
                         </p>
                     )}
@@ -218,37 +221,37 @@ function AccountScreen() {
                             className="mt-4 w-full rounded-xl bg-[#087F5B] p-3 font-bold text-white disabled:opacity-50"
                         >
                             {switching
-                                ? "Please wait..."
+                                ? t("account.pleaseWait")
                                 : driver
-                                    ? "Switch to Driver"
-                                    : "Become a Driver"}
+                                    ? t("account.switchToDriver")
+                                    : t("account.becomeDriver")}
                         </button>
                     )}
 
                     {driver && driver.verificationStatus !== "APPROVED" && (
                         <Link
                             href="/driver/documents"
-                            className="mt-4 block rounded-xl bg-emerald-50 p-3 text-center font-bold text-[#087F5B]"
+                            className="mt-4 block rounded-xl bg-pd-success-soft p-3 text-center font-bold text-[#087F5B]"
                         >
                             Manage Driver Documents
                         </Link>
                     )}
                 </section>
 
-                <section className="rounded-[24px] bg-white p-5 shadow-sm">
+                <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                     <div className="mb-5 flex items-center gap-3">
                         <History size={22} className="text-[#087F5B]" />
-                        <h3 className="text-lg font-extrabold">Ride History</h3>
+                        <h3 className="text-lg font-extrabold">{t("account.rideHistory")}</h3>
                     </div>
 
                     {loading && (
-                        <p className="py-5 text-center text-sm text-slate-500">
+                        <p className="py-5 text-center text-sm text-pd-muted">
                             Loading rides...
                         </p>
                     )}
 
                     {error && (
-                        <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-600">
+                        <p role="alert" className="rounded-xl bg-pd-danger-soft p-3 text-sm text-pd-danger">
                             {error}
                         </p>
                     )}
@@ -256,8 +259,8 @@ function AccountScreen() {
                     {!loading && !error && rides.length === 0 && (
                         <div className="py-8 text-center">
                             <CarFront className="mx-auto text-[#087F5B]" size={34} />
-                            <p className="mt-3 font-semibold">No rides yet</p>
-                            <p className="mt-1 text-sm text-slate-500">
+                            <p className="mt-3 font-semibold">{t("account.noRides")}</p>
+                            <p className="mt-1 text-sm text-pd-muted">
                                 Your trips will appear here.
                             </p>
                         </div>
@@ -266,14 +269,14 @@ function AccountScreen() {
                     {!loading && rides.map((ride) => (
                         <div
                             key={ride._id}
-                            className="border-b border-slate-100 py-4 last:border-0"
+                            className="border-b border-pd-line py-4 last:border-0"
                         >
                             {ride.status === "TRIP_COMPLETED" && (
                                 <Link
                                     href={`/passenger/receipt?rideId=${encodeURIComponent(ride._id)}`}
-                                    className="mb-3 flex items-center justify-between rounded-xl bg-emerald-50 px-4 py-3 text-sm font-bold text-[#087F5B]"
+                                    className="mb-3 flex items-center justify-between rounded-xl bg-pd-success-soft px-4 py-3 text-sm font-bold text-[#087F5B]"
                                 >
-                                    <span>View Trip Receipt</span>
+                                    <span>{t("account.viewReceipt")}</span>
                                     <ChevronRight size={18} />
                                 </Link>
                             )}
@@ -282,7 +285,7 @@ function AccountScreen() {
                                     <p className="font-bold">
                                         {ride.vehicleType?.replaceAll("_", " ")}
                                     </p>
-                                    <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
+                                    <p className="mt-1 flex items-center gap-1 text-xs text-pd-muted">
                                         <Clock3 size={13} />
                                         {formatDate(ride.createdAt)}
                                     </p>
@@ -294,10 +297,10 @@ function AccountScreen() {
                             </div>
 
                             <div className="mt-3 flex items-center justify-between">
-                                <span className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold">
+                                <span className="rounded-lg bg-pd-surface-2 px-3 py-1 text-xs font-semibold">
                                     {ride.status?.replaceAll("_", " ")}
                                 </span>
-                                <span className="text-xs text-slate-500">
+                                <span className="text-xs text-pd-muted">
                                     {ride.distance ?? "—"} km
                                 </span>
                             </div>
@@ -315,7 +318,7 @@ function AccountScreen() {
                                 Previous
                             </button>
 
-                            <span className="text-xs text-slate-500">
+                            <span className="text-xs text-pd-muted">
                                 Page {page} of {pages}
                             </span>
 
@@ -331,7 +334,7 @@ function AccountScreen() {
                     )}
                 </section>
 
-                <section className="rounded-[24px] bg-white p-5 shadow-sm">
+                <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                     <h3 className="mb-4 text-lg font-extrabold">
                         Account Settings
                     </h3>
@@ -339,8 +342,8 @@ function AccountScreen() {
                     <div className="flex items-center gap-3 border-b py-4">
                         <Mail size={20} className="text-[#087F5B]" />
                         <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold">Email Address</p>
-                            <p className="truncate text-xs text-slate-500">
+                            <p className="text-sm font-semibold">{t("account.email")}</p>
+                            <p className="truncate text-xs text-pd-muted">
                                 {user?.email}
                             </p>
                         </div>
@@ -349,8 +352,8 @@ function AccountScreen() {
                     <div className="flex items-center gap-3 border-b py-4">
                         <Star size={20} className="text-[#087F5B]" />
                         <div className="flex-1">
-                            <p className="text-sm font-semibold">My Ratings & Reviews</p>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-sm font-semibold">{t("account.myRatings")}</p>
+                            <p className="text-xs text-pd-muted">
                                 Available after ratings integration
                             </p>
                         </div>
@@ -362,12 +365,12 @@ function AccountScreen() {
                     >
                         <Settings2 size={20} className="text-[#087F5B]" />
                         <div className="flex-1">
-                            <p className="text-sm font-semibold">Personal Information</p>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-sm font-semibold">{t("account.personalInfo")}</p>
+                            <p className="text-xs text-pd-muted">
                                 Edit your name and account details
                             </p>
                         </div>
-                        <ChevronRight size={18} className="text-slate-400" />
+                        <ChevronRight size={18} className="text-pd-faint" />
                     </Link>
 
                     <Link
@@ -376,24 +379,25 @@ function AccountScreen() {
                     >
                         <Headphones size={20} className="text-[#087F5B]" />
                         <div className="flex-1">
-                            <p className="text-sm font-semibold">Help & Complaints</p>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-sm font-semibold">{t("account.helpComplaints")}</p>
+                            <p className="text-xs text-pd-muted">
                                 File a complaint or track an existing one
                             </p>
                         </div>
-                        <ChevronRight size={18} className="text-slate-400" />
+                        <ChevronRight size={18} className="text-pd-faint" />
                     </Link>
                 </section>
 
                 <ThemeSelector />
+                <LanguageSelector />
 
                 <button
                     type="button"
                     onClick={logout}
-                    className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border border-red-100 bg-white font-bold text-red-600"
+                    className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl border border-red-100 bg-pd-surface font-bold text-pd-danger"
                 >
                     <LogOut size={19} />
-                    Sign Out
+                    {t("account.signOut")}
                 </button>
             </div>
         </main>

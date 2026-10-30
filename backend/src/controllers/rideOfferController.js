@@ -9,6 +9,7 @@ const DriverWallet = require("../models/DriverWallet");
 const { publishEvent } = require("../services/socketService");
 const { sendPushToUser } = require("../services/pushService");
 const { paymentsConfigured } = require("../services/paymentsConfigService");
+const { canReceiveRideRequests } = require("../services/eligibilityService");
 
 const OPEN = ["REQUESTED", "SEARCHING", "BIDDING"];
 const OFFER_DURATION_MS = 5 * 60 * 1000;
@@ -44,9 +45,14 @@ async function submitOffer(req, res) {
             });
         }
 
+        // Approval is decided by eligibilityService, the single source
+        // of truth: legacy global APPROVED drivers derive RIDE
+        // eligibility, and a driver whose ONLY approval is the
+        // per-service RIDE record (global status still PENDING) is
+        // equally eligible. The old direct
+        // verificationStatus:"APPROVED" filter locked the latter out.
         const driver = await Driver.findOne({
             userId: req.user._id,
-            verificationStatus: "APPROVED",
             isOnline: true,
             isAvailable: true,
             lastLocationUpdate: {
@@ -54,7 +60,7 @@ async function submitOffer(req, res) {
             },
         });
 
-        if (!driver) {
+        if (!driver || !(await canReceiveRideRequests(driver))) {
             return res.status(403).json({
                 success: false,
                 message: "Approved online driver with fresh GPS required",

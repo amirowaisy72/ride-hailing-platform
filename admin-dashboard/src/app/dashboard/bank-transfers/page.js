@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, ShieldCheck } from "lucide-react";
 import AdminShell from "@/components/AdminShell";
+import { useAdminDialog } from "@/components/AdminDialog";
 import { authenticatedAdminRequest } from "@/lib/adminSession";
 
 const money = (amount) =>
     `PKR ${Number(amount ?? 0).toLocaleString("en-PK")}`;
 
 export default function BankTransfersPage() {
+    const { confirmDialog } = useAdminDialog();
     const [orders, setOrders] = useState([]);
     const [references, setReferences] = useState({});
     const [amounts, setAmounts] = useState({});
@@ -50,7 +52,7 @@ export default function BankTransfersPage() {
             return;
         }
 
-        const confirmed = window.confirm(
+        const confirmed = await confirmDialog(
             `Confirm karein ke bank statement mein PKR ${order.amount} ki payment verify ho chuki hai?`
         );
 

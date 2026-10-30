@@ -61,22 +61,22 @@ function VerifyOTPForm() {
     }
 
     return (
-        <main className="flex min-h-dvh items-center justify-center bg-[#F8FAF9] px-6">
-            <form onSubmit={verify} className="w-full max-w-md rounded-3xl bg-white p-7 shadow-sm">
+        <main className="flex min-h-dvh items-center justify-center bg-pd-bg px-6">
+            <form onSubmit={verify} className="w-full max-w-md rounded-3xl bg-pd-surface p-7 shadow-sm">
                 <div className="mb-6 flex items-center gap-2">
                     <img
                         src="/safar-icon.png"
                         alt="Safar logo"
                         className="h-15 w-15 rounded-2xl object-cover"
                     />
-                    <span className="text-2xl font-extrabold tracking-tight text-[#111827] dark:text-white">
+                    <span className="text-2xl font-extrabold tracking-tight text-pd-text dark:text-white">
                         Safar
                     </span>
                 </div>
                 <h1 className="text-3xl font-extrabold">
                     Verify Email
                 </h1>
-                <p className="mt-3 text-sm text-gray-500">
+                <p className="mt-3 text-sm text-pd-muted">
                     Enter the 6-digit code sent to {email}
                 </p>
 
@@ -91,8 +91,8 @@ function VerifyOTPForm() {
                     className="mt-7 h-16 w-full rounded-2xl border text-center text-2xl tracking-[0.3em] outline-none focus:border-[#087F5B]"
                 />
 
-                {error && <p role="alert" className="mt-4 text-sm text-red-600">{error}</p>}
-                {message && <p className="mt-4 text-sm text-green-700">{message}</p>}
+                {error && <p role="alert" className="mt-4 text-sm text-pd-danger">{error}</p>}
+                {message && <p className="mt-4 text-sm text-pd-success">{message}</p>}
 
                 <button disabled={loading || otp.length !== 6} className="mt-6 h-14 w-full rounded-2xl bg-[#087F5B] font-bold text-white disabled:opacity-50">
                     {loading ? "Verifying..." : "Verify Email"}

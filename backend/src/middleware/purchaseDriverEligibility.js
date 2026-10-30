@@ -15,7 +15,7 @@ const { checkAmountWithinCaps } = require("../services/purchaseOrderService");
 //     APPROVED status + enabled + approved/unexpired licence and
 //     vehicle-registration documents + an approved active vehicle.
 //     There is NO transport-mode bypass anywhere in this path;
-//   * fresh GPS (<= 120 s), same as parcels;
+//   * fresh GPS (<= 10 min), same as parcels;
 //   * when an order id is present: the order is still in BIDDING, the
 //     driver is within the configured radius of the DELIVERY location
 //     (matching never uses a store/pickup pin — none exists), and the
@@ -87,12 +87,24 @@ async function purchaseDriverEligibility(req, res, next) {
             !Array.isArray(coords) ||
             coords.length !== 2 ||
             !coords.every(Number.isFinite) ||
-            (coords[0] === 0 && coords[1] === 0) ||
-            !driver.lastLocationUpdate ||
-            Date.now() - new Date(driver.lastLocationUpdate).getTime() > 120000
+            (coords[0] === 0 && coords[1] === 0)
         ) {
             return res.status(403).json({
                 success: false,
+                message: "Fresh driver GPS location required",
+            });
+        }
+
+        // Freshness window: 10 minutes. A stale (or never-reported)
+        // fix is rejected with the machine-readable code GPS_STALE —
+        // the client matches on `code`, not the message text.
+        if (
+            !driver.lastLocationUpdate ||
+            Date.now() - new Date(driver.lastLocationUpdate).getTime() > 600000
+        ) {
+            return res.status(403).json({
+                success: false,
+                code: "GPS_STALE",
                 message: "Fresh driver GPS location required",
             });
         }
