@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 
 import AuthGuard from "@/components/AuthGuard";
-import MicButton from "@/components/MicButton";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import ServiceGuide from "@/components/guides/ServiceGuide";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
@@ -105,7 +104,8 @@ function BuyDeliverScreen() {
     const [error, setError] = useState("");
     const [notice, setNotice] = useState(null);
     const [busy, setBusy] = useState("");
-    const [chatOpen, setChatOpen] = useState(false);
+    // T-16/T-17: ?chat=open (chat alert / push tap) opens the chat directly.
+    const [chatOpen, setChatOpen] = useState(() => searchParams.get("chat") === "open");
 
     const [storeName, setStoreName] = useState("");
     const [storeAddress, setStoreAddress] = useState("");
@@ -381,9 +381,7 @@ function BuyDeliverScreen() {
                                     </p>
                                     <div className="mt-3 space-y-2">
                                         <input
-                                            type="number"
-                                            min="1"
-                                            step="1"
+                                            type="text"
                                             inputMode="numeric"
                                             value={estimateAmount}
                                             onChange={(e) => setEstimateAmount(e.target.value)}
@@ -397,11 +395,6 @@ function BuyDeliverScreen() {
                                                 onChange={(e) => setEstimateNote(e.target.value)}
                                                 placeholder={t("dBd.estimateNote")}
                                                 className="h-12 min-w-0 flex-1 rounded-xl border border-pd-line bg-pd-surface-2 px-4 text-sm font-semibold text-pd-text"
-                                            />
-                                            <MicButton
-                                                onAppend={(spoken) =>
-                                                    setEstimateNote((prev) => (prev.trim() ? `${prev.replace(/\s+$/, "")} ${spoken}` : spoken))
-                                                }
                                             />
                                         </div>
                                         <button
@@ -449,9 +442,7 @@ function BuyDeliverScreen() {
                                     </p>
                                     <div className="mt-3 space-y-2">
                                         <input
-                                            type="number"
-                                            min="1"
-                                            step="1"
+                                            type="text"
                                             inputMode="numeric"
                                             value={actualCost}
                                             onChange={(e) => setActualCost(e.target.value)}
@@ -630,9 +621,7 @@ function BuyDeliverScreen() {
                                             {t("dBd.cashReceived")}
                                         </span>
                                         <input
-                                            type="number"
-                                            min="0"
-                                            step="1"
+                                            type="text"
                                             inputMode="numeric"
                                             value={amountReceived}
                                             onChange={(e) => setAmountReceived(e.target.value)}
@@ -916,9 +905,7 @@ function BuyDeliverScreen() {
                                     </p>
                                     <div className="mt-2 flex gap-2">
                                         <input
-                                            type="number"
-                                            min="1"
-                                            step="1"
+                                            type="text"
                                             inputMode="numeric"
                                             value={estimateAmount}
                                             onChange={(e) => setEstimateAmount(e.target.value)}
@@ -1140,11 +1127,6 @@ function SubstitutionForm({ value, setValue, busy, onSubmit }) {
                     onChange={(e) => setValue(e.target.value)}
                     placeholder={t("dBd.substitutePlaceholder")}
                     className="h-11 min-w-0 flex-1 rounded-xl border border-pd-line bg-pd-surface-2 px-3 text-sm font-semibold text-pd-text"
-                />
-                <MicButton
-                    onAppend={(spoken) =>
-                        setValue((prev) => (prev.trim() ? `${prev.replace(/\s+$/, "")} ${spoken}` : spoken))
-                    }
                 />
                 <button
                     type="button"

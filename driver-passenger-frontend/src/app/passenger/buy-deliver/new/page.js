@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
 import MobileBottomNav from "@/components/MobileBottomNav";
-import MicButton from "@/components/MicButton";
 import ServiceGuide from "@/components/guides/ServiceGuide";
 import { recordFlowCompletion } from "@/lib/guides/guideStore";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
@@ -447,19 +446,6 @@ function BuyDeliverForm() {
                                 aria-label={t("bdNew.shoppingList")}
                             />
                             <p className="text-xs text-pd-faint">{t("bdNew.listHint", { count: itemsText.length })}</p>
-                            {/* Voice list entry (Phase 3, A11a): speak the
-                                shopping list instead of typing it. */}
-                            <div className="flex items-center gap-3 rounded-2xl bg-pd-surface-2 px-4 py-3">
-                                <MicButton
-                                    onAppend={(spoken) =>
-                                        setItemsText((prev) => (prev.trim() ? `${prev.replace(/\s+$/, "")}\n${spoken}` : spoken))
-                                    }
-                                />
-                                <p className="text-xs leading-relaxed text-pd-muted">
-                                    <span className="font-bold text-pd-text-2">{t("mic.speak")}.</span>{" "}
-                                    {t("bdNew.voiceHint")}
-                                </p>
-                            </div>
                         </section>
 
                         {renderMoreOptions()}
@@ -541,11 +527,6 @@ function BuyDeliverForm() {
                                         placeholder={t("bdNew.addressPlaceholder")}
                                         className={`${inputCls} resize-none`}
                                     />
-                                    <MicButton
-                                        onAppend={(spoken) =>
-                                            setManualAddress((prev) => (prev.trim() ? `${prev.replace(/\s+$/, "")} ${spoken}` : spoken))
-                                        }
-                                    />
                                 </div>
                                 {delivery && (
                                     <p className="mt-1.5 text-xs font-semibold text-[#087F5B]">
@@ -575,11 +556,6 @@ function BuyDeliverForm() {
                                         maxLength={500}
                                         placeholder={t("bdNew.notesPlaceholder")}
                                         className={`${inputCls} resize-none`}
-                                    />
-                                    <MicButton
-                                        onAppend={(spoken) =>
-                                            setDeliveryNotes((prev) => (prev.trim() ? `${prev.replace(/\s+$/, "")} ${spoken}` : spoken))
-                                        }
                                     />
                                 </div>
                             </div>

@@ -262,7 +262,7 @@ const searchRentalVehicles = async (req, res) => {
             // Launch gate: while Self-Drive is disabled platform-wide,
             // searching for it returns nothing rather than teasing
             // listings nobody may book.
-            if (mode === "SELF_DRIVE" && settings?.rentalsSelfDriveEnabled !== true) {
+            if (mode === "SELF_DRIVE" && settings?.rentalsSelfDriveEnabled === false) {
                 return res.json({ success: true, vehicles: [] });
             }
 
@@ -323,6 +323,23 @@ const searchRentalVehicles = async (req, res) => {
         // partner or held by another booking for the window.
         const start = startAt ? new Date(startAt) : null;
         const end = endAt ? new Date(endAt) : null;
+
+        // T-18: an inverted or unparseable window used to be silently
+        // ignored, so a search with the return before the pickup
+        // returned unfiltered results (or, combined with other
+        // filters, baffling ones). Reject it like booking creation
+        // does — the client now validates first and shows the error.
+        if (
+            (start && !Number.isFinite(start.getTime())) ||
+            (end && !Number.isFinite(end.getTime())) ||
+            (start && end && end <= start)
+        ) {
+            return res.status(400).json({
+                success: false,
+                code: "INVALID_WINDOW",
+                message: "Return time must be after the pickup time",
+            });
+        }
 
         if (
             start && end &&
@@ -387,7 +404,7 @@ const getRentalVehicleDetails = async (req, res) => {
         return res.json({
             success: true,
             vehicle: serializeRentalVehicle(vehicle),
-            selfDriveEnabled: settings?.rentalsSelfDriveEnabled === true,
+            selfDriveEnabled: settings?.rentalsSelfDriveEnabled !== false,
         });
     } catch {
         return res.status(400).json({
@@ -465,7 +482,7 @@ const createRentalBooking = async (req, res) => {
         const modeCheck = evaluateModeEligibility({
             vehicle,
             mode,
-            selfDriveEnabled: settings?.rentalsSelfDriveEnabled === true,
+            selfDriveEnabled: settings?.rentalsSelfDriveEnabled !== false,
             renterLicence,
         });
 

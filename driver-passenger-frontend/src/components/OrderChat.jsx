@@ -25,7 +25,6 @@ import {
     uploadOrderAudio,
     uploadOrderImage,
 } from "@/lib/orderChatService";
-import MicButton from "@/components/MicButton";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import StructuredEventCard from "@/components/order/StructuredEventCard";
 
@@ -699,12 +698,6 @@ setError(t("chat.notAvailableYet"));
                             placeholder={closed ? t("chat.closedPlaceholder") : t("chat.writeMessage")}
                             className="min-h-12 min-w-0 flex-1 rounded-2xl border border-pd-line bg-pd-surface-2 px-4 text-base text-pd-text outline-none placeholder:text-pd-faint focus:border-[#087F5B] focus:ring-2 focus:ring-[#087F5B]/30 disabled:opacity-60"
                             aria-label="Message"
-                        />
-                        <MicButton
-                            disabled={closed || !conversationId}
-                            onAppend={(spoken) =>
-                                setText((prev) => (prev.trim() ? `${prev.replace(/\s+$/, "")} ${spoken}` : spoken))
-                            }
                         />
                         <button
                             type="button"

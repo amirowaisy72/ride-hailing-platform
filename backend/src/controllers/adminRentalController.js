@@ -154,7 +154,7 @@ const getRentalSettings = async (req, res) => {
                 settings: {
                     rentalsEnabled: true,
                     rentalBookingFeePercent: 5,
-                    rentalsSelfDriveEnabled: false,
+                    rentalsSelfDriveEnabled: true,
                     rentalPaymentDeadlineHours: 24,
                 },
             });
@@ -165,7 +165,7 @@ const getRentalSettings = async (req, res) => {
             settings: {
                 rentalsEnabled: settings.rentalsEnabled !== false,
                 rentalBookingFeePercent: settings.rentalBookingFeePercent ?? 5,
-                rentalsSelfDriveEnabled: settings.rentalsSelfDriveEnabled === true,
+                rentalsSelfDriveEnabled: settings.rentalsSelfDriveEnabled !== false,
                 rentalPaymentDeadlineHours: settings.rentalPaymentDeadlineHours ?? 24,
                 bankName: settings.bankName || "",
                 bankAccountTitle: settings.bankAccountTitle || "",

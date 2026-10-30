@@ -98,6 +98,9 @@ function OrderDetail() {
     const [busy, setBusy] = useState("");
     const [now, setNow] = useState(() => Date.now());
     const [chatPartner, setChatPartner] = useState(null); // { partnerUserId, label }
+    const [deepChatId, setDeepChatId] = useState(() =>
+        searchParams.get("chat") === "open" ? searchParams.get("conversationId") || "" : ""
+    );
     const [otp, setOtp] = useState("");
     const [rating, setRating] = useState(0);
     const [ratingComment, setRatingComment] = useState("");
@@ -370,13 +373,13 @@ function OrderDetail() {
 
                 {/* Approval */}
                 {order.status === "AWAITING_APPROVAL" && (
-                    <section className="space-y-3 rounded-[24px] border-2 border-orange-200 bg-orange-50 p-4 shadow-sm" aria-labelledby="approval-title">
-                        <h2 id="approval-title" className="text-[15px] font-extrabold text-orange-900">{t("bdDetails.approveTitle")}</h2>
+                    <section className="space-y-3 rounded-[24px] border-2 border-pd-warning bg-pd-warning-soft p-4 shadow-sm" aria-labelledby="approval-title">
+                        <h2 id="approval-title" className="text-[15px] font-extrabold text-pd-warning">{t("bdDetails.approveTitle")}</h2>
                         <div className="space-y-1.5 rounded-2xl bg-pd-surface p-3.5 text-sm font-semibold">
                             <p className="flex justify-between"><span className="text-pd-muted">{t("bdDetails.partnerEstimate")}</span><span className="font-extrabold">{formatPKR(order.estimatedCost)}</span></p>
                             <p className="flex justify-between"><span className="text-pd-muted">{t("bdDetails.yourBudget")}</span><span>{formatPKR(order.estimatedBudget)}</span></p>
                             {order.estimatedCost > order.estimatedBudget && (
-                                <p className="pt-1 text-xs font-bold text-orange-700">
+                                <p className="pt-1 text-xs font-bold text-pd-warning">
                                     {t("bdDetails.aboveBudget", { amount: formatPKR(order.estimatedCost - order.estimatedBudget) })}
                                 </p>
                             )}
@@ -651,6 +654,22 @@ function OrderDetail() {
                     participantLabel={chatPartner.label}
                     directOpen
                     onClose={() => setChatPartner(null)}
+                />
+            )}
+
+            {/* T-16/T-17: deep link from a chat alert / push tap
+                (?chat=open&conversationId=…) opens that conversation
+                directly, without needing the partner card. */}
+            {deepChatId && (
+                <OrderChat
+                    orderType="PURCHASE"
+                    orderId={id}
+                    conversationId={deepChatId}
+                    token={token}
+                    userId={user?._id || user?.id}
+                    participantLabel={t("bdDetails.chat")}
+                    directOpen
+                    onClose={() => setDeepChatId("")}
                 />
             )}
 

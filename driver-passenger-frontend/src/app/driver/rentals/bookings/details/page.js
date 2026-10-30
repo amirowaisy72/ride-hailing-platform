@@ -83,7 +83,8 @@ function BookingScreen() {
     const [error, setError] = useState("");
     const [notice, setNotice] = useState(null);
     const [busy, setBusy] = useState("");
-    const [chatOpen, setChatOpen] = useState(false);
+    // T-16/T-17: ?chat=open (chat alert / push tap) opens the chat directly.
+    const [chatOpen, setChatOpen] = useState(() => searchParams.get("chat") === "open");
 
     const [rejectReason, setRejectReason] = useState("");
     const [rejectOpen, setRejectOpen] = useState(false);
@@ -635,9 +636,7 @@ function BookingScreen() {
                                             Other dues (PKR) — damage, fines, cleaning
                                         </span>
                                         <input
-                                            type="number"
-                                            min="0"
-                                            step="1"
+                                            type="text"
                                             inputMode="numeric"
                                             value={returnForm.otherDues}
                                             onChange={(e) =>
@@ -816,10 +815,7 @@ function InspectionForm({ form, setForm, uploading, onUpload }) {
                         <Fuel size={12} /> Fuel level %
                     </span>
                     <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="1"
+                        type="text"
                         inputMode="numeric"
                         value={form.fuelLevelPercent}
                         onChange={(e) => set("fuelLevelPercent", e.target.value)}
@@ -832,9 +828,7 @@ function InspectionForm({ form, setForm, uploading, onUpload }) {
                         <Gauge size={12} /> Odometer (km)
                     </span>
                     <input
-                        type="number"
-                        min="0"
-                        step="1"
+                        type="text"
                         inputMode="numeric"
                         value={form.odometerKm}
                         onChange={(e) => set("odometerKm", e.target.value)}

@@ -100,7 +100,7 @@ export default function DriverRequestOverlay({
                         onClick={() => onPriceChange(String(Math.max(1, current - step)))}><Minus size={18} /></button>
                     <label>
                         <small>Your fare · PKR</small>
-                        <input type="number" inputMode="numeric" min="1" step="1"
+                        <input type="text" inputMode="numeric"
                             value={price ?? ride.requestedPrice ?? ""}
                             onChange={(e) => onPriceChange(e.target.value)}
                             aria-label="Your offer in PKR" />

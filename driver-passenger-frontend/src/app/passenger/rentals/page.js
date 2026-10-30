@@ -46,12 +46,23 @@ function priceLine(vehicle) {
     return urdu ? "قیمت پوچھنے پر" : "Price on request";
 }
 
+// Same local-input formatting as the booking page (vehicle/page.js).
+function toLocalInput(date) {
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 function RentalsDashboard() {
     const { user, token } = useAuth();
     const { t } = useLanguage();
     const [mode, setMode] = useState("");
-    const [startAt, setStartAt] = useState("");
-    const [endAt, setEndAt] = useState("");
+    // T-18: the search dates used to start EMPTY and render as bare
+    // half-width native controls — their segments clipped to fragments
+    // like "11/2026" and an inverted pickup/return pair was silently
+    // sent. They now default like the booking page (pickup in 2h,
+    // return 24h later) and are validated before searching.
+    const [startAt, setStartAt] = useState(() => toLocalInput(new Date(Date.now() + 2 * 60 * 60 * 1000)));
+    const [endAt, setEndAt] = useState(() => toLocalInput(new Date(Date.now() + 26 * 60 * 60 * 1000)));
     const [minSeats, setMinSeats] = useState("");
     const [transmission, setTransmission] = useState("");
     const [maxDailyPrice, setMaxDailyPrice] = useState("");
@@ -79,6 +90,16 @@ function RentalsDashboard() {
 
     async function runSearch() {
         if (searching) return;
+        // T-18: never send an inverted or unparseable window — the
+        // backend ignored it silently and the results looked random.
+        if (startAt && endAt) {
+            const start = new Date(startAt);
+            const end = new Date(endAt);
+            if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start) {
+                setError(t("rentals.errReturnAfter"));
+                return;
+            }
+        }
         setSearching(true);
         setError("");
         try {
@@ -183,15 +204,20 @@ function RentalsDashboard() {
                             </button>
                         ))}
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    {/* T-18: full-width stacked date fields with dir=ltr —
+                        the half-width pair clipped the native segments
+                        into garbled fragments and flipped in RTL. */}
+                    <div className="space-y-3">
                         <div>
                             <label htmlFor="r-start" className="mb-1.5 block text-xs font-bold text-pd-muted">{t("rentals.pickupFrom")}</label>
-                            <input id="r-start" type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={inputCls} />
+                            <input id="r-start" type="datetime-local" dir="ltr" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={inputCls} />
                         </div>
                         <div>
                             <label htmlFor="r-end" className="mb-1.5 block text-xs font-bold text-pd-muted">{t("rentals.returnBy")}</label>
-                            <input id="r-end" type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} className={inputCls} />
+                            <input id="r-end" type="datetime-local" dir="ltr" min={startAt || undefined} value={endAt} onChange={(e) => setEndAt(e.target.value)} className={inputCls} />
                         </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label htmlFor="r-seats" className="mb-1.5 block text-xs font-bold text-pd-muted">{t("rentals.minSeats")}</label>
                             <select id="r-seats" value={minSeats} onChange={(e) => setMinSeats(e.target.value)} className={inputCls}>
@@ -212,9 +238,8 @@ function RentalsDashboard() {
                         <label htmlFor="r-max" className="mb-1.5 block text-xs font-bold text-pd-muted">{t("rentals.maxDailyPrice")}</label>
                         <input
                             id="r-max"
-                            type="number"
+                            type="text"
                             inputMode="numeric"
-                            min="1"
                             value={maxDailyPrice}
                             onChange={(e) => setMaxDailyPrice(e.target.value.replace(/[^\d]/g, ""))}
                             placeholder="e.g. 8000"

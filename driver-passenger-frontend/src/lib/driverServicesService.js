@@ -38,3 +38,16 @@ export const applyForRentalPartner = (payload, token) =>
         token,
         body: JSON.stringify(payload || {}),
     });
+
+// T-20: partner-side chauffeur declaration. Without a licence number
+// on file an admin can never approve the chauffeur (the approval
+// endpoint validates it), so this form is the link that makes the
+// whole With-Driver verification flow usable. PATCH
+// /rental-partners/me/chauffeur — body: { chauffeurName,
+// chauffeurLicenceNumber, chauffeurLicenceExpiry }.
+export const updateMyChauffeurDetails = (payload, token) =>
+    apiRequest("/rental-partners/me/chauffeur", {
+        method: "PATCH",
+        token,
+        body: JSON.stringify(payload || {}),
+    });

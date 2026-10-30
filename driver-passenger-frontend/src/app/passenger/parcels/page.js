@@ -163,6 +163,10 @@ function SectionTitle({ id, children, count }) {
 }
 
 function ActiveCard({ order }) {
+    // T-10: this component used t() without ever calling useLanguage —
+    // a ReferenceError crashed /passenger/parcels for any passenger
+    // with an active parcel.
+    const { t } = useLanguage();
     const meta = statusMeta(order.status);
     return (
         <Link

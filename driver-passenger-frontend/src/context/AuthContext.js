@@ -16,6 +16,7 @@ import {
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { registerPushNotifications } from "@/lib/pushNotifications";
+import { chatDeepLink } from "@/lib/chatLinks";
 import {
     saveRefreshToken,
     getRefreshToken,
@@ -199,6 +200,25 @@ export function AuthProvider({ children }) {
                 console.log("FCM device registered with backend");
             } catch (error) {
                 console.error("FCM device save failed:", error);
+            }
+        }, (data) => {
+            // T-17: push tap routing. Chat pushes (sent only when the
+            // recipient was offline) open the exact conversation;
+            // other types keep their existing behaviour (no-op here).
+            if (!data || typeof data !== "object") return;
+            if (data.type === "ORDER_CHAT" && data.orderId) {
+                const onDriverSide =
+                    typeof window !== "undefined" &&
+                    window.location.pathname.startsWith("/driver");
+                const role = onDriverSide ? "DRIVER" : "PASSENGER";
+                router.push(
+                    chatDeepLink(role, data.orderType, data.orderId, data.conversationId)
+                );
+            } else if (data.type === "RIDE_CHAT") {
+                const onDriverSide =
+                    typeof window !== "undefined" &&
+                    window.location.pathname.startsWith("/driver");
+                router.push(onDriverSide ? "/driver" : "/passenger");
             }
         }).catch((error) => {
             console.error("Push registration:", error.message);

@@ -82,7 +82,8 @@ function BookingDetail() {
     const [notice, setNotice] = useState("");
     const [busy, setBusy] = useState("");
     const [now, setNow] = useState(() => Date.now());
-    const [chatOpen, setChatOpen] = useState(false);
+    // T-16/T-17: ?chat=open (chat alert / push tap) opens the chat directly.
+    const [chatOpen, setChatOpen] = useState(() => searchParams.get("chat") === "open");
     const [otp, setOtp] = useState("");
 
     const [feeReference, setFeeReference] = useState("");

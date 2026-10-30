@@ -2,7 +2,9 @@ const mongoose = require("mongoose");
 const Ride = require("../models/Ride");
 const Driver = require("../models/Driver");
 const RideMessage = require("../models/RideMessage");
-const { publishEvent } = require("../services/socketService");
+const User = require("../models/User");
+const { publishEvent, isUserConnected } = require("../services/socketService");
+const { sendPushToUser } = require("../services/pushService");
 
 const ALLOWED = ["DRIVER_SELECTED", "DRIVER_EN_ROUTE", "DRIVER_ARRIVED", "TRIP_STARTED"];
 
@@ -39,6 +41,26 @@ async function sendMessage(req, res) {
         const payload = { rideId: String(context.ride._id), message: message.toObject() };
         publishEvent("ride:chat:new", `passenger:${context.ride.passengerId}`, payload);
         publishEvent("ride:chat:new", `driver:${context.driver.userId}`, payload);
+        // T-17: ride chat previously sent NO push at all. When the
+        // recipient is offline / the app is closed, send one with the
+        // sender + ride context; the client tap opens the ride home
+        // where this chat lives. Online recipients are not pushed
+        // (socket + in-app alert already reached them).
+        if (!isUserConnected(context.recipientId)) {
+            const sender = await User.findById(req.user._id)
+                .select("firstName lastName")
+                .lean()
+                .catch(() => null);
+            const senderName = sender
+                ? [sender.firstName, sender.lastName].filter(Boolean).join(" ").trim() || "Safar user"
+                : "Safar user";
+            void sendPushToUser(context.recipientId, senderName, body.slice(0, 100), {
+                type: "RIDE_CHAT",
+                rideId: String(context.ride._id),
+                senderId: String(req.user._id),
+                senderName,
+            });
+        }
         return res.status(201).json({ success: true, message });
     } catch (error) { console.error("Send ride chat", error); return res.status(500).json({ success: false, message: "Message failed" }); }
 }

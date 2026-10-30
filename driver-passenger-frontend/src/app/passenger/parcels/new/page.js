@@ -8,7 +8,6 @@ import {
     ArrowLeft, Check, ChevronRight, Crosshair, LocateFixed, MapPin, Package, Search, ShoppingBag, X,
 } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
-import MicButton from "@/components/MicButton";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import { apiRequest } from "@/lib/api";
@@ -504,12 +503,6 @@ function ParcelBookingForm() {
                                     className="pd-input pl-10"
                                 />
                             </label>
-                            <MicButton
-                                onAppend={(spoken) => {
-                                    const current = searchField === "pickup" ? pickupQuery : destinationQuery;
-                                    onQueryChange(searchField, current.trim() ? `${current.replace(/\s+$/, "")} ${spoken}` : spoken);
-                                }}
-                            />
                             </div>
                             <div className="mt-2 flex flex-wrap gap-2">
                                 {searchField === "pickup" && (
@@ -675,7 +668,7 @@ function ParcelBookingForm() {
                                     <input type="number" inputMode="decimal" min="0.01" step="0.01" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} className="pd-input" aria-invalid={Boolean(showErr("weightKg"))} />
                                 </Field>
                                 <Field label={t("parcels.quantity")} error={showErr("quantity")}>
-                                    <input type="number" inputMode="numeric" min="1" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="pd-input" aria-invalid={Boolean(showErr("quantity"))} />
+                                    <input type="text" inputMode="numeric" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="pd-input" aria-invalid={Boolean(showErr("quantity"))} />
                                 </Field>
                             </div>
                             <Field label={t("parcels.descriptionOptional")}>
@@ -712,10 +705,8 @@ function ParcelBookingForm() {
                                 <div className="relative">
                                     <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-pd-muted">PKR</span>
                                     <input
-                                        type="number"
+                                        type="text"
                                         inputMode="numeric"
-                                        min="1"
-                                        step="1"
                                         value={requestedPrice}
                                         onChange={(e) => setRequestedPrice(e.target.value.replace(/[^\d]/g, ""))}
                                         placeholder="0"
@@ -745,7 +736,6 @@ function ParcelBookingForm() {
                             <Field label={t("parcels.instructionsOptional")}>
                                 <div className="flex items-start gap-2">
                                     <textarea rows={2} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder={t("parcels.instructionsPlaceholder")} maxLength={500} className="pd-input min-w-0 flex-1 resize-none" />
-                                    <MicButton onAppend={(spoken) => setInstructions((prev) => (prev.trim() ? `${prev.replace(/\s+$/, "")} ${spoken}` : spoken))} />
                                 </div>
                             </Field>
                         </Card>

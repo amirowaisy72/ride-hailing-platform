@@ -372,10 +372,8 @@ function EarningsScreen() {
                             <label className="block text-sm font-semibold">
                                 Amount (PKR)
                                 <input
-                                    type="number"
-                                    min="100"
-                                    max="1000000"
-                                    step="1"
+                                    type="text"
+                                    inputMode="numeric"
                                     required
                                     value={topUpAmount}
                                     onChange={(e) => setTopUpAmount(e.target.value)}

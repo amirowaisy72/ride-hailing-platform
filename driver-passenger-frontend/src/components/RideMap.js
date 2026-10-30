@@ -37,7 +37,8 @@ const MAP_STYLES = `
 .rx-map-radar{display:none;position:absolute;z-index:1;left:50%;top:50%;width:220px;height:220px;margin:-110px 0 0 -110px;border-radius:50%;background:radial-gradient(circle,rgba(8,127,91,.45) 0%,rgba(8,127,91,.18) 55%,rgba(8,127,91,0) 70%);border:2px solid rgba(8,127,91,.45);pointer-events:none;animation:rx-map-radar 2.8s cubic-bezier(0,0,.2,1) infinite}
 .rx-map-searching .rx-map-radar{display:block}
 .rx-map-radar-delay{animation-delay:1.4s}
-.rx-map-dest{position:relative;width:35px;height:35px;border-radius:50%;background:${MARKER_SLATE};border:3.5px solid #fff;filter:drop-shadow(0 7px 11px rgba(9,24,17,.5));display:grid;place-items:center}
+.rx-map-dest{position:relative;width:35px;height:39px}
+.rx-map-dest-pin{position:absolute;left:0;top:0;width:35px;height:35px;border-radius:50%;background:${MARKER_SLATE};border:3.5px solid #fff;filter:drop-shadow(0 7px 11px rgba(9,24,17,.5));display:grid;place-items:center}
 .rx-map-dest svg{display:block}
 .rx-map-stop{width:28px;height:28px;border-radius:50%;background:#fff;border:3px solid ${DARK};color:${DARK};font:800 12px/1 system-ui,sans-serif;display:grid;place-items:center;box-shadow:0 3px 10px rgba(17,17,17,.25)}
 .rx-map-driver{position:relative;width:50px;height:50px}
@@ -165,7 +166,11 @@ function createDestinationElement() {
     const element = document.createElement("div");
     element.className = "rx-map-dest";
     element.setAttribute("aria-label", "Destination");
-    element.innerHTML = `<span class="rx-map-pin-tail rx-map-pin-tail--slate"></span>${flagSvg(MARKER_WHITE, 18)}`;
+    // T-4: the wrapper is exactly as tall as the pin plus its tail tip
+    // (35px pin, tail tip 4px below the pin's bottom edge = 39px), and
+    // the marker is created with anchor "bottom" — so the flag's tip
+    // lands precisely on the coordinate, not ~a pin-height away.
+    element.innerHTML = `<span class="rx-map-dest-pin"><span class="rx-map-pin-tail rx-map-pin-tail--slate"></span>${flagSvg(MARKER_WHITE, 18)}</span>`;
     return element;
 }
 
@@ -279,6 +284,9 @@ export default function RideMap({
     const clickRef = useRef(onMapClick);
     const sheetRatioRef = useRef(sheetRatio);
     const routeBoundsRef = useRef(null);
+    // T-4: last coordinate of the drawn route geometry; the destination
+    // flag snaps to it so it sits exactly on the polyline's end.
+    const routeEndRef = useRef(null);
     const framedKeyRef = useRef("");
     const locateSeenRef = useRef(locateRequest);
     const driverAnimRef = useRef(0);
@@ -866,7 +874,12 @@ export default function RideMap({
         const pickupPoint = getPoint(userLocation);
         // During pickup tracking the destination prop is the pickup itself; the pickup marker already covers it.
         if (end && !samePoint(end, pickupPoint)) {
-            destinationRef.current = new maplibregl.Marker({ element: createDestinationElement() }).setLngLat(end).addTo(map);
+            // Use the snapped route end only when it belongs to THIS
+            // destination; a stale snap from a previous destination
+            // must never pull the flag away from the new one.
+            const snap = routeEndRef.current;
+            const markerPoint = snap && samePoint(snap.forEnd, end) ? snap.coord : end;
+            destinationRef.current = new maplibregl.Marker({ element: createDestinationElement(), anchor: "bottom" }).setLngLat(markerPoint).addTo(map);
         }
         (Array.isArray(stops) ? stops : []).forEach((stop, index) => {
             const point = getPoint(stop);
@@ -929,6 +942,9 @@ export default function RideMap({
             if (map.getLayer(ROUTE_CASING_LAYER)) map.removeLayer(ROUTE_CASING_LAYER);
             if (map.getSource(ROUTE_SOURCE)) map.removeSource(ROUTE_SOURCE);
             routeBoundsRef.current = null;
+            routeEndRef.current = null;
+            const rawEnd = getPoint(destination);
+            if (rawEnd) destinationRef.current?.setLngLat(rawEnd);
             setRouteInfo(null);
         }
         async function drawRoute() {
@@ -947,6 +963,17 @@ export default function RideMap({
                 if (!route?.geometry?.coordinates?.length) throw new Error("No road route found");
                 if (abandoned) return;
                 const data = geoLine(route.geometry.coordinates);
+                // T-4: snap the destination flag onto the polyline's
+                // final coordinate (the road-snapped end of the route),
+                // not the raw destination point beside it.
+                const lastCoord = route.geometry.coordinates[route.geometry.coordinates.length - 1];
+                if (Array.isArray(lastCoord)) {
+                    routeEndRef.current = {
+                        coord: lastCoord,
+                        forEnd: targets[targets.length - 1],
+                    };
+                    destinationRef.current?.setLngLat(lastCoord);
+                }
                 if (map.getSource(ROUTE_SOURCE)) map.getSource(ROUTE_SOURCE).setData(data);
                 else {
                     map.addSource(ROUTE_SOURCE, { type: "geojson", data });
