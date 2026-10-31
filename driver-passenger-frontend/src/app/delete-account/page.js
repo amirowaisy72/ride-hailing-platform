@@ -20,9 +20,10 @@ export default function DeleteAccountPage() {
                 </h1>
 
                 <p className="mb-5">
-                    Safar allows passengers and drivers to request
-                    permanent deletion of their accounts and
-                    associated personal data.
+                    Safar, developed and operated by NextGenZ
+                    Solution Official, allows passengers and drivers
+                    to request permanent deletion of their accounts
+                    and associated personal data.
                 </p>
 
                 <h2 className="mb-3 text-xl font-bold">
@@ -63,6 +64,11 @@ export default function DeleteAccountPage() {
 
                 <p className="mt-6 text-sm text-pd-text-2">
                     Support Email: {email}
+                </p>
+                <p className="mt-2 text-sm text-pd-text-2">
+                    Safar is operated by NextGenZ Solution Official.
+                    For questions about account deletion, contact:
+                    contact@nextgenzsolution.com
                 </p>
             </div>
         </main>
