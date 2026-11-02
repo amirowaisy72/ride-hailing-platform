@@ -109,9 +109,14 @@ export default function DriversPage() {
     }
 
     const visible = drivers.filter((driver) => {
+        // New filter: PENDING status AND at least one submitted document
+        // (any document status counts as submitted, not only approved).
         const matchesStatus =
             filter === "ALL" ||
-            driver.verificationStatus === filter;
+            (filter === "PENDING_WITH_DOCS"
+                ? driver.verificationStatus === "PENDING" &&
+                  (driver.documentCount || 0) > 0
+                : driver.verificationStatus === filter);
 
         const query = search.trim().toLowerCase();
 
@@ -126,6 +131,12 @@ export default function DriversPage() {
 
     const countStatus = (status) =>
         drivers.filter((d) => d.verificationStatus === status).length;
+
+    const countPendingWithDocs = drivers.filter(
+        (d) =>
+            d.verificationStatus === "PENDING" &&
+            (d.documentCount || 0) > 0
+    ).length;
 
     return (
         <AdminShell title="Driver Management">
@@ -220,6 +231,16 @@ export default function DriversPage() {
                                     {status === "ALL" ? "All Drivers" : status}
                                 </button>
                             ))}
+                            <button
+                                type="button"
+                                onClick={() => setFilter("PENDING_WITH_DOCS")}
+                                className={`rounded-xl px-4 py-2 text-xs font-bold ${filter === "PENDING_WITH_DOCS"
+                                    ? "bg-[#087F5B] text-white"
+                                    : "bg-slate-100 text-slate-600"
+                                    }`}
+                            >
+                                {`PENDING + DOCS (${countPendingWithDocs})`}
+                            </button>
                         </div>
                     </div>
 
@@ -280,6 +301,11 @@ export default function DriversPage() {
                                             >
                                                 {status}
                                             </span>
+                                            {typeof driver.documentCount === "number" && (
+                                                <span className="ml-2 text-xs font-bold text-slate-500">
+                                                    {driver.documentCount} document(s)
+                                                </span>
+                                            )}
 
                                             {/* Phase 7 — per-service records at a glance
                                                 (stored statuses; the Services panel shows

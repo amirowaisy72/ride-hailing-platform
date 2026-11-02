@@ -28,9 +28,22 @@ const getAllDrivers = async (req, res) => {
             .sort({ createdAt: -1 })
             .lean();
 
+        // ADDITIVE ONLY: one new field per driver, so the dashboard can
+        // filter "pending drivers who have submitted documents" without
+        // extra per-driver requests. No existing field is changed.
+        const docCounts = await DriverDocument.aggregate([
+            { $group: { _id: "$driverId", count: { $sum: 1 } } },
+        ]);
+        const counts = new Map(
+            docCounts.map((item) => [String(item._id), item.count])
+        );
+
         return res.json({
             success: true,
-            drivers,
+            drivers: drivers.map((driver) => ({
+                ...driver,
+                documentCount: counts.get(String(driver._id)) || 0,
+            })),
         });
     } catch (error) {
         console.error("Driver listing error:", error.message);
