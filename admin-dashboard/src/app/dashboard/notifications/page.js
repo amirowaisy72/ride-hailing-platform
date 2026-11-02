@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Bell, Search, Send, UserRound } from "lucide-react";
 import AdminShell from "@/components/AdminShell";
 import { authenticatedAdminRequest } from "@/lib/adminSession";
@@ -15,6 +15,105 @@ export default function CustomNotificationsPage() {
     const [sending, setSending] = useState(false);
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
+
+    // Bulk send state (new section; the single-user section above is untouched).
+    const [bulkAudience, setBulkAudience] = useState("ALL");
+    const [bulkLastHours, setBulkLastHours] = useState("");
+    const [bulkDocuments, setBulkDocuments] = useState("ALL");
+    const [bulkOnlyNotNotified, setBulkOnlyNotNotified] = useState(false);
+    const [bulkTitle, setBulkTitle] = useState("");
+    const [bulkBody, setBulkBody] = useState("");
+    const [bulkPreview, setBulkPreview] = useState(null);
+    const [bulkPreviewing, setBulkPreviewing] = useState(false);
+    const [bulkSending, setBulkSending] = useState(false);
+    const [bulkError, setBulkError] = useState("");
+    const [bulkMessage, setBulkMessage] = useState("");
+    const [bulkHistory, setBulkHistory] = useState([]);
+
+    function bulkFilters() {
+        return {
+            audience: bulkAudience,
+            lastHours: bulkLastHours === "" ? null : Number(bulkLastHours),
+            driverDocuments: bulkDocuments,
+            onlyNotBulkNotified: bulkOnlyNotNotified,
+        };
+    }
+
+    async function loadBulkHistory() {
+        try {
+            const result = await authenticatedAdminRequest(
+                "/admin/notifications/bulk/history"
+            );
+            setBulkHistory(result.history || []);
+        } catch (err) {
+            // History is informational; a failed load must not block sending.
+        }
+    }
+
+    useEffect(() => {
+        loadBulkHistory();
+    }, []);
+
+    async function previewBulk(event) {
+        event.preventDefault();
+        setBulkPreviewing(true);
+        setBulkError("");
+        setBulkMessage("");
+        setBulkPreview(null);
+        try {
+            const result = await authenticatedAdminRequest(
+                "/admin/notifications/bulk/preview",
+                { method: "POST", body: JSON.stringify(bulkFilters()) }
+            );
+            setBulkPreview(result);
+        } catch (err) {
+            setBulkError(err.message);
+        } finally {
+            setBulkPreviewing(false);
+        }
+    }
+
+    async function sendBulk(event) {
+        event.preventDefault();
+        if (!bulkPreview || bulkPreview.pushEnabledCount < 1) {
+            setBulkError("Preview recipients first, and make sure at least one push-enabled user matches.");
+            return;
+        }
+        if (
+            !window.confirm(
+                `Send this notification to ${Math.min(bulkPreview.pushEnabledCount, bulkPreview.sendLimit)} user(s)?`
+            )
+        ) {
+            return;
+        }
+        setBulkSending(true);
+        setBulkError("");
+        setBulkMessage("");
+        try {
+            const result = await authenticatedAdminRequest(
+                "/admin/notifications/bulk/send",
+                {
+                    method: "POST",
+                    body: JSON.stringify({
+                        ...bulkFilters(),
+                        title: bulkTitle.trim(),
+                        body: bulkBody.trim(),
+                    }),
+                }
+            );
+            setBulkMessage(
+                `${result.message} Attempted: ${result.recipientsAttempted}; successful devices: ${result.delivery.successCount}; failed: ${result.delivery.failureCount}; skipped (no device): ${result.skippedNoDeviceCount}.`
+            );
+            setBulkPreview(null);
+            setBulkTitle("");
+            setBulkBody("");
+            loadBulkHistory();
+        } catch (err) {
+            setBulkError(err.message);
+        } finally {
+            setBulkSending(false);
+        }
+    }
 
     async function searchUsers(event) {
         event.preventDefault();
@@ -222,6 +321,178 @@ export default function CustomNotificationsPage() {
                                 {sending ? "Sending..." : "Send Push Notification"}
                             </button>
                         </form>
+                    </section>
+                )}
+
+                <section className="rounded-2xl bg-white p-6 shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <Bell className="text-[#087F5B]" size={27} />
+                        <div>
+                            <h2 className="text-xl font-extrabold">
+                                Send Bulk Push Notification
+                            </h2>
+                            <p className="mt-1 text-sm text-slate-500">
+                                Filter people, preview who will receive it, then send.
+                                Max 500 push-enabled recipients per bulk send.
+                            </p>
+                        </div>
+                    </div>
+
+                    <form onSubmit={previewBulk} className="mt-6 space-y-4">
+                        <label className="block text-sm font-bold">
+                            Audience
+                            <select
+                                value={bulkAudience}
+                                onChange={(event) => setBulkAudience(event.target.value)}
+                                className="mt-2 w-full rounded-xl border p-3 font-normal"
+                            >
+                                <option value="ALL">All users</option>
+                                <option value="PASSENGER">Passengers only</option>
+                                <option value="DRIVER">Drivers only</option>
+                            </select>
+                        </label>
+
+                        <label className="block text-sm font-bold">
+                            Account created in last hours (leave empty for all time)
+                            <input
+                                type="number"
+                                min="1"
+                                max="720"
+                                value={bulkLastHours}
+                                onChange={(event) => setBulkLastHours(event.target.value)}
+                                placeholder="e.g. 8"
+                                className="mt-2 w-full rounded-xl border p-3 font-normal"
+                            />
+                        </label>
+
+                        <label className="block text-sm font-bold">
+                            Driver documents
+                            <select
+                                value={bulkDocuments}
+                                onChange={(event) => setBulkDocuments(event.target.value)}
+                                className="mt-2 w-full rounded-xl border p-3 font-normal"
+                            >
+                                <option value="ALL">Any document status</option>
+                                <option value="NO_DOCUMENTS">No documents uploaded yet</option>
+                            </select>
+                        </label>
+
+                        <label className="flex items-start gap-3 text-sm font-bold">
+                            <input
+                                type="checkbox"
+                                checked={bulkOnlyNotNotified}
+                                onChange={(event) => setBulkOnlyNotNotified(event.target.checked)}
+                                className="mt-1"
+                            />
+                            <span>
+                                Only users never successfully bulk-notified before
+                                <span className="block font-normal text-slate-500">
+                                    This uses bulk-send history, so it only applies to
+                                    bulk sends made after this feature went live.
+                                </span>
+                            </span>
+                        </label>
+
+                        <button
+                            type="submit"
+                            disabled={bulkPreviewing}
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 p-3 font-bold text-white disabled:opacity-50"
+                        >
+                            {bulkPreviewing ? "Previewing..." : "Preview Recipients"}
+                        </button>
+                    </form>
+
+                    {bulkError && (
+                        <p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">
+                            {bulkError}
+                        </p>
+                    )}
+
+                    {bulkMessage && (
+                        <p role="status" className="mt-4 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">
+                            {bulkMessage}
+                        </p>
+                    )}
+
+                    {bulkPreview && (
+                        <div className="mt-5 space-y-4">
+                            <p className="text-sm font-bold">
+                                Matched: {bulkPreview.totalMatched} · Push-enabled:{" "}
+                                {bulkPreview.pushEnabledCount} · Skipped (no device):{" "}
+                                {bulkPreview.skippedNoDeviceCount}
+                            </p>
+                            {bulkPreview.sample.length > 0 && (
+                                <div className="divide-y rounded-xl border">
+                                    {bulkPreview.sample.map((user) => (
+                                        <div key={user.id} className="flex flex-wrap items-center gap-3 p-3">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="font-bold">{user.name}</p>
+                                                <p className="break-all text-sm text-slate-500">{user.email}</p>
+                                                <p className="mt-1 text-xs text-slate-500">
+                                                    {user.role} · {user.pushDevices} registered device(s)
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <form onSubmit={sendBulk} className="space-y-4">
+                                <label className="block text-sm font-bold">
+                                    Notification Title
+                                    <input
+                                        value={bulkTitle}
+                                        onChange={(event) => setBulkTitle(event.target.value)}
+                                        minLength={2}
+                                        maxLength={80}
+                                        required
+                                        className="mt-2 w-full rounded-xl border p-3 font-normal"
+                                    />
+                                </label>
+                                <label className="block text-sm font-bold">
+                                    Notification Message
+                                    <textarea
+                                        value={bulkBody}
+                                        onChange={(event) => setBulkBody(event.target.value)}
+                                        minLength={2}
+                                        maxLength={240}
+                                        required
+                                        rows={4}
+                                        className="mt-2 w-full rounded-xl border p-3 font-normal"
+                                    />
+                                </label>
+                                <button
+                                    type="submit"
+                                    disabled={bulkSending || bulkPreview.pushEnabledCount < 1}
+                                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#087F5B] p-3 font-bold text-white disabled:opacity-50"
+                                >
+                                    <Send size={18} />
+                                    {bulkSending
+                                        ? "Sending..."
+                                        : `Send to ${Math.min(bulkPreview.pushEnabledCount, bulkPreview.sendLimit)} user(s)`}
+                                </button>
+                            </form>
+                        </div>
+                    )}
+                </section>
+
+                {bulkHistory.length > 0 && (
+                    <section className="rounded-2xl bg-white p-5 shadow-sm">
+                        <h3 className="font-extrabold">Bulk Send History</h3>
+                        <div className="mt-4 divide-y">
+                            {bulkHistory.map((item) => (
+                                <div key={item.id} className="py-4">
+                                    <p className="font-bold">{item.title}</p>
+                                    <p className="text-sm text-slate-500">{item.body}</p>
+                                    <p className="mt-1 text-xs text-slate-500">
+                                        {new Date(item.sentAt).toLocaleString()} · Attempted:{" "}
+                                        {item.recipientsAttempted} · Notified: {item.notifiedCount} ·
+                                        Successful devices: {item.successCount} · Failed:{" "}
+                                        {item.failureCount} · Skipped (no device):{" "}
+                                        {item.skippedNoDeviceCount}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
                     </section>
                 )}
 
