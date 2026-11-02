@@ -1,0 +1,108 @@
+name: Build Android release (.aab)
+
+# Manual only: run from the repo Actions tab after the signing
+# secrets below are set. Nothing here uploads to Play Console;
+# the .aab is only saved as a workflow artifact for manual upload.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: driver-passenger-frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: driver-passenger-frontend/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Build web export
+        run: npm run build
+
+      - name: Sync Capacitor Android
+        run: npx cap sync android
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Decode keystore and inject signing config (runner only, never committed)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          python3 - << 'PY'
+          import base64, os, re, subprocess, sys
+          data = base64.b64decode(os.environ["KEYSTORE_BASE64"])
+          ks = "android/app/release.keystore"
+          with open(ks, "wb") as f:
+              f.write(data)
+          out = subprocess.check_output(
+              ["keytool", "-list", "-keystore", ks, "-storepass", os.environ["KEYSTORE_PASSWORD"]],
+              text=True,
+          )
+          alias = None
+          for line in out.splitlines():
+              if "PrivateKeyEntry" in line:
+                  alias = line.split(",")[0].strip()
+                  break
+          if not alias:
+              sys.exit("No PrivateKeyEntry alias found in keystore")
+          with open(os.environ["GITHUB_ENV"], "a") as f:
+              f.write(f"KEY_ALIAS={alias}\n")
+          path = "android/app/build.gradle"
+          text = open(path).read()
+          if "signingConfigs" in text:
+              sys.exit("build.gradle already contains signingConfigs, refusing to inject twice")
+          signing = (
+              "    signingConfigs {\n"
+              "        release {\n"
+              '            storeFile file("release.keystore")\n'
+              '            storePassword System.getenv("KEYSTORE_PASSWORD")\n'
+              '            keyAlias System.getenv("KEY_ALIAS")\n'
+              '            keyPassword System.getenv("KEY_PASSWORD")\n'
+              "        }\n"
+              "    }\n"
+          )
+          text = text.replace("    buildTypes {", signing + "    buildTypes {", 1)
+          text = text.replace(
+              "        release {\n            minifyEnabled false",
+              "        release {\n            signingConfig signingConfigs.release\n            minifyEnabled false",
+              1,
+          )
+          open(path, "w").write(text)
+          print(f"Signing config injected for alias discovery: alias found (value kept in env, not printed)")
+          PY
+
+      - name: Build signed release bundle
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          cd android && ./gradlew bundleRelease --no-daemon
+
+      - name: Upload .aab artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: safar-release-1.0.3
+          path: driver-passenger-frontend/android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
