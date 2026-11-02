@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { ActionDialogProvider } from "@/components/ActionDialog";
 import AppUpdateChecker from "@/components/AppUpdateChecker";
+import AdminAnnouncementPopup from "@/components/AdminAnnouncementPopup";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { themeBootScript } from "@/components/theme/themeScript";
 import { LanguageProvider } from "@/components/i18n/LanguageProvider";
@@ -70,6 +71,7 @@ export default function RootLayout({ children }) {
             <AuthProvider>
               <ActionDialogProvider>
                 <AppUpdateChecker />
+                <AdminAnnouncementPopup />
                 {children}
               </ActionDialogProvider>
             </AuthProvider>

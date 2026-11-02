@@ -68,6 +68,10 @@ app.use(
 // Mounted at both prefixes from the same router.
 app.use("/api/v1/app-version", require("./routes/appVersionRoutes"));
 app.use("/api/v1/admin/app-version", require("./routes/appVersionRoutes"));
+// In-app announcements: user routes under /announcements, admin
+// routes under /admin/announcements (same router, admin-gated).
+app.use("/api/v1/announcements", require("./routes/announcementRoutes"));
+app.use("/api/v1/admin/announcements", require("./routes/announcementRoutes"));
 app.use("/api/v1/locations", locationRoutes);
 app.use("/api/v1/service-areas", serviceAreaRoutes);
 app.use("/api/v1/admin/service-areas", serviceAreaRoutes);
