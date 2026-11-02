@@ -26,6 +26,7 @@ const navigation = [
     { label: "Fare Settings", href: "/dashboard/fares", icon: CarFront },
     { label: "Passengers", href: "/dashboard/passengers", icon: Users },
     { label: "Custom Notifications", href: "/dashboard/notifications", icon: Bell },
+    { label: "App Version", href: "/dashboard/app-version", icon: Bell },
     { label: "Rides", href: "/dashboard/rides", icon: Route },
     { label: "Parcels", href: "/dashboard/parcels", icon: Route },
     { label: "Buy & Deliver", href: "/dashboard/buy-deliver", icon: ShoppingBag },

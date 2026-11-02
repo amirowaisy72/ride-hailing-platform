@@ -2,6 +2,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { ActionDialogProvider } from "@/components/ActionDialog";
+import AppUpdateChecker from "@/components/AppUpdateChecker";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { themeBootScript } from "@/components/theme/themeScript";
 import { LanguageProvider } from "@/components/i18n/LanguageProvider";
@@ -67,7 +68,10 @@ export default function RootLayout({ children }) {
         <ThemeProvider>
           <LanguageProvider>
             <AuthProvider>
-              <ActionDialogProvider>{children}</ActionDialogProvider>
+              <ActionDialogProvider>
+                <AppUpdateChecker />
+                {children}
+              </ActionDialogProvider>
             </AuthProvider>
           </LanguageProvider>
         </ThemeProvider>

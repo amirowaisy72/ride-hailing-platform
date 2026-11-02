@@ -64,6 +64,10 @@ app.use(
     "/api/v1/admin/notifications",
     require("./routes/adminNotificationRoutes")
 );
+// App update check: GET is public (app launch check), PUT is admin-only.
+// Mounted at both prefixes from the same router.
+app.use("/api/v1/app-version", require("./routes/appVersionRoutes"));
+app.use("/api/v1/admin/app-version", require("./routes/appVersionRoutes"));
 app.use("/api/v1/locations", locationRoutes);
 app.use("/api/v1/service-areas", serviceAreaRoutes);
 app.use("/api/v1/admin/service-areas", serviceAreaRoutes);
