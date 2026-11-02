@@ -20,8 +20,6 @@ import {
 } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
 import MobileBottomNav from "@/components/MobileBottomNav";
-import ServiceGuide from "@/components/guides/ServiceGuide";
-import { recordFlowCompletion } from "@/lib/guides/guideStore";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage, storedLanguage } from "@/components/i18n/LanguageProvider";
 import { formatPKR } from "@/lib/rideDisplay";
@@ -178,7 +176,6 @@ function VehicleDetail() {
                 },
                 token
             );
-            recordFlowCompletion(user?._id, "rentalPassenger");
             router.push(`/passenger/rentals/bookings/details?id=${data.booking._id}`);
         } catch (e) {
             setError(e.message);
@@ -208,7 +205,6 @@ function VehicleDetail() {
                     </Link>
                 </div>
                 <MobileBottomNav role="PASSENGER" />
-                <ServiceGuide serviceId="rentalPassenger" userId={user?._id} />
             </main>
         );
     }
@@ -352,7 +348,7 @@ function VehicleDetail() {
                         <>
                             <div>
                                 <p className="mb-1.5 text-xs font-bold text-pd-text-2">{t("rentals.howWant")}</p>
-                                <div data-guide="rental-mode" className="grid grid-cols-2 gap-1 rounded-2xl bg-pd-surface-2 p-1" role="radiogroup" aria-label={t("rentals.mode")}>
+                                <div className="grid grid-cols-2 gap-1 rounded-2xl bg-pd-surface-2 p-1" role="radiogroup" aria-label={t("rentals.mode")}>
                                     {(vehicle.rentalModes || []).map((m) => (
                                         <button
                                             key={m}
@@ -469,7 +465,7 @@ function VehicleDetail() {
                                 <button type="button" onClick={() => { setError(""); setStep(2); }} className={backBtnCls}>
                                     <ArrowLeft size={17} /> Back
                                 </button>
-                                <button data-guide="rental-book"
+                                <button
                                     type="submit"
                                     disabled={submitting}
                                     className={`${primaryBtnCls} flex-1`}

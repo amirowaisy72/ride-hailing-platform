@@ -3,7 +3,7 @@
 // Keys are flat, grouped by screen: common.*, auth.*, account.*,
 // passengerHome.*, bdNew.*, bdDetails.*, parcels.*, rentals.*,
 // driverHome.*, driverTasks.*, driverBd.*, chat.*, alerts.*,
-// guide.*, mic.*. Every key exists in `en`; `ur` carries the native
+// feedback.*, mic.*. Every key exists in `en`; `ur` carries the native
 // Urdu (Urdu script — NEVER Roman Urdu, per the owner's decision)
 // translation. Missing ur keys fall back to en at lookup time.
 //
@@ -78,15 +78,25 @@ export const STRINGS = {
         "voice.denied": "The microphone is not allowed. Please allow it, then try again.",
         "voice.failed": "Voice message could not be sent. Please try again.",
 
-        // ---- guide chrome (A12) ---------------------------------------
-        "guide.next": "Next",
-        "guide.back": "Back",
-        "guide.skip": "Skip guide",
-        "guide.finish": "Finish",
-        "guide.listen": "Listen",
-        "guide.stopListening": "Stop",
-        "guide.replay": "Guide",
-        "guide.stepOf": "Step {step} of {total}",
+        // ---- feedback about the app ---------------------------------
+        "feedback.button": "Feedback",
+        "feedback.title": "Feedback about Safar",
+        "feedback.subtitle": "Tell us how to make Safar better. Suggestions welcome.",
+        "feedback.category": "Category",
+        "feedback.categoryApp": "App",
+        "feedback.categoryRide": "Ride",
+        "feedback.categoryParcel": "Parcel",
+        "feedback.categoryRental": "Rental",
+        "feedback.categoryBuyDeliver": "Buy & Deliver",
+        "feedback.categoryPayment": "Payment",
+        "feedback.categoryOther": "Other",
+        "feedback.rating": "Rating (optional)",
+        "feedback.message": "Your suggestion",
+        "feedback.messagePlaceholder": "What should we improve in the app?",
+        "feedback.submit": "Send feedback",
+        "feedback.sending": "Sending…",
+        "feedback.thanks": "Thanks for your feedback!",
+        "feedback.messageRequired": "Please write your suggestion first.",
 
         // ---- order chat ------------------------------------------------
         "chat.messagePartner": "Message {name}",
@@ -902,15 +912,25 @@ export const STRINGS = {
         "voice.denied": "مائیک کی اجازت نہیں ملی۔ اجازت دے کر دوبارہ کوشش کریں۔",
         "voice.failed": "آواز کا پیغام نہیں بھیجا جا سکا۔ دوبارہ کوشش کریں۔",
 
-        // ---- guide chrome ----------------------------------------------
-        "guide.next": "اگلا",
-        "guide.back": "پچھلا",
-        "guide.skip": "رہنمائی چھوڑیں",
-        "guide.finish": "ختم کریں",
-        "guide.listen": "سنیں",
-        "guide.stopListening": "روکیں",
-        "guide.replay": "رہنمائی",
-        "guide.stepOf": "قدم {step} از {total}",
+        // ---- feedback about the app --------------------------------------
+        "feedback.button": "آراء",
+        "feedback.title": "Safar کے بارے میں آراء",
+        "feedback.subtitle": "بتائیں کہ Safar کو کیسے بہتر بنایا جائے۔ آپ کی تجاویز کا خیر مقدم ہے۔",
+        "feedback.category": "زمرہ",
+        "feedback.categoryApp": "ایپ",
+        "feedback.categoryRide": "سواری",
+        "feedback.categoryParcel": "پارسل",
+        "feedback.categoryRental": "کرایہ",
+        "feedback.categoryBuyDeliver": "خریداری اور ترسیل",
+        "feedback.categoryPayment": "ادائیگی",
+        "feedback.categoryOther": "دیگر",
+        "feedback.rating": "درجہ بندی (اختیاری)",
+        "feedback.message": "آپ کی تجویز",
+        "feedback.messagePlaceholder": "ایپ میں کیا بہتر ہونا چاہیے؟",
+        "feedback.submit": "آراء بھیجیں",
+        "feedback.sending": "بھیجا جا رہا ہے…",
+        "feedback.thanks": "آپ کی آراء کا شکریہ!",
+        "feedback.messageRequired": "پہلے اپنی تجویز لکھیں۔",
 
         // ---- order chat ---------------------------------------------------
         "chat.messagePartner": "{name} کو پیغام بھیجیں",

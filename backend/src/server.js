@@ -80,6 +80,11 @@ app.use(
     "/api/v1/admin/complaints",
     require("./routes/adminComplaintRoutes")
 );
+app.use("/api/v1/feedback", require("./routes/feedbackRoutes"));
+app.use(
+    "/api/v1/admin/feedback",
+    require("./routes/adminFeedbackRoutes")
+);
 app.use("/api/v1/vehicle-pricing", vehiclePricingRoutes);
 app.use("/api/v1/drivers/me/vehicles", vehicleRoutes);
 app.use("/api/v1/admin/vehicles", adminVehicleRoutes);

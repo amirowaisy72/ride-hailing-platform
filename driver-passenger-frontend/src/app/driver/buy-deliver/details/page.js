@@ -28,7 +28,6 @@ import {
 
 import AuthGuard from "@/components/AuthGuard";
 import MobileBottomNav from "@/components/MobileBottomNav";
-import ServiceGuide from "@/components/guides/ServiceGuide";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import OrderChat from "@/components/OrderChat";
 import DestinationMap from "@/components/DestinationMap";
@@ -279,7 +278,6 @@ function BuyDeliverScreen() {
     return (
         <main className="driver-subpage min-h-dvh bg-pd-bg pb-28 text-pd-text">
             <MobileBottomNav role="DRIVER" />
-            <ServiceGuide serviceId="driverRequests" userId={user?._id || user?.id} />
 
             <header className="bg-violet-700 px-5 pb-8 pt-[max(24px,env(safe-area-inset-top))] text-white">
                 <div className="mx-auto max-w-xl">
@@ -349,7 +347,7 @@ function BuyDeliverScreen() {
 
                         {/* ---- Step actions by status ---- */}
                         {status === "DRIVER_SELECTED" && (
-                            <section data-guide="driver-bd-step" className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
+                            <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                                 <StepHeader n={1} title={t("dBd.step1")} />
                                 <p className="mt-1 text-sm text-pd-muted">
                                     {t("dBd.step1Hint")}
@@ -778,7 +776,7 @@ function BuyDeliverScreen() {
                             </div>
                             <button
                                 type="button"
-                                data-guide="driver-bd-chat"
+                               
                                 onClick={() => setChatOpen(true)}
                                 className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl bg-violet-600 px-4 text-sm font-bold text-white"
                             >

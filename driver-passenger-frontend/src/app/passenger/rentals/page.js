@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
 import MobileBottomNav from "@/components/MobileBottomNav";
-import ServiceGuide from "@/components/guides/ServiceGuide";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage, storedLanguage } from "@/components/i18n/LanguageProvider";
 import { formatPKR } from "@/lib/rideDisplay";
@@ -293,7 +292,7 @@ function RentalsDashboard() {
                             </p>
                         </div>
                     ) : (
-                        <div data-guide="rental-vehicle" className="space-y-3">
+                        <div className="space-y-3">
                             {vehicles.map((vehicle) => {
                                 const photo = vehiclePhoto(vehicle);
                                 const vid = vehicleIdOf(vehicle);
@@ -385,7 +384,6 @@ function RentalsDashboard() {
             </div>
 
             <MobileBottomNav role="PASSENGER" />
-            <ServiceGuide serviceId="rentalPassenger" userId={user?._id} />
         </main>
     );
 }

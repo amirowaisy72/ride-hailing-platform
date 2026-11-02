@@ -26,9 +26,7 @@ import { Geolocation } from "@capacitor/geolocation";
 
 import AuthGuard from "@/components/AuthGuard";
 import MobileBottomNav from "@/components/MobileBottomNav";
-import ServiceGuide from "@/components/guides/ServiceGuide";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
-import { recordFlowCompletion } from "@/lib/guides/guideStore";
 import { useAuth } from "@/context/AuthContext";
 import { getRealtimeSocket } from "@/lib/socket";
 import { updateDriverLocation } from "@/lib/vehicleService";
@@ -321,7 +319,6 @@ function TasksScreen() {
         setNotice(null);
         try {
             const data = await submitPurchaseOffer(order._id, fee, token);
-            recordFlowCompletion(user?._id, "driverRequests");
             setMyOffers((prev) => ({
                 ...prev,
                 [order._id]: data.offer || { deliveryFee: fee },
@@ -397,7 +394,6 @@ function TasksScreen() {
     return (
         <main className="driver-subpage min-h-dvh bg-pd-bg pb-28 text-pd-text">
             <MobileBottomNav role="DRIVER" />
-            <ServiceGuide serviceId="driverRequests" userId={user?._id} />
 
             <header className="bg-[#087F5B] px-5 pb-8 pt-[max(24px,env(safe-area-inset-top))] text-white">
                 <div className="mx-auto max-w-xl">
@@ -430,7 +426,7 @@ function TasksScreen() {
                 </div>
             </header>
 
-            <div data-guide="driver-requests" className="relative z-10 mx-auto mt-4 max-w-xl space-y-5 px-4 pb-6">
+            <div className="relative z-10 mx-auto mt-4 max-w-xl space-y-5 px-4 pb-6">
                 <div className="flex gap-2 overflow-x-auto pb-1">
                     {FILTERS.map((item) => (
                         <button

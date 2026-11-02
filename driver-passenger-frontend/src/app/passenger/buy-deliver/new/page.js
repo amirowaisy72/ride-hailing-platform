@@ -17,8 +17,6 @@ import {
 } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
 import MobileBottomNav from "@/components/MobileBottomNav";
-import ServiceGuide from "@/components/guides/ServiceGuide";
-import { recordFlowCompletion } from "@/lib/guides/guideStore";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
@@ -238,7 +236,6 @@ function BuyDeliverForm() {
                 },
                 token
             );
-            recordFlowCompletion(user?._id, "bdPassenger");
             router.push(`/passenger/buy-deliver/details?id=${data.order._id}`);
         } catch (e) {
             setError(e.message);
@@ -433,7 +430,7 @@ function BuyDeliverForm() {
 
                 {step === 1 && (
                     <>
-                        <section data-guide="bd-list" className="space-y-3 rounded-[24px] bg-pd-surface p-4 shadow-sm">
+                        <section className="space-y-3 rounded-[24px] bg-pd-surface p-4 shadow-sm">
                             <h2 className="text-[15px] font-extrabold">{t("bdNew.stepList")}</h2>
                             <textarea
                                 value={itemsText}
@@ -456,7 +453,7 @@ function BuyDeliverForm() {
                             </p>
                         )}
 
-                        <button type="button" data-guide="bd-next" onClick={goNext} className={primaryBtnCls}>
+                        <button type="button" onClick={goNext} className={primaryBtnCls}>
                             {t("common.next")}
                         </button>
                     </>
@@ -473,7 +470,7 @@ function BuyDeliverForm() {
                                 <div className="relative">
                                     <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-pd-faint">PKR</span>
                                     <input
-                                        data-guide="bd-budget"
+                                       
                                         id="bd-budget"
                                         type="text"
                                         inputMode="numeric"
@@ -492,7 +489,7 @@ function BuyDeliverForm() {
                             </div>
                         </section>
 
-                        <section data-guide="bd-location" className="space-y-3 rounded-[24px] bg-pd-surface p-4 shadow-sm">
+                        <section className="space-y-3 rounded-[24px] bg-pd-surface p-4 shadow-sm">
                             <h2 className="flex items-center gap-2 text-[15px] font-extrabold">
                                 <MapPin size={17} className="text-[#087F5B]" /> {t("bdNew.deliverTo")}
                             </h2>
@@ -650,7 +647,7 @@ function BuyDeliverForm() {
                             </button>
                             <button
                                 type="submit"
-                                data-guide="bd-submit"
+                               
                                 disabled={submitting || uploading}
                                 className={`${primaryBtnCls} flex-1`}
                             >
@@ -669,7 +666,6 @@ function BuyDeliverForm() {
             </form>
 
             <MobileBottomNav role="PASSENGER" />
-            <ServiceGuide serviceId="bdPassenger" userId={user?._id} />
         </main>
     );
 }

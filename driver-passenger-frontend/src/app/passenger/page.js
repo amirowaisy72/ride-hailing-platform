@@ -11,9 +11,8 @@ import {
 } from "lucide-react";
 import { Geolocation } from "@capacitor/geolocation";
 import AuthGuard from "@/components/AuthGuard";
-import ServiceGuide from "@/components/guides/ServiceGuide";
+import FeedbackForm from "@/components/FeedbackForm";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
-import { recordFlowCompletion } from "@/lib/guides/guideStore";
 import { useAuth } from "@/context/AuthContext";
 import { useActionDialog } from "@/components/ActionDialog";
 import { getRealtimeSocket } from "@/lib/socket";
@@ -715,7 +714,6 @@ function PassengerDashboard() {
             });
             setOffers([]);
             setActiveRide(data.ride);
-            recordFlowCompletion(user?._id, "ridePassenger");
             setBookingOpen(false);
             setFullScreenMap(true);
             setNotification(t("pHome.notifRideRequested"));
@@ -1649,7 +1647,7 @@ function PassengerDashboard() {
                             {/* While picking a destination, the pickup row
                                 collapses so results get the room (it
                                 returns untouched on selection/clear). */}
-                            <div data-guide="ride-pickup" className={`px-3.5 py-3 ${destinationSearchMode ? "hidden" : ""}`}>
+                            <div className={`px-3.5 py-3 ${destinationSearchMode ? "hidden" : ""}`}>
                                 <PickupLocationSearch
                                     token={token}
                                     currentLocation={userLocation}
@@ -1672,7 +1670,7 @@ function PassengerDashboard() {
                             <div className={`relative mx-3.5 border-t border-pd-line ${destinationSearchMode ? "hidden" : ""}`}>
                                 <span className="absolute -top-3 left-[9px] h-6 border-l-2 border-dotted border-[#C7CBD1]" aria-hidden="true" />
                             </div>
-                            <label data-guide="ride-destination" className="flex items-center gap-3 px-3.5 py-3">
+                            <label className="flex items-center gap-3 px-3.5 py-3">
                                 <span className="flex h-5 w-5 shrink-0 items-center justify-center" aria-hidden="true">
                                     <span className="h-3.5 w-3.5 rounded-[4px] bg-pd-danger" />
                                 </span>
@@ -1843,7 +1841,7 @@ function PassengerDashboard() {
 
                                 <div>
                                     <h2 className="mb-2.5 text-sm font-bold uppercase tracking-wide text-pd-muted">{t("pHome.chooseRide")}</h2>
-                                    <div data-guide="ride-vehicle" className="grid grid-cols-4 gap-2" role="radiogroup" aria-label={t("pHome.vehicleType")}>
+                                    <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label={t("pHome.vehicleType")}>
                                         {VEHICLES.map((vehicle) => (
                                             <VehicleOption
                                                 key={vehicle.id}
@@ -1883,7 +1881,7 @@ function PassengerDashboard() {
                                     </div>
                                 </div>
 
-                                <div data-guide="ride-fare" className="rounded-2xl bg-pd-surface-2 p-4">
+                                <div className="rounded-2xl bg-pd-surface-2 p-4">
                                     <div className="flex items-center justify-between">
                                         <p className="text-sm font-bold">{t("pHome.offerYourFare")}</p>
                                         {fare && (
@@ -1961,7 +1959,7 @@ function PassengerDashboard() {
                         {bookingHint && <p className="mb-2 text-center text-xs font-medium text-pd-muted">{bookingHint}</p>}
                         <button
                             type="button"
-                            data-guide="ride-request"
+                           
                             onClick={bookRide}
                             disabled={!canBook}
                             className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#087F5B] text-base font-extrabold text-white shadow-[0_8px_24px_rgba(8,127,91,0.35)] transition-all active:scale-[0.98] disabled:bg-[#087F5B]/60 disabled:text-white/70 disabled:shadow-none"
@@ -2130,7 +2128,7 @@ function PassengerDashboard() {
                 />
             )}
             <MobileBottomNav role="PASSENGER" />
-            <ServiceGuide serviceId="ridePassenger" userId={user?._id} />
+            <FeedbackForm token={token} />
         </main>
     );
 }

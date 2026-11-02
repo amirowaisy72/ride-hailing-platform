@@ -12,6 +12,7 @@ import {
     stopDriverBackgroundGPS
 } from "@/lib/backgroundDriverLocation";
 import AuthGuard from "@/components/AuthGuard";
+import FeedbackForm from "@/components/FeedbackForm";
 import RideMap from "@/components/RideMap";
 import { reverseGeocode } from "@/lib/locationService";
 import RideChat from "@/components/RideChat";
@@ -19,9 +20,7 @@ import ParcelActivityBar from "@/components/ParcelActivityBar";
 import { Package } from "lucide-react";
 import Link from "next/link";
 import MobileBottomNav from "@/components/MobileBottomNav";
-import ServiceGuide from "@/components/guides/ServiceGuide";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
-import { recordFlowCompletion } from "@/lib/guides/guideStore";
 import DriverSheet from "@/components/driver/DriverSheet";
 import DriverRequestCard, { money, placeText, vehicleNames } from "@/components/driver/DriverRequestCard";
 import DriverRequestOverlay from "@/components/driver/DriverRequestOverlay";
@@ -745,7 +744,6 @@ function DriverDashboard() {
         setOfferBusy(ride.rideId);
         try {
             await submitDriverOffer(ride.rideId, price, token);
-            recordFlowCompletion(user?._id, "driverRequests");
             setSubmittedIds((previous) => [...new Set([...previous, ride.rideId])]);
             setNextBidAt((previous) => ({ ...previous, [ride.rideId]: Date.now() + 15000 }));
             notify({
@@ -857,7 +855,7 @@ function DriverDashboard() {
                     {activeVehicle ? `${vehicleNames[activeVehicle.vehicleType] || activeVehicle.vehicleType} · ${activeVehicle.registrationNumber}` : t("dHome.vehicleRequired")}
                 </p>
             </div>
-            <button type="button" data-guide="driver-online" className="dx-power" data-on={isOnline} onClick={toggleOnline}
+            <button type="button" className="dx-power" data-on={isOnline} onClick={toggleOnline}
                 disabled={loading || busy || (!isOnline && !activeVehicle)}
                 aria-label={isOnline ? t("dHome.goOffline") : t("dHome.goOnline")}>
                 <Power size={20} />
@@ -1022,7 +1020,7 @@ function DriverDashboard() {
 
             {/* Active Tasks + earnings-by-service shortcuts */}
             <Link
-                data-guide="driver-requests"
+               
                 href="/driver/tasks"
                 className="flex items-center gap-3 rounded-2xl border border-pd-line bg-pd-surface p-3 text-pd-text shadow-sm"
             >
@@ -1498,7 +1496,7 @@ function DriverDashboard() {
                 />
             )}
             {!rideInProgress && <MobileBottomNav role="DRIVER" />}
-            <ServiceGuide serviceId="driverRequests" userId={user?._id} />
+            <FeedbackForm token={token} />
         </main>
     );
 }

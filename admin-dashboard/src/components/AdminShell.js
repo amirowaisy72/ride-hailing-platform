@@ -31,6 +31,7 @@ const navigation = [
     { label: "Buy & Deliver", href: "/dashboard/buy-deliver", icon: ShoppingBag },
     { label: "Rentals", href: "/dashboard/rentals", icon: KeyRound },
     { label: "Complaints", href: "/dashboard/complaints", icon: Flag },
+    { label: "Feedbacks", href: "/dashboard/feedbacks", icon: Flag },
     { label: "Wallets", href: "/dashboard/wallets", icon: Wallet },
     { label: "Settlements", href: "/dashboard/settlements", icon: CircleDollarSign },
     { label: "Commission Settings", href: "/dashboard/commission", icon: SlidersHorizontal },
