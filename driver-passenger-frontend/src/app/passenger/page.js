@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { Geolocation } from "@capacitor/geolocation";
 import AuthGuard from "@/components/AuthGuard";
-import FeedbackForm from "@/components/FeedbackForm";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import { useAuth } from "@/context/AuthContext";
 import { useActionDialog } from "@/components/ActionDialog";
@@ -2128,7 +2127,6 @@ function PassengerDashboard() {
                 />
             )}
             <MobileBottomNav role="PASSENGER" />
-            <FeedbackForm token={token} />
         </main>
     );
 }

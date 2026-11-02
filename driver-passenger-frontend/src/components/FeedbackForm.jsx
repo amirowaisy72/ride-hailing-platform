@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MessageCircle, Star, X } from "lucide-react";
+import { ChevronRight, MessageCircle, Star, X } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 
@@ -12,8 +12,9 @@ import { useLanguage } from "@/components/i18n/LanguageProvider";
  * are untouched. The submitter's role is taken from the logged-in
  * user on the backend, never from this form.
  *
- * Rendered as a floating button on the passenger and driver home
- * screens, in the spot freed by the removed guide button.
+ * Rendered ONLY as a row inside the passenger/driver Account
+ * screens — never as a floating button on a home/map screen, so
+ * it cannot sit over the map or block normal use.
  */
 const CATEGORIES = [
     "APP",
@@ -26,6 +27,7 @@ const CATEGORIES = [
 ];
 
 export default function FeedbackForm({ token }) {
+    // Row trigger only: no floating/fixed button anywhere.
     const { t } = useLanguage();
     const [open, setOpen] = useState(false);
     const [category, setCategory] = useState("APP");
@@ -78,10 +80,14 @@ export default function FeedbackForm({ token }) {
                 <button
                     type="button"
                     onClick={() => setOpen(true)}
-                    className="fixed bottom-24 end-3 z-40 flex h-11 items-center gap-1.5 rounded-full bg-pd-surface px-3.5 text-xs font-extrabold text-pd-accent-text shadow-pd-lg ring-1 ring-pd-line transition active:scale-95"
+                    className="flex w-full items-center gap-3 py-4 text-left"
                 >
-                    <MessageCircle size={17} aria-hidden="true" />
-                    {t("feedback.button")}
+                    <MessageCircle size={20} aria-hidden="true" className="text-[#087F5B]" />
+                    <div className="flex-1">
+                        <p className="text-sm font-semibold">{t("feedback.button")}</p>
+                        <p className="text-xs text-pd-muted">{t("feedback.subtitle")}</p>
+                    </div>
+                    <ChevronRight size={18} className="text-pd-faint" />
                 </button>
             )}
             {open && (

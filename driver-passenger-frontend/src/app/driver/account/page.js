@@ -16,6 +16,7 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import ThemeSelector from "@/components/theme/ThemeSelector";
 import LanguageSelector from "@/components/i18n/LanguageSelector";
 import ProfilePicture from "@/components/ProfilePicture";
+import FeedbackForm from "@/components/FeedbackForm";
 
 export default function DriverAccountPage() {
     return (
@@ -231,7 +232,7 @@ function DriverAccount() {
                     </Link>
                     <Link
                         href="/driver/complaints"
-                        className="flex items-center gap-3 py-3"
+                        className="flex items-center gap-3 border-b py-3"
                     >
                         <LifeBuoy size={20} className="text-[#087F5B]" />
                         <span className="flex-1 text-sm font-semibold">
@@ -239,6 +240,7 @@ function DriverAccount() {
                         </span>
                         <span className="text-xs text-[#087F5B]">{t("account.open")}</span>
                     </Link>
+                    <FeedbackForm token={token} />
                 </section>
 
                 <section className="rounded-2xl bg-pd-surface p-5 shadow-sm">

@@ -12,7 +12,6 @@ import {
     stopDriverBackgroundGPS
 } from "@/lib/backgroundDriverLocation";
 import AuthGuard from "@/components/AuthGuard";
-import FeedbackForm from "@/components/FeedbackForm";
 import RideMap from "@/components/RideMap";
 import { reverseGeocode } from "@/lib/locationService";
 import RideChat from "@/components/RideChat";
@@ -1496,7 +1495,6 @@ function DriverDashboard() {
                 />
             )}
             {!rideInProgress && <MobileBottomNav role="DRIVER" />}
-            <FeedbackForm token={token} />
         </main>
     );
 }

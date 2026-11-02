@@ -17,6 +17,7 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import ThemeSelector from "@/components/theme/ThemeSelector";
 import LanguageSelector from "@/components/i18n/LanguageSelector";
 import ProfilePicture from "@/components/ProfilePicture";
+import FeedbackForm from "@/components/FeedbackForm";
 
 const formatFare = (ride) =>
     `PKR ${Number(ride.finalPrice ?? ride.requestedPrice ?? 0).toLocaleString("en-PK")}`;
@@ -375,7 +376,7 @@ function AccountScreen() {
 
                     <Link
                         href="/passenger/complaints"
-                        className="flex items-center gap-3 py-4"
+                        className="flex items-center gap-3 border-b py-4"
                     >
                         <Headphones size={20} className="text-[#087F5B]" />
                         <div className="flex-1">
@@ -386,6 +387,8 @@ function AccountScreen() {
                         </div>
                         <ChevronRight size={18} className="text-pd-faint" />
                     </Link>
+
+                    <FeedbackForm token={token} />
                 </section>
 
                 <ThemeSelector />
