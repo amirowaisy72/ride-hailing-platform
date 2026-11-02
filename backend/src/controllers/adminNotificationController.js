@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const User = require("../models/User");
 const PushDevice = require("../models/PushDevice");
+const LastAdminNotification = require("../models/LastAdminNotification");
 const IntegrationSetting = require("../models/IntegrationSetting");
 const { sendPushToUser } = require("../services/pushService");
 
@@ -142,6 +143,20 @@ async function sendCustomNotification(req, res) {
                 },
             });
         }
+
+        // Last-notification tracking: one row per user, overwritten here
+        // with the latest title/body/time. No per-notification history.
+        await LastAdminNotification.findOneAndUpdate(
+            { userId: user._id },
+            {
+                userId: user._id,
+                title: title.trim(),
+                body: body.trim(),
+                source: "SINGLE",
+                sentAt: new Date(),
+            },
+            { upsert: true, new: true }
+        );
 
         return res.json({
             success: true,

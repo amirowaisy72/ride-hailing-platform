@@ -36,6 +36,10 @@ const bulkNotificationSchema = new mongoose.Schema(
                 type: Boolean,
                 default: false,
             },
+            notNotifiedInLastHours: {
+                type: Number,
+                default: null,
+            },
         },
         recipientUserIds: [
             {

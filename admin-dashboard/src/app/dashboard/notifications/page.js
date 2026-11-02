@@ -20,7 +20,7 @@ export default function CustomNotificationsPage() {
     const [bulkAudience, setBulkAudience] = useState("ALL");
     const [bulkLastHours, setBulkLastHours] = useState("");
     const [bulkDocuments, setBulkDocuments] = useState("ALL");
-    const [bulkOnlyNotNotified, setBulkOnlyNotNotified] = useState(false);
+    const [bulkNotNotifiedHours, setBulkNotNotifiedHours] = useState("");
     const [bulkTitle, setBulkTitle] = useState("");
     const [bulkBody, setBulkBody] = useState("");
     const [bulkPreview, setBulkPreview] = useState(null);
@@ -35,7 +35,9 @@ export default function CustomNotificationsPage() {
             audience: bulkAudience,
             lastHours: bulkLastHours === "" ? null : Number(bulkLastHours),
             driverDocuments: bulkDocuments,
-            onlyNotBulkNotified: bulkOnlyNotNotified,
+            onlyNotBulkNotified: false,
+            notNotifiedInLastHours:
+                bulkNotNotifiedHours === "" ? null : Number(bulkNotNotifiedHours),
         };
     }
 
@@ -377,19 +379,21 @@ export default function CustomNotificationsPage() {
                             </select>
                         </label>
 
-                        <label className="flex items-start gap-3 text-sm font-bold">
+                        <label className="block text-sm font-bold">
+                            Only users NOT notified in last hours (leave empty for no such filter)
                             <input
-                                type="checkbox"
-                                checked={bulkOnlyNotNotified}
-                                onChange={(event) => setBulkOnlyNotNotified(event.target.checked)}
-                                className="mt-1"
+                                type="number"
+                                min="1"
+                                max="720"
+                                value={bulkNotNotifiedHours}
+                                onChange={(event) => setBulkNotNotifiedHours(event.target.value)}
+                                placeholder="e.g. 8"
+                                className="mt-2 w-full rounded-xl border p-3 font-normal"
                             />
-                            <span>
-                                Only users never successfully bulk-notified before
-                                <span className="block font-normal text-slate-500">
-                                    This uses bulk-send history, so it only applies to
-                                    bulk sends made after this feature went live.
-                                </span>
+                            <span className="block font-normal text-slate-500">
+                                Users never notified before are included, because they
+                                have no last notification. Only the latest notification
+                                per user is stored, so this uses almost no database.
                             </span>
                         </label>
 
@@ -430,6 +434,11 @@ export default function CustomNotificationsPage() {
                                                 <p className="break-all text-sm text-slate-500">{user.email}</p>
                                                 <p className="mt-1 text-xs text-slate-500">
                                                     {user.role} · {user.pushDevices} registered device(s)
+                                                </p>
+                                                <p className="mt-1 text-xs text-slate-500">
+                                                    {user.lastNotification
+                                                        ? `Last notification: ${new Date(user.lastNotification.sentAt).toLocaleString()} — ${user.lastNotification.title}`
+                                                        : "Last notification: none yet"}
                                                 </p>
                                             </div>
                                         </div>

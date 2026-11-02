@@ -5,6 +5,7 @@ const DriverDocument = require("../models/DriverDocument");
 const PushDevice = require("../models/PushDevice");
 const IntegrationSetting = require("../models/IntegrationSetting");
 const BulkNotification = require("../models/BulkNotification");
+const LastAdminNotification = require("../models/LastAdminNotification");
 const { sendPushToUser } = require("../services/pushService");
 
 const MAX_BULK_RECIPIENTS = 500;
@@ -26,7 +27,19 @@ function parseFilters(body) {
         }
         lastHours = parsed;
     }
-    return { audience, driverDocuments, onlyNotBulkNotified, lastHours };
+    let notNotifiedInLastHours = null;
+    if (
+        raw.notNotifiedInLastHours !== "" &&
+        raw.notNotifiedInLastHours !== null &&
+        raw.notNotifiedInLastHours !== undefined
+    ) {
+        const parsed = Number(raw.notNotifiedInLastHours);
+        if (!Number.isInteger(parsed) || parsed < 1 || parsed > 720) {
+            return { error: "Not-notified hours must be a whole number between 1 and 720." };
+        }
+        notNotifiedInLastHours = parsed;
+    }
+    return { audience, driverDocuments, onlyNotBulkNotified, lastHours, notNotifiedInLastHours };
 }
 
 function displayName(user) {
@@ -89,6 +102,19 @@ async function findRecipients(filter) {
         users = users.filter((user) => !notifiedSet.has(String(user._id)));
     }
 
+    // "Not notified in the last N hours": keep users with no last-notification
+    // row at all, or whose last admin notification is older than N hours.
+    if (filter.notNotifiedInLastHours) {
+        const cutoff = new Date(
+            Date.now() - filter.notNotifiedInLastHours * 60 * 60 * 1000
+        );
+        const recentlyNotified = await LastAdminNotification.distinct("userId", {
+            sentAt: { $gte: cutoff },
+        });
+        const recentlySet = new Set(recentlyNotified.map(String));
+        users = users.filter((user) => !recentlySet.has(String(user._id)));
+    }
+
     const userIds = users.map((user) => user._id);
     const deviceCounts = userIds.length
         ? await PushDevice.aggregate([
@@ -133,6 +159,17 @@ async function previewBulkNotification(req, res) {
         }
         const { totalMatched, pushEnabled, skippedNoDeviceCount } =
             await findRecipients(filter);
+        const sample = pushEnabled.slice(0, 20);
+        const lastRows = sample.length
+            ? await LastAdminNotification.find({
+                userId: { $in: sample.map((user) => user.id) },
+            })
+                .select("userId title body sentAt")
+                .lean()
+            : [];
+        const lastByUser = new Map(
+            lastRows.map((row) => [String(row.userId), row])
+        );
         return res.json({
             success: true,
             filter,
@@ -140,7 +177,19 @@ async function previewBulkNotification(req, res) {
             pushEnabledCount: pushEnabled.length,
             skippedNoDeviceCount,
             // Preview is capped at 20 rows; the send itself is capped at 500.
-            sample: pushEnabled.slice(0, 20),
+            sample: sample.map((user) => {
+                const last = lastByUser.get(user.id);
+                return {
+                    ...user,
+                    lastNotification: last
+                        ? {
+                            title: last.title,
+                            body: last.body,
+                            sentAt: last.sentAt,
+                        }
+                        : null,
+                };
+            }),
             sendLimit: MAX_BULK_RECIPIENTS,
         });
     } catch (error) {
@@ -215,6 +264,26 @@ async function sendBulkNotification(req, res) {
                     new mongoose.Types.ObjectId(recipient.id)
                 );
             }
+        }
+
+        // Last-notification tracking: one row per successfully notified
+        // user, overwritten with this bulk's title/body/time.
+        if (notifiedUserIds.length) {
+            await LastAdminNotification.bulkWrite(
+                notifiedUserIds.map((userId) => ({
+                    updateOne: {
+                        filter: { userId },
+                        update: {
+                            userId,
+                            title: title.trim(),
+                            body: body.trim(),
+                            source: "BULK",
+                            sentAt: new Date(),
+                        },
+                        upsert: true,
+                    },
+                }))
+            );
         }
 
         const log = await BulkNotification.create({
