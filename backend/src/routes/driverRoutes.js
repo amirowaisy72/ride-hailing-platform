@@ -11,6 +11,7 @@ const {
 const {
     getAvailableRides,
     getMyActiveRide,
+    missRide,
 } = require("../controllers/driverRideController");
 
 const { getDriverHistory } = require("../controllers/driverHistoryController");
@@ -152,6 +153,13 @@ router.get(
     protect,
     authorize("PASSENGER", "DRIVER"),
     getAvailableRides
+);
+
+router.post(
+    "/me/missed-rides",
+    protect,
+    authorize("DRIVER"),
+    missRide
 );
 
 router.get(

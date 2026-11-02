@@ -8,7 +8,6 @@ import { usePathname } from "next/navigation";
 import { Bell, CarFront, KeyRound, Package, ShoppingBag } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
-import { useActionDialog } from "@/components/ActionDialog";
 import { apiRequest } from "@/lib/api";
 import { getAvailablePurchaseRequests } from "@/lib/purchaseService";
 import { getPartnerRentalBookings } from "@/lib/rentalService";
@@ -45,6 +44,9 @@ import { categoryLabel } from "@/components/parcel/parcelUi";
 const POLL_MS = 20000;
 const DISMISSED_KEY = "safar:driver-alert-dismissed:v2";
 const VIEWED_KEY = "safar:driver-alert-viewed:v2";
+// Ignore is deliberately session-only and reversible: it hides the popup
+// for now so the driver can work, without losing the request forever.
+const IGNORED_KEY = "safar:driver-alert-ignored:v2";
 
 const SERVICE_META = {
     RIDE: { labelKey: "alerts.newRide", Icon: CarFront },
@@ -157,11 +159,17 @@ function rentalAlert(booking) {
 export default function DriverRequestAlerts() {
     const { t } = useLanguage();
     const { token } = useAuth();
-    const dialog = useActionDialog();
     const pathname = usePathname();
     const [pending, setPending] = useState([]);
     const dismissedRef = useRef(null);
     const viewedRef = useRef(null);
+    const ignoredRef = useRef(null);
+    // Which popup key the inline Miss confirm is armed for. Derived from
+    // the current popup, so moving to another request auto-resets it
+    // without a conditional hook.
+    const [missConfirmKey, setMissConfirmKey] = useState(null);
+    const [missBusy, setMissBusy] = useState(false);
+    const [missError, setMissError] = useState("");
     const [, setSessionTick] = useState(0);
     const firstPollDoneRef = useRef(false);
     const knownKeysRef = useRef(new Set());
@@ -173,6 +181,7 @@ export default function DriverRequestAlerts() {
         // meaningfully because it renders nothing without a token).
         dismissedRef.current = typeof window !== "undefined" ? readSet(DISMISSED_KEY) : new Set();
         viewedRef.current = typeof window !== "undefined" ? readSet(VIEWED_KEY) : new Set();
+        ignoredRef.current = typeof window !== "undefined" ? readSet(IGNORED_KEY) : new Set();
     }
 
     // Sound: the AudioContext is created/resumed lazily and only after
@@ -306,16 +315,22 @@ export default function DriverRequestAlerts() {
 
     const dismissed = dismissedRef.current;
     const viewed = viewedRef.current;
+    const ignored = ignoredRef.current;
     // On driver home, ride requests already get that screen's own
     // full-screen offer overlay — the global popup would double up.
     // Other services still pop up there; rides pop up everywhere else.
     const actionable = pending.filter(
         (item) =>
             !dismissed.has(item.key) &&
+            !ignored.has(item.key) &&
             !(pathname === "/driver" && item.service === "RIDE")
+    );
+    const ignoredItems = pending.filter(
+        (item) => !dismissed.has(item.key) && ignored.has(item.key)
     );
     const queue = actionable.filter((item) => !viewed.has(item.key));
     const current = queue[0] || null;
+    const confirmingMiss = missConfirmKey === current?.key;
 
     const markViewed = (key) => {
         viewed.add(key);
@@ -323,42 +338,88 @@ export default function DriverRequestAlerts() {
         setSessionTick((n) => n + 1);
     };
 
-    const missRequest = async (item) => {
-        // The ONLY way a popup is dismissed (T-9): an explicit choice,
-        // preceded by the warning that missing it means losing it.
-        const confirmed = await dialog.confirm({
-            title: t("alerts.missWarningTitle"),
-            message: t("alerts.missWarningBody"),
-            confirmLabel: t("alerts.yesMiss"),
-            cancelLabel: t("alerts.keepWaiting"),
-            danger: true,
-        });
-        if (!confirmed) return;
-        dismissed.add(item.key);
-        writeSet(DISMISSED_KEY, dismissed);
+    const ignoreRequest = (item) => {
+        ignored.add(item.key);
+        writeSet(IGNORED_KEY, ignored);
+        setMissConfirmKey(null);
         setSessionTick((n) => n + 1);
+    };
+
+    const missRequest = async (item) => {
+        // Inline confirmation, right here in the popup — NOT the global
+        // dialog queue. The old queue stacked one confirm per Miss tap
+        // (6 taps = 6 confirms). First tap arms the confirm, second
+        // tap actually misses; taps while busy are ignored.
+        if (missBusy) return;
+        if (!confirmingMiss) {
+            setMissConfirmKey(item.key);
+            setMissError("");
+            return;
+        }
+        setMissBusy(true);
+        setMissError("");
+        try {
+            if (item.service === "RIDE") {
+                // Server-side miss: the ride never returns for this
+                // driver, even after a refresh (sessionStorage alone
+                // could not promise that).
+                const rideId = item.key.replace("RIDE:", "");
+                await apiRequest("/drivers/me/missed-rides", {
+                    token,
+                    method: "POST",
+                    body: JSON.stringify({ rideId }),
+                });
+            }
+            dismissed.add(item.key);
+            writeSet(DISMISSED_KEY, dismissed);
+            setMissConfirmKey(null);
+            setSessionTick((n) => n + 1);
+        } catch (err) {
+            setMissError(err.message || "Unable to miss this request.");
+        } finally {
+            setMissBusy(false);
+        }
     };
 
     if (!current) {
         // Nothing left to pop up. If work is still pending but the
         // driver already viewed it, keep a slim reminder chip that
         // reopens the popups — pending work is never hidden away.
-        if (actionable.length === 0) return null;
+        // Ignored work gets its own chip so it can be decided later.
+        if (actionable.length === 0 && ignoredItems.length === 0) return null;
         return (
             <div className="pointer-events-none fixed inset-x-0 top-[max(10px,env(safe-area-inset-top))] z-[120] mx-auto w-full max-w-xl px-3">
-                <div className="flex justify-center">
-                    <button
-                        type="button"
-                        onClick={() => {
-                            viewed.clear();
-                            writeSet(VIEWED_KEY, viewed);
-                            setSessionTick((n) => n + 1);
-                        }}
-                        className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-pd-ink px-3 py-1.5 text-xs font-extrabold text-pd-ink-text shadow-pd-lg"
-                    >
-                        <Bell size={13} />
-                        {t("dHome.newRequests", { count: actionable.length, plural: actionable.length === 1 ? "" : "s" })}
-                    </button>
+                <div className="flex flex-wrap justify-center gap-2">
+                    {actionable.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                viewed.clear();
+                                writeSet(VIEWED_KEY, viewed);
+                                setSessionTick((n) => n + 1);
+                            }}
+                            className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-pd-ink px-3 py-1.5 text-xs font-extrabold text-pd-ink-text shadow-pd-lg"
+                        >
+                            <Bell size={13} />
+                            {t("dHome.newRequests", { count: actionable.length, plural: actionable.length === 1 ? "" : "s" })}
+                        </button>
+                    )}
+                    {ignoredItems.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                ignored.clear();
+                                writeSet(IGNORED_KEY, ignored);
+                                setSessionTick((n) => n + 1);
+                            }}
+                            className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-pd-surface-2 px-3 py-1.5 text-xs font-extrabold text-pd-text shadow-pd-lg ring-1 ring-pd-line"
+                        >
+                            <Bell size={13} />
+                            {storedLanguage() === "ur"
+                                ? `${ignoredItems.length} نظر انداز شدہ درخواستیں دکھائیں`
+                                : `Show ${ignoredItems.length} ignored request${ignoredItems.length === 1 ? "" : "s"}`}
+                        </button>
+                    )}
                 </div>
             </div>
         );
@@ -399,6 +460,16 @@ export default function DriverRequestAlerts() {
                     </p>
                 )}
 
+                {confirmingMiss && (
+                    <p className="mt-4 rounded-xl bg-pd-surface-2 p-3 text-sm font-bold text-pd-danger">
+                        {t("alerts.missWarningTitle")} {t("alerts.missWarningBody")}
+                    </p>
+                )}
+                {missError && (
+                    <p role="alert" className="mt-3 text-sm font-bold text-pd-danger">
+                        {missError}
+                    </p>
+                )}
                 <div className="mt-4 flex gap-2">
                     <Link
                         href={current.href}
@@ -409,11 +480,39 @@ export default function DriverRequestAlerts() {
                     </Link>
                     <button
                         type="button"
+                        disabled={missBusy}
                         onClick={() => void missRequest(current)}
-                        className="flex h-12 flex-1 items-center justify-center rounded-xl bg-pd-surface-2 text-sm font-bold text-pd-danger ring-1 ring-pd-line"
+                        className="flex h-12 flex-1 items-center justify-center rounded-xl bg-pd-surface-2 text-sm font-bold text-pd-danger ring-1 ring-pd-line disabled:opacity-50"
                     >
-                        {t("alerts.missRequest")}
+                        {confirmingMiss
+                            ? missBusy
+                                ? "..."
+                                : t("alerts.yesMiss")
+                            : t("alerts.missRequest")}
                     </button>
+                </div>
+                <div className="mt-2 flex gap-2">
+                    {confirmingMiss ? (
+                        <button
+                            type="button"
+                            disabled={missBusy}
+                            onClick={() => {
+                                setMissConfirmKey(null);
+                                setMissError("");
+                            }}
+                            className="flex h-11 flex-1 items-center justify-center rounded-xl bg-pd-surface-2 text-sm font-bold text-pd-text ring-1 ring-pd-line disabled:opacity-50"
+                        >
+                            {t("alerts.keepWaiting")}
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => ignoreRequest(current)}
+                            className="flex h-11 flex-1 items-center justify-center rounded-xl bg-pd-surface-2 text-sm font-bold text-pd-text ring-1 ring-pd-line"
+                        >
+                            {storedLanguage() === "ur" ? "نظر انداز کریں" : "Ignore for now"}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

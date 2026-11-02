@@ -1,6 +1,7 @@
 const Ride = require("../models/Ride");
 const Driver = require("../models/Driver");
 const Vehicle = require("../models/Vehicle");
+const DriverMissedRide = require("../models/DriverMissedRide");
 const { canReceiveRideRequests } = require("../services/eligibilityService");
 
 const getAvailableRides = async (req, res) => {
@@ -52,10 +53,19 @@ const getAvailableRides = async (req, res) => {
             });
         }
 
+        // Missed rides never come back for this driver, and rides older
+        // than the auto-expiry window are hidden here even before the
+        // periodic expiry job runs, so drivers never see stale work.
+        const missedRideIds = await DriverMissedRide.distinct("rideId", {
+            driverId: driver._id,
+        });
+
         const rides = await Ride.find({
             vehicleType: vehicle.vehicleType,
             status: { $in: ["REQUESTED", "SEARCHING", "BIDDING"] },
             driverId: null,
+            _id: { $nin: missedRideIds },
+            createdAt: { $gte: new Date(Date.now() - 15 * 60 * 1000) },
             pickup: {
                 $near: {
                     $geometry: driver.currentLocation,
@@ -112,4 +122,39 @@ const getMyActiveRide = async (req, res) => {
     }
 };
 
-module.exports = { getAvailableRides, getMyActiveRide };
+const missRide = async (req, res) => {
+    try {
+        const driver = await Driver.findOne({ userId: req.user._id });
+        if (!driver) {
+            return res.status(404).json({
+                success: false,
+                message: "Driver profile not found",
+            });
+        }
+
+        const { rideId } = req.body || {};
+        if (!rideId) {
+            return res.status(400).json({
+                success: false,
+                message: "rideId is required",
+            });
+        }
+
+        // Idempotent: missing the same ride twice is still just missed.
+        await DriverMissedRide.updateOne(
+            { driverId: driver._id, rideId },
+            { $setOnInsert: { driverId: driver._id, rideId } },
+            { upsert: true }
+        );
+
+        return res.json({ success: true, message: "Ride missed." });
+    } catch (error) {
+        console.error("Miss ride error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Unable to miss ride.",
+        });
+    }
+};
+
+module.exports = { getAvailableRides, getMyActiveRide, missRide };

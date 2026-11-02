@@ -122,6 +122,9 @@ const io = initializeRealtime(httpServer);
 
 const startServer = async () => {
     await connectDB();
+    // Expire abandoned ride requests (no driver selected within 15 min)
+    // so stale requests stop piling up for drivers.
+    require("./services/rideExpiryService").startRideExpiry();
 
     httpServer.listen(PORT, () => {
         console.log(`API + WebSocket running on port ${PORT}`);
