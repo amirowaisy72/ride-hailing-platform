@@ -9,6 +9,8 @@ const {
     reviewDriverDocument,
     getDriverDocuments,
     viewDriverDocument,
+    getMissingDocuments,
+    notifyMissingDocuments,
 } = require("../controllers/adminDriverController");
 
 const {
@@ -27,6 +29,8 @@ router.get("/documents/:documentId/view", viewDriverDocument);
 router.patch("/documents/:documentId/review", reviewDriverDocument);
 
 router.get("/:id/documents", getDriverDocuments);
+router.get("/:id/missing-documents", getMissingDocuments);
+router.post("/:id/notify-missing-documents", notifyMissingDocuments);
 router.patch("/:id/status", updateDriverStatus);
 
 // Phase 2 — per-service approval / rejection / suspension

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
     CarFront, CheckCircle2, Clock3, RefreshCw,
     Search, ShieldCheck, XCircle, UserRound,
-    AlertCircle, ChevronLeft, ChevronRight,
+    AlertCircle, ChevronLeft, ChevronRight, Bell,
 } from "lucide-react";
 
 import AdminShell from "@/components/AdminShell";
@@ -101,6 +101,48 @@ export default function DriversPage() {
 
             setMessage(`Driver ${label} action completed.`);
             await loadDrivers();
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setBusyId(null);
+        }
+    }
+
+    // Missing-documents push: preview the exact message first,
+    // confirm it, then send. Nothing is sent without the confirm.
+    async function notifyMissingDocuments(driverId) {
+        if (busyId) return;
+
+        setBusyId(driverId);
+        setError("");
+        setMessage("");
+
+        try {
+            const preview = await authenticatedAdminRequest(
+                `/admin/drivers/${driverId}/missing-documents`
+            );
+
+            if (!preview.missing?.length) {
+                setMessage("No documents are missing for this driver.");
+                return;
+            }
+
+            if (!preview.hasPushDevice) {
+                setError("This driver has no registered push-enabled device.");
+                return;
+            }
+
+            const confirmed = await confirmDialog(
+                `Send this push notification to ${preview.driverName}? "${preview.title}" — ${preview.body}`
+            );
+            if (!confirmed) return;
+
+            const result = await authenticatedAdminRequest(
+                `/admin/drivers/${driverId}/notify-missing-documents`,
+                { method: "POST" }
+            );
+
+            setMessage(result.message || "Notification sent.");
         } catch (err) {
             setError(err.message);
         } finally {
@@ -374,6 +416,16 @@ export default function DriversPage() {
                                                 <button
                                                     type="button"
                                                     disabled={Boolean(busyId)}
+                                                    onClick={() => notifyMissingDocuments(driverId)}
+                                                    className="flex items-center gap-2 rounded-xl border border-amber-200 px-4 py-3 text-sm font-bold text-amber-700 disabled:opacity-50"
+                                                >
+                                                    <Bell size={16} />
+                                                    Notify Missing Docs
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    disabled={Boolean(busyId)}
                                                     onClick={() => updateDriver(driverId, "approve")}
                                                     className="flex items-center gap-2 rounded-xl bg-[#087F5B] px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
                                                 >
@@ -418,3 +470,4 @@ export default function DriversPage() {
         </AdminShell>
     );
 }
+

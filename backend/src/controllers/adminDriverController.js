@@ -1,5 +1,7 @@
 const Driver = require("../models/Driver");
 const DriverDocument = require("../models/DriverDocument");
+const PushDevice = require("../models/PushDevice");
+const IntegrationSetting = require("../models/IntegrationSetting");
 const LastAdminNotification = require("../models/LastAdminNotification");
 const { sendPushToUser } = require("../services/pushService");
 
@@ -334,4 +336,201 @@ module.exports = {
     reviewDriverDocument,
     getDriverDocuments,
     viewDriverDocument,
+    getMissingDocuments,
+    notifyMissingDocuments,
+};
+
+// Missing-documents push notification. The required set mirrors
+// driver approval exactly (adminDriverController approval check +
+// DriverDocumentReview): an APPROVED, unexpired document of each
+// of the four types. PROFILE_PHOTO is not required, so a driver
+// with four approved documents can still be missing one here.
+// The message text is fixed (approved by admin) — only the
+// missing document names are inserted — and the dashboard
+// always shows it in a confirm dialog before sending.
+const REQUIRED_DOCUMENT_TYPES = [
+    "CNIC_FRONT",
+    "CNIC_BACK",
+    "DRIVING_LICENSE",
+    "VEHICLE_REGISTRATION",
+];
+
+const DOCUMENT_LABELS = {
+    CNIC_FRONT: "CNIC Front",
+    CNIC_BACK: "CNIC Back",
+    DRIVING_LICENSE: "Driving License",
+    VEHICLE_REGISTRATION: "Vehicle Registration",
+};
+
+async function findMissingDocumentTypes(driverId) {
+    const docs = await DriverDocument.find({ driverId })
+        .select("documentType verificationStatus expiryDate")
+        .lean();
+    const now = new Date();
+    const approved = new Set(
+        docs
+            .filter(
+                (doc) =>
+                    doc.verificationStatus === "APPROVED" &&
+                    (!doc.expiryDate || new Date(doc.expiryDate) > now)
+            )
+            .map((doc) => doc.documentType)
+    );
+    return REQUIRED_DOCUMENT_TYPES.filter((type) => !approved.has(type));
+}
+
+function missingDocumentsMessage(missing) {
+    const labels = missing.map((type) => DOCUMENT_LABELS[type]);
+    const title = "Aap ki documents incomplete hain";
+    const body =
+        missing.length === 1
+            ? `Assalam-o-Alaikum! Aap ki ${labels[0]} document missing hai. Barah-e-karam Safar app me ja kar ye document upload karein taake hum aap ki verification mukammal kar sakein. Shukriya!`
+            : `Assalam-o-Alaikum! Aap ki ye documents missing hain: ${labels.join(", ")}. Barah-e-karam Safar app me ja kar ye documents upload karein taake hum aap ki verification mukammal kar sakein.`;
+    return { title, body };
+}
+
+const getMissingDocuments = async (req, res) => {
+    try {
+        const driver = await Driver.findById(req.params.id).populate(
+            "userId",
+            "firstName lastName"
+        );
+
+        if (!driver) {
+            return res.status(404).json({
+                success: false,
+                message: "Driver not found.",
+            });
+        }
+
+        const missing = await findMissingDocumentTypes(driver._id);
+
+        if (!missing.length) {
+            return res.json({
+                success: true,
+                missing: [],
+                title: null,
+                body: null,
+                message: "No documents are missing for this driver.",
+            });
+        }
+
+        const { title, body } = missingDocumentsMessage(missing);
+        const userId = driver.userId?._id || driver.userId;
+        const hasPushDevice =
+            (await PushDevice.countDocuments({ userId })) > 0;
+
+        return res.json({
+            success: true,
+            driverName: [driver.userId?.firstName, driver.userId?.lastName]
+                .filter(Boolean)
+                .join(" ") || "Driver",
+            missing: missing.map((type) => ({
+                type,
+                label: DOCUMENT_LABELS[type],
+            })),
+            title,
+            body,
+            hasPushDevice,
+        });
+    } catch (error) {
+        console.error("Missing documents preview error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Unable to load missing documents.",
+        });
+    }
+};
+
+const notifyMissingDocuments = async (req, res) => {
+    try {
+        const driver = await Driver.findById(req.params.id);
+
+        if (!driver) {
+            return res.status(404).json({
+                success: false,
+                message: "Driver not found.",
+            });
+        }
+
+        // Recomputed here, never trusted from the preview call.
+        const missing = await findMissingDocumentTypes(driver._id);
+
+        if (!missing.length) {
+            return res.status(409).json({
+                success: false,
+                message: "No documents are missing for this driver.",
+            });
+        }
+
+        const setting = await IntegrationSetting.findOne({
+            key: "push-notifications",
+        }).lean();
+
+        if (setting?.enabled === false) {
+            return res.status(503).json({
+                success: false,
+                message: "Push notifications are disabled by Admin.",
+            });
+        }
+
+        const deviceCount = await PushDevice.countDocuments({
+            userId: driver.userId,
+        });
+
+        if (!deviceCount) {
+            return res.status(409).json({
+                success: false,
+                message: "This driver has no registered push-enabled device.",
+            });
+        }
+
+        const { title, body } = missingDocumentsMessage(missing);
+
+        const delivery = await sendPushToUser(driver.userId, title, body, {
+            type: "ADMIN_CUSTOM",
+            source: "ADMIN",
+        });
+
+        if (delivery?.error || !delivery?.successCount) {
+            return res.status(502).json({
+                success: false,
+                message: "Push delivery failed. Check Firebase configuration and backend logs.",
+                delivery: {
+                    successCount: delivery?.successCount || 0,
+                    failureCount: delivery?.failureCount || 0,
+                },
+            });
+        }
+
+        // Same record as the driver-approval auto push: keeps the
+        // bulk "only users NOT notified in last ___ hours" filter
+        // accurate for this send too.
+        await LastAdminNotification.findOneAndUpdate(
+            { userId: driver.userId },
+            {
+                userId: driver.userId,
+                title,
+                body,
+                source: "SINGLE",
+                sentAt: new Date(),
+            },
+            { upsert: true, new: true }
+        );
+
+        return res.json({
+            success: true,
+            message: "Notification sent to registered device(s).",
+            delivery: {
+                successCount: delivery.successCount,
+                failureCount: delivery.failureCount,
+            },
+        });
+    } catch (error) {
+        console.error("Missing documents notify error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Unable to send notification.",
+        });
+    }
 };
