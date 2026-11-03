@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -123,7 +122,7 @@ export default function AdminShell({ children, title = "Dashboard" }) {
     }
 
     return (
-        <div className="min-h-screen bg-[#F5F7F6] text-slate-900">
+        <div className="min-h-screen bg-[#DCEDE2] text-slate-900">
             {menuOpen && (
                 <button
                     type="button"
@@ -217,7 +216,7 @@ export default function AdminShell({ children, title = "Dashboard" }) {
             </aside>
 
             <div className="min-h-screen lg:pl-[270px]">
-                <header className="sticky top-0 z-30 flex h-[76px] items-center justify-between border-b border-slate-200 bg-white px-5 lg:px-8">
+                <header className="sticky top-0 z-30 flex h-[76px] items-center justify-between border-b border-emerald-100 bg-[#EAF4EE] px-5 lg:px-8">
                     <div className="flex items-center gap-4">
                         <button
                             type="button"

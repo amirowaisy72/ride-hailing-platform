@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -25,6 +24,41 @@ const snippet = (text, length = 70) => {
 // time THIS browser loaded the Important section — stored
 // locally, never sent anywhere. A new latest version resets it.
 const VERSION_SEEN_KEY = "important_last_version";
+
+// Important-section "only new items" tracking, localStorage only,
+// never sent to the server (same pattern as VERSION_SEEN_KEY).
+// A card click marks its currently shown recent items as seen;
+// Refresh never marks anything as seen.
+const COMPLAINTS_SEEN_KEY = "important_seen_complaints";
+const FEEDBACK_SEEN_KEY = "important_seen_feedback";
+
+function readSeenIds(key) {
+    if (typeof window === "undefined") return [];
+    try {
+        const raw = window.localStorage.getItem(key);
+        const parsed = raw ? JSON.parse(raw) : null;
+        return Array.isArray(parsed) ? parsed.map((id) => String(id)) : [];
+    } catch {
+        return [];
+    }
+}
+
+function markSeen(key, items) {
+    if (typeof window === "undefined") return;
+    try {
+        window.localStorage.setItem(
+            key,
+            JSON.stringify((items || []).map((item) => String(item.id)))
+        );
+    } catch {
+        // Seen state is best-effort only.
+    }
+}
+
+function unseenItems(items, seenIds) {
+    const seen = new Set(seenIds || []);
+    return (items || []).filter((item) => !seen.has(String(item.id)));
+}
 
 function versionDelta(latest) {
     if (typeof window === "undefined" || !latest) return null;
@@ -149,6 +183,19 @@ export default function DashboardPage() {
         loadOverview();
     }, [loadOverview]);
 
+    // Only items not seen on the last card click count as "new".
+    // On first visit (nothing stored) every recent item is new.
+    const complaintRecent = important?.openComplaints?.recent || [];
+    const feedbackRecent = important?.newFeedback?.recent || [];
+    const newComplaints = unseenItems(
+        complaintRecent,
+        readSeenIds(COMPLAINTS_SEEN_KEY)
+    );
+    const newFeedback = unseenItems(
+        feedbackRecent,
+        readSeenIds(FEEDBACK_SEEN_KEY)
+    );
+
     return (
         <AdminShell title="Overview">
             <div className="space-y-7">
@@ -224,6 +271,9 @@ export default function DashboardPage() {
                         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                             <Link
                                 href="/dashboard/complaints"
+                                onClick={() =>
+                                    markSeen(COMPLAINTS_SEEN_KEY, complaintRecent)
+                                }
                                 className="group rounded-[22px] border border-red-100 bg-white p-5 shadow-sm transition hover:border-red-200 hover:shadow-md"
                             >
                                 <div className="flex items-start justify-between">
@@ -239,18 +289,29 @@ export default function DashboardPage() {
                                     {important.openComplaints.count}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
-                                    {important.openComplaints.recent.slice(0, 2).map((item) => (
-                                        <span key={item.id} className="block truncate">
-                                            {item.name} · {item.category}
-                                        </span>
-                                    ))}
-                                    {important.openComplaints.recent.length === 0 &&
-                                        "No open complaints."}
+                                    {newComplaints.length > 0 ? (
+                                        <>
+                                            <span className="block font-bold text-red-600">
+                                                +{newComplaints.length} new complaint
+                                                {newComplaints.length === 1 ? "" : "s"}
+                                            </span>
+                                            {newComplaints.slice(0, 2).map((item) => (
+                                                <span key={item.id} className="block truncate">
+                                                    {item.name} · {item.category}
+                                                </span>
+                                            ))}
+                                        </>
+                                    ) : (
+                                        "No new complaints yet."
+                                    )}
                                 </p>
                             </Link>
 
                             <Link
                                 href="/dashboard/feedbacks"
+                                onClick={() =>
+                                    markSeen(FEEDBACK_SEEN_KEY, feedbackRecent)
+                                }
                                 className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
                             >
                                 <div className="flex items-start justify-between">
@@ -266,13 +327,20 @@ export default function DashboardPage() {
                                     {important.newFeedback.count}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
-                                    {important.newFeedback.recent.slice(0, 2).map((item) => (
-                                        <span key={item.id} className="block truncate">
-                                            {item.name}: {snippet(item.message, 60)}
-                                        </span>
-                                    ))}
-                                    {important.newFeedback.recent.length === 0 &&
-                                        "No new feedback."}
+                                    {newFeedback.length > 0 ? (
+                                        <>
+                                            <span className="block font-bold text-[#087F5B]">
+                                                +{newFeedback.length} new feedback
+                                            </span>
+                                            {newFeedback.slice(0, 2).map((item) => (
+                                                <span key={item.id} className="block truncate">
+                                                    {item.name}: {snippet(item.message, 60)}
+                                                </span>
+                                            ))}
+                                        </>
+                                    ) : (
+                                        "No new feedback yet."
+                                    )}
                                 </p>
                             </Link>
 
