@@ -210,6 +210,28 @@ async function getImportant(req, res) {
     try {
         const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
+        // "Only new" registration windows: the dashboard sends the
+        // last time each card was clicked (localStorage, per card).
+        // A valid timestamp counts only registrations AFTER that
+        // click, so a viewed card drops to 0 and the next unseen
+        // registration shows as +1. Missing/invalid timestamps fall
+        // back to the last 24h, preserving the previous behaviour
+        // on first visit. Read-only filter only; nothing else
+        // about this endpoint changes.
+        const parseSince = (value) => {
+            if (!value) return null;
+            const date = new Date(String(value));
+            return Number.isNaN(date.getTime()) ? null : date;
+        };
+        const passengerSince = parseSince(req.query.passengerSince);
+        const driverSince = parseSince(req.query.driverSince);
+        const passengerCreatedFilter = passengerSince
+            ? { $gt: passengerSince }
+            : { $gte: dayAgo };
+        const driverCreatedFilter = driverSince
+            ? { $gt: driverSince }
+            : { $gte: dayAgo };
+
         // Latest-version config first: the "users on latest"
         // count below depends on its version code.
         const versionConfig = await AppVersionConfig.findOne({
@@ -278,15 +300,15 @@ async function getImportant(req, res) {
             // response field is changed by this addition.
             User.countDocuments({
                 role: "PASSENGER",
-                createdAt: { $gte: dayAgo },
+                createdAt: passengerCreatedFilter,
             }),
-            User.find({ role: "PASSENGER", createdAt: { $gte: dayAgo } })
+            User.find({ role: "PASSENGER", createdAt: passengerCreatedFilter })
                 .select("firstName lastName name email createdAt")
                 .sort({ createdAt: -1 })
                 .limit(5)
                 .lean(),
-            Driver.countDocuments({ createdAt: { $gte: dayAgo } }),
-            Driver.find({ createdAt: { $gte: dayAgo } })
+            Driver.countDocuments({ createdAt: driverCreatedFilter }),
+            Driver.find({ createdAt: driverCreatedFilter })
                 .populate("userId", "firstName lastName")
                 .select("userId verificationStatus createdAt")
                 .sort({ createdAt: -1 })
@@ -377,7 +399,8 @@ async function getImportant(req, res) {
                     drivers: [...pendingDriversById.values()],
                 },
                 activeRides: { count: activeRides },
-                // ADDITIVE ONLY: last-24h registrations.
+                // ADDITIVE ONLY: registrations since the card was
+                // last clicked (last 24h when no click recorded yet).
                 newPassengers: {
                     count: newPassengerCount,
                     recent: newPassengerList.map((item) => ({

@@ -60,6 +60,45 @@ function unseenItems(items, seenIds) {
     return (items || []).filter((item) => !seen.has(String(item.id)));
 }
 
+// Registration cards use a "last clicked" timestamp instead of an
+// id list: registrations can be dozens per day, and an id list
+// capped at the 5 recent items would hide the rest. A card click
+// stamps now; the backend then counts only registrations after
+// that stamp, so a viewed card shows 0 until a new registration
+// arrives. Refresh never stamps anything.
+const PASSENGERS_SEEN_AT_KEY = "important_seen_passengers_at";
+const DRIVERS_SEEN_AT_KEY = "important_seen_drivers_at";
+
+function readSeenAt(key) {
+    if (typeof window === "undefined") return null;
+    try {
+        return window.localStorage.getItem(key);
+    } catch {
+        return null;
+    }
+}
+
+function markSeenAt(key) {
+    if (typeof window === "undefined") return;
+    try {
+        window.localStorage.setItem(key, new Date().toISOString());
+    } catch {
+        // Seen state is best-effort only.
+    }
+}
+
+function timeAgo(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const minutes = Math.floor((Date.now() - date.getTime()) / 60000);
+    if (minutes < 1) return "just now";
+    if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+    const days = Math.floor(hours / 24);
+    return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
 function versionDelta(latest) {
     if (typeof window === "undefined" || !latest) return null;
 
@@ -166,8 +205,17 @@ export default function DashboardPage() {
         // Important items load independently: if they fail, the
         // rest of the overview still shows.
         try {
+            // Registration windows: last card click, or 24h ago on
+            // first visit (backend falls back the same way).
+            const dayAgo = new Date(
+                Date.now() - 24 * 60 * 60 * 1000
+            ).toISOString();
+            const params = new URLSearchParams({
+                passengerSince: readSeenAt(PASSENGERS_SEEN_AT_KEY) || dayAgo,
+                driverSince: readSeenAt(DRIVERS_SEEN_AT_KEY) || dayAgo,
+            });
             const result = await authenticatedAdminRequest(
-                "/admin/operations/important"
+                `/admin/operations/important?${params.toString()}`
             );
 
             setImportant(result.important);
@@ -409,6 +457,7 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/passengers"
+                                onClick={() => markSeenAt(PASSENGERS_SEEN_AT_KEY)}
                                 className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
                             >
                                 <div className="flex items-start justify-between">
@@ -424,18 +473,19 @@ export default function DashboardPage() {
                                     {important.newPassengers?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
-                                    {(important.newPassengers?.recent || []).length === 0 ? (
-                                        "No new passengers in the last 24 hours."
+                                    {(important.newPassengers?.count ?? 0) === 0 ? (
+                                        "No new passengers yet."
                                     ) : (
                                         <>
+                                            <span className="block font-bold text-[#087F5B]">
+                                                +{important.newPassengers.count} new passenger
+                                                {important.newPassengers.count === 1 ? "" : "s"} registered
+                                            </span>
                                             {(important.newPassengers?.recent || []).slice(0, 2).map((item) => (
                                                 <span key={item.id} className="block truncate">
-                                                    {item.name}
+                                                    {item.name} · {timeAgo(item.createdAt)}
                                                 </span>
                                             ))}
-                                            <span className="block">
-                                                Registered in the last 24 hours.
-                                            </span>
                                         </>
                                     )}
                                 </p>
@@ -443,6 +493,7 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/drivers"
+                                onClick={() => markSeenAt(DRIVERS_SEEN_AT_KEY)}
                                 className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
                             >
                                 <div className="flex items-start justify-between">
@@ -458,18 +509,19 @@ export default function DashboardPage() {
                                     {important.newDrivers?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
-                                    {(important.newDrivers?.recent || []).length === 0 ? (
-                                        "No new drivers in the last 24 hours."
+                                    {(important.newDrivers?.count ?? 0) === 0 ? (
+                                        "No new drivers yet."
                                     ) : (
                                         <>
+                                            <span className="block font-bold text-[#087F5B]">
+                                                +{important.newDrivers.count} new driver
+                                                {important.newDrivers.count === 1 ? "" : "s"} registered
+                                            </span>
                                             {(important.newDrivers?.recent || []).slice(0, 2).map((item) => (
                                                 <span key={item.id} className="block truncate">
-                                                    {item.name} · {item.verificationStatus}
+                                                    {item.name} · {item.verificationStatus} · {timeAgo(item.createdAt)}
                                                 </span>
                                             ))}
-                                            <span className="block">
-                                                Registered in the last 24 hours.
-                                            </span>
                                         </>
                                     )}
                                 </p>
