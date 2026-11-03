@@ -28,6 +28,7 @@ const navigation = [
     { label: "App Version", href: "/dashboard/app-version", icon: Bell },
     { label: "Announcements", href: "/dashboard/announcements", icon: Bell },
     { label: "Rides", href: "/dashboard/rides", icon: Route },
+    { label: "Today Rides", href: "/dashboard/today-rides", icon: Route },
     { label: "Parcels", href: "/dashboard/parcels", icon: Route },
     { label: "Buy & Deliver", href: "/dashboard/buy-deliver", icon: ShoppingBag },
     { label: "Rentals", href: "/dashboard/rentals", icon: KeyRound },

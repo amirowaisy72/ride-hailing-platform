@@ -324,24 +324,24 @@ export default function DashboardPage() {
                             </button>
                         </div>
 
-                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                             <Link
                                 href="/dashboard/complaints"
                                 onClick={() =>
                                     markSeen(COMPLAINTS_SEEN_KEY, complaintRecent)
                                 }
-                                className="group rounded-[22px] border border-red-100 bg-white p-5 shadow-sm transition hover:border-red-200 hover:shadow-md"
+                                className="group rounded-[22px] border border-red-100 bg-white p-4 shadow-sm transition hover:border-red-200 hover:shadow-md"
                             >
                                 <div className="flex items-start justify-between">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-600">
-                                        <Flag size={24} />
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600">
+                                        <Flag size={20} />
                                     </div>
-                                    <ArrowUpRight size={20} className="text-slate-400 group-hover:text-red-600" />
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-red-600" />
                                 </div>
-                                <p className="mt-4 text-sm text-slate-500">
+                                <p className="mt-3 text-sm text-slate-500">
                                     Open Complaints
                                 </p>
-                                <p className="mt-1 text-3xl font-extrabold">
+                                <p className="mt-1 text-2xl font-extrabold">
                                     {important.openComplaints.count}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -368,18 +368,18 @@ export default function DashboardPage() {
                                 onClick={() =>
                                     markSeen(FEEDBACK_SEEN_KEY, feedbackRecent)
                                 }
-                                className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
                             >
                                 <div className="flex items-start justify-between">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                                        <MessageSquare size={24} />
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                                        <MessageSquare size={20} />
                                     </div>
-                                    <ArrowUpRight size={20} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
                                 </div>
-                                <p className="mt-4 text-sm text-slate-500">
+                                <p className="mt-3 text-sm text-slate-500">
                                     New Feedback
                                 </p>
-                                <p className="mt-1 text-3xl font-extrabold">
+                                <p className="mt-1 text-2xl font-extrabold">
                                     {important.newFeedback.count}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -402,18 +402,18 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/vehicles"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
                             >
                                 <div className="flex items-start justify-between">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-[#087F5B]">
-                                        <Bike size={24} />
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-[#087F5B]">
+                                        <Bike size={20} />
                                     </div>
-                                    <ArrowUpRight size={20} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
                                 </div>
-                                <p className="mt-4 text-sm text-slate-500">
+                                <p className="mt-3 text-sm text-slate-500">
                                     Vehicles Pending Verification
                                 </p>
-                                <p className="mt-1 text-3xl font-extrabold">
+                                <p className="mt-1 text-2xl font-extrabold">
                                     {overview?.pendingVehicles ?? "—"}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -423,18 +423,18 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/drivers"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
                             >
                                 <div className="flex items-start justify-between">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
-                                        <FileCheck size={24} />
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                                        <FileCheck size={20} />
                                     </div>
-                                    <ArrowUpRight size={20} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
                                 </div>
-                                <p className="mt-4 text-sm text-slate-500">
+                                <p className="mt-3 text-sm text-slate-500">
                                     Driver Documents Pending Review
                                 </p>
-                                <p className="mt-1 text-3xl font-extrabold">
+                                <p className="mt-1 text-2xl font-extrabold">
                                     {pendingDocData.count}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -458,18 +458,18 @@ export default function DashboardPage() {
                             <Link
                                 href="/dashboard/passengers"
                                 onClick={() => markSeenAt(PASSENGERS_SEEN_AT_KEY)}
-                                className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
                             >
                                 <div className="flex items-start justify-between">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                                        <Users size={24} />
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                                        <Users size={20} />
                                     </div>
-                                    <ArrowUpRight size={20} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
                                 </div>
-                                <p className="mt-4 text-sm text-slate-500">
+                                <p className="mt-3 text-sm text-slate-500">
                                     New Passengers
                                 </p>
-                                <p className="mt-1 text-3xl font-extrabold">
+                                <p className="mt-1 text-2xl font-extrabold">
                                     {important.newPassengers?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -494,18 +494,18 @@ export default function DashboardPage() {
                             <Link
                                 href="/dashboard/drivers"
                                 onClick={() => markSeenAt(DRIVERS_SEEN_AT_KEY)}
-                                className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
                             >
                                 <div className="flex items-start justify-between">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-[#087F5B]">
-                                        <CarFront size={24} />
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-[#087F5B]">
+                                        <CarFront size={20} />
                                     </div>
-                                    <ArrowUpRight size={20} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
                                 </div>
-                                <p className="mt-4 text-sm text-slate-500">
+                                <p className="mt-3 text-sm text-slate-500">
                                     New Drivers
                                 </p>
-                                <p className="mt-1 text-3xl font-extrabold">
+                                <p className="mt-1 text-2xl font-extrabold">
                                     {important.newDrivers?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -529,18 +529,18 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/rides"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
                             >
                                 <div className="flex items-start justify-between">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-[#087F5B]">
-                                        <Activity size={24} />
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-[#087F5B]">
+                                        <Activity size={20} />
                                     </div>
-                                    <ArrowUpRight size={20} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
                                 </div>
-                                <p className="mt-4 text-sm text-slate-500">
+                                <p className="mt-3 text-sm text-slate-500">
                                     Active Rides Right Now
                                 </p>
-                                <p className="mt-1 text-3xl font-extrabold">
+                                <p className="mt-1 text-2xl font-extrabold">
                                     {important.activeRides.count}
                                 </p>
                                 <p className="mt-2 text-xs text-slate-500">
@@ -549,21 +549,54 @@ export default function DashboardPage() {
                             </Link>
 
                             <Link
-                                href="/dashboard/app-version"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                                href="/dashboard/today-rides"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
                             >
                                 <div className="flex items-start justify-between">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
-                                        <Smartphone size={24} />
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-[#087F5B]">
+                                        <CheckCircle2 size={20} />
                                     </div>
-                                    <ArrowUpRight size={20} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
                                 </div>
-                                <p className="mt-4 text-sm text-slate-500">
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Today&apos;s Completed Rides
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold">
+                                    {important.todayCompletedRides?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    <span className="block">
+                                        {(important.todayCompletedRides?.count ?? 0) === 0
+                                            ? "No rides completed yet today."
+                                            : `${important.todayCompletedRides.count} ride${important.todayCompletedRides.count === 1 ? "" : "s"} completed today.`}
+                                    </span>
+                                    <span className="block">
+                                        {new Date().toLocaleDateString("en-PK", {
+                                            timeZone: "Asia/Karachi",
+                                            day: "numeric",
+                                            month: "short",
+                                            year: "numeric",
+                                        })}
+                                    </span>
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/app-version"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                                        <Smartphone size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
                                     Latest App Version
                                 </p>
                                 {important.appVersion ? (
                                     <>
-                                        <p className="mt-1 text-3xl font-extrabold">
+                                        <p className="mt-1 text-2xl font-extrabold">
                                             {important.appVersion.latestVersionName}
                                         </p>
                                         <p className="mt-2 text-xs leading-5 text-slate-500">

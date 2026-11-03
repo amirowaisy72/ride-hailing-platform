@@ -197,6 +197,7 @@ module.exports = {
     getPassengers,
     getRides,
     getImportant,
+    getTodayRides,
 };
 
 // GET /admin/operations/important — one call for the Overview
@@ -228,6 +229,16 @@ async function getImportant(req, res) {
         const passengerCreatedFilter = passengerSince
             ? { $gt: passengerSince }
             : { $gte: dayAgo };
+
+        // Today's date in Pakistan time (the dashboard's timezone):
+        // the server runs on UTC, so shift by +05:00, take the
+        // calendar day, and shift back. Pakistan has no DST, so a
+        // fixed +05:00 is correct. The count resets at midnight PKT.
+        const PKT_OFFSET_MS = 5 * 60 * 60 * 1000;
+        const pktNow = new Date(Date.now() + PKT_OFFSET_MS);
+        pktNow.setUTCHours(0, 0, 0, 0);
+        const todayStart = new Date(pktNow.getTime() - PKT_OFFSET_MS);
+        const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
         const driverCreatedFilter = driverSince
             ? { $gt: driverSince }
             : { $gte: dayAgo };
@@ -247,6 +258,7 @@ async function getImportant(req, res) {
             pendingDocuments,
             pendingDocumentList,
             activeRides,
+            todayCompletedRides,
             newPassengerCount,
             newPassengerList,
             newDriverCount,
@@ -295,6 +307,19 @@ async function getImportant(req, res) {
                 .limit(100)
                 .lean(),
             Ride.countDocuments({ status: { $in: activeStatuses } }),
+            // ADDITIVE ONLY: rides completed on today's PKT date.
+            // completedAt is the primary signal; rides completed
+            // before that field was recorded fall back to updatedAt.
+            Ride.countDocuments({
+                status: "TRIP_COMPLETED",
+                $or: [
+                    { completedAt: { $gte: todayStart, $lt: todayEnd } },
+                    {
+                        completedAt: null,
+                        updatedAt: { $gte: todayStart, $lt: todayEnd },
+                    },
+                ],
+            }),
             // ADDITIVE ONLY: registrations in the last 24 hours, for
             // the two new Important cards. No existing query or
             // response field is changed by this addition.
@@ -399,6 +424,8 @@ async function getImportant(req, res) {
                     drivers: [...pendingDriversById.values()],
                 },
                 activeRides: { count: activeRides },
+                // ADDITIVE ONLY: today's PKT-date completed rides.
+                todayCompletedRides: { count: todayCompletedRides },
                 // ADDITIVE ONLY: registrations since the card was
                 // last clicked (last 24h when no click recorded yet).
                 newPassengers: {
@@ -444,3 +471,168 @@ async function getImportant(req, res) {
     }
 }
 
+
+// GET /admin/operations/today-rides — one call for the "Today
+// Rides" dashboard tab. READ-ONLY and additive: no existing
+// endpoint or response shape is changed. All windows are today's
+// Pakistan date (fixed +05:00, no DST), so counts reset at
+// midnight PKT. Cancelled vs expired are kept separate on purpose:
+// EXPIRED with AUTO_EXPIRED_NO_DRIVER_SELECTED means certainly no
+// driver was found in 15 minutes; CANCELLED only means the
+// passenger cancelled (motive is not recorded), so the
+// before-driver-assignment subset is reported as its own line,
+// never merged into the expired count.
+async function getTodayRides(req, res) {
+    try {
+        const PKT_OFFSET_MS = 5 * 60 * 60 * 1000;
+        const pktNow = new Date(Date.now() + PKT_OFFSET_MS);
+        pktNow.setUTCHours(0, 0, 0, 0);
+        const todayStart = new Date(pktNow.getTime() - PKT_OFFSET_MS);
+        const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+        const date = pktNow.toISOString().slice(0, 10);
+
+        // cancelledAt is set by both the passenger-cancel and the
+        // auto-expiry paths; updatedAt is only a fallback for rides
+        // cancelled before that field was recorded.
+        const cancelledAtInDay = {
+            $or: [
+                { cancelledAt: { $gte: todayStart, $lt: todayEnd } },
+                {
+                    cancelledAt: null,
+                    updatedAt: { $gte: todayStart, $lt: todayEnd },
+                },
+            ],
+        };
+
+        // Live drivers: same rule ride matching itself uses — the
+        // online flag alone can go stale if the app is killed
+        // without toggling off, so freshness (location within the
+        // last 2 minutes) is required. Available adds APPROVED +
+        // isAvailable, exactly like findNearbyDrivers.
+        const freshSince = new Date(Date.now() - 2 * 60 * 1000);
+        const onlineFilter = {
+            isOnline: true,
+            lastLocationUpdate: { $gte: freshSince },
+        };
+
+        const [
+            totalCreated,
+            completedCount,
+            completedRecent,
+            cancelledCount,
+            cancelledRecent,
+            cancelledBeforeDriver,
+            expiredCount,
+            expiredRecent,
+            onlineCount,
+            availableCount,
+            onlineRecent,
+        ] = await Promise.all([
+            Ride.countDocuments({
+                createdAt: { $gte: todayStart, $lt: todayEnd },
+            }),
+            Ride.countDocuments({
+                status: "TRIP_COMPLETED",
+                $or: [
+                    { completedAt: { $gte: todayStart, $lt: todayEnd } },
+                    {
+                        completedAt: null,
+                        updatedAt: { $gte: todayStart, $lt: todayEnd },
+                    },
+                ],
+            }),
+            Ride.find({
+                status: "TRIP_COMPLETED",
+                $or: [
+                    { completedAt: { $gte: todayStart, $lt: todayEnd } },
+                    {
+                        completedAt: null,
+                        updatedAt: { $gte: todayStart, $lt: todayEnd },
+                    },
+                ],
+            })
+                .select("vehicleType finalPrice requestedPrice completedAt updatedAt")
+                .sort({ completedAt: -1 })
+                .limit(5)
+                .lean(),
+            Ride.countDocuments({ status: "CANCELLED", ...cancelledAtInDay }),
+            Ride.find({ status: "CANCELLED", ...cancelledAtInDay })
+                .select("vehicleType requestedPrice cancelledAt cancellationReason driverId")
+                .sort({ cancelledAt: -1 })
+                .limit(5)
+                .lean(),
+            Ride.countDocuments({
+                status: "CANCELLED",
+                ...cancelledAtInDay,
+                driverId: null,
+            }),
+            Ride.countDocuments({ status: "EXPIRED", ...cancelledAtInDay }),
+            Ride.find({ status: "EXPIRED", ...cancelledAtInDay })
+                .select("vehicleType requestedPrice cancelledAt cancellationReason")
+                .sort({ cancelledAt: -1 })
+                .limit(5)
+                .lean(),
+            Driver.countDocuments(onlineFilter),
+            Driver.countDocuments({
+                ...onlineFilter,
+                verificationStatus: "APPROVED",
+                isAvailable: true,
+            }),
+            Driver.find(onlineFilter)
+                .populate("userId", "firstName lastName")
+                .select("userId isAvailable verificationStatus lastLocationUpdate")
+                .sort({ lastLocationUpdate: -1 })
+                .limit(5)
+                .lean(),
+        ]);
+
+        const mapRecent = (items, timeField, priceField) =>
+            items.map((item) => ({
+                id: item._id,
+                vehicleType: item.vehicleType,
+                price: item[priceField] ?? item.requestedPrice ?? null,
+                time: item[timeField] || item.updatedAt,
+                reason: item.cancellationReason || null,
+            }));
+
+        return res.json({
+            success: true,
+            today: {
+                date,
+                totalCreated,
+                completed: {
+                    count: completedCount,
+                    recent: mapRecent(completedRecent, "completedAt", "finalPrice"),
+                },
+                cancelled: {
+                    count: cancelledCount,
+                    beforeDriverCount: cancelledBeforeDriver,
+                    recent: mapRecent(cancelledRecent, "cancelledAt", "requestedPrice"),
+                },
+                expired: {
+                    count: expiredCount,
+                    recent: mapRecent(expiredRecent, "cancelledAt", "requestedPrice"),
+                },
+                onlineDrivers: {
+                    count: onlineCount,
+                    availableCount,
+                    recent: onlineRecent.map((item) => ({
+                        id: item._id,
+                        name: [item.userId?.firstName, item.userId?.lastName]
+                            .filter(Boolean)
+                            .join(" ") || "Driver",
+                        isAvailable: item.isAvailable,
+                        verificationStatus: item.verificationStatus,
+                        lastLocationUpdate: item.lastLocationUpdate,
+                    })),
+                },
+            },
+        });
+    } catch (error) {
+        console.error("Today rides listing:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Unable to load today's rides",
+        });
+    }
+}
