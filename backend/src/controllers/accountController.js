@@ -32,6 +32,30 @@ const updateAccount = async (req, res) => {
         const allowed = ["firstName", "lastName", "name"];
         const updates = {};
 
+        // Phone is handled separately: it may also be cleared by
+        // sending an empty string, and it has its own format check.
+        if (Object.prototype.hasOwnProperty.call(req.body || {}, "phone")) {
+            const rawPhone = req.body.phone;
+
+            if (typeof rawPhone !== "string") {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid phone",
+                });
+            }
+
+            const phone = rawPhone.replace(/[\s-]/g, "").trim();
+
+            if (phone && !/^\+?\d{10,15}$/.test(phone)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid phone",
+                });
+            }
+
+            updates.phone = phone || null;
+        }
+
         for (const field of allowed) {
             if (!Object.prototype.hasOwnProperty.call(req.body || {}, field)) {
                 continue;

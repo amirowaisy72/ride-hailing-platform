@@ -110,4 +110,50 @@ async function updateComplaint(req, res) {
     }
 }
 
-module.exports = { listComplaints, updateComplaint };
+// Admin reply inside the thread. The message is also mirrored into
+// adminNote so older app versions (which only render adminNote)
+// still show the latest reply.
+async function replyToComplaint(req, res) {
+    try {
+        const message = String(req.body?.message || "").trim();
+
+        if (!message || message.length > 1000) {
+            return res.status(400).json({
+                success: false,
+                message: "Reply must be 1–1000 characters",
+            });
+        }
+
+        const complaint = await Complaint.findById(req.params.id);
+
+        if (!complaint) {
+            return res.status(404).json({
+                success: false,
+                message: "Complaint not found",
+            });
+        }
+
+        complaint.messages.push({ sender: "ADMIN", message });
+        complaint.adminNote = message;
+
+        if (complaint.status === "OPEN") {
+            complaint.status = "IN_REVIEW";
+        }
+
+        await complaint.save();
+
+        const populated = await Complaint.findById(complaint._id)
+            .populate(POPULATE)
+            .lean();
+
+        return res.json({ success: true, complaint: populated });
+    } catch (error) {
+        console.error("Admin complaint reply error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to send reply",
+        });
+    }
+}
+
+module.exports = { listComplaints, updateComplaint, replyToComplaint };

@@ -17,6 +17,7 @@ import ThemeSelector from "@/components/theme/ThemeSelector";
 import LanguageSelector from "@/components/i18n/LanguageSelector";
 import ProfilePicture from "@/components/ProfilePicture";
 import FeedbackForm from "@/components/FeedbackForm";
+import SupportContact from "@/components/SupportContact";
 
 export default function DriverAccountPage() {
     return (
@@ -240,6 +241,8 @@ function DriverAccount() {
                         </span>
                         <span className="text-xs text-[#087F5B]">{t("account.open")}</span>
                     </Link>
+                    <SupportContact />
+
                     <FeedbackForm token={token} />
                 </section>
 

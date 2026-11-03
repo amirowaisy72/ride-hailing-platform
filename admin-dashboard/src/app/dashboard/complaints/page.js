@@ -35,6 +35,9 @@ export default function AdminComplaintsPage() {
     const [editNote, setEditNote] = useState("");
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState("");
+    const [replyText, setReplyText] = useState("");
+    const [replying, setReplying] = useState(false);
+    const [replyError, setReplyError] = useState("");
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -67,6 +70,40 @@ export default function AdminComplaintsPage() {
         setEditStatus(complaint.status);
         setEditNote(complaint.adminNote || "");
         setSaveError("");
+        setReplyText("");
+        setReplyError("");
+    }
+
+    // Admin reply inside the thread (also mirrored to adminNote by
+    // the server for older app versions). Status changes stay on the
+    // Save button below, so replying alone never resolves a case.
+    async function sendReply() {
+        if (!selected || !replyText.trim() || replying) return;
+        setReplying(true);
+        setReplyError("");
+
+        try {
+            const data = await authenticatedAdminRequest(
+                `/admin/complaints/${selected._id}/messages`,
+                {
+                    method: "POST",
+                    body: JSON.stringify({ message: replyText.trim() }),
+                }
+            );
+
+            setSelected(data.complaint);
+            setEditNote(data.complaint.adminNote || "");
+            setReplyText("");
+            setComplaints((previous) =>
+                previous.map((item) =>
+                    item._id === data.complaint._id ? data.complaint : item
+                )
+            );
+        } catch (err) {
+            setReplyError(err.message);
+        } finally {
+            setReplying(false);
+        }
     }
 
     async function saveComplaint() {
@@ -284,6 +321,58 @@ export default function AdminComplaintsPage() {
                                 </dd>
                             </div>
                         </dl>
+
+                        <div className="mt-5">
+                            <p className="font-bold text-slate-500">Conversation</p>
+                            <div className="mt-2 space-y-2">
+                                {(selected.messages || []).map((msg, index) => (
+                                    <p
+                                        key={index}
+                                        className={`rounded-xl p-3 text-sm ${msg.sender === "ADMIN"
+                                            ? "bg-emerald-50"
+                                            : "bg-slate-50"
+                                            }`}
+                                    >
+                                        <span className="font-bold">
+                                            {msg.sender === "ADMIN" ? "Support: " : "User: "}
+                                        </span>
+                                        {msg.message}
+                                        <span className="mt-1 block text-xs text-slate-400">
+                                            {msg.createdAt
+                                                ? new Date(msg.createdAt).toLocaleString("en-PK")
+                                                : ""}
+                                        </span>
+                                    </p>
+                                ))}
+                                {!(selected.messages || []).length && (
+                                    <p className="text-sm text-slate-400">
+                                        No replies yet — the first reply starts the thread.
+                                    </p>
+                                )}
+                            </div>
+
+                            <textarea
+                                rows={3}
+                                maxLength={1000}
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                                placeholder="Reply to the user…"
+                                className="mt-3 w-full resize-none rounded-xl border p-3 text-sm"
+                            />
+                            {replyError && (
+                                <p role="alert" className="mt-2 text-sm font-semibold text-red-600">
+                                    {replyError}
+                                </p>
+                            )}
+                            <button
+                                type="button"
+                                onClick={sendReply}
+                                disabled={!replyText.trim() || replying}
+                                className="mt-2 rounded-xl bg-[#087F5B] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                            >
+                                {replying ? "Sending…" : "Send reply"}
+                            </button>
+                        </div>
 
                         {saveError && (
                             <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-600">

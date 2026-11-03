@@ -27,15 +27,27 @@ const API_URL =
     process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
 
 export default function DriverDocumentsPage() {
+    // DRIVER + PASSENGER: a PENDING driver is still in PASSENGER mode
+    // (they can only switch to DRIVER mode after approval), and the
+    // "Manage Driver Documents" link is shown on their passenger
+    // account. Guarding this page DRIVER-only bounced every pending
+    // driver straight to /login, so no one could upload documents.
+    // The backend upload endpoint itself only requires a Driver
+    // record, not DRIVER mode or approval, so this is safe.
     return (
-        <AuthGuard role="DRIVER">
+        <AuthGuard roles={["DRIVER", "PASSENGER"]}>
             <DocumentUploadScreen />
         </AuthGuard>
     );
 }
 
 function DocumentUploadScreen() {
-    const { token } = useAuth();
+    const { token, user } = useAuth();
+    // Back goes to the account page of the mode the user is actually
+    // in — /driver/account is DRIVER-guarded and would bounce a
+    // passenger-mode pending driver to /login again.
+    const backHref =
+        user?.activeMode === "DRIVER" ? "/driver/account" : "/passenger/account";
 
     const [files, setFiles] = useState({});
     const [expiryDates, setExpiryDates] = useState({});
@@ -126,12 +138,12 @@ function DocumentUploadScreen() {
 
     return (
         <main className="driver-subpage min-h-dvh bg-pd-bg pb-28 text-pd-text">
-            <MobileBottomNav role="DRIVER" />
+            <MobileBottomNav role={user?.activeMode || "PASSENGER"} />
 
             <header className="bg-[#087F5B] px-5 pb-8 pt-[max(24px,env(safe-area-inset-top))] text-white">
                 <div className="mx-auto max-w-xl">
                     <Link
-                        href="/driver/account"
+                        href={backHref}
                         className="inline-flex items-center gap-2 text-sm font-semibold"
                     >
                         <ArrowLeft size={19} />

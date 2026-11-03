@@ -58,6 +58,16 @@ async function sendSignupOTP(req, res) {
 async function verifySignupOTP(req, res) {
     const { firstName, lastName, password, otp } = req.body;
     const email = String(req.body.email || "").trim().toLowerCase();
+    // Optional phone from signup: stored as typed, minus spaces/dashes.
+    const phone =
+        typeof req.body.phone === "string"
+            ? req.body.phone.replace(/[\s-]/g, "").trim()
+            : "";
+    if (phone && !/^\+?\d{10,15}$/.test(phone)) {
+        return res.status(400).json({
+            message: "Invalid phone number",
+        });
+    }
 
     if (
         typeof firstName !== "string" ||
@@ -114,6 +124,7 @@ async function verifySignupOTP(req, res) {
             firstName: firstName.trim(),
             lastName: lastName.trim(),
             email,
+            phone: phone || null,
             passwordHash: await bcrypt.hash(password, 12),
             role: "PASSENGER",
             activeMode: "PASSENGER",

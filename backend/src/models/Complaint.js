@@ -60,6 +60,32 @@ const complaintSchema = new mongoose.Schema(
             maxlength: 1000,
             default: "",
         },
+        // ADDITIVE thread: previously a complaint was a single
+        // description plus one adminNote, so once the admin replied
+        // the conversation was dead — the user had no way to answer
+        // back on the same complaint. Messages keep the whole
+        // back-and-forth on the complaint until it is resolved.
+        // adminNote is kept (mirroring the latest admin message) so
+        // older app/dashboard versions still show a reply.
+        messages: [
+            {
+                sender: {
+                    type: String,
+                    enum: ["USER", "ADMIN"],
+                    required: true,
+                },
+                message: {
+                    type: String,
+                    required: true,
+                    trim: true,
+                    maxlength: 1000,
+                },
+                createdAt: {
+                    type: Date,
+                    default: Date.now,
+                },
+            },
+        ],
     },
     { timestamps: true }
 );

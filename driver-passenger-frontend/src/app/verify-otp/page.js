@@ -3,9 +3,11 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiRequest } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 function VerifyOTPForm() {
     const router = useRouter();
+    const { login } = useAuth();
     const params = useSearchParams();
     const email = params.get("email") || "";
 
@@ -37,8 +39,48 @@ function VerifyOTPForm() {
                 body: JSON.stringify({ ...form, email, otp }),
             });
 
+            // Auto-login: the account now exists and the password the
+            // user just typed is still in this signup session, so sign
+            // them straight in instead of dropping them on /login to
+            // type the same email + password again. The backend
+            // verify-otp endpoint returns no tokens, so this reuses
+            // the normal /auth/login flow, exactly like the login
+            // page. If auto-login fails for any reason, fall back to
+            // the old behaviour (login page) — the account itself is
+            // already created, so the user is never worse off.
             sessionStorage.removeItem("safar-pending-signup");
-            router.replace("/login");
+
+            try {
+                const data = await apiRequest("/auth/login", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        email,
+                        password: form.password,
+                    }),
+                });
+
+                if (!data.accessToken || !data.refreshToken) {
+                    throw new Error("Invalid authentication response");
+                }
+
+                const profile = await apiRequest("/auth/me", {
+                    token: data.accessToken,
+                });
+
+                await login(
+                    data.accessToken,
+                    profile.user,
+                    data.refreshToken
+                );
+
+                router.replace(
+                    profile.user.activeMode === "DRIVER"
+                        ? "/driver"
+                        : "/passenger"
+                );
+            } catch {
+                router.replace("/login");
+            }
         } catch (err) {
             setError(err.message);
         } finally {

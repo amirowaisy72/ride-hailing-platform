@@ -101,12 +101,13 @@ async function getPassengers(req, res) {
                 { lastName: { $regex: escaped, $options: "i" } },
                 { name: { $regex: escaped, $options: "i" } },
                 { email: { $regex: escaped, $options: "i" } },
+                { phone: { $regex: escaped, $options: "i" } },
             ];
         }
 
         const [passengers, total] = await Promise.all([
             User.find(filter)
-                .select("firstName lastName name email createdAt")
+                .select("firstName lastName name email phone createdAt")
                 .sort({ createdAt: -1 })
                 .skip((page - 1) * limit)
                 .limit(limit)

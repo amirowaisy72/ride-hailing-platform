@@ -3,6 +3,7 @@ const { protect } = require("../middleware/authMiddleware");
 const {
     listComplaints,
     updateComplaint,
+    replyToComplaint,
 } = require("../controllers/adminComplaintController");
 
 const router = express.Router();
@@ -22,5 +23,6 @@ router.use((req, res, next) => {
 
 router.get("/", listComplaints);
 router.patch("/:id", updateComplaint);
+router.post("/:id/messages", replyToComplaint);
 
 module.exports = router;

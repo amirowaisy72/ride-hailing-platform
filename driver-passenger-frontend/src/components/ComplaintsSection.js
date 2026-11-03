@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-    CheckCircle2, Clock3, LifeBuoy, MessageSquareWarning, Send,
+    CheckCircle2, Clock3, LifeBuoy, MessageSquareWarning, RefreshCw, Send,
 } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 
@@ -34,6 +34,14 @@ const formatDate = (value) =>
         year: "numeric",
     });
 
+const formatDateTime = (value) =>
+    new Date(value).toLocaleString("en-PK", {
+        day: "numeric",
+        month: "short",
+        hour: "numeric",
+        minute: "2-digit",
+    });
+
 const prettyStatus = (value) => String(value || "").replaceAll("_", " ");
 
 /**
@@ -45,6 +53,9 @@ export default function ComplaintsSection({ token, role }) {
     const [complaints, setComplaints] = useState([]);
     const [loading, setLoading] = useState(true);
     const [listError, setListError] = useState("");
+    const [replyText, setReplyText] = useState({});
+    const [replyBusy, setReplyBusy] = useState({});
+    const [replyError, setReplyError] = useState({});
 
     const [links, setLinks] = useState({ rides: [], parcels: [] });
     const [category, setCategory] = useState("");
@@ -71,6 +82,34 @@ export default function ComplaintsSection({ token, role }) {
     useEffect(() => {
         loadComplaints();
     }, [loadComplaints]);
+
+    // Follow-up inside the same complaint thread. The server reopens
+    // a RESOLVED complaint on a user reply, so the conversation runs
+    // until the user agrees it is solved.
+    async function sendReply(complaintId) {
+        const text = (replyText[complaintId] || "").trim();
+        if (!text || replyBusy[complaintId]) return;
+
+        setReplyBusy((prev) => ({ ...prev, [complaintId]: true }));
+        setReplyError((prev) => ({ ...prev, [complaintId]: "" }));
+
+        try {
+            const data = await apiRequest(`/complaints/${complaintId}/messages`, {
+                method: "POST",
+                token,
+                body: JSON.stringify({ message: text }),
+            });
+
+            setComplaints((prev) =>
+                prev.map((c) => (c._id === complaintId ? data.complaint : c))
+            );
+            setReplyText((prev) => ({ ...prev, [complaintId]: "" }));
+        } catch (error) {
+            setReplyError((prev) => ({ ...prev, [complaintId]: error.message }));
+        } finally {
+            setReplyBusy((prev) => ({ ...prev, [complaintId]: false }));
+        }
+    }
 
     // Optional link picker sources — failures just hide the picker.
     useEffect(() => {
@@ -260,9 +299,22 @@ export default function ComplaintsSection({ token, role }) {
             </section>
 
             <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
-                <div className="mb-4 flex items-center gap-3">
-                    <MessageSquareWarning size={22} className="text-[#087F5B]" />
-                    <h3 className="text-lg font-extrabold">My complaints</h3>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <MessageSquareWarning size={22} className="text-[#087F5B]" />
+                        <h3 className="text-lg font-extrabold">My complaints</h3>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={loadComplaints}
+                        disabled={loading}
+                        aria-label="Refresh complaints"
+                        title="Refresh to check for new support replies"
+                        className="flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold text-[#087F5B] disabled:opacity-50"
+                    >
+                        <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+                        Refresh
+                    </button>
                 </div>
 
                 {loading && (
@@ -307,11 +359,63 @@ export default function ComplaintsSection({ token, role }) {
                             <p className="mt-2 line-clamp-3 text-sm text-pd-text-2">
                                 {complaint.description}
                             </p>
-                            {complaint.adminNote && (
+                            {(complaint.messages || []).map((msg, index) => (
+                                <p
+                                    key={index}
+                                    className={`mt-2 rounded-xl p-3 text-sm text-pd-text-2 ${msg.sender === "ADMIN"
+                                        ? "bg-pd-success-soft"
+                                        : "bg-pd-surface-2"
+                                        }`}
+                                >
+                                    <span className="font-bold text-[#087F5B]">
+                                        {msg.sender === "ADMIN" ? "Support reply: " : "You: "}
+                                    </span>
+                                    {msg.message}
+                                    <span className="mt-1 block text-xs text-pd-muted">
+                                        {msg.createdAt ? formatDateTime(msg.createdAt) : ""}
+                                    </span>
+                                </p>
+                            ))}
+                            {!(complaint.messages || []).length && complaint.adminNote && (
                                 <p className="mt-2 rounded-xl bg-pd-success-soft p-3 text-sm text-pd-text-2">
                                     <span className="font-bold text-[#087F5B]">Support reply: </span>
                                     {complaint.adminNote}
                                 </p>
+                            )}
+                            {complaint.status === "REJECTED" ? (
+                                <p className="mt-2 text-xs text-pd-muted">
+                                    This complaint is closed.
+                                </p>
+                            ) : (
+                                <div className="mt-3">
+                                    <textarea
+                                        rows={2}
+                                        maxLength={1000}
+                                        value={replyText[complaint._id] || ""}
+                                        onChange={(e) =>
+                                            setReplyText((prev) => ({
+                                                ...prev,
+                                                [complaint._id]: e.target.value,
+                                            }))
+                                        }
+                                        placeholder="Write a follow-up reply…"
+                                        className="w-full resize-none rounded-xl border px-3 py-2 text-sm outline-none focus:border-[#087F5B]"
+                                    />
+                                    {replyError[complaint._id] && (
+                                        <p role="alert" className="mt-1 text-xs text-pd-danger">
+                                            {replyError[complaint._id]}
+                                        </p>
+                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => sendReply(complaint._id)}
+                                        disabled={!((replyText[complaint._id] || "").trim()) || replyBusy[complaint._id]}
+                                        className="mt-2 flex items-center gap-1.5 rounded-xl bg-[#087F5B] px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+                                    >
+                                        <Send size={14} />
+                                        {replyBusy[complaint._id] ? "Sending…" : "Send reply"}
+                                    </button>
+                                </div>
                             )}
                         </article>
                     );

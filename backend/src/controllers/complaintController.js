@@ -178,4 +178,56 @@ async function getMyComplaints(req, res) {
     }
 }
 
-module.exports = { createComplaint, getMyComplaints };
+// User follow-up on their own complaint. A reply reopens a RESOLVED
+// complaint back to IN_REVIEW, so an admin cannot end the thread
+// before the user agrees the issue is solved. REJECTED complaints
+// stay closed (the user can file a new complaint instead).
+async function replyToComplaint(req, res) {
+    try {
+        const message = String(req.body?.message || "").trim();
+
+        if (!message || message.length > 1000) {
+            return res.status(400).json({
+                success: false,
+                message: "Reply must be 1–1000 characters",
+            });
+        }
+
+        const complaint = await Complaint.findOne({
+            _id: req.params.id,
+            complainant: req.user._id,
+        });
+
+        if (!complaint) {
+            return res.status(404).json({
+                success: false,
+                message: "Complaint not found",
+            });
+        }
+
+        if (complaint.status === "REJECTED") {
+            return res.status(400).json({
+                success: false,
+                message: "This complaint is closed",
+            });
+        }
+
+        complaint.messages.push({ sender: "USER", message });
+
+        if (complaint.status === "RESOLVED") {
+            complaint.status = "IN_REVIEW";
+        }
+
+        await complaint.save();
+
+        return res.json({ success: true, complaint });
+    } catch (error) {
+        console.error("Complaint reply error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Unable to send reply",
+        });
+    }
+}
+
+module.exports = { createComplaint, getMyComplaints, replyToComplaint };

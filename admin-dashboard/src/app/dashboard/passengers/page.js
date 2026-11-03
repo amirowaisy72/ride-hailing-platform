@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-    ChevronLeft, ChevronRight, Mail,
+    ChevronLeft, ChevronRight, Mail, Phone,
     RefreshCw, Search, UserRound, Users,
 } from "lucide-react";
 
@@ -123,7 +123,7 @@ export default function PassengersPage() {
                                 type="search"
                                 value={searchInput}
                                 onChange={(e) => setSearchInput(e.target.value)}
-                                placeholder="Search by name or email"
+                                placeholder="Search by name, email or phone"
                                 className="h-12 min-w-0 flex-1 bg-transparent text-sm outline-none"
                             />
                         </div>
@@ -179,6 +179,20 @@ export default function PassengersPage() {
                                             <Mail size={14} />
                                             {passenger.email}
                                         </p>
+
+                                        {passenger.phone ? (
+                                            <a
+                                                href={`tel:${passenger.phone}`}
+                                                className="mt-1 flex items-center gap-1.5 truncate text-sm font-semibold text-[#087F5B]"
+                                            >
+                                                <Phone size={14} />
+                                                {passenger.phone}
+                                            </a>
+                                        ) : (
+                                            <p className="mt-1 text-sm text-slate-400">
+                                                No phone number
+                                            </p>
+                                        )}
                                     </div>
 
                                     <div>

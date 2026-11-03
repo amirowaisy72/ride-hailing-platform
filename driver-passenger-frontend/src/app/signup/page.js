@@ -18,6 +18,7 @@ export default function SignupPage() {
         firstName: "",
         lastName: "",
         email: "",
+        phone: "",
         password: "",
     });
     const [error, setError] = useState("");
@@ -32,6 +33,11 @@ export default function SignupPage() {
 
         try {
             const email = form.email.trim().toLowerCase();
+            const cleanPhone = (form.phone || "").replace(/[\s-]/g, "").trim();
+
+            if (cleanPhone && !/^\+?\d{10,15}$/.test(cleanPhone)) {
+                throw new Error("Please enter a valid phone number.");
+            }
 
             const withTimeout = (promise, step) =>
                 Promise.race([
@@ -185,6 +191,7 @@ export default function SignupPage() {
                         ["firstName", t("auth.firstName")],
                         ["lastName", t("auth.lastName")],
                         ["email", t("auth.emailAddress")],
+                        ["phone", "Phone Number (optional)"],
                         ["password", t("auth.password")],
                     ].map(([key, label]) => (
                         <label key={key} className="block">
@@ -192,11 +199,11 @@ export default function SignupPage() {
                                 {label}
                             </span>
                             <input
-                                type={key === "password" ? "password" : key === "email" ? "email" : "text"}
+                                type={key === "password" ? "password" : key === "email" ? "email" : key === "phone" ? "tel" : "text"}
                                 autoComplete={key === "password" ? "new-password" : key}
-                                required
+                                required={key !== "phone"}
                                 minLength={key === "password" ? 8 : undefined}
-                                maxLength={key === "password" ? 128 : 80}
+                                maxLength={key === "password" ? 128 : key === "phone" ? 20 : 80}
                                 value={form[key]}
                                 onChange={(e) => setForm({
                                     ...form,

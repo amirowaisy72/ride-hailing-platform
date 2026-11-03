@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
     ArrowLeft, ChevronRight, Clock3, History,
     LogOut, Mail, ShieldCheck, UserRound,
-    CarFront, Star, Settings2, Headphones,
+    CarFront, Settings2, Headphones,
 } from "lucide-react";
 
 import AuthGuard from "@/components/AuthGuard";
@@ -18,6 +18,7 @@ import ThemeSelector from "@/components/theme/ThemeSelector";
 import LanguageSelector from "@/components/i18n/LanguageSelector";
 import ProfilePicture from "@/components/ProfilePicture";
 import FeedbackForm from "@/components/FeedbackForm";
+import SupportContact from "@/components/SupportContact";
 
 const formatFare = (ride) =>
     `PKR ${Number(ride.finalPrice ?? ride.requestedPrice ?? 0).toLocaleString("en-PK")}`;
@@ -350,16 +351,6 @@ function AccountScreen() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 border-b py-4">
-                        <Star size={20} className="text-[#087F5B]" />
-                        <div className="flex-1">
-                            <p className="text-sm font-semibold">{t("account.myRatings")}</p>
-                            <p className="text-xs text-pd-muted">
-                                Available after ratings integration
-                            </p>
-                        </div>
-                    </div>
-
                     <Link
                         href="/passenger/profile"
                         className="flex items-center gap-3 border-b py-4"
@@ -387,6 +378,8 @@ function AccountScreen() {
                         </div>
                         <ChevronRight size={18} className="text-pd-faint" />
                     </Link>
+
+                    <SupportContact />
 
                     <FeedbackForm token={token} />
                 </section>

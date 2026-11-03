@@ -295,6 +295,18 @@ export default function DriversPage() {
                                             <p className="truncate text-sm text-slate-500">
                                                 {driver.userId?.email || "Email unavailable"}
                                             </p>
+                                            {driver.userId?.phone ? (
+                                                <a
+                                                    href={`tel:${driver.userId.phone}`}
+                                                    className="mt-1 block truncate text-sm font-semibold text-[#087F5B]"
+                                                >
+                                                    {driver.userId.phone}
+                                                </a>
+                                            ) : (
+                                                <p className="mt-1 text-sm text-slate-400">
+                                                    No phone number
+                                                </p>
+                                            )}
                                             <span
                                                 className={`mt-2 inline-block rounded-lg px-3 py-1 text-xs font-bold ${statuses[status] || "bg-slate-100 text-slate-600"
                                                     }`}

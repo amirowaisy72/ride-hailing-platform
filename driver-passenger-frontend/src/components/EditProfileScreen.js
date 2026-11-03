@@ -24,6 +24,7 @@ export default function EditProfileScreen({ role }) {
     const [profile, setProfile] = useState(null);
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
+    const [phone, setPhone] = useState("");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState("");
@@ -41,6 +42,7 @@ export default function EditProfileScreen({ role }) {
                 setProfile(data.user);
                 setFirstName(data.user?.firstName || "");
                 setLastName(data.user?.lastName || "");
+                setPhone(data.user?.phone || "");
             })
             .catch((err) => {
                 if (!cancelled) setError(err.message);
@@ -61,9 +63,15 @@ export default function EditProfileScreen({ role }) {
 
         const first = firstName.trim();
         const last = lastName.trim();
+        const cleanPhone = phone.replace(/[\s-]/g, "").trim();
 
         if (!first || !last || first.length > 80 || last.length > 80) {
             setError("First and last names must be 1–80 characters.");
+            return;
+        }
+
+        if (cleanPhone && !/^\+?\d{10,15}$/.test(cleanPhone)) {
+            setError("Please enter a valid phone number.");
             return;
         }
 
@@ -78,12 +86,14 @@ export default function EditProfileScreen({ role }) {
                 body: JSON.stringify({
                     firstName: first,
                     lastName: last,
+                    phone: cleanPhone,
                 }),
             });
 
             setProfile(result.user);
             setFirstName(result.user.firstName || "");
             setLastName(result.user.lastName || "");
+            setPhone(result.user.phone || "");
             setMessage("Profile updated successfully.");
         } catch (err) {
             setError(err.message);
@@ -186,6 +196,30 @@ export default function EditProfileScreen({ role }) {
                                     className="w-full rounded-xl border border-pd-line px-4 py-3 outline-none focus:border-[#087F5B]"
                                     placeholder="Enter last name"
                                 />
+                            </div>
+
+                            <div>
+                                <label
+                                    htmlFor="phone"
+                                    className="mb-2 block text-sm font-bold"
+                                >
+                                    Phone Number
+                                </label>
+
+                                <input
+                                    id="phone"
+                                    value={phone}
+                                    maxLength={20}
+                                    onChange={(e) => setPhone(e.target.value)}
+                                    autoComplete="tel"
+                                    inputMode="tel"
+                                    disabled={saving}
+                                    className="w-full rounded-xl border border-pd-line px-4 py-3 outline-none focus:border-[#087F5B]"
+                                    placeholder="e.g. 03xx xxxxxxx"
+                                />
+                                <p className="mt-1 text-xs text-pd-muted">
+                                    Support can call you on this number.
+                                </p>
                             </div>
 
                             <div>

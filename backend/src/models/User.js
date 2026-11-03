@@ -19,6 +19,15 @@ const userSchema = new mongoose.Schema(
             lowercase: true,
             trim: true,
         },
+        // ADDITIVE: users previously had no way to enter a phone
+        // number anywhere, so support could not call them and the
+        // dashboard could not show one. Optional, so existing
+        // accounts (including Google signups) keep working.
+        phone: {
+            type: String,
+            trim: true,
+            default: null,
+        },
         passwordHash: {
             type: String,
             required: function () {

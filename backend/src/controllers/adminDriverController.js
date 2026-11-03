@@ -7,7 +7,7 @@ const getPendingDrivers = async (req, res) => {
             verificationStatus: {
                 $in: ["PENDING", "UNDER_REVIEW"],
             },
-        }).populate("userId", "firstName lastName email");
+        }).populate("userId", "firstName lastName email phone");
 
         return res.json({
             success: true,
@@ -24,7 +24,7 @@ const getPendingDrivers = async (req, res) => {
 const getAllDrivers = async (req, res) => {
     try {
         const drivers = await Driver.find({})
-            .populate("userId", "firstName lastName email")
+            .populate("userId", "firstName lastName email phone")
             .sort({ createdAt: -1 })
             .lean();
 
