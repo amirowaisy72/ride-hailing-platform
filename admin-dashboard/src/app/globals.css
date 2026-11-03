@@ -25,14 +25,52 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Admin dark shell fix: the outer AdminShell wrapper sets text-white so
-   headings on the dark green background stay readable, but that white
-   colour is inherited by uncoloured text inside white cards/tables,
-   rendering counts and headings white-on-white (invisible). Force dark
-   text on white surfaces inside the admin shell. Elements with their
-   own explicit text-* class keep their own colour, because a directly
-   applied rule always beats an inherited one. */
+/* Admin fully-dark theme: the outer AdminShell wrapper is dark green
+   (#0E241F, header #102B26) with white headings. White cards must not
+   remain white anywhere in the dashboard, so white/light surfaces inside
+   the admin shell are recoloured to dark green with light readable text.
+   Small coloured icon chips (bg-red-50, bg-emerald-50, etc.) are left
+   untouched — they are accents, not large white blocks. Sidebar, header
+   and green accent #087F5B are untouched. */
 .admin-dark .bg-white,
-.admin-dark .bg-\[\#ffffff\] {
-  color: #0f172a;
+.admin-dark .bg-\[\#ffffff\],
+.admin-dark .bg-slate-50,
+.admin-dark .bg-gray-50 {
+  background-color: #16352c;
+  color: #eff6f1;
+  border-color: #2a5245;
+}
+
+/* Grey text inside the now-dark cards would be too dim on dark green,
+   so lighten the common explicit greys — only inside a darkened card. */
+.admin-dark .bg-white .text-slate-500,
+.admin-dark .bg-\[\#ffffff\] .text-slate-500,
+.admin-dark .bg-slate-50 .text-slate-500,
+.admin-dark .bg-gray-50 .text-slate-500,
+.admin-dark .bg-white .text-gray-500,
+.admin-dark .bg-slate-50 .text-gray-500 {
+  color: #c3d2cb;
+}
+
+.admin-dark .bg-white .text-slate-400,
+.admin-dark .bg-\[\#ffffff\] .text-slate-400,
+.admin-dark .bg-slate-50 .text-slate-400,
+.admin-dark .bg-gray-50 .text-slate-400 {
+  color: #9fb8ae;
+}
+
+.admin-dark .bg-white .text-slate-600,
+.admin-dark .bg-\[\#ffffff\] .text-slate-600,
+.admin-dark .bg-slate-50 .text-slate-600,
+.admin-dark .bg-gray-50 .text-slate-600,
+.admin-dark .bg-white .text-slate-700,
+.admin-dark .bg-\[\#ffffff\] .text-slate-700,
+.admin-dark .bg-white .text-slate-900,
+.admin-dark .bg-\[\#ffffff\] .text-slate-900 {
+  color: #e6efea;
+}
+
+.admin-dark .bg-white .border-slate-100,
+.admin-dark .bg-white .border-slate-200 {
+  border-color: #2a5245;
 }
