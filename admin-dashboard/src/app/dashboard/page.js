@@ -408,6 +408,74 @@ export default function DashboardPage() {
                             </Link>
 
                             <Link
+                                href="/dashboard/passengers"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                                        <Users size={24} />
+                                    </div>
+                                    <ArrowUpRight size={20} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                </div>
+                                <p className="mt-4 text-sm text-slate-500">
+                                    New Passengers
+                                </p>
+                                <p className="mt-1 text-3xl font-extrabold">
+                                    {important.newPassengers?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.newPassengers?.recent || []).length === 0 ? (
+                                        "No new passengers in the last 24 hours."
+                                    ) : (
+                                        <>
+                                            {(important.newPassengers?.recent || []).slice(0, 2).map((item) => (
+                                                <span key={item.id} className="block truncate">
+                                                    {item.name}
+                                                </span>
+                                            ))}
+                                            <span className="block">
+                                                Registered in the last 24 hours.
+                                            </span>
+                                        </>
+                                    )}
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/drivers"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-[#087F5B]">
+                                        <CarFront size={24} />
+                                    </div>
+                                    <ArrowUpRight size={20} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                </div>
+                                <p className="mt-4 text-sm text-slate-500">
+                                    New Drivers
+                                </p>
+                                <p className="mt-1 text-3xl font-extrabold">
+                                    {important.newDrivers?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.newDrivers?.recent || []).length === 0 ? (
+                                        "No new drivers in the last 24 hours."
+                                    ) : (
+                                        <>
+                                            {(important.newDrivers?.recent || []).slice(0, 2).map((item) => (
+                                                <span key={item.id} className="block truncate">
+                                                    {item.name} · {item.verificationStatus}
+                                                </span>
+                                            ))}
+                                            <span className="block">
+                                                Registered in the last 24 hours.
+                                            </span>
+                                        </>
+                                    )}
+                                </p>
+                            </Link>
+
+                            <Link
                                 href="/dashboard/rides"
                                 className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
                             >

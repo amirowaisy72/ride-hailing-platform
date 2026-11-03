@@ -10,6 +10,7 @@ import {
   LoaderCircle,
 } from "lucide-react";
 import { apiRequest } from "@/lib/api";
+import { saveAdminSession } from "@/lib/adminSession";
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -49,14 +50,13 @@ export default function AdminLogin() {
         throw new Error("This account does not have admin access.");
       }
 
-      sessionStorage.setItem(
-        "admin_session",
-        JSON.stringify({
-          accessToken,
-          refreshToken,
-          user,
-        })
-      );
+      // Stored in this browser until logout (localStorage), not
+      // per-tab sessionStorage — see lib/adminSession.js.
+      saveAdminSession({
+        accessToken,
+        refreshToken,
+        user,
+      });
 
       router.replace("/dashboard");
     } catch (err) {

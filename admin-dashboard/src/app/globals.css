@@ -130,3 +130,18 @@ body {
 .admin-dark .bg-violet-50.text-violet-600 {
   color: #a8c8f0;
 }
+
+/* Native <select> dropdowns: the browser draws the options popup on a
+   white background, but inside .admin-dark the option text inherits
+   the light dark-theme colour, so every option is invisible until it
+   is highlighted (complaints status filter, parcels, feedbacks,
+   announcements, payment-gateways, rentals, commission, notifications
+   and buy-deliver filters — all of them, at once). Force dark text on
+   a white popup for every admin select. The closed select itself keeps
+   its dark look; only the popup options are recoloured. The main app
+   has no .admin-dark wrapper, so it is untouched by this rule. */
+.admin-dark select option,
+.admin-dark select optgroup {
+  background-color: #ffffff;
+  color: #1e293b;
+}

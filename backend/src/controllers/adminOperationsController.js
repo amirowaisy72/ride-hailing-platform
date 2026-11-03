@@ -225,6 +225,10 @@ async function getImportant(req, res) {
             pendingDocuments,
             pendingDocumentList,
             activeRides,
+            newPassengerCount,
+            newPassengerList,
+            newDriverCount,
+            newDriverList,
             totalUsers,
             latestVersionUsers,
             reportedUsers,
@@ -269,6 +273,25 @@ async function getImportant(req, res) {
                 .limit(100)
                 .lean(),
             Ride.countDocuments({ status: { $in: activeStatuses } }),
+            // ADDITIVE ONLY: registrations in the last 24 hours, for
+            // the two new Important cards. No existing query or
+            // response field is changed by this addition.
+            User.countDocuments({
+                role: "PASSENGER",
+                createdAt: { $gte: dayAgo },
+            }),
+            User.find({ role: "PASSENGER", createdAt: { $gte: dayAgo } })
+                .select("firstName lastName name email createdAt")
+                .sort({ createdAt: -1 })
+                .limit(5)
+                .lean(),
+            Driver.countDocuments({ createdAt: { $gte: dayAgo } }),
+            Driver.find({ createdAt: { $gte: dayAgo } })
+                .populate("userId", "firstName lastName")
+                .select("userId verificationStatus createdAt")
+                .sort({ createdAt: -1 })
+                .limit(5)
+                .lean(),
             User.countDocuments({ role: { $ne: "ADMIN" } }),
             versionConfig
                 ? UserAppVersion.countDocuments({
@@ -354,6 +377,29 @@ async function getImportant(req, res) {
                     drivers: [...pendingDriversById.values()],
                 },
                 activeRides: { count: activeRides },
+                // ADDITIVE ONLY: last-24h registrations.
+                newPassengers: {
+                    count: newPassengerCount,
+                    recent: newPassengerList.map((item) => ({
+                        id: item._id,
+                        name: [item.firstName, item.lastName]
+                            .filter(Boolean)
+                            .join(" ") || item.name || "User",
+                        email: item.email,
+                        createdAt: item.createdAt,
+                    })),
+                },
+                newDrivers: {
+                    count: newDriverCount,
+                    recent: newDriverList.map((item) => ({
+                        id: item._id,
+                        name: [item.userId?.firstName, item.userId?.lastName]
+                            .filter(Boolean)
+                            .join(" ") || "Driver",
+                        verificationStatus: item.verificationStatus,
+                        createdAt: item.createdAt,
+                    })),
+                },
                 appVersion: versionConfig
                     ? {
                         latestVersionCode: versionConfig.latestVersionCode,
