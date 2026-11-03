@@ -1,4 +1,5 @@
 
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const Driver = require("../models/Driver");
 const Vehicle = require("../models/Vehicle");
@@ -88,12 +89,14 @@ async function getPassengers(req, res) {
         const page = Number(req.query.page || 1);
         const search = String(req.query.search || "").trim();
         const limit = 20;
+        const sort = String(req.query.sort || "recent");
 
         if (!Number.isSafeInteger(page) || page < 1 ||
-            page > 100000 || search.length > 100) {
+            page > 100000 || search.length > 100 ||
+            !["recent", "active", "rides"].includes(sort)) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid pagination or search",
+                message: "Invalid pagination, search or sort",
             });
         }
 
@@ -110,13 +113,96 @@ async function getPassengers(req, res) {
             ];
         }
 
+        if (sort === "recent") {
+            const [passengers, total] = await Promise.all([
+                User.find(filter)
+                    .select(
+                        "firstName lastName name email phone profileImage createdAt"
+                    )
+                    .sort({ createdAt: -1 })
+                    .skip((page - 1) * limit)
+                    .limit(limit)
+                    .lean(),
+                User.countDocuments(filter),
+            ]);
+
+            return res.json({
+                success: true,
+                passengers,
+                pagination: {
+                    page,
+                    total,
+                    pages: Math.ceil(total / limit),
+                },
+            });
+        }
+
+        // Sorted listings (additive only): the default path above is
+        // untouched. "active" = most recently opened the app first
+        // (UserAppVersion.updatedAt, refreshed on every launch/login;
+        // users on builds older than that feature have no row and sort
+        // last). "rides" = most booked rides first. Both keep the same
+        // response shape, plus one extra field per row.
+        const pipeline = [{ $match: filter }];
+
+        if (sort === "active") {
+            pipeline.push(
+                {
+                    $lookup: {
+                        from: "userappversions",
+                        localField: "_id",
+                        foreignField: "userId",
+                        as: "appVersion",
+                    },
+                },
+                {
+                    $addFields: {
+                        lastActiveAt: {
+                            $arrayElemAt: ["$appVersion.updatedAt", 0],
+                        },
+                        appVersion: {
+                            $arrayElemAt: ["$appVersion.appVersion", 0],
+                        },
+                    },
+                },
+                { $sort: { lastActiveAt: -1, createdAt: -1 } }
+            );
+        } else {
+            pipeline.push(
+                {
+                    $lookup: {
+                        from: "rides",
+                        localField: "_id",
+                        foreignField: "passengerId",
+                        as: "rideDocs",
+                    },
+                },
+                { $addFields: { rideCount: { $size: "$rideDocs" } } },
+                { $sort: { rideCount: -1, createdAt: -1 } }
+            );
+        }
+
+        pipeline.push(
+            {
+                $project: {
+                    firstName: 1,
+                    lastName: 1,
+                    name: 1,
+                    email: 1,
+                    phone: 1,
+                    profileImage: 1,
+                    createdAt: 1,
+                    lastActiveAt: 1,
+                    appVersion: 1,
+                    rideCount: 1,
+                },
+            },
+            { $skip: (page - 1) * limit },
+            { $limit: limit }
+        );
+
         const [passengers, total] = await Promise.all([
-            User.find(filter)
-                .select("firstName lastName name email phone createdAt")
-                .sort({ createdAt: -1 })
-                .skip((page - 1) * limit)
-                .limit(limit)
-                .lean(),
+            User.aggregate(pipeline),
             User.countDocuments(filter),
         ]);
 
@@ -134,6 +220,97 @@ async function getPassengers(req, res) {
         return res.status(500).json({
             success: false,
             message: "Unable to load passengers",
+        });
+    }
+}
+
+// GET /admin/operations/passengers/:id/profile — read-only, admin-only.
+// Full passenger profile for the dashboard modal: account, last app
+// open, ride stats and recent rides, complaints and feedback counts.
+// No app change, no write, no existing endpoint touched.
+async function getPassengerProfile(req, res) {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.isValidObjectId(id)) {
+            return res.status(404).json({
+                success: false,
+                message: "Passenger not found",
+            });
+        }
+
+        const user = await User.findById(id)
+            .select(
+                "firstName lastName name email phone profileImage role createdAt"
+            )
+            .lean();
+
+        if (!user || user.role !== "PASSENGER") {
+            return res.status(404).json({
+                success: false,
+                message: "Passenger not found",
+            });
+        }
+
+        const userId = user._id;
+
+        const [
+            version,
+            rideGroups,
+            recentRides,
+            complaints,
+            feedback,
+        ] = await Promise.all([
+            UserAppVersion.findOne({ userId })
+                .select("appVersion appVersionCode platform updatedAt")
+                .lean(),
+            Ride.aggregate([
+                { $match: { passengerId: userId } },
+                { $group: { _id: "$status", count: { $sum: 1 } } },
+            ]),
+            Ride.find({ passengerId: userId })
+                .select(
+                    "status vehicleType requestedPrice finalPrice " +
+                    "createdAt completedAt"
+                )
+                .sort({ createdAt: -1 })
+                .limit(5)
+                .lean(),
+            Complaint.countDocuments({ complainant: userId }),
+            Feedback.countDocuments({ user: userId }),
+        ]);
+
+        const byStatus = new Map(
+            rideGroups.map((row) => [row._id, row.count])
+        );
+        const completed = byStatus.get("TRIP_COMPLETED") || 0;
+        const cancelled = byStatus.get("CANCELLED") || 0;
+        const active = activeStatuses.reduce(
+            (sum, status) => sum + (byStatus.get(status) || 0),
+            0
+        );
+        const total = [...byStatus.values()].reduce(
+            (sum, count) => sum + count,
+            0
+        );
+
+        return res.json({
+            success: true,
+            profile: {
+                user,
+                lastActiveAt: version ? version.updatedAt : null,
+                appVersion: version ? version.appVersion : null,
+                rideStats: { total, completed, cancelled, active },
+                recentRides,
+                complaints,
+                feedback,
+            },
+        });
+    } catch (error) {
+        console.error("Passenger profile:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Unable to load passenger profile",
         });
     }
 }
@@ -195,6 +372,7 @@ async function getRides(req, res) {
 module.exports = {
     getOverview,
     getPassengers,
+    getPassengerProfile,
     getRides,
     getImportant,
     getTodayRides,

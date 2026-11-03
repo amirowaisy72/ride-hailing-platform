@@ -8,6 +8,10 @@ import {
 } from "lucide-react";
 
 import AdminShell from "@/components/AdminShell";
+import ProfilePhotoViewer, {
+    ProfileAvatar,
+} from "@/components/ProfilePhotoViewer";
+import ProfileModal from "@/components/ProfileModal";
 import { authenticatedAdminRequest } from "@/lib/adminSession";
 
 const formatDate = (value) =>
@@ -24,6 +28,20 @@ const displayName = (user) =>
     user.name ||
     "Passenger";
 
+// Relative "last active" for the Most Active sort. Users on builds
+// older than the app-version reporting feature have no row, so they
+// show as never seen and sort last.
+function timeAgo(value) {
+    if (!value) return "Never seen";
+    const seconds = Math.floor((Date.now() - new Date(value)) / 1000);
+    if (seconds < 60) return "Just now";
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
+    if (seconds < 86400 * 30)
+        return `${Math.floor(seconds / 86400)} days ago`;
+    return formatDate(value);
+}
+
 export default function PassengersPage() {
     const [passengers, setPassengers] = useState([]);
     const [searchInput, setSearchInput] = useState("");
@@ -32,6 +50,13 @@ export default function PassengersPage() {
     const [pagination, setPagination] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [photoViewer, setPhotoViewer] = useState(null);
+    const [sort, setSort] = useState("recent");
+    const [profileOpen, setProfileOpen] = useState(false);
+    const [profile, setProfile] = useState(null);
+    const [profileLoading, setProfileLoading] = useState(false);
+    const [profileError, setProfileError] = useState("");
+    const [profilePhotoUrl, setProfilePhotoUrl] = useState(null);
 
     const loadPassengers = useCallback(async () => {
         setLoading(true);
@@ -40,6 +65,7 @@ export default function PassengersPage() {
         try {
             const params = new URLSearchParams({
                 page: String(page),
+                sort,
             });
 
             if (search) params.set("search", search);
@@ -56,7 +82,7 @@ export default function PassengersPage() {
         } finally {
             setLoading(false);
         }
-    }, [page, search]);
+    }, [page, search, sort]);
 
     useEffect(() => {
         loadPassengers();
@@ -66,6 +92,27 @@ export default function PassengersPage() {
         event.preventDefault();
         setPage(1);
         setSearch(searchInput.trim());
+    }
+
+    // Full profile modal: one read-only request, opened by clicking
+    // the passenger's name. Nothing is changed or sent from here.
+    async function openProfile(passenger) {
+        setProfile(null);
+        setProfileError("");
+        setProfileLoading(true);
+        setProfileOpen(true);
+        setProfilePhotoUrl(passenger.profileImage || null);
+
+        try {
+            const data = await authenticatedAdminRequest(
+                `/admin/operations/passengers/${encodeURIComponent(passenger._id)}/profile`
+            );
+            setProfile(data.profile || null);
+        } catch (err) {
+            setProfileError(err.message);
+        } finally {
+            setProfileLoading(false);
+        }
     }
 
     return (
@@ -136,6 +183,34 @@ export default function PassengersPage() {
                         </button>
                     </form>
 
+                    <div className="flex flex-wrap gap-2 border-b p-5">
+                        {[
+                            ["recent", "Newest"],
+                            ["active", "Most Active"],
+                            ["rides", "Most Rides"],
+                        ].map(([value, label]) => (
+                            <button
+                                key={value}
+                                type="button"
+                                onClick={() => {
+                                    setPage(1);
+                                    setSort(value);
+                                }}
+                                className={`rounded-xl px-4 py-2 text-xs font-bold ${sort === value
+                                    ? "bg-[#087F5B] text-white"
+                                    : "bg-slate-100 text-slate-600"
+                                    }`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                        <p className="w-full text-xs text-slate-400">
+                            Most Active sorts by last app open (most recent
+                            first); users who never opened a reporting build
+                            sort last. Most Rides sorts by booked rides.
+                        </p>
+                    </div>
+
                     {error && (
                         <p
                             role="alert"
@@ -166,14 +241,24 @@ export default function PassengersPage() {
                                     key={passenger._id}
                                     className="flex flex-wrap items-center gap-4 p-5"
                                 >
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 font-extrabold text-[#087F5B]">
-                                        {displayName(passenger).charAt(0).toUpperCase()}
-                                    </div>
+                                    <ProfileAvatar
+                                        url={passenger.profileImage || null}
+                                        name={displayName(passenger)}
+                                        size={48}
+                                        onOpen={setPhotoViewer}
+                                    />
 
                                     <div className="min-w-0 flex-1">
-                                        <p className="font-bold">
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                openProfile(passenger)
+                                            }
+                                            className="text-left font-bold hover:underline"
+                                            title="Open full profile"
+                                        >
                                             {displayName(passenger)}
-                                        </p>
+                                        </button>
 
                                         <p className="mt-1 flex items-center gap-1.5 truncate text-sm text-slate-500">
                                             <Mail size={14} />
@@ -202,6 +287,21 @@ export default function PassengersPage() {
                                         <p className="mt-1 text-sm font-semibold">
                                             {formatDate(passenger.createdAt)}
                                         </p>
+                                        {passenger.lastActiveAt !==
+                                            undefined && (
+                                            <p className="mt-1 text-xs text-slate-500">
+                                                Last active{" "}
+                                                {timeAgo(
+                                                    passenger.lastActiveAt
+                                                )}
+                                            </p>
+                                        )}
+                                        {typeof passenger.rideCount ===
+                                            "number" && (
+                                            <p className="mt-1 text-xs font-bold text-slate-500">
+                                                {passenger.rideCount} ride(s)
+                                            </p>
+                                        )}
                                     </div>
                                 </article>
                             ))}
@@ -237,6 +337,20 @@ export default function PassengersPage() {
                     )}
                 </section>
             </div>
+            <ProfilePhotoViewer
+                photo={photoViewer}
+                onClose={() => setPhotoViewer(null)}
+            />
+            <ProfileModal
+                open={profileOpen}
+                onClose={() => setProfileOpen(false)}
+                kind="passenger"
+                profile={profile}
+                loading={profileLoading}
+                error={profileError}
+                photoUrl={profilePhotoUrl}
+                onViewPhoto={setPhotoViewer}
+            />
         </AdminShell>
     );
 }

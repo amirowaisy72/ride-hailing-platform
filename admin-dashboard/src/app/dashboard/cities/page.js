@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { X } from "lucide-react";
 
 maplibregl.setWorkerUrl("/maplibre-worker.mjs");
 
@@ -26,6 +27,8 @@ export default function CitiesPage() {
     const pointsRef = useRef([]);
 
     const [areas, setAreas] = useState([]);
+    const [fullscreenArea, setFullscreenArea] = useState(null);
+    const fullscreenContainerRef = useRef(null);
     const [points, setPoints] = useState([]);
     const [name, setName] = useState("");
     const [city, setCity] = useState("");
@@ -434,20 +437,88 @@ export default function CitiesPage() {
         }
     }
 
-    function focusArea(area) {
-        const coords = area.polygon?.coordinates?.[0] || [];
-        if (!coords.length) return;
+    // Fullscreen boundary view: View opens the chosen area on a
+    // full-screen map with its boundary drawn bold — a white halo
+    // under a thick coloured outline, plus a translucent fill — and
+    // the map fitted to the boundary. The small editor map above is
+    // untouched. Esc or Close exits; the map is destroyed on close.
+    useEffect(() => {
+        if (!fullscreenArea) return;
 
-        const bounds = coords.reduce(
-            (result, point) => result.extend(point),
-            new maplibregl.LngLatBounds(coords[0], coords[0])
-        );
+        const coords = fullscreenArea.polygon?.coordinates?.[0] || [];
+        if (!coords.length || !fullscreenContainerRef.current) return;
 
-        mapRef.current?.fitBounds(bounds, {
-            padding: 35,
-            maxZoom: 13,
+        const onKey = (event) => {
+            if (event.key === "Escape") setFullscreenArea(null);
+        };
+        window.addEventListener("keydown", onKey);
+
+        const map = new maplibregl.Map({
+            container: fullscreenContainerRef.current,
+            style: "https://tiles.openfreemap.org/styles/liberty",
+            center: START_CENTER,
+            zoom: 5,
         });
-    }
+
+        map.addControl(new maplibregl.NavigationControl(), "top-right");
+
+        map.on("load", () => {
+            map.addSource("area-boundary", {
+                type: "geojson",
+                data: {
+                    type: "Feature",
+                    geometry: fullscreenArea.polygon,
+                    properties: {},
+                },
+            });
+
+            map.addLayer({
+                id: "area-boundary-fill",
+                type: "fill",
+                source: "area-boundary",
+                paint: {
+                    "fill-color": fullscreenArea.active
+                        ? "#087F5B"
+                        : "#dc2626",
+                    "fill-opacity": 0.18,
+                },
+            });
+
+            map.addLayer({
+                id: "area-boundary-halo",
+                type: "line",
+                source: "area-boundary",
+                paint: {
+                    "line-color": "#ffffff",
+                    "line-width": 8,
+                    "line-opacity": 0.9,
+                },
+            });
+
+            map.addLayer({
+                id: "area-boundary-line",
+                type: "line",
+                source: "area-boundary",
+                paint: {
+                    "line-color": fullscreenArea.active
+                        ? "#087F5B"
+                        : "#dc2626",
+                    "line-width": 3.5,
+                },
+            });
+
+            const bounds = coords.reduce(
+                (result, point) => result.extend(point),
+                new maplibregl.LngLatBounds(coords[0], coords[0])
+            );
+            map.fitBounds(bounds, { padding: 60, maxZoom: 13 });
+        });
+
+        return () => {
+            window.removeEventListener("keydown", onKey);
+            map.remove();
+        };
+    }, [fullscreenArea]);
 
     return (
         <AdminShell title="Cities & Service Areas">
@@ -759,7 +830,7 @@ export default function CitiesPage() {
                             <div className="flex gap-2">
                                 <button
                                     type="button"
-                                    onClick={() => focusArea(area)}
+                                    onClick={() => setFullscreenArea(area)}
                                     className="rounded-xl border px-4 py-2 text-sm font-semibold"
                                 >
                                     View
@@ -777,6 +848,51 @@ export default function CitiesPage() {
                     ))}
                 </section>
             </div>
+
+            {fullscreenArea && (
+                <div className="fixed inset-0 z-[120] flex flex-col bg-[#0E241F]">
+                    <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+                        <div>
+                            <p className="font-bold text-white">
+                                {fullscreenArea.city}
+                            </p>
+                            <p className="text-sm text-white/70">
+                                {fullscreenArea.name}
+                            </p>
+                            <p
+                                className={`mt-1 text-xs font-bold ${fullscreenArea.active
+                                    ? "text-emerald-300"
+                                    : "text-red-300"
+                                    }`}
+                            >
+                                {fullscreenArea.active
+                                    ? "ACTIVE"
+                                    : "INACTIVE"}
+                                {" · "}Boundary view — press Esc to close
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setFullscreenArea(null)}
+                            aria-label="Close fullscreen map"
+                            className="flex items-center gap-2 rounded-xl border border-white/25 px-4 py-2.5 text-sm font-bold text-white"
+                        >
+                            <X size={16} />
+                            Close
+                        </button>
+                    </div>
+                    {fullscreenArea.polygon?.coordinates?.[0]?.length ? (
+                        <div
+                            ref={fullscreenContainerRef}
+                            className="min-h-0 flex-1"
+                        />
+                    ) : (
+                        <p className="p-10 text-center text-sm text-white/70">
+                            No boundary is saved for this area.
+                        </p>
+                    )}
+                </div>
+            )}
         </AdminShell>
     );
 }

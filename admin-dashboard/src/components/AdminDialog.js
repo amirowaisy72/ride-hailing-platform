@@ -129,16 +129,16 @@ export function DialogProvider({ children }) {
                     onClick={cancel}
                 >
                     <div
-                        className="w-full max-w-md rounded-t-3xl bg-white p-6 shadow-xl sm:rounded-3xl"
+                        className="w-full max-w-md rounded-t-3xl border border-[#2a5245] bg-[#16352c] p-6 text-[#eff6f1] shadow-xl sm:rounded-3xl"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-start gap-3">
                             {danger && (
-                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
+                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/15 text-red-300">
                                     <AlertTriangle size={20} />
                                 </span>
                             )}
-                            <p className="min-h-10 flex-1 whitespace-pre-wrap pt-2 text-sm font-semibold text-slate-700">
+                            <p className="min-h-10 flex-1 whitespace-pre-wrap pt-2 text-sm font-semibold text-[#e6efea]">
                                 {current.message}
                             </p>
                         </div>
@@ -160,10 +160,10 @@ export function DialogProvider({ children }) {
                                         setValidationError("");
                                     }}
                                     placeholder={current.options.placeholder || ""}
-                                    className="w-full rounded-xl border p-3 text-sm"
+                                    className="w-full rounded-xl border border-[#2a5245] bg-[#0E241F] p-3 text-sm text-[#eff6f1] placeholder:text-white/40"
                                 />
                                 {validationError && (
-                                    <p role="alert" className="mt-2 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-600">
+                                    <p role="alert" className="mt-2 rounded-xl bg-red-500/15 p-3 text-sm font-semibold text-red-300">
                                         {validationError}
                                     </p>
                                 )}
@@ -185,7 +185,7 @@ export function DialogProvider({ children }) {
                             <button
                                 type="button"
                                 onClick={cancel}
-                                className="rounded-xl border px-5 py-3 font-bold"
+                                className="rounded-xl border border-white/25 px-5 py-3 font-bold text-[#eff6f1]"
                             >
                                 {current.options.cancelLabel || "Cancel"}
                             </button>

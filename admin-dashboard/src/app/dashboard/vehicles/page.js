@@ -33,6 +33,8 @@ export default function VehiclesPage() {
     const [filter, setFilter] = useState("ALL");
     const [search, setSearch] = useState("");
     const [busyId, setBusyId] = useState(null);
+    const [summary, setSummary] = useState(null);
+    const [summaryError, setSummaryError] = useState("");
 
     const loadVehicles = useCallback(async () => {
         setLoading(true);
@@ -51,9 +53,28 @@ export default function VehiclesPage() {
         }
     }, []);
 
+    // Active vehicles by type (Vehicle.isActive) plus vehicles in use
+    // right now (an online driver with that vehicle selected). One
+    // read-only call; the list above is untouched.
+    const loadSummary = useCallback(async () => {
+        setSummaryError("");
+
+        try {
+            const result = await authenticatedAdminRequest(
+                "/admin/vehicles/active-summary"
+            );
+
+            setSummary(result);
+        } catch (err) {
+            setSummary(null);
+            setSummaryError(err.message);
+        }
+    }, []);
+
     useEffect(() => {
         loadVehicles();
-    }, [loadVehicles]);
+        loadSummary();
+    }, [loadVehicles, loadSummary]);
 
     const visibleVehicles = vehicles.filter((vehicle) => {
         const matchesStatus =
@@ -118,7 +139,10 @@ export default function VehiclesPage() {
                         </p>
                     </div>
                     <button
-                        onClick={loadVehicles}
+                        onClick={() => {
+                            loadVehicles();
+                            loadSummary();
+                        }}
                         disabled={loading}
                         className="flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold disabled:opacity-50"
                     >
@@ -141,6 +165,48 @@ export default function VehiclesPage() {
                             </p>
                         </div>
                     ))}
+                </div>
+
+                <div>
+                    <h3 className="text-base font-extrabold">
+                        Active Vehicles
+                    </h3>
+                    <p className="mt-1 text-xs text-slate-400">
+                        Active = vehicle marked active. In use now = an
+                        online driver (location within the last 2 minutes)
+                        has this vehicle selected.
+                    </p>
+                    {summaryError && (
+                        <p className="mt-2 text-xs text-red-500">
+                            {summaryError}
+                        </p>
+                    )}
+                    <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        {[
+                            ["BIKE", "Motorcycles", Bike],
+                            ["RICKSHAW", "Rickshaws", CarFront],
+                            ["CAR_AC", "Car (AC)", CarFront],
+                            ["CAR_NON_AC", "Car (Non-AC)", CarFront],
+                        ].map(([type, label, Icon]) => (
+                            <div
+                                key={type}
+                                className="rounded-2xl bg-white p-5 shadow-sm"
+                            >
+                                <Icon size={24} className="text-[#087F5B]" />
+                                <p className="mt-4 text-sm text-slate-500">
+                                    {label} — Active
+                                </p>
+                                <p className="mt-1 text-3xl font-extrabold">
+                                    {summary ? summary.activeByType[type] : "—"}
+                                </p>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    {summary
+                                        ? `${summary.inUseNowByType[type]} in use now`
+                                        : "Loading..."}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
                 <section className="overflow-hidden rounded-[24px] bg-white shadow-sm">

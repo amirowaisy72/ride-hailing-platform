@@ -4,6 +4,7 @@ const { authorize } = require("../middleware/roleMiddleware");
 
 const {
     getAllDrivers,
+    getDriverProfile,
     getPendingDrivers,
     updateDriverStatus,
     reviewDriverDocument,
@@ -11,6 +12,8 @@ const {
     viewDriverDocument,
     getMissingDocuments,
     notifyMissingDocuments,
+    getBulkMissingDocumentsPreview,
+    notifyAllMissingDocuments,
 } = require("../controllers/adminDriverController");
 
 const {
@@ -25,9 +28,21 @@ router.use(protect, authorize("ADMIN"));
 router.get("/", getAllDrivers);
 router.get("/pending", getPendingDrivers);
 
+// Bulk missing-documents push (preview + send). Registered before
+// the /:id routes so the fixed segments can never be read as an id.
+router.get(
+    "/notify-all-missing-documents-preview",
+    getBulkMissingDocumentsPreview
+);
+router.post(
+    "/notify-all-missing-documents",
+    notifyAllMissingDocuments
+);
+
 router.get("/documents/:documentId/view", viewDriverDocument);
 router.patch("/documents/:documentId/review", reviewDriverDocument);
 
+router.get("/:id/profile", getDriverProfile);
 router.get("/:id/documents", getDriverDocuments);
 router.get("/:id/missing-documents", getMissingDocuments);
 router.post("/:id/notify-missing-documents", notifyMissingDocuments);

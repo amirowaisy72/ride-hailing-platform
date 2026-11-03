@@ -6,6 +6,7 @@ const { authorize } = require("../middleware/roleMiddleware");
 const {
     getOverview,
     getPassengers,
+    getPassengerProfile,
     getRides,
     getImportant,
     getTodayRides,
@@ -19,6 +20,7 @@ router.get("/overview", getOverview);
 router.get("/important", getImportant);
 router.get("/today-rides", getTodayRides);
 router.get("/passengers", getPassengers);
+router.get("/passengers/:id/profile", getPassengerProfile);
 router.get("/rides", getRides);
 
 module.exports = router;

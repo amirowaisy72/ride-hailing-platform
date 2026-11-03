@@ -13,6 +13,10 @@ import { useAdminDialog } from "@/components/AdminDialog";
 import { authenticatedAdminRequest } from "@/lib/adminSession";
 import DriverDocumentReview from "@/components/DriverDocumentReview";
 import DriverServicesPanel from "@/components/DriverServicesPanel";
+import ProfileModal from "@/components/ProfileModal";
+import ProfilePhotoViewer, {
+    ProfileAvatar,
+} from "@/components/ProfilePhotoViewer";
 
 const statuses = {
     APPROVED: "bg-emerald-50 text-emerald-700",
@@ -20,6 +24,8 @@ const statuses = {
     REJECTED: "bg-red-50 text-red-700",
     SUSPENDED: "bg-red-50 text-red-700",
 };
+
+const DRIVERS_PAGE_SIZE = 20;
 
 const nameOf = (driver) =>
     [
@@ -29,6 +35,33 @@ const nameOf = (driver) =>
     driver.userId?.name ||
     driver.name ||
     "Driver";
+
+// Last seen in the app: the later of the last app open (reported on
+// launch/login) and the last driver-location ping. Users on builds
+// older than the reporting feature have no app-open row, so the
+// location ping alone still places them.
+function lastActiveOf(driver) {
+    const candidates = [driver.lastActiveAt, driver.lastLocationUpdate]
+        .filter(Boolean)
+        .map((value) => new Date(value));
+    if (candidates.length === 0) return null;
+    return new Date(Math.max(...candidates.map((date) => date.getTime())));
+}
+
+function timeAgo(value) {
+    if (!value) return "Never seen";
+    const seconds = Math.floor((Date.now() - new Date(value)) / 1000);
+    if (seconds < 60) return "Just now";
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
+    if (seconds < 86400 * 30)
+        return `${Math.floor(seconds / 86400)} days ago`;
+    return new Date(value).toLocaleDateString("en-PK", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+    });
+}
 
 export default function DriversPage() {
     const { confirmDialog, promptDialog } = useAdminDialog();
@@ -41,6 +74,15 @@ export default function DriversPage() {
     const [servicesDriver, setServicesDriver] = useState(null);
     const [filter, setFilter] = useState("ALL");
     const [search, setSearch] = useState("");
+    const [photoViewer, setPhotoViewer] = useState(null);
+    const [page, setPage] = useState(1);
+    const [bulkBusy, setBulkBusy] = useState(false);
+    const [sortMode, setSortMode] = useState("recent");
+    const [profileOpen, setProfileOpen] = useState(false);
+    const [profile, setProfile] = useState(null);
+    const [profileLoading, setProfileLoading] = useState(false);
+    const [profileError, setProfileError] = useState("");
+    const [profilePhotoUrl, setProfilePhotoUrl] = useState(null);
 
     const loadDrivers = useCallback(async () => {
         setLoading(true);
@@ -66,6 +108,29 @@ export default function DriversPage() {
     useEffect(() => {
         loadDrivers();
     }, [loadDrivers]);
+
+    // Full profile modal: one read-only request, opened by clicking
+    // the driver's name. Nothing is changed or sent from here.
+    async function openProfile(driver) {
+        setProfile(null);
+        setProfileError("");
+        setProfileLoading(true);
+        setProfileOpen(true);
+        setProfilePhotoUrl(
+            driver.profilePhotoUrl || driver.userId?.profileImage || null
+        );
+
+        try {
+            const data = await authenticatedAdminRequest(
+                `/admin/drivers/${encodeURIComponent(driver._id || driver.driverId)}/profile`
+            );
+            setProfile(data.profile || null);
+        } catch (err) {
+            setProfileError(err.message);
+        } finally {
+            setProfileLoading(false);
+        }
+    }
 
     async function updateDriver(driverId, action) {
         if (busyId) return;
@@ -150,6 +215,66 @@ export default function DriversPage() {
         }
     }
 
+    // Bulk missing-documents push: one button, one preview, one
+    // confirm — then every driver with missing documents gets their
+    // OWN list (name + their missing types). Nothing is sent before
+    // the admin sees the counts and sample messages and confirms.
+    // Drivers without a push device are counted and skipped.
+    async function notifyAllMissingDocuments() {
+        if (bulkBusy) return;
+
+        setBulkBusy(true);
+        setError("");
+        setMessage("");
+
+        try {
+            const preview = await authenticatedAdminRequest(
+                "/admin/drivers/notify-all-missing-documents-preview"
+            );
+
+            if (!preview.notifyCount) {
+                setMessage(
+                    preview.totalMissing
+                        ? `${preview.totalMissing} driver(s) have missing documents, but none has a registered push device.`
+                        : "No drivers with missing documents."
+                );
+                return;
+            }
+
+            const sampleLines = (preview.samples || [])
+                .map((sample) => `${sample.name}: "${sample.body}"`)
+                .join("\n");
+            const confirmed = await confirmDialog(
+                `Send missing-documents notifications to ${preview.notifyCount} driver(s)?` +
+                    (preview.skippedNoDevice
+                        ? ` ${preview.skippedNoDevice} driver(s) will be skipped (no push device).`
+                        : "") +
+                    "\n\nEach driver gets their own missing list. Samples:\n" +
+                    sampleLines
+            );
+            if (!confirmed) return;
+
+            const result = await authenticatedAdminRequest(
+                "/admin/drivers/notify-all-missing-documents",
+                { method: "POST" }
+            );
+
+            setMessage(
+                `Sent to ${result.sent} driver(s).` +
+                    (result.skippedNoDevice
+                        ? ` Skipped ${result.skippedNoDevice} (no push device).`
+                        : "") +
+                    (result.failed
+                        ? ` Failed ${result.failed}.`
+                        : "")
+            );
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setBulkBusy(false);
+        }
+    }
+
     const visible = drivers.filter((driver) => {
         // New filter: PENDING status AND at least one submitted document
         // (any document status counts as submitted, not only approved).
@@ -170,6 +295,48 @@ export default function DriversPage() {
 
         return matchesStatus && matchesSearch;
     });
+
+    // Client-side pagination (the drivers endpoint returns the full
+    // list, so paging here needs no backend change). Filter/search
+    // changes reset to page 1, so the list can never strand the
+    // admin on an empty page.
+    useEffect(() => {
+        setPage(1);
+    }, [filter, search, sortMode]);
+
+    // Most Active sorts the filtered list by last seen (app open or
+    // location ping, whichever is later); never-seen drivers sort
+    // last. Pagination slices the sorted list, so paging stays
+    // consistent with the order shown.
+    const sortedVisible =
+        sortMode === "active"
+            ? [...visible].sort((a, b) => {
+                  const timeA = lastActiveOf(a)?.getTime() || 0;
+                  const timeB = lastActiveOf(b)?.getTime() || 0;
+                  if (timeB !== timeA) return timeB - timeA;
+                  return (
+                      new Date(b.createdAt) - new Date(a.createdAt)
+                  );
+              })
+            : visible;
+
+    const totalPages = Math.max(
+        1,
+        Math.ceil(visible.length / DRIVERS_PAGE_SIZE)
+    );
+    const currentPage = Math.min(page, totalPages);
+    const pagedDrivers = sortedVisible.slice(
+        (currentPage - 1) * DRIVERS_PAGE_SIZE,
+        currentPage * DRIVERS_PAGE_SIZE
+    );
+    const showingFrom =
+        visible.length === 0
+            ? 0
+            : (currentPage - 1) * DRIVERS_PAGE_SIZE + 1;
+    const showingTo = Math.min(
+        visible.length,
+        currentPage * DRIVERS_PAGE_SIZE
+    );
 
     const countStatus = (status) =>
         drivers.filter((d) => d.verificationStatus === status).length;
@@ -284,6 +451,51 @@ export default function DriversPage() {
                                 {`PENDING + DOCS (${countPendingWithDocs})`}
                             </button>
                         </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs font-bold text-slate-500">
+                                Sort:
+                            </span>
+                            {[
+                                ["recent", "Newest"],
+                                ["active", "Most Active"],
+                            ].map(([value, label]) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    onClick={() => setSortMode(value)}
+                                    className={`rounded-xl px-4 py-2 text-xs font-bold ${sortMode === value
+                                        ? "bg-[#087F5B] text-white"
+                                        : "bg-slate-100 text-slate-600"
+                                        }`}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                            <p className="w-full text-xs text-slate-400">
+                                Most Active sorts by last seen in the app
+                                (last app open or last location ping,
+                                whichever is later); never-seen drivers
+                                sort last.
+                            </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <p className="text-xs text-slate-400">
+                                Bulk notify sends each driver with missing
+                                documents their own list — nothing is sent
+                                before a preview and a confirm.
+                            </p>
+                            <button
+                                type="button"
+                                disabled={bulkBusy}
+                                onClick={notifyAllMissingDocuments}
+                                className="flex items-center gap-2 rounded-xl border border-amber-200 px-4 py-2.5 text-sm font-bold text-amber-700 disabled:opacity-50"
+                            >
+                                <Bell size={16} />
+                                Notify All Missing Docs
+                            </button>
+                        </div>
                     </div>
 
                     {message && (
@@ -319,22 +531,41 @@ export default function DriversPage() {
                         </div>
                     ) : (
                         <div className="divide-y divide-slate-100">
-                            {visible.map((driver) => {
+                            {pagedDrivers.map((driver) => {
                                 const status = driver.verificationStatus || "PENDING";
                                 const driverId = driver._id || driver.driverId;
 
                                 return (
                                     <div
                                         key={driverId}
-                                        className="flex flex-wrap items-center gap-4 p-5"
+                                        className="grid grid-cols-1 gap-4 p-5 lg:grid-cols-[56px_minmax(0,1fr)_230px_320px] lg:items-center"
                                     >
-                                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-[#087F5B]">
-                                            <UserRound size={23} />
-                                        </div>
+                                        <ProfileAvatar
+                                            url={
+                                                driver.profilePhotoUrl ||
+                                                driver.userId?.profileImage ||
+                                                null
+                                            }
+                                            name={nameOf(driver)}
+                                            size={56}
+                                            onOpen={setPhotoViewer}
+                                        />
 
-                                        <div className="min-w-0 flex-1">
-                                            <h3 className="font-bold">{nameOf(driver)}</h3>
-                                            <p className="truncate text-sm text-slate-500">
+                                        <div className="min-w-0">
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    openProfile(driver)
+                                                }
+                                                className="truncate text-left font-bold hover:underline"
+                                                title={`${nameOf(driver)} — open full profile`}
+                                            >
+                                                {nameOf(driver)}
+                                            </button>
+                                            <p
+                                                className="truncate text-sm text-slate-500"
+                                                title={driver.userId?.email || ""}
+                                            >
                                                 {driver.userId?.email || "Email unavailable"}
                                             </p>
                                             {driver.userId?.phone ? (
@@ -349,22 +580,33 @@ export default function DriversPage() {
                                                     No phone number
                                                 </p>
                                             )}
-                                            <span
-                                                className={`mt-2 inline-block rounded-lg px-3 py-1 text-xs font-bold ${statuses[status] || "bg-slate-100 text-slate-600"
-                                                    }`}
-                                            >
-                                                {status}
-                                            </span>
-                                            {typeof driver.documentCount === "number" && (
-                                                <span className="ml-2 text-xs font-bold text-slate-500">
-                                                    {driver.documentCount} document(s)
+                                        </div>
+
+                                        <div className="flex flex-col gap-1.5">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span
+                                                    className={`inline-block rounded-lg px-3 py-1 text-xs font-bold ${statuses[status] || "bg-slate-100 text-slate-600"
+                                                        }`}
+                                                >
+                                                    {status}
                                                 </span>
-                                            )}
+                                                {typeof driver.documentCount === "number" && (
+                                                    <span className="text-xs font-bold text-slate-500">
+                                                        {driver.documentCount} document(s)
+                                                    </span>
+                                                )}
+                                                <span className="text-xs text-slate-500">
+                                                    Last active{" "}
+                                                    {timeAgo(
+                                                        lastActiveOf(driver)
+                                                    )}
+                                                </span>
+                                            </div>
 
                                             {/* Phase 7 — per-service records at a glance
                                                 (stored statuses; the Services panel shows
                                                 the evaluated eligibility). */}
-                                            <div className="mt-2 flex flex-wrap gap-1.5">
+                                            <div className="flex flex-wrap gap-1.5">
                                                 {[
                                                     ["RIDE", "Ride"],
                                                     ["PARCEL", "Parcel"],
@@ -385,14 +627,15 @@ export default function DriversPage() {
                                             </div>
                                         </div>
 
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                setReviewDriver({
-                                                    id: driverId,
-                                                    name: nameOf(driver),
-                                                })
-                                            }
+                                        <div className="flex flex-wrap gap-2 lg:justify-end">
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setReviewDriver({
+                                                        id: driverId,
+                                                        name: nameOf(driver),
+                                                    })
+                                                }
                                             className="rounded-xl border border-emerald-200 px-4 py-3 text-sm font-bold text-[#087F5B]"
                                         >
                                             Review Documents
@@ -444,13 +687,49 @@ export default function DriversPage() {
                                                 </button>
                                             </div>
                                         )}
+                                        </div>
                                     </div>
                                 );
                             })}
                         </div>
                     )}
+                    {visible.length > 0 && (
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t p-5">
+                            <p className="text-sm text-slate-500">
+                                Showing {showingFrom}–{showingTo} of{" "}
+                                {visible.length} drivers
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    disabled={currentPage <= 1}
+                                    onClick={() => setPage(currentPage - 1)}
+                                    className="flex items-center gap-1 rounded-xl border px-4 py-2 text-sm disabled:opacity-40"
+                                >
+                                    <ChevronLeft size={17} />
+                                    Previous
+                                </button>
+                                <span className="text-sm text-slate-500">
+                                    {currentPage} / {totalPages}
+                                </span>
+                                <button
+                                    type="button"
+                                    disabled={currentPage >= totalPages}
+                                    onClick={() => setPage(currentPage + 1)}
+                                    className="flex items-center gap-1 rounded-xl border px-4 py-2 text-sm disabled:opacity-40"
+                                >
+                                    Next
+                                    <ChevronRight size={17} />
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </section>
             </div>
+            <ProfilePhotoViewer
+                photo={photoViewer}
+                onClose={() => setPhotoViewer(null)}
+            />
             {reviewDriver && (
                 <DriverDocumentReview
                     driverId={reviewDriver.id}
@@ -467,6 +746,35 @@ export default function DriversPage() {
                     onUpdated={loadDrivers}
                 />
             )}
+            <ProfileModal
+                open={profileOpen}
+                onClose={() => setProfileOpen(false)}
+                kind="driver"
+                profile={profile}
+                loading={profileLoading}
+                error={profileError}
+                photoUrl={profilePhotoUrl}
+                onViewPhoto={setPhotoViewer}
+                onReviewDocuments={
+                    profile?.driver?._id
+                        ? () => {
+                              const driverId = profile.driver._id;
+                              const name = profile.user
+                                  ? [
+                                        profile.user.firstName,
+                                        profile.user.lastName,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" ") ||
+                                    profile.user.name ||
+                                    "Driver"
+                                  : "Driver";
+                              setProfileOpen(false);
+                              setReviewDriver({ id: driverId, name });
+                          }
+                        : null
+                }
+            />
         </AdminShell>
     );
 }
