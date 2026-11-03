@@ -74,3 +74,59 @@ body {
 .admin-dark .bg-white .border-slate-200 {
   border-color: #2a5245;
 }
+
+/* Follow-up fix (screenshot, Driver Management): filter buttons and
+   service chips use bg-slate-100, which 57b3ad0 did not cover. Worse,
+   the card rule above lightened their text-slate-600 while the button
+   itself stayed light, making the text invisible on a light button.
+   Darken bg-slate-100 / bg-gray-100 surfaces too, with light text. */
+.admin-dark .bg-slate-100,
+.admin-dark .bg-gray-100 {
+  background-color: #16352c;
+  color: #eff6f1;
+  border-color: #2a5245;
+}
+
+/* Same-element text colours on the darkened slate-100 surfaces
+   (filter buttons: bg-slate-100 text-slate-600; chips: text-slate-500). */
+.admin-dark .bg-slate-100.text-slate-600,
+.admin-dark .bg-gray-100.text-slate-600,
+.admin-dark .bg-slate-100.text-slate-500,
+.admin-dark .bg-gray-100.text-slate-500 {
+  color: #eff6f1;
+}
+
+/* Pastel status/avatar chips (bg-*-50) are also still light blocks —
+   e.g. the driver avatar bg-emerald-50 and PENDING bg-amber-50.
+   Darken them slightly (lighter than cards, so chips stay distinct)
+   and lighten their same-element status text so it stays readable. */
+.admin-dark .bg-emerald-50,
+.admin-dark .bg-amber-50,
+.admin-dark .bg-red-50,
+.admin-dark .bg-blue-50,
+.admin-dark .bg-violet-50 {
+  background-color: #1e4638;
+  color: #eff6f1;
+  border-color: #2a5245;
+}
+
+.admin-dark .bg-emerald-50.text-emerald-700,
+.admin-dark .bg-emerald-50.text-emerald-600 {
+  color: #7fd4a8;
+}
+
+.admin-dark .bg-amber-50.text-amber-700,
+.admin-dark .bg-amber-50.text-amber-600 {
+  color: #f5c97a;
+}
+
+.admin-dark .bg-red-50.text-red-700,
+.admin-dark .bg-red-50.text-red-600 {
+  color: #f5a3a3;
+}
+
+.admin-dark .bg-blue-50.text-blue-700,
+.admin-dark .bg-blue-50.text-blue-600,
+.admin-dark .bg-violet-50.text-violet-600 {
+  color: #a8c8f0;
+}

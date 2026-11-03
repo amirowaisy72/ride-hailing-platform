@@ -1,5 +1,7 @@
 const Driver = require("../models/Driver");
 const DriverDocument = require("../models/DriverDocument");
+const LastAdminNotification = require("../models/LastAdminNotification");
+const { sendPushToUser } = require("../services/pushService");
 
 const getPendingDrivers = async (req, res) => {
     try {
@@ -120,6 +122,8 @@ const updateDriverStatus = async (req, res) => {
             }
         }
 
+        const wasApproved = driver.verificationStatus === "APPROVED";
+
         driver.verificationStatus = status;
         driver.rejectionReason =
             status === "REJECTED" ? rejectionReason.trim() : null;
@@ -130,6 +134,45 @@ const updateDriverStatus = async (req, res) => {
         }
 
         await driver.save();
+
+        // Auto push on FINAL driver-profile approval only: the admin
+        // has already approved the individual documents (separate
+        // reviewDriverDocument endpoint), and this is the transition
+        // into APPROVED. Best-effort only: any push failure is logged
+        // and must never fail or roll back the approval above.
+        // Not sent on document approvals, re-approval of an already
+        // approved driver, or rejection.
+        if (status === "APPROVED" && !wasApproved) {
+            try {
+                const title = "Safar \u2014 Documents Approved";
+                const body =
+                    "Mubarak ho! Aap ke documents approve ho gaye hain. Ab aap Safar par rides le sakte hain.";
+                const delivery = await sendPushToUser(
+                    driver.userId,
+                    title,
+                    body,
+                    { type: "DRIVER_APPROVED", source: "ADMIN" }
+                );
+                if (delivery?.successCount) {
+                    await LastAdminNotification.findOneAndUpdate(
+                        { userId: driver.userId },
+                        {
+                            userId: driver.userId,
+                            title,
+                            body,
+                            source: "SINGLE",
+                            sentAt: new Date(),
+                        },
+                        { upsert: true, new: true }
+                    );
+                }
+            } catch (pushError) {
+                console.error(
+                    "Driver approval push failed (approval kept):",
+                    pushError.message
+                );
+            }
+        }
 
         return res.json({
             success: true,
