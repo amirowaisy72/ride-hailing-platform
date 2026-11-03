@@ -39,18 +39,28 @@ const registerVehicle = async (req, res) => {
             });
         }
 
-        const expiry = new Date(registrationExpiryDate);
+        // Registration expiry date is optional: the app's vehicle form
+        // has no expiry field yet, so a missing date must not block
+        // registration. When a date IS supplied it must be a valid
+        // future YYYY-MM-DD date.
+        let expiry = null;
 
         if (
-            typeof registrationExpiryDate !== "string" ||
-            !/^\d{4}-\d{2}-\d{2}$/.test(registrationExpiryDate) ||
-            !Number.isFinite(expiry.getTime()) ||
-            expiry <= new Date()
+            typeof registrationExpiryDate === "string" &&
+            registrationExpiryDate.trim() !== ""
         ) {
-            return res.status(400).json({
-                success: false,
-                message: "Valid future vehicle registration expiry date required",
-            });
+            expiry = new Date(registrationExpiryDate);
+
+            if (
+                !/^\d{4}-\d{2}-\d{2}$/.test(registrationExpiryDate) ||
+                !Number.isFinite(expiry.getTime()) ||
+                expiry <= new Date()
+            ) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Valid future vehicle registration expiry date required",
+                });
+            }
         }
 
         const vehicle = await Vehicle.create({
