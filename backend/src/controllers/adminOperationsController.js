@@ -259,6 +259,9 @@ async function getImportant(req, res) {
             pendingDocumentList,
             activeRides,
             todayCompletedRides,
+            onlineCount,
+            onlineAvailableCount,
+            onlineRecent,
             newPassengerCount,
             newPassengerList,
             newDriverCount,
@@ -320,6 +323,36 @@ async function getImportant(req, res) {
                     },
                 ],
             }),
+            // ADDITIVE ONLY: live drivers for the Important card —
+            // same rule as getTodayRides / ride matching: online flag
+            // plus location within the last 2 minutes; available adds
+            // APPROVED + isAvailable. No existing query or response
+            // field is changed by this addition.
+            Driver.countDocuments({
+                isOnline: true,
+                lastLocationUpdate: {
+                    $gte: new Date(Date.now() - 2 * 60 * 1000),
+                },
+            }),
+            Driver.countDocuments({
+                isOnline: true,
+                verificationStatus: "APPROVED",
+                isAvailable: true,
+                lastLocationUpdate: {
+                    $gte: new Date(Date.now() - 2 * 60 * 1000),
+                },
+            }),
+            Driver.find({
+                isOnline: true,
+                lastLocationUpdate: {
+                    $gte: new Date(Date.now() - 2 * 60 * 1000),
+                },
+            })
+                .populate("userId", "firstName lastName")
+                .select("userId isAvailable verificationStatus lastLocationUpdate")
+                .sort({ lastLocationUpdate: -1 })
+                .limit(5)
+                .lean(),
             // ADDITIVE ONLY: registrations in the last 24 hours, for
             // the two new Important cards. No existing query or
             // response field is changed by this addition.
@@ -426,6 +459,20 @@ async function getImportant(req, res) {
                 activeRides: { count: activeRides },
                 // ADDITIVE ONLY: today's PKT-date completed rides.
                 todayCompletedRides: { count: todayCompletedRides },
+                // ADDITIVE ONLY: live drivers for the Important card.
+                onlineDrivers: {
+                    count: onlineCount,
+                    availableCount: onlineAvailableCount,
+                    recent: onlineRecent.map((item) => ({
+                        id: item._id,
+                        name: [item.userId?.firstName, item.userId?.lastName]
+                            .filter(Boolean)
+                            .join(" ") || "Driver",
+                        isAvailable: item.isAvailable,
+                        verificationStatus: item.verificationStatus,
+                        lastLocationUpdate: item.lastLocationUpdate,
+                    })),
+                },
                 // ADDITIVE ONLY: registrations since the card was
                 // last clicked (last 24h when no click recorded yet).
                 newPassengers: {

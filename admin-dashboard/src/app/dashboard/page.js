@@ -20,6 +20,18 @@ const snippet = (text, length = 70) => {
     return value.length > length ? `${value.slice(0, length)}…` : value;
 };
 
+// Freshness of a driver's last location update ("1 min ago"),
+// for the Drivers Online Now card.
+const timeAgo = (value) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const minutes = Math.floor((Date.now() - date.getTime()) / 60000);
+    if (minutes < 1) return "just now";
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+};
+
 // "More people on latest version" is measured against the last
 // time THIS browser loaded the Important section — stored
 // locally, never sent anywhere. A new latest version resets it.
@@ -578,6 +590,40 @@ export default function DashboardPage() {
                                             year: "numeric",
                                         })}
                                     </span>
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/today-rides"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                                        <CarFront size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Drivers Online Now
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold">
+                                    {important.onlineDrivers?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.onlineDrivers?.count ?? 0) === 0 ? (
+                                        "No drivers online right now."
+                                    ) : (
+                                        <>
+                                            <span className="block font-bold text-[#087F5B]">
+                                                {important.onlineDrivers.availableCount} available for rides now.
+                                            </span>
+                                            {(important.onlineDrivers?.recent || []).slice(0, 2).map((item) => (
+                                                <span key={item.id} className="block truncate">
+                                                    {item.name} · {timeAgo(item.lastLocationUpdate)}
+                                                </span>
+                                            ))}
+                                        </>
+                                    )}
                                 </p>
                             </Link>
 
