@@ -223,6 +223,7 @@ async function getImportant(req, res) {
             newFeedbackList,
             newDocuments,
             pendingDocuments,
+            pendingDocumentList,
             activeRides,
             totalUsers,
             latestVersionUsers,
@@ -255,6 +256,18 @@ async function getImportant(req, res) {
             DriverDocument.countDocuments({
                 verificationStatus: "PENDING",
             }),
+            // ADDITIVE ONLY: pending-review documents grouped by
+            // driver, for the Important card. No existing query or
+            // response field is changed by this addition.
+            DriverDocument.find({ verificationStatus: "PENDING" })
+                .populate({
+                    path: "driverId",
+                    populate: { path: "userId", select: "firstName lastName" },
+                })
+                .select("driverId documentType verificationStatus createdAt")
+                .sort({ createdAt: -1 })
+                .limit(100)
+                .lean(),
             Ride.countDocuments({ status: { $in: activeStatuses } }),
             User.countDocuments({ role: { $ne: "ADMIN" } }),
             versionConfig
@@ -264,6 +277,23 @@ async function getImportant(req, res) {
                 : Promise.resolve(0),
             UserAppVersion.countDocuments({}),
         ]);
+
+        // Group pending-review documents by driver for a readable
+        // list (newest document first, from the sort above).
+        const pendingDriversById = new Map();
+        for (const doc of pendingDocumentList) {
+            const driver = doc.driverId;
+            if (!driver) continue;
+            const key = String(driver._id);
+            const user = driver.userId || {};
+            const name = [user.firstName, user.lastName]
+                .filter(Boolean)
+                .join(" ") || "Driver";
+            if (!pendingDriversById.has(key)) {
+                pendingDriversById.set(key, { name, count: 0 });
+            }
+            pendingDriversById.get(key).count += 1;
+        }
 
         // Group the last-24h documents by driver for a readable list.
         const driversById = new Map();
@@ -315,6 +345,13 @@ async function getImportant(req, res) {
                     count: newDocuments.length,
                     pendingCount: pendingDocuments,
                     drivers: [...driversById.values()],
+                },
+                // ADDITIVE ONLY: pending-review documents only.
+                // Count is the full PENDING total, not the limited
+                // list length, so it never undercounts.
+                pendingDriverDocuments: {
+                    count: pendingDocuments,
+                    drivers: [...pendingDriversById.values()],
                 },
                 activeRides: { count: activeRides },
                 appVersion: versionConfig

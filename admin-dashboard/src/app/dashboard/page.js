@@ -196,6 +196,14 @@ export default function DashboardPage() {
         readSeenIds(FEEDBACK_SEEN_KEY)
     );
 
+    // Pending-review driver documents only. Prefer the new additive
+    // backend field; fall back to the old pending total (no driver
+    // list) so an older backend never shows approved documents here.
+    const pendingDocData = important?.pendingDriverDocuments || {
+        count: important?.newDriverDocuments?.pendingCount ?? 0,
+        drivers: [],
+    };
+
     return (
         <AdminShell title="Overview">
             <div className="space-y-7">
@@ -345,6 +353,27 @@ export default function DashboardPage() {
                             </Link>
 
                             <Link
+                                href="/dashboard/vehicles"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-[#087F5B]">
+                                        <Bike size={24} />
+                                    </div>
+                                    <ArrowUpRight size={20} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                </div>
+                                <p className="mt-4 text-sm text-slate-500">
+                                    Vehicles Pending Verification
+                                </p>
+                                <p className="mt-1 text-3xl font-extrabold">
+                                    {overview?.pendingVehicles ?? "—"}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    Vehicles waiting for verification.
+                                </p>
+                            </Link>
+
+                            <Link
                                 href="/dashboard/drivers"
                                 className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
                             >
@@ -355,20 +384,26 @@ export default function DashboardPage() {
                                     <ArrowUpRight size={20} className="text-slate-400 group-hover:text-[#087F5B]" />
                                 </div>
                                 <p className="mt-4 text-sm text-slate-500">
-                                    Driver Documents Uploaded (24h)
+                                    Driver Documents Pending Review
                                 </p>
                                 <p className="mt-1 text-3xl font-extrabold">
-                                    {important.newDriverDocuments.count}
+                                    {pendingDocData.count}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
-                                    {important.newDriverDocuments.drivers.slice(0, 2).map((driver, index) => (
-                                        <span key={`${driver.name}-${index}`} className="block truncate">
-                                            {driver.name} · {driver.count} document(s)
-                                        </span>
-                                    ))}
-                                    <span className="block">
-                                        {important.newDriverDocuments.pendingCount} document(s) still pending review.
-                                    </span>
+                                    {pendingDocData.count === 0 ? (
+                                        "No documents pending review."
+                                    ) : (
+                                        <>
+                                            {pendingDocData.drivers.slice(0, 2).map((driver, index) => (
+                                                <span key={`${driver.name}-${index}`} className="block truncate">
+                                                    {driver.name} · {driver.count} document(s)
+                                                </span>
+                                            ))}
+                                            <span className="block">
+                                                {pendingDocData.count} document(s) pending review.
+                                            </span>
+                                        </>
+                                    )}
                                 </p>
                             </Link>
 

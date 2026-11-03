@@ -107,13 +107,13 @@ export default function AdminShell({ children, title = "Dashboard" }) {
 
     if (checking || !session) {
         return (
-            <main className="flex min-h-screen items-center justify-center bg-[#F4F8F6]">
+            <main className="flex min-h-screen items-center justify-center bg-[#0E241F]">
                 <div className="text-center">
                     <ShieldCheck
                         size={38}
                         className="mx-auto animate-pulse text-[#087F5B]"
                     />
-                    <p className="mt-4 text-sm font-semibold text-slate-500">
+                    <p className="mt-4 text-sm font-semibold text-white/70">
                         Verifying administrator session...
                     </p>
                 </div>
@@ -122,7 +122,7 @@ export default function AdminShell({ children, title = "Dashboard" }) {
     }
 
     return (
-        <div className="min-h-screen bg-[#DCEDE2] text-slate-900">
+        <div className="min-h-screen bg-[#0E241F] text-white">
             {menuOpen && (
                 <button
                     type="button"
@@ -216,19 +216,19 @@ export default function AdminShell({ children, title = "Dashboard" }) {
             </aside>
 
             <div className="min-h-screen lg:pl-[270px]">
-                <header className="sticky top-0 z-30 flex h-[76px] items-center justify-between border-b border-emerald-100 bg-[#EAF4EE] px-5 lg:px-8">
+                <header className="sticky top-0 z-30 flex h-[76px] items-center justify-between border-b border-white/10 bg-[#102B26] px-5 lg:px-8">
                     <div className="flex items-center gap-4">
                         <button
                             type="button"
                             aria-label="Open navigation"
                             onClick={() => setMenuOpen(true)}
-                            className="rounded-xl border border-slate-200 p-2 lg:hidden"
+                            className="rounded-xl border border-white/20 p-2 text-white lg:hidden"
                         >
                             <Menu size={22} />
                         </button>
 
                         <div>
-                            <p className="text-xs text-slate-400">
+                            <p className="text-xs text-white/60">
                                 Administration / {title}
                             </p>
                             <h1 className="text-xl font-extrabold">{title}</h1>
@@ -236,7 +236,7 @@ export default function AdminShell({ children, title = "Dashboard" }) {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <span className="hidden rounded-full bg-emerald-50 px-4 py-2 text-xs font-bold text-[#087F5B] sm:block">
+                        <span className="hidden rounded-full bg-white/10 px-4 py-2 text-xs font-bold text-white sm:block">
                             Administrator
                         </span>
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 font-extrabold text-[#087F5B]">
@@ -252,3 +252,4 @@ export default function AdminShell({ children, title = "Dashboard" }) {
         </div>
     );
 }
+
