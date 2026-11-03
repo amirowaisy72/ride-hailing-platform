@@ -122,7 +122,7 @@ export default function AdminShell({ children, title = "Dashboard" }) {
     }
 
     return (
-        <div className="min-h-screen bg-[#0E241F] text-white">
+        <div className="admin-dark min-h-screen bg-[#0E241F] text-white">
             {menuOpen && (
                 <button
                     type="button"

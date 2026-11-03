@@ -24,3 +24,15 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Admin dark shell fix: the outer AdminShell wrapper sets text-white so
+   headings on the dark green background stay readable, but that white
+   colour is inherited by uncoloured text inside white cards/tables,
+   rendering counts and headings white-on-white (invisible). Force dark
+   text on white surfaces inside the admin shell. Elements with their
+   own explicit text-* class keep their own colour, because a directly
+   applied rule always beats an inherited one. */
+.admin-dark .bg-white,
+.admin-dark .bg-\[\#ffffff\] {
+  color: #0f172a;
+}
