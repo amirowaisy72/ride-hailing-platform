@@ -329,17 +329,6 @@ const viewDriverDocument = async (req, res) => {
     }
 };
 
-module.exports = {
-    getAllDrivers,
-    getPendingDrivers,
-    updateDriverStatus,
-    reviewDriverDocument,
-    getDriverDocuments,
-    viewDriverDocument,
-    getMissingDocuments,
-    notifyMissingDocuments,
-};
-
 // Missing-documents push notification. The required set mirrors
 // driver approval exactly (adminDriverController approval check +
 // DriverDocumentReview): an APPROVED, unexpired document of each
@@ -534,3 +523,15 @@ const notifyMissingDocuments = async (req, res) => {
         });
     }
 };
+
+module.exports = {
+    getAllDrivers,
+    getPendingDrivers,
+    updateDriverStatus,
+    reviewDriverDocument,
+    getDriverDocuments,
+    viewDriverDocument,
+    getMissingDocuments,
+    notifyMissingDocuments,
+};
+
