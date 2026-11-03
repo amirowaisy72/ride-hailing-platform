@@ -20,18 +20,6 @@ const snippet = (text, length = 70) => {
     return value.length > length ? `${value.slice(0, length)}…` : value;
 };
 
-// Freshness of a driver's last location update ("1 min ago"),
-// for the Drivers Online Now card.
-const timeAgo = (value) => {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    const minutes = Math.floor((Date.now() - date.getTime()) / 60000);
-    if (minutes < 1) return "just now";
-    if (minutes < 60) return `${minutes} min ago`;
-    const hours = Math.floor(minutes / 60);
-    return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-};
-
 // "More people on latest version" is measured against the last
 // time THIS browser loaded the Important section — stored
 // locally, never sent anywhere. A new latest version resets it.
