@@ -4,6 +4,11 @@ const Driver = require("../models/Driver");
 const Vehicle = require("../models/Vehicle");
 const Ride = require("../models/Ride");
 const RideSettlement = require("../models/RideSettlement");
+const Complaint = require("../models/Complaint");
+const Feedback = require("../models/Feedback");
+const DriverDocument = require("../models/DriverDocument");
+const UserAppVersion = require("../models/UserAppVersion");
+const AppVersionConfig = require("../models/AppVersionConfig");
 
 const activeStatuses = [
     "REQUESTED",
@@ -191,4 +196,145 @@ module.exports = {
     getOverview,
     getPassengers,
     getRides,
+    getImportant,
 };
+
+// GET /admin/operations/important — one call for the Overview
+// "Important" section, so the admin no longer has to open a tab
+// per item. READ-ONLY and additive: no existing endpoint or
+// response shape is changed, and no app-facing behaviour is
+// touched. "New" driver documents means uploaded in the last
+// 24 hours; the pending-documents total is included alongside
+// so an older unreviewed upload is never hidden by the window.
+async function getImportant(req, res) {
+    try {
+        const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        // Latest-version config first: the "users on latest"
+        // count below depends on its version code.
+        const versionConfig = await AppVersionConfig.findOne({
+            platform: "android",
+        }).lean();
+
+        const [
+            openComplaints,
+            openComplaintList,
+            newFeedback,
+            newFeedbackList,
+            newDocuments,
+            pendingDocuments,
+            activeRides,
+            totalUsers,
+            latestVersionUsers,
+            reportedUsers,
+        ] = await Promise.all([
+            Complaint.countDocuments({
+                status: { $in: ["OPEN", "IN_REVIEW"] },
+            }),
+            Complaint.find({ status: { $in: ["OPEN", "IN_REVIEW"] } })
+                .populate("complainant", "firstName lastName")
+                .select("complainant complainantRole category description status createdAt")
+                .sort({ createdAt: -1 })
+                .limit(5)
+                .lean(),
+            Feedback.countDocuments({ status: "NEW" }),
+            Feedback.find({ status: "NEW" })
+                .populate("user", "firstName lastName")
+                .select("user userRole category message createdAt")
+                .sort({ createdAt: -1 })
+                .limit(5)
+                .lean(),
+            DriverDocument.find({ createdAt: { $gte: dayAgo } })
+                .populate({
+                    path: "driverId",
+                    populate: { path: "userId", select: "firstName lastName" },
+                })
+                .select("driverId documentType verificationStatus createdAt")
+                .sort({ createdAt: -1 })
+                .lean(),
+            DriverDocument.countDocuments({
+                verificationStatus: "PENDING",
+            }),
+            Ride.countDocuments({ status: { $in: activeStatuses } }),
+            User.countDocuments({ role: { $ne: "ADMIN" } }),
+            versionConfig
+                ? UserAppVersion.countDocuments({
+                    appVersionCode: versionConfig.latestVersionCode,
+                })
+                : Promise.resolve(0),
+            UserAppVersion.countDocuments({}),
+        ]);
+
+        // Group the last-24h documents by driver for a readable list.
+        const driversById = new Map();
+        for (const doc of newDocuments) {
+            const driver = doc.driverId;
+            if (!driver) continue;
+            const key = String(driver._id);
+            const user = driver.userId || {};
+            const name = [user.firstName, user.lastName]
+                .filter(Boolean)
+                .join(" ") || "Driver";
+            if (!driversById.has(key)) {
+                driversById.set(key, { name, count: 0 });
+            }
+            driversById.get(key).count += 1;
+        }
+
+        return res.json({
+            success: true,
+            important: {
+                openComplaints: {
+                    count: openComplaints,
+                    recent: openComplaintList.map((item) => ({
+                        id: item._id,
+                        name: [item.complainant?.firstName, item.complainant?.lastName]
+                            .filter(Boolean)
+                            .join(" ") || "User",
+                        role: item.complainantRole,
+                        category: item.category,
+                        description: item.description,
+                        status: item.status,
+                        createdAt: item.createdAt,
+                    })),
+                },
+                newFeedback: {
+                    count: newFeedback,
+                    recent: newFeedbackList.map((item) => ({
+                        id: item._id,
+                        name: [item.user?.firstName, item.user?.lastName]
+                            .filter(Boolean)
+                            .join(" ") || "User",
+                        role: item.userRole,
+                        category: item.category,
+                        message: item.message,
+                        createdAt: item.createdAt,
+                    })),
+                },
+                newDriverDocuments: {
+                    count: newDocuments.length,
+                    pendingCount: pendingDocuments,
+                    drivers: [...driversById.values()],
+                },
+                activeRides: { count: activeRides },
+                appVersion: versionConfig
+                    ? {
+                        latestVersionCode: versionConfig.latestVersionCode,
+                        latestVersionName: versionConfig.latestVersionName,
+                        latestUsers: latestVersionUsers,
+                        totalUsers,
+                        reportedUsers,
+                        unknownUsers: Math.max(0, totalUsers - reportedUsers),
+                    }
+                    : null,
+            },
+        });
+    } catch (error) {
+        console.error("Important listing:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Unable to load important items",
+        });
+    }
+}
+

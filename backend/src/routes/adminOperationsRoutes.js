@@ -7,6 +7,7 @@ const {
     getOverview,
     getPassengers,
     getRides,
+    getImportant,
 } = require("../controllers/adminOperationsController");
 
 const router = express.Router();
@@ -14,7 +15,9 @@ const router = express.Router();
 router.use(protect, authorize("ADMIN"));
 
 router.get("/overview", getOverview);
+router.get("/important", getImportant);
 router.get("/passengers", getPassengers);
 router.get("/rides", getRides);
 
 module.exports = router;
+

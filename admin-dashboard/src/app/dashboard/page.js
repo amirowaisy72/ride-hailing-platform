@@ -5,8 +5,9 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
     Activity, ArrowUpRight, Bike, CarFront, CheckCircle2,
-    CircleDollarSign, Clock3, LayoutDashboard,
-    RefreshCw, Route, ShieldCheck, Users, Wallet,
+    CircleDollarSign, Clock3, FileCheck, Flag, LayoutDashboard,
+    MessageSquare, RefreshCw, Route, ShieldCheck, Smartphone,
+    Users, Wallet,
 } from "lucide-react";
 
 import AdminShell from "@/components/AdminShell";
@@ -14,6 +15,39 @@ import { authenticatedAdminRequest } from "@/lib/adminSession";
 
 const money = (value) =>
     `PKR ${Number(value ?? 0).toLocaleString("en-PK")}`;
+
+const snippet = (text, length = 70) => {
+    const value = String(text || "");
+    return value.length > length ? `${value.slice(0, length)}…` : value;
+};
+
+// "More people on latest version" is measured against the last
+// time THIS browser loaded the Important section — stored
+// locally, never sent anywhere. A new latest version resets it.
+const VERSION_SEEN_KEY = "important_last_version";
+
+function versionDelta(latest) {
+    if (typeof window === "undefined" || !latest) return null;
+
+    try {
+        const raw = window.localStorage.getItem(VERSION_SEEN_KEY);
+        const seen = raw ? JSON.parse(raw) : null;
+        window.localStorage.setItem(
+            VERSION_SEEN_KEY,
+            JSON.stringify({
+                code: latest.latestVersionCode,
+                count: latest.latestUsers,
+            })
+        );
+
+        if (!seen || seen.code !== latest.latestVersionCode) return null;
+
+        const delta = latest.latestUsers - Number(seen.count || 0);
+        return delta > 0 ? delta : null;
+    } catch {
+        return null;
+    }
+}
 
 const statCards = [
     { key: "passengers", label: "Passengers", icon: Users },
@@ -74,6 +108,8 @@ const modules = [
 
 export default function DashboardPage() {
     const [overview, setOverview] = useState(null);
+    const [important, setImportant] = useState(null);
+    const [importantDelta, setImportantDelta] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [lastUpdated, setLastUpdated] = useState(null);
@@ -91,6 +127,19 @@ export default function DashboardPage() {
             setLastUpdated(new Date());
         } catch (err) {
             setError(err.message);
+        }
+
+        // Important items load independently: if they fail, the
+        // rest of the overview still shows.
+        try {
+            const result = await authenticatedAdminRequest(
+                "/admin/operations/important"
+            );
+
+            setImportant(result.important);
+            setImportantDelta(versionDelta(result.important?.appVersion));
+        } catch {
+            setImportant(null);
         } finally {
             setLoading(false);
         }
@@ -149,6 +198,171 @@ export default function DashboardPage() {
                     >
                         Unable to load overview: {error}
                     </p>
+                )}
+
+                {important && (
+                    <section>
+                        <div className="mb-4 flex items-center justify-between gap-4">
+                            <h3 className="text-xl font-extrabold">
+                                Important
+                            </h3>
+
+                            <button
+                                type="button"
+                                onClick={loadOverview}
+                                disabled={loading}
+                                className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-[#087F5B] shadow-sm disabled:opacity-50"
+                            >
+                                <RefreshCw
+                                    size={15}
+                                    className={loading ? "animate-spin" : ""}
+                                />
+                                Refresh
+                            </button>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                            <Link
+                                href="/dashboard/complaints"
+                                className="group rounded-[22px] border border-red-100 bg-white p-5 shadow-sm transition hover:border-red-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50 text-red-600">
+                                        <Flag size={24} />
+                                    </div>
+                                    <ArrowUpRight size={20} className="text-slate-400 group-hover:text-red-600" />
+                                </div>
+                                <p className="mt-4 text-sm text-slate-500">
+                                    Open Complaints
+                                </p>
+                                <p className="mt-1 text-3xl font-extrabold">
+                                    {important.openComplaints.count}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {important.openComplaints.recent.slice(0, 2).map((item) => (
+                                        <span key={item.id} className="block truncate">
+                                            {item.name} · {item.category}
+                                        </span>
+                                    ))}
+                                    {important.openComplaints.recent.length === 0 &&
+                                        "No open complaints."}
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/feedbacks"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                                        <MessageSquare size={24} />
+                                    </div>
+                                    <ArrowUpRight size={20} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                </div>
+                                <p className="mt-4 text-sm text-slate-500">
+                                    New Feedback
+                                </p>
+                                <p className="mt-1 text-3xl font-extrabold">
+                                    {important.newFeedback.count}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {important.newFeedback.recent.slice(0, 2).map((item) => (
+                                        <span key={item.id} className="block truncate">
+                                            {item.name}: {snippet(item.message, 60)}
+                                        </span>
+                                    ))}
+                                    {important.newFeedback.recent.length === 0 &&
+                                        "No new feedback."}
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/drivers"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                                        <FileCheck size={24} />
+                                    </div>
+                                    <ArrowUpRight size={20} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                </div>
+                                <p className="mt-4 text-sm text-slate-500">
+                                    Driver Documents Uploaded (24h)
+                                </p>
+                                <p className="mt-1 text-3xl font-extrabold">
+                                    {important.newDriverDocuments.count}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {important.newDriverDocuments.drivers.slice(0, 2).map((driver, index) => (
+                                        <span key={`${driver.name}-${index}`} className="block truncate">
+                                            {driver.name} · {driver.count} document(s)
+                                        </span>
+                                    ))}
+                                    <span className="block">
+                                        {important.newDriverDocuments.pendingCount} document(s) still pending review.
+                                    </span>
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/rides"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-[#087F5B]">
+                                        <Activity size={24} />
+                                    </div>
+                                    <ArrowUpRight size={20} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                </div>
+                                <p className="mt-4 text-sm text-slate-500">
+                                    Active Rides Right Now
+                                </p>
+                                <p className="mt-1 text-3xl font-extrabold">
+                                    {important.activeRides.count}
+                                </p>
+                                <p className="mt-2 text-xs text-slate-500">
+                                    Rides currently in progress.
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/app-version"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-5 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                                        <Smartphone size={24} />
+                                    </div>
+                                    <ArrowUpRight size={20} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                </div>
+                                <p className="mt-4 text-sm text-slate-500">
+                                    Latest App Version
+                                </p>
+                                {important.appVersion ? (
+                                    <>
+                                        <p className="mt-1 text-3xl font-extrabold">
+                                            {important.appVersion.latestVersionName}
+                                        </p>
+                                        <p className="mt-2 text-xs leading-5 text-slate-500">
+                                            <span className="block">
+                                                {important.appVersion.latestUsers} users on latest
+                                                · {important.appVersion.unknownUsers} unknown.
+                                            </span>
+                                            {importantDelta !== null && (
+                                                <span className="block font-bold text-[#087F5B]">
+                                                    +{importantDelta} more people are on latest version now.
+                                                </span>
+                                            )}
+                                        </p>
+                                    </>
+                                ) : (
+                                    <p className="mt-2 text-xs text-slate-500">
+                                        No latest version configured yet.
+                                    </p>
+                                )}
+                            </Link>
+                        </div>
+                    </section>
                 )}
 
                 <section>
@@ -259,3 +473,4 @@ export default function DashboardPage() {
         </AdminShell>
     );
 }
+
