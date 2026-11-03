@@ -21,4 +21,10 @@ const {
 
 router.post("/push-device", protect, registerDevice);
 
+const {
+    reportAppVersion,
+} = require("../controllers/appVersionReportController");
+
+router.post("/app-version", protect, reportAppVersion);
+
 module.exports = router;

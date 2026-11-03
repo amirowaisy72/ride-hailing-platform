@@ -12,6 +12,8 @@ export default function AppVersionPage() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
     const [notice, setNotice] = useState("");
+    const [usage, setUsage] = useState(null);
+    const [usageError, setUsageError] = useState("");
 
     useEffect(() => {
         (async () => {
@@ -28,6 +30,19 @@ export default function AppVersionPage() {
                 setError(err.message);
             } finally {
                 setLoading(false);
+            }
+        })();
+    }, []);
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const result = await authenticatedAdminRequest(
+                    "/admin/app-version/usage"
+                );
+                setUsage(result);
+            } catch (err) {
+                setUsageError(err.message);
             }
         })();
     }, []);
@@ -124,6 +139,83 @@ export default function AppVersionPage() {
                         <p role="status" className="mt-4 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">
                             {notice}
                         </p>
+                    )}
+                </section>
+
+                <section className="rounded-2xl bg-white p-6 shadow-sm">
+                    <h2 className="text-xl font-extrabold">Users by app version</h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                        Counted from the version each user&apos;s app last
+                        reported on launch. Users on builds older than this
+                        reporting feature show as Unknown until they update
+                        to a reporting build.
+                    </p>
+
+                    {usageError && (
+                        <p role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-700">
+                            {usageError}
+                        </p>
+                    )}
+
+                    {!usage && !usageError && (
+                        <p className="mt-4 text-sm text-slate-500">Loading…</p>
+                    )}
+
+                    {usage && (
+                        <div className="mt-4">
+                            <p className="text-sm text-slate-500">
+                                {usage.reportedUsers} of {usage.totalUsers} users
+                                reported a version · {usage.unknownUsers} unknown
+                            </p>
+
+                            <div className="mt-3 divide-y divide-slate-100">
+                                {usage.versions.map((row) => {
+                                    const share = usage.totalUsers
+                                        ? Math.round((row.users / usage.totalUsers) * 100)
+                                        : 0;
+                                    return (
+                                        <div
+                                            key={row.appVersionCode}
+                                            className="flex items-center justify-between gap-3 py-3"
+                                        >
+                                            <p className="font-bold">
+                                                {row.appVersion}
+                                                <span className="ml-2 text-xs font-normal text-slate-500">
+                                                    code {row.appVersionCode}
+                                                </span>
+                                            </p>
+                                            <p className="text-sm font-bold">
+                                                {row.users} users · {share}%
+                                            </p>
+                                        </div>
+                                    );
+                                })}
+
+                                {usage.unknownUsers > 0 && (
+                                    <div className="flex items-center justify-between gap-3 py-3">
+                                        <p className="font-bold">
+                                            Unknown
+                                            <span className="ml-2 text-xs font-normal text-slate-500">
+                                                old builds, not reported yet
+                                            </span>
+                                        </p>
+                                        <p className="text-sm font-bold">
+                                            {usage.unknownUsers} users ·{" "}
+                                            {usage.totalUsers
+                                                ? Math.round((usage.unknownUsers / usage.totalUsers) * 100)
+                                                : 0}
+                                            %
+                                        </p>
+                                    </div>
+                                )}
+
+                                {usage.versions.length === 0 && usage.unknownUsers === 0 && (
+                                    <p className="py-3 text-sm text-slate-500">
+                                        No users yet.
+                                    </p>
+                                )}
+                            </div>
+                        </div>
                     )}
                 </section>
             </div>

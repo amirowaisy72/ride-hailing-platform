@@ -30,6 +30,32 @@ import {
 
 const AuthContext = createContext(null);
 
+// Best-effort: tell the backend which app version this user opened,
+// so the admin dashboard can show users-per-version. Never throws
+// and never blocks sign-in; runs only on native apps, where
+// App.getInfo() returns the Play versionName/build (versionCode).
+async function reportAppVersion(accessToken) {
+    try {
+        if (!Capacitor.isNativePlatform() || !accessToken) return;
+
+        const info = await App.getInfo();
+        const code = Number(info.build);
+
+        if (!info.version || !Number.isInteger(code)) return;
+
+        await apiRequest("/account/app-version", {
+            method: "POST",
+            token: accessToken,
+            body: JSON.stringify({
+                appVersion: info.version,
+                appVersionCode: code,
+                platform: Capacitor.getPlatform(),
+            }),
+        });
+    } catch {
+        // Reporting is informational only; ignore failures.
+    }
+}
 
 export function AuthProvider({ children }) {
     const router = useRouter();
@@ -111,6 +137,7 @@ export function AuthProvider({ children }) {
                     setToken(accessToken);
                     setUser(profile.user);
                     connectRealtime(accessToken);
+                    reportAppVersion(accessToken);
                 }
             } catch (error) {
                 if (active) {
@@ -165,6 +192,7 @@ export function AuthProvider({ children }) {
                 if (!cancelled) {
                     setToken(newToken);
                     // renewAccessToken also updates and reconnects Socket.IO.
+                    reportAppVersion(newToken);
                 }
             } catch (error) {
                 console.error("App resume authentication failed:", error.message);
@@ -236,6 +264,7 @@ export function AuthProvider({ children }) {
         setToken(accessToken);
         setUser(userData);
         connectRealtime(accessToken);
+        reportAppVersion(accessToken);
     };
 
     const switchMode = async (mode) => {
