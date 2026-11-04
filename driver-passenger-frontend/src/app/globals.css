@@ -256,6 +256,45 @@ html.theme-ready nav {
   animation: pd-rise 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+@keyframes pd-step-in-forward {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pd-step-in-back {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pd-step-forward {
+  animation: pd-step-in-forward 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.pd-step-back {
+  animation: pd-step-in-back 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pd-step-forward,
+  .pd-step-back {
+    animation: pd-rise 0.01ms both;
+  }
+}
+
 .pd-drop {
   animation: pd-drop 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }

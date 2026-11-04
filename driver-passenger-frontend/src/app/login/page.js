@@ -9,6 +9,16 @@ import { BRAND } from "@/config/brand";
 import Link from "next/link";
 import "@/lib/firebase";
 import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
+import { ArrowRight, Lock, Mail } from "lucide-react";
+import AuthField from "@/components/auth/AuthField";
+import {
+    AuthHeader,
+    FormError,
+    GoogleButton,
+    OrDivider,
+    PasswordToggle,
+    PrimaryButton,
+} from "@/components/auth/AuthParts";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -20,6 +30,7 @@ export default function LoginPage() {
     const [error, setError] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [loginStage, setLoginStage] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
 
     async function handleSubmit(event) {
         event.preventDefault();
@@ -117,98 +128,103 @@ export default function LoginPage() {
 
     return (
         <main className="flex min-h-dvh flex-col bg-pd-bg text-pd-text">
-            <header className="px-6 pb-10 pt-12">
-                <div className="mb-8 flex items-center gap-2">
-                    <img
-                        src="/safar-icon.png"
-                        alt="Safar logo"
-                        className="h-15 w-15 rounded-2xl object-cover"
-                    />
-                    <span className="text-2xl font-extrabold tracking-tight text-pd-text">
-                        {BRAND.name}
-                    </span>
-                </div>
+            <div className="mx-auto flex w-full max-w-md flex-1 flex-col">
+                <AuthHeader backHref="/" backLabel="Back to home" />
 
-                <h1 className="text-4xl font-extrabold tracking-tight">
-                    {t("auth.welcomeBack")}
-                </h1>
-                <p className="mt-3 text-base text-pd-muted">
-                    {t("auth.signInToContinue", { brand: BRAND.name })}
-                </p>
-            </header>
+                <form
+                    onSubmit={handleSubmit}
+                    className="flex flex-1 flex-col gap-8 px-6 pb-[max(24px,env(safe-area-inset-bottom))] pt-10"
+                >
+                    <div className="pd-rise flex flex-col gap-3">
+                        <h1 className="text-balance text-[clamp(32px,9vw,40px)] font-extrabold leading-[1.08] tracking-tight">
+                            {t("auth.welcomeBack")}
+                        </h1>
+                        <p className="text-pretty text-base leading-relaxed text-pd-muted">
+                            {t("auth.signInToContinue", { brand: BRAND.name })}
+                        </p>
+                    </div>
 
-            <section className="flex-1 rounded-t-[36px] bg-pd-surface px-6 pb-10 pt-9 shadow-[0_-8px_35px_rgba(0,0,0,0.03)]">
-                <form onSubmit={handleSubmit} className="mx-auto max-w-md space-y-6">
-                    <div>
-                        <label className="mb-2 block text-sm font-semibold">
-                            {t("auth.emailAddress")}
-                        </label>
-                        <input
+                    <div
+                        className="pd-rise flex flex-col gap-5"
+                        style={{ animationDelay: "80ms" }}
+                    >
+                        <AuthField
+                            id="login-email"
+                            label={t("auth.emailAddress")}
+                            icon={Mail}
                             type="email"
+                            inputMode="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder={t("auth.enterEmail")}
                             autoComplete="email"
                             required
-                            className="h-14 w-full rounded-2xl border border-pd-line bg-pd-surface-2 px-4 text-pd-text outline-none focus:border-[#087F5B]"
                         />
+
+                        <div className="flex flex-col gap-3">
+                            <AuthField
+                                id="login-password"
+                                label={t("auth.password")}
+                                icon={Lock}
+                                type={showPassword ? "text" : "password"}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder={t("auth.enterPassword")}
+                                autoComplete="current-password"
+                                required
+                                trailing={
+                                    <PasswordToggle
+                                        visible={showPassword}
+                                        onToggle={() => setShowPassword((v) => !v)}
+                                    />
+                                }
+                            />
+                            <Link
+                                href="/forgot-password"
+                                className="self-end rounded-md text-sm font-semibold text-pd-accent-text outline-none focus-visible:ring-2 focus-visible:ring-pd-accent"
+                            >
+                                {t("auth.forgotPassword")}
+                            </Link>
+                        </div>
+
+                        <FormError>{error}</FormError>
                     </div>
 
-                    <div>
-                        <label className="mb-2 block text-sm font-semibold">
-                            {t("auth.password")}
-                        </label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder={t("auth.enterPassword")}
-                            autoComplete="current-password"
-                            required
-                            className="h-14 w-full rounded-2xl border border-pd-line bg-pd-surface-2 px-4 text-pd-text outline-none focus:border-[#087F5B]"
-                        />
-                    </div>
-
-                    <div className="text-right">
-                        <Link
-                            href="/forgot-password"
-                            className="text-sm font-semibold text-[#087F5B]"
+                    <div
+                        className="pd-rise mt-auto flex flex-col gap-4"
+                        style={{ animationDelay: "160ms" }}
+                    >
+                        <PrimaryButton
+                            type="submit"
+                            loading={submitting}
+                            loadingLabel={loginStage || t("auth.signingIn")}
                         >
-                            {t("auth.forgotPassword")}
-                        </Link>
-                    </div>
+                            {t("auth.signIn")}
+                            <ArrowRight
+                                className="h-5 w-5 transition-transform group-hover:translate-x-0.5"
+                                strokeWidth={2.5}
+                                aria-hidden="true"
+                            />
+                        </PrimaryButton>
 
-                    {error && (
-                        <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-600">
-                            {error}
+                        <OrDivider />
+
+                        <GoogleButton onClick={handleGoogleLogin} disabled={submitting}>
+                            {t("auth.continueWithGoogle")}
+                        </GoogleButton>
+
+                        <p className="pt-2 text-center text-sm text-pd-muted">
+                            {t("auth.noAccount")}{" "}
+                            <Link
+                                href="/signup"
+                                className="rounded-md font-bold text-pd-accent-text outline-none focus-visible:ring-2 focus-visible:ring-pd-accent"
+                            >
+                                {t("auth.createAccount")}
+                            </Link>
                         </p>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={submitting}
-                        className="flex h-14 w-full items-center justify-center rounded-2xl bg-[#087F5B] font-bold text-white shadow-lg shadow-emerald-900/10 disabled:opacity-50"
-                    >
-                        {submitting ? (loginStage || t("auth.signingIn")) : `${t("auth.signIn")} →`}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleGoogleLogin}
-                        disabled={submitting}
-                        className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl border border-pd-line bg-pd-surface font-semibold text-pd-text disabled:opacity-50"
-                    >
-                        <span className="text-xl font-bold text-[#4285F4]">G</span>
-                        {t("auth.continueWithGoogle")}
-                    </button>
-
-                    <p className="text-center text-sm text-pd-muted">
-                        {t("auth.noAccount")}{" "}
-                        <Link href="/signup" className="font-bold text-[#087F5B]">
-                            {t("auth.createAccount")}
-                        </Link>
-                    </p>
+                    </div>
                 </form>
-            </section>
+            </div>
         </main>
     );
 
