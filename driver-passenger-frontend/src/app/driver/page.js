@@ -1357,6 +1357,7 @@ function DriverDashboard() {
                     navigationMode={rideInProgress}
                     driverLocation={location}
                     vehicleType={activeVehicle?.vehicleType || null}
+                    vehicleColor={activeVehicle?.color || null}
                     followDriver={navigating}
                     onRouteUpdate={setNavigationInfo}
                     sheetRatio={sheetRatio}
