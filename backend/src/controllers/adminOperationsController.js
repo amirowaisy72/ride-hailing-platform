@@ -351,9 +351,45 @@ async function getRides(req, res) {
             Ride.countDocuments(filter),
         ]);
 
+        // Additive only: attach the requesting passenger's name/phone
+        // (one batch lookup, no existing field is changed or removed).
+        // A deleted passenger stays null and renders as "—".
+        const passengerIds = [
+            ...new Set(
+                rides
+                    .map((ride) => String(ride.passengerId || ""))
+                    .filter(Boolean)
+            ),
+        ];
+        const passengers = passengerIds.length
+            ? await User.find({ _id: { $in: passengerIds } })
+                .select("firstName lastName name phone")
+                .lean()
+            : [];
+        const passengerById = new Map(
+            passengers.map((user) => [String(user._id), user])
+        );
+        const ridesWithPassenger = rides.map((ride) => {
+            const user = passengerById.get(String(ride.passengerId || ""));
+            return {
+                ...ride,
+                passenger: user
+                    ? {
+                        name:
+                            [user.firstName, user.lastName]
+                                .filter(Boolean)
+                                .join(" ") ||
+                            user.name ||
+                            null,
+                        phone: user.phone || null,
+                    }
+                    : null,
+            };
+        });
+
         return res.json({
             success: true,
-            rides,
+            rides: ridesWithPassenger,
             pagination: {
                 page,
                 total,

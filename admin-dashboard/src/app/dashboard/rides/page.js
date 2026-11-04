@@ -193,10 +193,11 @@ export default function RidesManagementPage() {
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[950px] text-left text-sm">
+                            <table className="w-full min-w-[1080px] text-left text-sm">
                                 <thead className="bg-slate-50 text-xs text-slate-500">
                                     <tr>
                                         <th className="px-5 py-4">Ride</th>
+                                        <th className="px-5 py-4">Passenger</th>
                                         <th className="px-5 py-4">Vehicle</th>
                                         <th className="px-5 py-4">Status</th>
                                         <th className="px-5 py-4">Requested Fare</th>
@@ -221,6 +222,26 @@ export default function RidesManagementPage() {
                                                         ? `${ride.distance} km`
                                                         : "Distance unavailable"}
                                                 </p>
+                                            </td>
+
+                                            <td className="px-5 py-4">
+                                                {ride.passenger?.name ? (
+                                                    <>
+                                                        <p className="font-bold">
+                                                            {ride.passenger.name}
+                                                        </p>
+                                                        {ride.passenger.phone ? (
+                                                            <a
+                                                                href={`tel:${ride.passenger.phone}`}
+                                                                className="mt-1 block text-xs text-[#087F5B]"
+                                                            >
+                                                                {ride.passenger.phone}
+                                                            </a>
+                                                        ) : null}
+                                                    </>
+                                                ) : (
+                                                    "—"
+                                                )}
                                             </td>
 
                                             <td className="px-5 py-4">
