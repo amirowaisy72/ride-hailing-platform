@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
+const Driver = require("../models/Driver");
 const { generateOTP, hashOTP, verifyOTPHash } =
     require("../services/otpService");
 const { sendOTPEmail } =
@@ -69,6 +70,12 @@ async function verifySignupOTP(req, res) {
         });
     }
 
+    // Optional role from signup: only DRIVER is accepted as an
+    // alternative; anything else (including a missing role) keeps the
+    // long-standing PASSENGER default, so existing clients are
+    // completely unaffected.
+    const requestedRole = req.body.role === "DRIVER" ? "DRIVER" : "PASSENGER";
+
     if (
         typeof firstName !== "string" ||
         firstName.trim().length < 2 ||
@@ -126,11 +133,28 @@ async function verifySignupOTP(req, res) {
             email,
             phone: phone || null,
             passwordHash: await bcrypt.hash(password, 12),
-            role: "PASSENGER",
-            activeMode: "PASSENGER",
+            role: requestedRole,
+            activeMode: requestedRole,
             emailVerified: true,
             status: "ACTIVE",
         });
+
+        // A driver signup also creates the Driver profile the driver
+        // setup gate expects (verification PENDING, so the guided
+        // setup flow opens on first login). Profile creation must
+        // never fail signup itself: if it errors, the account still
+        // stands and the profile can be created later via the
+        // existing driver registration endpoint.
+        if (requestedRole === "DRIVER") {
+            try {
+                await Driver.create({ userId: user._id });
+            } catch (driverError) {
+                console.error(
+                    "Driver profile creation at signup failed:",
+                    driverError.message
+                );
+            }
+        }
 
         return res.status(201).json({
             success: true,

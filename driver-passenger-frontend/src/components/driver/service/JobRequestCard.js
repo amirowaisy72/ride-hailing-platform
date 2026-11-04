@@ -87,11 +87,11 @@ export default function JobRequestCard({
             ) : (
                 <div className="grid grid-cols-2 gap-3">
                     <button type="button" onClick={onDecline} disabled={busy}
-                        className="flex h-16 items-center justify-center gap-2 rounded-2xl border-2 border-pd-line-strong bg-pd-surface-2 text-lg font-extrabold disabled:opacity-50">
+                        className="flex h-16 items-center justify-center gap-2 whitespace-nowrap rounded-2xl border-2 border-pd-line-strong bg-pd-surface-2 text-base font-extrabold disabled:opacity-50">
                         <X size={22} aria-hidden /> Decline
                     </button>
                     <button type="button" onClick={onAccept} disabled={busy || (requireFee && !Number(fare))}
-                        className="flex h-16 items-center justify-center gap-2 rounded-2xl bg-pd-accent text-lg font-extrabold text-pd-accent-ink disabled:opacity-60">
+                        className="flex h-16 items-center justify-center gap-2 whitespace-nowrap rounded-2xl bg-pd-accent text-base font-extrabold text-pd-accent-ink disabled:opacity-60">
                         <Check size={22} aria-hidden /> {busy ? "Sending…" : adjusting && current !== baseFare ? `Offer ${current}` : acceptLabel}
                     </button>
                 </div>

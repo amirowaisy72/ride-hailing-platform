@@ -159,11 +159,38 @@ export default function DriverMap({
     const [following, setFollowing] = useState(true);
     const [rerouteTick, setRerouteTick] = useState(0);
     const [routeError, setRouteError] = useState(false);
-    themeRef.current = resolvedTheme;
-    navRef.current = navigationMode;
-    sheetRef.current = sheetRatio;
-    routeUpdateRef.current = onRouteUpdate;
-    selectRef.current = onRideSelect;
+    // Keep latest props in refs for map callbacks. This runs after every
+    // render (no dep array) so callbacks always see fresh values without
+    // assigning refs during render.
+    useEffect(() => {
+        themeRef.current = resolvedTheme;
+        navRef.current = navigationMode;
+        sheetRef.current = sheetRatio;
+        routeUpdateRef.current = onRouteUpdate;
+        selectRef.current = onRideSelect;
+    });
+
+    // Adjusting state when a prop changes (React's documented pattern):
+    // entering/leaving navigation re-enables following before paint.
+    const [prevNavigationMode, setPrevNavigationMode] = useState(navigationMode);
+    if (prevNavigationMode !== navigationMode) {
+        setPrevNavigationMode(navigationMode);
+        setFollowing(true);
+    }
+
+    // Same pattern for locate requests (a counter prop): remember the
+    // request before paint so the camera effect below only moves the map.
+    const [prevLocateRequest, setPrevLocateRequest] = useState(locateRequest);
+    if (prevLocateRequest !== locateRequest) {
+        setPrevLocateRequest(locateRequest);
+        setFollowing(true);
+    }
+
+    // Keep the follow flag in sync with state. Refs may only be written
+    // in effects and handlers, never during render.
+    useEffect(() => {
+        followRef.current = following;
+    }, [following]);
 
     const destinationPoint = getPoint(destination);
     const destinationKey = destinationPoint ? destinationPoint.map((v) => v.toFixed(5)).join(",") : "";
@@ -454,9 +481,9 @@ export default function DriverMap({
     }, [resolvedTheme, mapReady]);
 
     // Entering or leaving navigation resets the camera to the right view.
+    // (Following is already re-enabled in the render-phase adjustment above.)
     useEffect(() => {
         if (!mapReady) return;
-        setFollow(true);
         const point = shownPointRef.current || driverPointRef.current;
         if (point) moveCamera(point, { duration: 700 });
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -464,7 +491,7 @@ export default function DriverMap({
 
     useEffect(() => {
         if (!mapReady || !locateRequest) return;
-        recenter();
+        moveCamera(shownPointRef.current || driverPointRef.current, { duration: 600 });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [locateRequest]);
 
@@ -520,7 +547,7 @@ export default function DriverMap({
         const bounds = points.reduce((box, p) => box.extend(p), new maplibregl.LngLatBounds(you, you));
         const pad = padding();
         map.fitBounds(bounds, { padding: { top: pad.top + 40, bottom: pad.bottom + 20, left: 56, right: 56 }, maxZoom: 16, duration: 800 });
-    }, [mapReady, navigationMode, hasDriver, ridesKey]);
+    }, [mapReady, navigationMode, hasDriver, ridesKey, rideRequests]);
 
     const showBackToNav = navigationMode && !following;
 

@@ -21,6 +21,7 @@ const {
     decideSubstitution,
     // Partner
     getAvailablePurchaseRequests,
+    declinePurchaseRequest,
     submitPurchaseOffer,
     withdrawPurchaseOffer,
     getDriverPurchaseTasks,
@@ -138,6 +139,13 @@ router.delete(
     authorize("PASSENGER", "DRIVER"),
     purchaseDriverEligibility,
     withdrawPurchaseOffer
+);
+router.post(
+    "/:id/decline",
+    protect,
+    authorize("PASSENGER", "DRIVER"),
+    purchaseDriverEligibility,
+    declinePurchaseRequest
 );
 router.patch(
     "/:id/start-shopping",

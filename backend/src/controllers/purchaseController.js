@@ -2,6 +2,7 @@ const crypto = require("node:crypto");
 
 const PurchaseOrder = require("../models/PurchaseOrder");
 const PurchaseOffer = require("../models/PurchaseOffer");
+const DeclinedPurchaseRequest = require("../models/DeclinedPurchaseRequest");
 const PurchaseReview = require("../models/PurchaseReview");
 const DriverReview = require("../models/DriverReview");
 const Driver = require("../models/Driver");
@@ -1457,12 +1458,29 @@ const getAvailablePurchaseRequests = async (req, res) => {
 
         // Only requests this partner may actually take: the estimated
         // budget must fit their purchaseLimit and the platform cap.
-        const visible = orders.filter(
+        const withinCaps = orders.filter(
             (order) =>
                 checkAmountWithinCaps(order.estimatedBudget, {
                     partnerLimit: record.purchaseLimit,
                     globalCap: settings?.buyDeliverMaxOrderValue ?? null,
                 }).ok
+        );
+
+        // Requests this partner declined are hidden for them only. The
+        // order itself is untouched, so with no declines this filter
+        // changes nothing for any existing client.
+        const withinCapIds = withinCaps.map((order) => order._id);
+        const declined = withinCapIds.length
+            ? await DeclinedPurchaseRequest.find({
+                  driverId: driver._id,
+                  orderId: { $in: withinCapIds },
+              })
+                  .select("orderId")
+                  .lean()
+            : [];
+        const declinedSet = new Set(declined.map((d) => String(d.orderId)));
+        const visible = withinCaps.filter(
+            (order) => !declinedSet.has(String(order._id))
         );
 
         // Embed the caller's OWN offer on each request (Phase 7
@@ -1508,6 +1526,43 @@ const getAvailablePurchaseRequests = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Unable to load purchase requests",
+        });
+    }
+};
+
+// Partner declines an available Buy & Deliver request. This records a
+// per-driver dismissal only — the order stays BIDDING for every other
+// partner and no order field is touched. Idempotent: declining twice
+// returns the same success.
+const declinePurchaseRequest = async (req, res) => {
+    try {
+        const driver = req.purchaseDriver;
+        const order = await PurchaseOrder.findById(req.params.id)
+            .select("status driverId")
+            .lean();
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: "Purchase request not found",
+            });
+        }
+        if (order.status !== "BIDDING" || order.driverId) {
+            return res.status(409).json({
+                success: false,
+                message: "Purchase request unavailable",
+            });
+        }
+        await DeclinedPurchaseRequest.updateOne(
+            { driverId: driver._id, orderId: order._id },
+            { $setOnInsert: { driverId: driver._id, orderId: order._id } },
+            { upsert: true }
+        );
+        return res.json({ success: true, declined: true, orderId: order._id });
+    } catch (error) {
+        console.error("Decline purchase request error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Unable to decline purchase request",
         });
     }
 };
@@ -2519,6 +2574,7 @@ module.exports = {
     decideSubstitution,
     // Partner
     getAvailablePurchaseRequests,
+    declinePurchaseRequest,
     submitPurchaseOffer,
     withdrawPurchaseOffer,
     getDriverPurchaseTasks,

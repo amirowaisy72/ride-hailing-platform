@@ -33,6 +33,7 @@ import { getRealtimeSocket } from "@/lib/socket";
 import { updateDriverLocation } from "@/lib/vehicleService";
 import { getOrderChatUnread } from "@/lib/orderChatService";
 import {
+    declinePurchaseRequest,
     getAvailablePurchaseRequests,
     getDriverPurchaseTasks,
     submitPurchaseOffer,
@@ -336,6 +337,19 @@ function TasksScreen() {
         }
     }
 
+    async function declineRequest(order) {
+        setBusyId(order._id);
+        setNotice(null);
+        try {
+            await declinePurchaseRequest(order._id, token);
+            setDeclinedRequests((prev) => [...prev, order._id]);
+        } catch (err) {
+            setNotice({ kind: "error", text: err.message });
+        } finally {
+            setBusyId("");
+        }
+    }
+
     async function withdraw(order) {
         setBusyId(order._id);
         setNotice(null);
@@ -596,7 +610,7 @@ function TasksScreen() {
                                                     acceptLabel={t("dTasks.sendOffer")}
                                                     busy={busyId === order._id}
                                                     onAccept={() => void sendOffer(order)}
-                                                    onDecline={() => setDeclinedRequests((prev) => [...prev, order._id])}
+                                                    onDecline={() => void declineRequest(order)}
                                                     sentText={mine ? `${t("dTasks.yourOffer")} ${money(mine.deliveryFee)}` : undefined}
                                                     sentAction={mine ? (
                                                         <button
@@ -692,21 +706,25 @@ function TasksScreen() {
                                                         : t("dTasks.selfDrive")}
                                                 </span>
                                             </div>
-                                            <p className="mt-2.5 text-sm font-extrabold">
-                                                {booking.vehicle
-                                                    ? `${booking.vehicle.brand} ${booking.vehicle.model} (${booking.vehicle.year})`
-                                                    : t("dTasks.vehicle")}
-                                            </p>
-                                            <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-pd-muted">
-                                                <CalendarClock size={13} />
-                                                {fmtDateTime(booking.startAt)} →{" "}
-                                                {fmtDateTime(booking.endAt)}
-                                            </p>
-                                            <p className="mt-1 text-xs font-semibold text-pd-muted">
-                                                {(isUrdu ? RENTAL_ACTION_UR[booking.status] : null) || RENTAL_ACTION[booking.status] ||
-                                                    booking.status}{" "}
-                                                · {t("dTasks.charges")} {money(booking.rentalCharges)}
-                                            </p>
+                                            {booking.status !== "REQUESTED" && (
+                                                <>
+                                                    <p className="mt-2.5 text-sm font-extrabold">
+                                                        {booking.vehicle
+                                                            ? `${booking.vehicle.brand} ${booking.vehicle.model} (${booking.vehicle.year})`
+                                                            : t("dTasks.vehicle")}
+                                                    </p>
+                                                    <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-pd-muted">
+                                                        <CalendarClock size={13} />
+                                                        {fmtDateTime(booking.startAt)} →{" "}
+                                                        {fmtDateTime(booking.endAt)}
+                                                    </p>
+                                                    <p className="mt-1 text-xs font-semibold text-pd-muted">
+                                                        {(isUrdu ? RENTAL_ACTION_UR[booking.status] : null) || RENTAL_ACTION[booking.status] ||
+                                                            booking.status}{" "}
+                                                        · {t("dTasks.charges")} {money(booking.rentalCharges)}
+                                                    </p>
+                                                </>
+                                            )}
 
                                             {booking.status === "REQUESTED" && (
                                                 <div className="mt-3 space-y-2">
@@ -743,28 +761,35 @@ function TasksScreen() {
                                                             </div>
                                                         </>
                                                     ) : (
-                                                        <div className="flex gap-2">
-                                                            <button
-                                                                type="button"
-                                                                disabled={busyId === booking._id}
-                                                                onClick={() =>
-                                                                    void rentalAction(booking, "accept")
-                                                                }
-                                                                className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#087F5B] text-sm font-bold text-white disabled:opacity-40"
-                                                            >
-                                                                <CheckCircle2 size={15} />
-                                                                {t("dTasks.accept")}
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                disabled={busyId === booking._id}
-                                                                onClick={() => setRejectingId(booking._id)}
-                                                                className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-pd-danger-soft text-sm font-bold text-pd-danger disabled:opacity-40"
-                                                            >
-                                                                <XCircle size={15} />
-                                                                {t("dTasks.reject")}
-                                                            </button>
-                                                        </div>
+                                                        <JobRequestCard
+                                                            service="RENTAL"
+                                                            heading={t("dTasks.rentalBadge")}
+                                                            subject={
+                                                                booking.vehicle
+                                                                    ? `${booking.vehicle.brand} ${booking.vehicle.model} (${booking.vehicle.year})`
+                                                                    : t("dTasks.vehicle")
+                                                            }
+                                                            subjectNote={
+                                                                booking.mode === "WITH_DRIVER"
+                                                                    ? t("dTasks.withDriver")
+                                                                    : t("dTasks.selfDrive")
+                                                            }
+                                                            amountLabel={t("dTasks.charges")}
+                                                            amountText={money(booking.rentalCharges)}
+                                                            facts={[
+                                                                (isUrdu ? RENTAL_ACTION_UR[booking.status] : null) ||
+                                                                RENTAL_ACTION[booking.status] ||
+                                                                booking.status,
+                                                            ]}
+                                                            fromLabel="Start"
+                                                            fromText={fmtDateTime(booking.startAt)}
+                                                            toLabel="End"
+                                                            toText={fmtDateTime(booking.endAt)}
+                                                            acceptLabel={t("dTasks.accept")}
+                                                            busy={busyId === booking._id}
+                                                            onAccept={() => void rentalAction(booking, "accept")}
+                                                            onDecline={() => setRejectingId(booking._id)}
+                                                        />
                                                     )}
                                                 </div>
                                             )}
