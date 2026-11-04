@@ -1,5 +1,6 @@
 const Driver = require("../models/Driver");
 const DriverDocument = require("../models/DriverDocument");
+const Vehicle = require("../models/Vehicle");
 const {
     SERVICES,
     TRANSPORT_MODES,
@@ -171,6 +172,40 @@ const applyForService = async (req, res) => {
 
         recomputeApplicationStatus(driver, service, documents);
 
+        // Setup-submit fix: pressing "Submit for checking" on the driver
+        // setup Review step must actually advance the driver to the
+        // waiting screen. Nothing ever moved the legacy verification
+        // status off PENDING, so the setup gate kept routing back to
+        // Review after every submit. When a PENDING or REJECTED driver
+        // applies for RIDE with all four required documents uploaded
+        // and at least one vehicle, move them to UNDER_REVIEW: the
+        // admin pending queue includes UNDER_REVIEW drivers, and admin
+        // approval itself is document-based, so this cannot bypass or
+        // block approval. APPROVED drivers are never touched.
+        let movedToReview = false;
+        if (
+            service === "RIDE" &&
+            ["PENDING", "REJECTED"].includes(driver.verificationStatus)
+        ) {
+            const uploadedTypes = new Set(
+                documents.map((doc) => doc.documentType)
+            );
+            const hasAllDocs = [
+                "CNIC_FRONT",
+                "CNIC_BACK",
+                "DRIVING_LICENSE",
+                "VEHICLE_REGISTRATION",
+            ].every((type) => uploadedTypes.has(type));
+            const vehicleCount = await Vehicle.countDocuments({
+                driverId: driver._id,
+            });
+            if (hasAllDocs && vehicleCount > 0) {
+                driver.verificationStatus = "UNDER_REVIEW";
+                driver.rejectionReason = null;
+                movedToReview = true;
+            }
+        }
+
         await driver.save();
 
         const context = await loadEligibilityContext(driver);
@@ -178,7 +213,7 @@ const applyForService = async (req, res) => {
         return res.status(200).json({
             success: true,
             message:
-                record.status === "PENDING"
+                record.status === "PENDING" || movedToReview
                     ? "Application submitted for review"
                     : "Application saved — requirements incomplete",
             service: serviceState(driver, service, context),
