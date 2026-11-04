@@ -306,12 +306,58 @@ select.pd-input {
   padding-right: 36px;
 }
 
+@keyframes pd-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pd-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes pd-indeterminate {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+.pd-loader-orbit {
+  animation: pd-orbit 2.4s cubic-bezier(0.55, 0.15, 0.45, 0.85) infinite;
+}
+
+.pd-loader-breathe {
+  animation: pd-breathe 2.4s ease-in-out infinite;
+}
+
+.pd-loader-bar {
+  animation: pd-indeterminate 1.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+.pd-loader-glow {
+  background: radial-gradient(circle, color-mix(in srgb, var(--pd-accent) 18%, transparent) 0%, transparent 65%);
+}
+
 @media (prefers-reduced-motion: reduce) {
 
   .pd-rise,
   .pd-drop,
   .pd-live-dot,
-  .pd-skeleton {
+  .pd-skeleton,
+  .pd-loader-orbit,
+  .pd-loader-breathe,
+  .pd-loader-bar {
     animation: none !important;
   }
 }

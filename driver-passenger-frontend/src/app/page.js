@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { ArrowRight } from "lucide-react";
 import { BRAND } from "@/config/brand";
 import RouteHeroCard from "@/components/landing/RouteHeroCard";
+import SafarLoader from "@/components/SafarLoader";
 
 export default function Home() {
   const router = useRouter();
@@ -24,11 +25,9 @@ export default function Home() {
 
   if (loading || user) {
     return (
-      <main className="flex min-h-dvh items-center justify-center bg-pd-bg">
-        <p className="text-sm font-semibold text-[#087F5B]">
-          Loading account...
-        </p>
-      </main>
+      <SafarLoader
+        label={user ? "Taking you to your ride" : "Getting your ride ready"}
+      />
     );
   }
 
