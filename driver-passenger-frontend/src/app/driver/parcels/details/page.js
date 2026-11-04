@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import RideMap from "@/components/RideMap";
+import JobEndedPanel from "@/components/driver/service/JobEndedPanel";
+import { describeJobStep } from "@/components/driver/service/serviceJourneys";
 import { NavigateButton, pointCoords } from "@/components/DestinationMap";
 import { useDriverPosition } from "@/hooks/useDriverPosition";
 import Link from "next/link";
@@ -228,29 +230,27 @@ function DriverParcelDetails() {
                             <Link href="/driver/parcels" className="flex min-h-12 items-center justify-center rounded-2xl bg-pd-surface-2 font-extrabold">Back to deliveries</Link>
                         </div>
                     ) : delivered ? (
-                        <div className="space-y-3 pb-1 text-center">
-                            <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-pd-success-soft text-pd-success">
-                                <CheckCircle2 size={30} />
-                            </span>
-                            <div>
-                                <h1 className="text-xl font-extrabold">Parcel delivered</h1>
-                                <p className="mt-0.5 text-sm text-pd-muted">
-                                    {order.receiver?.name ? `Handed to ${order.receiver.name}` : "Delivery completed"} · {serviceLabel(order.serviceType)}
-                                </p>
-                            </div>
-                            <div className="flex items-center justify-between rounded-2xl bg-pd-surface-2 px-4 py-3 text-left">
-                                <span className="text-sm text-pd-muted">Agreed fare</span>
-                                <strong className="text-lg">{formatPKR(orderPrice(order))}</strong>
-                            </div>
-                            <Link href="/driver/parcels" className="flex min-h-12 items-center justify-center rounded-2xl bg-pd-accent font-extrabold text-pd-accent-ink">
-                                Back to parcel requests
-                            </Link>
-                        </div>
+                        <JobEndedPanel
+                            completed
+                            title="Parcel delivered"
+                            message={`${order.receiver?.name ? `Handed to ${order.receiver.name}` : "Delivery completed"} · ${serviceLabel(order.serviceType)}`}
+                            amountLabel="Agreed fare"
+                            amountText={formatPKR(orderPrice(order))}
+                            backHref="/driver/parcels"
+                            backLabel="Back to parcel requests"
+                            className="shadow-none"
+                        />
+                    
                     ) : (
                         <div className="space-y-3">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
-                                    <p className="text-xs font-semibold text-pd-muted">{STAGE_COPY[order.status] || order.status.replaceAll("_", " ")}</p>
+                                    <p className="text-sm font-extrabold text-pd-accent-text">
+                                        {(() => {
+                                            const info = describeJobStep("PARCEL", order.status);
+                                            return info ? `Step ${info.step} of ${info.total} · ${info.title}` : STAGE_COPY[order.status] || order.status.replaceAll("_", " ");
+                                        })()}
+                                    </p>
                                     <h1 className="mt-0.5 truncate text-lg font-extrabold leading-snug">
                                         {contact?.name || targetLabel}
                                     </h1>

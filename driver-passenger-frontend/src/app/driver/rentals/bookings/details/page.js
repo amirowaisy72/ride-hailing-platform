@@ -1,5 +1,8 @@
 "use client";
 
+import JobStepBar from "@/components/driver/service/JobStepBar";
+import JobEndedPanel from "@/components/driver/service/JobEndedPanel";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -260,6 +263,7 @@ function BookingScreen() {
                     </div>
                 ) : booking ? (
                     <>
+                        <JobStepBar service="RENTAL" status={status} />
                         <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                             <div className="flex items-center gap-2">
                                 <span
@@ -711,16 +715,15 @@ function BookingScreen() {
                         )}
 
                         {status === "COMPLETED" && (
-                            <section className="rounded-[24px] bg-pd-success-soft p-5 text-center shadow-sm">
-                                <CheckCircle2 size={34} className="mx-auto text-[#087F5B]" />
-                                <p className="mt-2 font-extrabold text-[#087F5B]">
-                                    Rental complete
-                                </p>
-                                <p className="mt-1 text-sm text-pd-muted">
-                                    You earned {money(booking.rentalCharges)} on
-                                    this booking.
-                                </p>
-                            </section>
+                            <JobEndedPanel
+                                completed
+                                title="Rental complete"
+                                message="The car is back. Nothing more to do."
+                                amountLabel="You earned"
+                                amountText={money(booking.rentalCharges)}
+                                backHref="/driver/rentals"
+                                backLabel="Back to my rentals"
+                            />
                         )}
 
                         {(status === "CANCELLED" ||

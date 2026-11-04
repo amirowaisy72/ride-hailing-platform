@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, ChevronRight, Navigation, Package, Scale, ShoppingBag } from "lucide-react";
+import { ArrowLeft, ChevronRight, Navigation } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
+import JobRequestCard from "@/components/driver/service/JobRequestCard";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
 import { useDriverPosition } from "@/hooks/useDriverPosition";
@@ -12,7 +13,7 @@ import {
     CardSkeleton, EmptyState, InlineError, ParcelProgress, ParcelStatusBadge, RouteSummary, Toast,
 } from "@/components/parcel/ParcelKit";
 import {
-    VEHICLE_LABELS, categoryLabel, formatPKR, isActive, orderPrice, playNotificationSound, serviceLabel, statusMeta,
+    VEHICLE_LABELS, categoryLabel, formatPKR, isActive, orderPrice, playNotificationSound, serviceLabel, shortAddress, statusMeta,
 } from "@/components/parcel/parcelUi";
 
 export default function DriverParcelsPage() {
@@ -39,6 +40,7 @@ function DriverParcels() {
     const [assigned, setAssigned] = useState([]);
     const [offerPrices, setOfferPrices] = useState({});
     const [sentOffers, setSentOffers] = useState({});
+    const [declined, setDeclined] = useState([]);
     const [busy, setBusy] = useState("");
     const [error, setError] = useState("");
     const [notification, setNotification] = useState("");
@@ -133,6 +135,7 @@ function DriverParcels() {
         }
     }
 
+    const visibleRequests = available.filter((order) => !declined.includes(order._id));
     const activeJobs = assigned.filter(isActive);
     const pastJobs = assigned.filter((o) => !isActive(o));
 
@@ -198,15 +201,16 @@ function DriverParcels() {
 
                 {loaded && tab === "requests" && (
                     <>
-                        {available.length === 0 && (
+                        {visibleRequests.length === 0 && (
                             <EmptyState
                                 title="No parcel requests nearby"
                                 body="Keep this screen open. New requests refresh automatically."
                             />
                         )}
-                        {available.map((order) => (
+                        {visibleRequests.map((order) => (
                             <RequestCard
                                 key={order._id}
+                                onDecline={() => setDeclined((prev) => [...prev, order._id])}
                                 order={order}
                                 value={offerPrices[order._id] ?? ""}
                                 onChange={(value) => setOfferPrices((prev) => ({ ...prev, [order._id]: value }))}
@@ -251,74 +255,33 @@ function DriverParcels() {
     );
 }
 
-function RequestCard({ order, value, onChange, sentPrice, busy, disabled, onSubmit }) {
-    const requested = Number(order.requestedPrice);
-    const current = Number(value || requested);
-    const bump = (delta) => {
-        const base = Number.isFinite(current) ? current : requested;
-        onChange(String(Math.max(1, Math.round(base + delta))));
-    };
-    const ServiceIcon = order.serviceType === "SHOP_PICKUP" ? ShoppingBag : Package;
+function RequestCard({ order, value, onChange, sentPrice, busy, disabled, onSubmit, onDecline }) {
+    const facts = [
+        categoryLabel(order.parcel?.category),
+        order.parcel?.weightKg ? `${order.parcel.weightKg} kg` : null,
+        order.vehicleType ? VEHICLE_LABELS[order.vehicleType] || order.vehicleType : null,
+    ].filter(Boolean);
 
     return (
-        <article className="pd-rise rounded-3xl border border-pd-line bg-pd-surface p-4 shadow-pd">
-            <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2.5">
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-pd-accent-soft text-pd-accent-text">
-                        <ServiceIcon size={19} />
-                    </span>
-                    <div className="min-w-0">
-                        <p className="text-sm font-extrabold">{serviceLabel(order.serviceType)}</p>
-                        <p className="flex items-center gap-1 truncate text-xs text-pd-muted">
-                            {categoryLabel(order.parcel?.category)} · <Scale size={11} /> {order.parcel?.weightKg} kg
-                            {order.vehicleType && ` · ${VEHICLE_LABELS[order.vehicleType] || order.vehicleType}`}
-                        </p>
-                    </div>
-                </div>
-                <div className="shrink-0 text-right">
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-pd-muted">Offered</p>
-                    <p className="text-lg font-extrabold leading-tight">{formatPKR(order.requestedPrice)}</p>
-                </div>
-            </div>
-
-            <div className="mt-4">
-                <RouteSummary pickup={order.pickup} destination={order.destination} compact />
-            </div>
-
-            <div className="mt-4 rounded-2xl bg-pd-surface-2 p-2">
-                <div className="flex items-center gap-1.5">
-                    <button type="button" aria-label="Decrease fare by 50" onClick={() => bump(-50)} className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-pd-surface text-lg font-extrabold">−</button>
-                    <label className="relative min-w-0 flex-1">
-                        <span className="sr-only">Your fare in PKR</span>
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-pd-muted">PKR</span>
-                        <input
-                            type="text"
-                            inputMode="numeric"
-                            placeholder={String(order.requestedPrice ?? "")}
-                            value={value}
-                            onChange={(e) => onChange(e.target.value.replace(/[^\d]/g, ""))}
-                            className="h-12 w-full rounded-xl bg-pd-surface pl-11 pr-2 text-center text-xl font-extrabold text-pd-text outline-none placeholder:text-pd-faint focus:ring-2 focus:ring-pd-text"
-                        />
-                    </label>
-                    <button type="button" aria-label="Increase fare by 50" onClick={() => bump(50)} className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-pd-surface text-lg font-extrabold">+</button>
-                </div>
-                <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={onSubmit}
-                    className={`mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl text-[15px] font-extrabold transition active:scale-[.98] disabled:opacity-50 ${sentPrice ? "bg-pd-ink text-pd-ink-text" : "bg-pd-accent text-pd-accent-ink"}`}
-                >
-                    {busy ? "Sending…" : sentPrice ? "Update offer" : value && Number(value) !== requested ? `Offer ${formatPKR(value)}` : `Accept ${formatPKR(order.requestedPrice)}`}
-                </button>
-            </div>
-
-            {sentPrice && (
-                <p role="status" className="mt-3 flex items-center gap-2 rounded-2xl bg-pd-accent-soft px-3 py-2.5 text-sm font-semibold text-pd-accent-text">
-                    <Check size={16} className="shrink-0" />
-                    Offer of {formatPKR(sentPrice)} sent. Waiting for customer.
-                </p>
-            )}
-        </article>
+        <JobRequestCard
+            service="PARCEL"
+            heading={serviceLabel(order.serviceType)}
+            subject={categoryLabel(order.parcel?.category) || "Parcel"}
+            subjectNote={order.parcel?.weightKg ? `${order.parcel.weightKg} kg` : undefined}
+            amountLabel="Customer offers"
+            amountText={formatPKR(order.requestedPrice)}
+            facts={facts.slice(1)}
+            fromText={shortAddress(order.pickup?.address, "Pickup")}
+            toText={shortAddress(order.destination?.address, "Drop-off")}
+            baseFare={Number(order.requestedPrice)}
+            fare={value}
+            onFareChange={onChange}
+            busy={busy || disabled}
+            sentText={sentPrice ? `Offer of ${formatPKR(sentPrice)} sent. Waiting for the customer.` : undefined}
+            onAccept={onSubmit}
+            onDecline={onDecline}
+            className="pd-rise"
+        />
     );
 }
 

@@ -1,5 +1,8 @@
 "use client";
 
+import JobStepBar from "@/components/driver/service/JobStepBar";
+import JobEndedPanel from "@/components/driver/service/JobEndedPanel";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -341,6 +344,7 @@ function BuyDeliverScreen() {
                     </div>
                 ) : order ? (
                     <>
+                        <JobStepBar service="BUY_DELIVER" status={status} />
                         <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                             <PurchaseTimeline status={status} />
                         </section>
@@ -659,20 +663,19 @@ function BuyDeliverScreen() {
                         )}
 
                         {(status === "DELIVERED" || status === "COMPLETED") && (
-                            <section className="rounded-[24px] bg-pd-success-soft p-5 text-center shadow-sm">
-                                <CheckCircle2 size={34} className="mx-auto text-[#087F5B]" />
-                                <p className="mt-2 font-extrabold text-[#087F5B]">
-                                    {status === "COMPLETED"
-                                        ? t("dBd.orderComplete")
-                                        : t("dBd.delivered")}
-                                </p>
-                                <p className="mt-1 text-sm text-pd-muted">
-                                    {t("dBd.feeEarned", { fee: money(order.deliveryFee) })}
-                                    {Number(order.unpaidAmount) > 0
-                                        ? ` ${t("dBd.stillUnpaid", { amount: money(order.unpaidAmount) })}`
-                                        : ` ${t("dBd.fullyReimbursed")}`}
-                                </p>
-                            </section>
+                            <JobEndedPanel
+                                completed
+                                title={status === "COMPLETED" ? t("dBd.orderComplete") : t("dBd.delivered")}
+                                message={
+                                    Number(order.unpaidAmount) > 0
+                                        ? t("dBd.stillUnpaid", { amount: money(order.unpaidAmount) })
+                                        : t("dBd.fullyReimbursed")
+                                }
+                                amountLabel="You earned"
+                                amountText={money(order.deliveryFee)}
+                                backHref="/driver/tasks"
+                                backLabel="Back to my jobs"
+                            />
                         )}
 
                         {status === "DISPUTED" && (
