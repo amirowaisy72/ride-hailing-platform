@@ -276,13 +276,18 @@ export default function DriversPage() {
     }
 
     const visible = drivers.filter((driver) => {
-        // New filter: PENDING status AND at least one submitted document
-        // (any document status counts as submitted, not only approved).
+        // Review-queue filter: PENDING or UNDER_REVIEW status AND at
+        // least one submitted document (any document status counts as
+        // submitted, not only approved). UNDER_REVIEW drivers must be
+        // included: submitting the driver setup moves a driver from
+        // PENDING to UNDER_REVIEW while their documents are still
+        // awaiting review, so a PENDING-only filter hid them.
         const matchesStatus =
             filter === "ALL" ||
             (filter === "PENDING_WITH_DOCS"
-                ? driver.verificationStatus === "PENDING" &&
-                  (driver.documentCount || 0) > 0
+                ? ["PENDING", "UNDER_REVIEW"].includes(
+                      driver.verificationStatus
+                  ) && (driver.documentCount || 0) > 0
                 : driver.verificationStatus === filter);
 
         const query = search.trim().toLowerCase();
@@ -343,7 +348,7 @@ export default function DriversPage() {
 
     const countPendingWithDocs = drivers.filter(
         (d) =>
-            d.verificationStatus === "PENDING" &&
+            ["PENDING", "UNDER_REVIEW"].includes(d.verificationStatus) &&
             (d.documentCount || 0) > 0
     ).length;
 
@@ -448,7 +453,7 @@ export default function DriversPage() {
                                     : "bg-slate-100 text-slate-600"
                                     }`}
                             >
-                                {`PENDING + DOCS (${countPendingWithDocs})`}
+                                {`PENDING/REVIEW + DOCS (${countPendingWithDocs})`}
                             </button>
                         </div>
 
