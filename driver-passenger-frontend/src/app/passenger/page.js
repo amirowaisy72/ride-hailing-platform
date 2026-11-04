@@ -295,6 +295,10 @@ function PassengerDashboard() {
     ]);
     const [pickupAddress, setPickupAddress] = useState("");
     const [fullScreenMap, setFullScreenMap] = useState(false);
+    // Map-touch float-out: while the user is touching/dragging the map,
+    // hide the header, locate button, home sheet and bottom nav so only
+    // the map is visible; everything returns on release.
+    const [mapInteracting, setMapInteracting] = useState(false);
     const [mapChatOpen, setMapChatOpen] = useState(false);
     const [bookingOpen, setBookingOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
@@ -1255,7 +1259,13 @@ function PassengerDashboard() {
                     </form>
                 </div>
             )}
-            <div className="absolute inset-0">
+            <div
+                className="absolute inset-0"
+                onPointerDown={() => setMapInteracting(true)}
+                onPointerUp={() => setMapInteracting(false)}
+                onPointerCancel={() => setMapInteracting(false)}
+                onPointerLeave={() => setMapInteracting(false)}
+            >
                 <RideMap
                     userLocation={activeRide?.pickup || userLocation}
                     locateRequest={mapLocateRequest}
@@ -1345,6 +1355,7 @@ function PassengerDashboard() {
                 />
             </div>
 
+            {!mapInteracting && (
             <header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center justify-between gap-3 px-4 pb-4 pt-[max(16px,env(safe-area-inset-top))]">
                 <div className="pointer-events-auto relative">
                     <button type="button" aria-label="Open menu" aria-expanded={menuOpen}
@@ -1365,6 +1376,7 @@ function PassengerDashboard() {
                 )}
 
             </header>
+            )}
 
             {menuOpen && (
                 <>
@@ -1392,7 +1404,7 @@ function PassengerDashboard() {
                 </>
             )}
 
-            {!activeRide && (
+            {!activeRide && !mapInteracting && (
                 <div className="absolute right-4 bottom-[calc(250px+env(safe-area-inset-bottom))] z-20">
                     <button
                         type="button"
@@ -1421,27 +1433,27 @@ function PassengerDashboard() {
                 <MapPickBanner target={mapPickTarget} onCancel={() => { setMapPickTarget(null); setFullScreenMap(false); }} />
             )}
 
-            {!activeRide && !mapPickTarget && !bookingOpen && (
-                <div className="absolute inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] z-20 rounded-t-[30px] bg-pd-surface px-4 pb-5 pt-4 shadow-[0_-14px_44px_rgba(17,17,17,0.12)]">
+            {!activeRide && !mapPickTarget && !bookingOpen && !mapInteracting && (
+                <div className="absolute inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] z-20 bg-[#15171B] px-4 pb-5 pt-4 shadow-[0_-14px_44px_rgba(0,0,0,0.45)]">
                     <div className="mx-auto max-w-lg space-y-3">
                         <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                            <span className="shrink-0 rounded-xl bg-[#087F5B] px-4 py-2.5 text-sm font-extrabold text-white"><Car size={17} className="mr-1 inline" /> {t("pHome.tabRide")}</span>
+                            <span className="shrink-0 rounded-xl bg-[#087F5B] px-4 py-3 text-[15px] font-extrabold text-white"><Car size={17} className="mr-1 inline" /> {t("pHome.tabRide")}</span>
                             <Link
                                 href="/passenger/parcels"
-                                className="shrink-0 rounded-xl bg-pd-surface-2 px-4 py-2.5 text-sm font-bold text-pd-text"
+                                className="shrink-0 rounded-xl bg-[#23262C] px-4 py-3 text-[15px] font-bold text-white"
                             >
                                 📦 {t("pHome.tabParcel")}
                                 <ParcelActivityBar token={token} role="PASSENGER" variant="badge" />
                             </Link>
                             <Link
                                 href="/passenger/buy-deliver"
-                                className="shrink-0 rounded-xl bg-pd-surface-2 px-4 py-2.5 text-sm font-bold text-pd-text"
+                                className="shrink-0 rounded-xl bg-[#23262C] px-4 py-3 text-[15px] font-bold text-white"
                             >
                                 🛒 {t("pHome.tabBuyDeliver")}
                             </Link>
                             <Link
                                 href="/passenger/rentals"
-                                className="shrink-0 rounded-xl bg-pd-surface-2 px-4 py-2.5 text-sm font-bold text-pd-text"
+                                className="shrink-0 rounded-xl bg-[#23262C] px-4 py-3 text-[15px] font-bold text-white"
                             >
                                 🚗 {t("pHome.tabRentals")}
                             </Link>
@@ -1470,11 +1482,11 @@ function PassengerDashboard() {
                             </section>
                         )}
                         <button type="button" onClick={() => setBookingOpen(true)}
-                            className="flex w-full items-center gap-3 rounded-2xl bg-pd-surface-2 px-4 py-4 text-left shadow-sm transition-transform active:scale-[0.98]"
+                            className="flex w-full items-center gap-3 rounded-2xl bg-[#23262C] px-4 py-4 text-left shadow-sm transition-transform active:scale-[0.98]"
                             aria-label={t("ride.whereToHowMuchAria")}>
-                            <Crosshair size={22} className="shrink-0 text-pd-text" />
-                            <span className="min-w-0 flex-1 truncate text-base font-extrabold">{t("ride.whereToHowMuch")}</span>
-                            <ArrowRight size={20} className="shrink-0" />
+                            <Crosshair size={22} className="shrink-0 text-white" />
+                            <span className="min-w-0 flex-1 truncate text-base font-extrabold text-white">{t("ride.whereToHowMuch")}</span>
+                            <ArrowRight size={20} className="shrink-0 text-white" />
                         </button>
                         {destinationSelected && destinationQuery && <p className="truncate px-1 text-xs text-pd-muted">Last selected: {destinationQuery}</p>}
                     </div>
@@ -2126,7 +2138,7 @@ function PassengerDashboard() {
                     onFinish={finishCompletedTrip}
                 />
             )}
-            <MobileBottomNav role="PASSENGER" />
+            {!mapInteracting && <MobileBottomNav role="PASSENGER" />}
         </main>
     );
 }
