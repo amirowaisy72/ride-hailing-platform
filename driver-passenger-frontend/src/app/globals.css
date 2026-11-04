@@ -903,3 +903,18 @@ input[type="number"] {
 @media (prefers-reduced-motion: reduce) {
   .sf-veh-locator { animation: none; }
 }
+
+/* Driver guided setup + active-ride kit */
+@keyframes sf-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes sf-pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(8, 127, 91, 0.45); }
+  100% { box-shadow: 0 0 0 18px rgba(8, 127, 91, 0); }
+}
+.sf-rise { animation: sf-rise 0.38s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.sf-pulse { animation: sf-pulse-ring 1.8s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .sf-rise, .sf-pulse { animation: none; }
+}
