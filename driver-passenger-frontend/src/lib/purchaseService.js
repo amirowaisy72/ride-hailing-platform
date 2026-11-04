@@ -178,6 +178,12 @@ export const withdrawPurchaseOffer = (id, token) =>
         token,
     });
 
+export const declinePurchaseRequest = (id, token) =>
+    apiRequest(`/purchases/${id}/decline`, {
+        method: "POST",
+        token,
+    });
+
 export const getDriverPurchaseTasks = (token) =>
     apiRequest("/purchases/driver/my", { token });
 

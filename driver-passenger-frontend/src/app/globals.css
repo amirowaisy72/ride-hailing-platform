@@ -256,6 +256,45 @@ html.theme-ready nav {
   animation: pd-rise 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+@keyframes pd-step-in-forward {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pd-step-in-back {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pd-step-forward {
+  animation: pd-step-in-forward 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.pd-step-back {
+  animation: pd-step-in-back 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pd-step-forward,
+  .pd-step-back {
+    animation: pd-rise 0.01ms both;
+  }
+}
+
 .pd-drop {
   animation: pd-drop 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -306,12 +345,58 @@ select.pd-input {
   padding-right: 36px;
 }
 
+@keyframes pd-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pd-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes pd-indeterminate {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+.pd-loader-orbit {
+  animation: pd-orbit 2.4s cubic-bezier(0.55, 0.15, 0.45, 0.85) infinite;
+}
+
+.pd-loader-breathe {
+  animation: pd-breathe 2.4s ease-in-out infinite;
+}
+
+.pd-loader-bar {
+  animation: pd-indeterminate 1.4s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+.pd-loader-glow {
+  background: radial-gradient(circle, color-mix(in srgb, var(--pd-accent) 18%, transparent) 0%, transparent 65%);
+}
+
 @media (prefers-reduced-motion: reduce) {
 
   .pd-rise,
   .pd-drop,
   .pd-live-dot,
-  .pd-skeleton {
+  .pd-skeleton,
+  .pd-loader-orbit,
+  .pd-loader-breathe,
+  .pd-loader-bar {
     animation: none !important;
   }
 }
@@ -706,4 +791,130 @@ input[type="number"] {
 .dark .navigation-banner {
   background-color: #20242c !important;
   color: #f9fafb !important;
+}
+
+/* Driver's own vehicle on the map: realistic sprite, paint tint, night headlights. */
+.sf-veh {
+  position: relative;
+  width: var(--veh-w);
+  height: var(--veh-h);
+  pointer-events: none;
+}
+.sf-veh-locator {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--veh-h) + 18px);
+  height: calc(var(--veh-h) + 18px);
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: rgba(8, 127, 91, 0.14);
+  border: 1.5px solid rgba(8, 127, 91, 0.55);
+  animation: sf-veh-pulse 2.4s ease-out infinite;
+}
+.dark .sf-veh-locator {
+  background: rgba(52, 211, 153, 0.12);
+  border-color: rgba(52, 211, 153, 0.5);
+}
+.sf-veh-rotor {
+  position: absolute;
+  inset: 0;
+}
+.sf-veh-shadow {
+  position: absolute;
+  inset: 6% 4% -2% 10%;
+  border-radius: 40%;
+  background: rgba(0, 0, 0, 0.42);
+  filter: blur(4px);
+  transform: translate(2px, 3px);
+}
+.sf-veh-sprite {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+}
+.sf-veh-sprite img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+}
+.sf-veh-tint {
+  position: absolute;
+  inset: 0;
+  mix-blend-mode: multiply;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+.sf-veh-beam,
+.sf-veh-lamp,
+.sf-veh-tail {
+  position: absolute;
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+.sf-veh-beam {
+  left: 50%;
+  bottom: 86%;
+  width: calc(var(--veh-w) * 3.6);
+  height: calc(var(--veh-h) * 2.3);
+  transform: translateX(-50%);
+  background: linear-gradient(to top, rgba(255, 244, 205, 0.78), rgba(255, 238, 190, 0.32) 45%, rgba(255, 236, 180, 0) 100%);
+  clip-path: polygon(38% 100%, 62% 100%, 100% 0, 0 0);
+  filter: blur(7px);
+  mix-blend-mode: screen;
+}
+.sf-veh-lamp {
+  top: 3%;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: #fffbe8;
+  box-shadow: 0 0 6px 3px rgba(255, 246, 210, 0.95), 0 0 16px 6px rgba(255, 236, 170, 0.55);
+}
+.sf-veh-lamp--l { left: 14%; }
+.sf-veh-lamp--r { right: 14%; }
+.sf-veh-tail {
+  bottom: 2%;
+  width: 6px;
+  height: 4px;
+  border-radius: 2px;
+  background: #ff4d4d;
+  box-shadow: 0 0 8px 3px rgba(255, 60, 60, 0.7);
+}
+.sf-veh-tail--l { left: 16%; }
+.sf-veh-tail--r { right: 16%; }
+.sf-veh--bike .sf-veh-lamp--l,
+.sf-veh--bike .sf-veh-tail--l { left: 50%; transform: translateX(-50%); }
+.sf-veh--bike .sf-veh-lamp--r,
+.sf-veh--bike .sf-veh-tail--r { display: none; }
+.sf-veh--bike .sf-veh-beam { width: calc(var(--veh-w) * 4.4); }
+.sf-veh--rickshaw .sf-veh-lamp--l { left: 50%; transform: translateX(-50%); top: 0; }
+.sf-veh--rickshaw .sf-veh-lamp--r { display: none; }
+.sf-veh.is-night .sf-veh-beam { opacity: 1; }
+.sf-veh.is-night .sf-veh-lamp,
+.sf-veh.is-night .sf-veh-tail { opacity: 1; }
+.sf-veh.is-night .sf-veh-shadow { background: rgba(0, 0, 0, 0.6); }
+@keyframes sf-veh-pulse {
+  0% { transform: translate(-50%, -50%) scale(0.85); opacity: 0.9; }
+  70% { transform: translate(-50%, -50%) scale(1.35); opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(1.35); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sf-veh-locator { animation: none; }
+}
+
+/* Driver guided setup + active-ride kit */
+@keyframes sf-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes sf-pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(8, 127, 91, 0.45); }
+  100% { box-shadow: 0 0 0 18px rgba(8, 127, 91, 0); }
+}
+.sf-rise { animation: sf-rise 0.38s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.sf-pulse { animation: sf-pulse-ring 1.8s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .sf-rise, .sf-pulse { animation: none; }
 }

@@ -25,6 +25,7 @@ import {
 import { Geolocation } from "@capacitor/geolocation";
 
 import AuthGuard from "@/components/AuthGuard";
+import JobRequestCard from "@/components/driver/service/JobRequestCard";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import { useAuth } from "@/context/AuthContext";
@@ -32,6 +33,7 @@ import { getRealtimeSocket } from "@/lib/socket";
 import { updateDriverLocation } from "@/lib/vehicleService";
 import { getOrderChatUnread } from "@/lib/orderChatService";
 import {
+    declinePurchaseRequest,
     getAvailablePurchaseRequests,
     getDriverPurchaseTasks,
     submitPurchaseOffer,
@@ -163,6 +165,7 @@ function TasksScreen() {
     const [notice, setNotice] = useState(null);
     const [fees, setFees] = useState({});
     const [myOffers, setMyOffers] = useState({});
+    const [declinedRequests, setDeclinedRequests] = useState([]);
     const [busyId, setBusyId] = useState("");
     // Unread order-chat counts, keyed `${orderType}:${orderId}`.
     const [unreadByOrder, setUnreadByOrder] = useState({});
@@ -334,6 +337,19 @@ function TasksScreen() {
         }
     }
 
+    async function declineRequest(order) {
+        setBusyId(order._id);
+        setNotice(null);
+        try {
+            await declinePurchaseRequest(order._id, token);
+            setDeclinedRequests((prev) => [...prev, order._id]);
+        } catch (err) {
+            setNotice({ kind: "error", text: err.message });
+        } finally {
+            setBusyId("");
+        }
+    }
+
     async function withdraw(order) {
         setBusyId(order._id);
         setNotice(null);
@@ -385,6 +401,7 @@ function TasksScreen() {
         }
     }
 
+    const visibleRequests = requests.filter((order) => !declinedRequests.includes(order._id));
     const showFeed = filter === "ALL" || filter === "BUY_DELIVER";
     const showPurchases = showFeed;
     const showRentals = filter === "ALL" || filter === "RENTAL";
@@ -553,11 +570,11 @@ function TasksScreen() {
                                     <ShoppingBag size={14} />
                                     {t("dTasks.newBdRequests")}
                                     <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-extrabold text-violet-700">
-                                        {requests.length}
+                                        {visibleRequests.length}
                                     </span>
                                 </h2>
                                 <div className="mt-2 space-y-3">
-                                    {requests.length === 0 ? (
+                                    {visibleRequests.length === 0 ? (
                                         <div className="rounded-[24px] bg-pd-surface p-6 text-center shadow-sm">
                                             <ShoppingBag
                                                 size={30}
@@ -571,108 +588,42 @@ function TasksScreen() {
                                             </p>
                                         </div>
                                     ) : (
-                                        requests.map((order) => {
+                                        visibleRequests.map((order) => {
                                             const mine = myOffers[order._id];
                                             return (
-                                                <article
+                                                <JobRequestCard
                                                     key={order._id}
-                                                    className="rounded-[24px] border-t-4 border-violet-400 bg-pd-surface p-5 shadow-sm"
-                                                >
-                                                    <div className="flex items-start justify-between gap-3">
-                                                        <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-2.5 py-1 text-[11px] font-extrabold text-violet-700">
-                                                            <ShoppingBag size={12} />
-                                                            {t("dTasks.buyDeliverBadge")}
-                                                        </span>
-                                                        <span className="text-[11px] font-semibold text-pd-faint">
-                                                            {fmtDateTime(order.createdAt)}
-                                                        </span>
-                                                    </div>
-                                                    <p className="mt-3 line-clamp-3 whitespace-pre-line text-sm font-semibold leading-6">
-                                                        {order.itemsText}
-                                                    </p>
-                                                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-pd-muted">
-                                                        <span className="inline-flex items-center gap-1">
-                                                            <Wallet size={13} />
-                                                            {t("dTasks.budgetUpTo")}{" "}
-                                                            {money(order.estimatedBudget)}
-                                                        </span>
-                                                        <span className="inline-flex items-center gap-1">
-                                                            <MapPin size={13} />
-                                                            {order.deliveryLabel ||
-                                                                order.deliveryAddress?.address ||
-                                                                t("dTasks.deliveryArea")}
-                                                        </span>
-                                                        {order.preferences?.preferredShop && (
-                                                            <span>
-                                                                {t("dTasks.shop")}{" "}
-                                                                {order.preferences.preferredShop}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    {(order.imageUrls || []).length > 0 && (
-                                                        <div className="mt-3 flex gap-2 overflow-x-auto">
-                                                            {order.imageUrls.map((url) => (
-                                                                // eslint-disable-next-line @next/next/no-img-element
-                                                                <img
-                                                                    key={url}
-                                                                    src={url}
-                                                                    alt={t("dTasks.itemReference")}
-                                                                    className="h-14 w-14 shrink-0 rounded-xl object-cover"
-                                                                />
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                    {mine ? (
-                                                        <div className="mt-4 flex items-center gap-2">
-                                                            <p className="flex flex-1 items-center gap-1.5 rounded-xl bg-violet-50 px-3 py-2.5 text-sm font-bold text-violet-700">
-                                                                <CheckCircle2 size={16} />
-                                                                {t("dTasks.yourOffer")}{" "}
-                                                                {money(mine.deliveryFee)}
-                                                            </p>
-                                                            <button
-                                                                type="button"
-                                                                disabled={busyId === order._id}
-                                                                onClick={() => void withdraw(order)}
-                                                                className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-pd-surface-2 px-3 text-sm font-bold text-pd-text-2 disabled:opacity-40"
-                                                            >
-                                                                <Undo2 size={15} />
-                                                                {t("dTasks.withdraw")}
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="mt-4 flex gap-2">
-                                                            <label className="relative flex-1">
-                                                                <span className="sr-only">
-                                                                    {t("dTasks.yourDeliveryFee")}
-                                                                </span>
-                                                                <input
-                                                                    type="text"
-                                                                    inputMode="numeric"
-                                                                    placeholder={t("dTasks.yourDeliveryFee")}
-                                                                    value={fees[order._id] || ""}
-                                                                    onChange={(e) =>
-                                                                        setFees((prev) => ({
-                                                                            ...prev,
-                                                                            [order._id]: e.target.value,
-                                                                        }))
-                                                                    }
-                                                                    className="h-12 w-full rounded-xl border px-4 text-sm font-semibold"
-                                                                />
-                                                            </label>
-                                                            <button
-                                                                type="button"
-                                                                disabled={busyId === order._id}
-                                                                onClick={() => void sendOffer(order)}
-                                                                className="inline-flex h-12 items-center gap-1.5 rounded-xl bg-violet-600 px-4 text-sm font-bold text-white disabled:opacity-40"
-                                                            >
-                                                                <Send size={15} />
-                                                                {busyId === order._id
-                                                                    ? t("dTasks.sending")
-                                                                    : t("dTasks.sendOffer")}
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </article>
+                                                    service="BUY_DELIVER"
+                                                    heading={t("dTasks.buyDeliverBadge")}
+                                                    subject={order.itemsText}
+                                                    subjectNote={order.preferences?.preferredShop ? `${t("dTasks.shop")} ${order.preferences.preferredShop}` : undefined}
+                                                    amountLabel={t("dTasks.budgetUpTo")}
+                                                    amountText={money(order.estimatedBudget)}
+                                                    fromLabel="Buy from"
+                                                    fromText={order.preferences?.preferredShop || "Any shop near you"}
+                                                    toLabel="Deliver to"
+                                                    toText={order.deliveryLabel || order.deliveryAddress?.address || t("dTasks.deliveryArea")}
+                                                    requireFee
+                                                    feeLabel={`${t("dTasks.yourDeliveryFee")} (PKR)`}
+                                                    fare={fees[order._id] || ""}
+                                                    onFareChange={(value) => setFees((prev) => ({ ...prev, [order._id]: value }))}
+                                                    acceptLabel={t("dTasks.sendOffer")}
+                                                    busy={busyId === order._id}
+                                                    onAccept={() => void sendOffer(order)}
+                                                    onDecline={() => void declineRequest(order)}
+                                                    sentText={mine ? `${t("dTasks.yourOffer")} ${money(mine.deliveryFee)}` : undefined}
+                                                    sentAction={mine ? (
+                                                        <button
+                                                            type="button"
+                                                            disabled={busyId === order._id}
+                                                            onClick={() => void withdraw(order)}
+                                                            className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-pd-surface-2 text-base font-extrabold text-pd-text-2 ring-1 ring-pd-line-strong disabled:opacity-40"
+                                                        >
+                                                            <Undo2 size={18} aria-hidden />
+                                                            {t("dTasks.withdraw")}
+                                                        </button>
+                                                    ) : null}
+                                                />
                                             );
                                         })
                                     )}
@@ -755,21 +706,25 @@ function TasksScreen() {
                                                         : t("dTasks.selfDrive")}
                                                 </span>
                                             </div>
-                                            <p className="mt-2.5 text-sm font-extrabold">
-                                                {booking.vehicle
-                                                    ? `${booking.vehicle.brand} ${booking.vehicle.model} (${booking.vehicle.year})`
-                                                    : t("dTasks.vehicle")}
-                                            </p>
-                                            <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-pd-muted">
-                                                <CalendarClock size={13} />
-                                                {fmtDateTime(booking.startAt)} →{" "}
-                                                {fmtDateTime(booking.endAt)}
-                                            </p>
-                                            <p className="mt-1 text-xs font-semibold text-pd-muted">
-                                                {(isUrdu ? RENTAL_ACTION_UR[booking.status] : null) || RENTAL_ACTION[booking.status] ||
-                                                    booking.status}{" "}
-                                                · {t("dTasks.charges")} {money(booking.rentalCharges)}
-                                            </p>
+                                            {booking.status !== "REQUESTED" && (
+                                                <>
+                                                    <p className="mt-2.5 text-sm font-extrabold">
+                                                        {booking.vehicle
+                                                            ? `${booking.vehicle.brand} ${booking.vehicle.model} (${booking.vehicle.year})`
+                                                            : t("dTasks.vehicle")}
+                                                    </p>
+                                                    <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-pd-muted">
+                                                        <CalendarClock size={13} />
+                                                        {fmtDateTime(booking.startAt)} →{" "}
+                                                        {fmtDateTime(booking.endAt)}
+                                                    </p>
+                                                    <p className="mt-1 text-xs font-semibold text-pd-muted">
+                                                        {(isUrdu ? RENTAL_ACTION_UR[booking.status] : null) || RENTAL_ACTION[booking.status] ||
+                                                            booking.status}{" "}
+                                                        · {t("dTasks.charges")} {money(booking.rentalCharges)}
+                                                    </p>
+                                                </>
+                                            )}
 
                                             {booking.status === "REQUESTED" && (
                                                 <div className="mt-3 space-y-2">
@@ -806,28 +761,35 @@ function TasksScreen() {
                                                             </div>
                                                         </>
                                                     ) : (
-                                                        <div className="flex gap-2">
-                                                            <button
-                                                                type="button"
-                                                                disabled={busyId === booking._id}
-                                                                onClick={() =>
-                                                                    void rentalAction(booking, "accept")
-                                                                }
-                                                                className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#087F5B] text-sm font-bold text-white disabled:opacity-40"
-                                                            >
-                                                                <CheckCircle2 size={15} />
-                                                                {t("dTasks.accept")}
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                disabled={busyId === booking._id}
-                                                                onClick={() => setRejectingId(booking._id)}
-                                                                className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-pd-danger-soft text-sm font-bold text-pd-danger disabled:opacity-40"
-                                                            >
-                                                                <XCircle size={15} />
-                                                                {t("dTasks.reject")}
-                                                            </button>
-                                                        </div>
+                                                        <JobRequestCard
+                                                            service="RENTAL"
+                                                            heading={t("dTasks.rentalBadge")}
+                                                            subject={
+                                                                booking.vehicle
+                                                                    ? `${booking.vehicle.brand} ${booking.vehicle.model} (${booking.vehicle.year})`
+                                                                    : t("dTasks.vehicle")
+                                                            }
+                                                            subjectNote={
+                                                                booking.mode === "WITH_DRIVER"
+                                                                    ? t("dTasks.withDriver")
+                                                                    : t("dTasks.selfDrive")
+                                                            }
+                                                            amountLabel={t("dTasks.charges")}
+                                                            amountText={money(booking.rentalCharges)}
+                                                            facts={[
+                                                                (isUrdu ? RENTAL_ACTION_UR[booking.status] : null) ||
+                                                                RENTAL_ACTION[booking.status] ||
+                                                                booking.status,
+                                                            ]}
+                                                            fromLabel="Start"
+                                                            fromText={fmtDateTime(booking.startAt)}
+                                                            toLabel="End"
+                                                            toText={fmtDateTime(booking.endAt)}
+                                                            acceptLabel={t("dTasks.accept")}
+                                                            busy={busyId === booking._id}
+                                                            onAccept={() => void rentalAction(booking, "accept")}
+                                                            onDecline={() => setRejectingId(booking._id)}
+                                                        />
                                                     )}
                                                 </div>
                                             )}

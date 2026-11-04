@@ -8,6 +8,7 @@ import {
     MARKER_SLATE, MARKER_WHITE, flagSvg, hailingPersonSvg, vehicleGlyphSvg,
 } from "@/components/mapMarkerArt";
 import { useTheme } from "@/components/theme/ThemeProvider";
+import { createVehicleElement, updateVehicleElement, setVehicleNight, isNightTime } from "@/components/driver/vehicleMarker";
 maplibregl.setWorkerUrl("/maplibre-worker.mjs");
 
 const DARK = "#111111";
@@ -255,6 +256,7 @@ export default function RideMap({
     passengerView = false,
     searching = false,
     vehicleType = null,
+    vehicleColor = null,
     onMapClick = null,
     onPlaceSelect = null,
     sheetRatio = null,
@@ -807,7 +809,13 @@ export default function RideMap({
             return;
         }
         if (!driverRef.current) {
-            driverRef.current = new maplibregl.Marker({ element: createDriverElement(vehicleType) }).setLngLat(point).addTo(map);
+            driverRef.current = passengerView
+                ? new maplibregl.Marker({ element: createDriverElement(vehicleType) }).setLngLat(point).addTo(map)
+                : new maplibregl.Marker({
+                    element: createVehicleElement(vehicleType, vehicleColor, isNightTime(themeRef.current)),
+                    rotationAlignment: "map",
+                    pitchAlignment: "map",
+                }).setLngLat(point).addTo(map);
             driverShownRef.current = point;
         } else {
             // Glide between real GPS fixes so the vehicle moves smoothly instead of jumping.
@@ -835,7 +843,9 @@ export default function RideMap({
         const previous = lastDriverPointRef.current;
         const movedBearing = previous ? bearingBetween(previous, point) : null;
         lastDriverPointRef.current = point;
-        if (movedBearing != null) {
+        if (movedBearing != null && !passengerView) {
+            driverRef.current?.setRotation(movedBearing);
+        } else if (movedBearing != null) {
             const heading = driverRef.current?.getElement().querySelector(".rx-map-driver-heading");
             if (heading) {
                 heading.style.transform = `rotate(${movedBearing - map.getBearing()}deg)`;
@@ -861,9 +871,22 @@ export default function RideMap({
         }
     }, [mapReady, driverLocation?.latitude, driverLocation?.longitude, driverLocation?.coordinates?.[0], driverLocation?.coordinates?.[1], followDriver, navigationMode, locateRequest, destination?.latitude, destination?.longitude, destination?.coordinates?.[0], destination?.coordinates?.[1]]);
     useEffect(() => {
-        const body = driverRef.current?.getElement().querySelector(".rx-map-driver-body");
+        const element = driverRef.current?.getElement();
+        if (!element) return;
+        if (!passengerView) {
+            updateVehicleElement(element, vehicleType, vehicleColor, isNightTime(resolvedTheme));
+            return;
+        }
+        const body = element.querySelector(".rx-map-driver-body");
         if (body) body.innerHTML = driverBodyMarkup(vehicleType);
-    }, [vehicleType]);
+    }, [vehicleType, vehicleColor]);
+    useEffect(() => {
+        if (passengerView) return;
+        const apply = () => setVehicleNight(driverRef.current?.getElement(), isNightTime(resolvedTheme));
+        apply();
+        const timer = setInterval(apply, 60000);
+        return () => clearInterval(timer);
+    }, [resolvedTheme, passengerView, mapReady]);
     useEffect(() => {
         const map = mapRef.current;
         if (!map) return;

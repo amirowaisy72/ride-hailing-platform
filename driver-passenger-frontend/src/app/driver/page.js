@@ -12,7 +12,8 @@ import {
     stopDriverBackgroundGPS
 } from "@/lib/backgroundDriverLocation";
 import AuthGuard from "@/components/AuthGuard";
-import RideMap from "@/components/RideMap";
+import DriverMap from "@/components/driver/map/DriverMap";
+import NavigationBanner from "@/components/driver/map/NavigationBanner";
 import { reverseGeocode } from "@/lib/locationService";
 import RideChat from "@/components/RideChat";
 import ParcelActivityBar from "@/components/ParcelActivityBar";
@@ -21,9 +22,10 @@ import Link from "next/link";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import DriverSheet from "@/components/driver/DriverSheet";
-import DriverRequestCard, { money, placeText, vehicleNames } from "@/components/driver/DriverRequestCard";
-import DriverRequestOverlay from "@/components/driver/DriverRequestOverlay";
-import SlideToConfirm from "@/components/driver/SlideToConfirm";
+import { money, placeText, vehicleNames } from "@/components/driver/DriverRequestCard";
+import RideRequestCard, { RideQueueRow, passengerNameOf } from "@/components/driver/ride/RideRequestCard";
+import TripStepPanel, { RideEndedPanel, TRIP_PANEL_HEIGHT } from "@/components/driver/ride/TripStepPanel";
+import RideReturnBanner from "@/components/driver/ride/RideReturnBanner";
 import { DriverToast } from "@/components/driver/DriverMapControls";
 import useDriverNotifications from "@/components/driver/useDriverNotifications";
 import { useAuth } from "@/context/AuthContext";
@@ -191,7 +193,10 @@ function DriverDashboard() {
     const [submittedIds, setSubmittedIds] = useState([]);
     const [focusRideId, setFocusRideId] = useState(null);
     const [focusDeadline, setFocusDeadline] = useState(0);
-    const [dismissedIds, setDismissedIds] = useState([]);
+    // declined: the driver said no. seen: the card was shown and left
+    // unanswered; those rides stay reachable from the banner and the list.
+    const [declinedIds, setDeclinedIds] = useState([]);
+    const [seenIds, setSeenIds] = useState([]);
     const [driverProfile, setDriverProfile] = useState(null);
     const [homeEarnings, setHomeEarnings] = useState(null);
     const [myServices, setMyServices] = useState(null);
@@ -265,7 +270,7 @@ function DriverDashboard() {
     const sheetPx = sheet === "peek" ? (rideInProgress ? 118 : 148)
         : sheet === "half" ? Math.min(viewportH * 0.52, rideInProgress ? 460 : 440)
             : viewportH * 0.7;
-    const sheetRatio = Math.min(0.75, (sheetPx + navH) / Math.max(1, viewportH));
+    const sheetRatio = rideInProgress ? Math.min(0.62, TRIP_PANEL_HEIGHT / Math.max(1, viewportH)) : Math.min(0.75, (sheetPx + navH) / Math.max(1, viewportH));
     // Ride lifecycle drives the layout: navigation collapses the sheet to keep the map dominant.
     useEffect(() => {
         if (!selectedRide) { setNavigationInfo(null); return; }
@@ -345,18 +350,26 @@ function DriverDashboard() {
             if (!stillOpen || submittedIds.includes(focusRideId)) setFocusRideId(null);
             return;
         }
-        const next = requests.find((r) => r.live && !submittedIds.includes(r.rideId) && !dismissedIds.includes(r.rideId));
+        // Any waiting request the driver has not answered or seen takes
+        // focus, including ones loaded after reopening the app.
+        const next = requests.find((r) => !submittedIds.includes(r.rideId) && !declinedIds.includes(r.rideId) && !seenIds.includes(r.rideId));
         if (next) {
             setFocusRideId(next.rideId);
             setFocusDeadline(Date.now() + REQUEST_FOCUS_SECONDS * 1000);
         }
-    }, [requests, selectedRide, focusRideId, submittedIds, dismissedIds]);
+    }, [requests, selectedRide, focusRideId, submittedIds, declinedIds, seenIds]);
     useEffect(() => {
         if (focusRideId && focusDeadline && clock >= focusDeadline) {
-            setDismissedIds((previous) => [...new Set([...previous, focusRideId])]);
+            setSeenIds((previous) => [...new Set([...previous, focusRideId])]);
             setFocusRideId(null);
         }
     }, [clock, focusRideId, focusDeadline]);
+    function openRequest(rideId) {
+        setSeenIds((previous) => previous.filter((id) => id !== rideId));
+        setDeclinedIds((previous) => previous.filter((id) => id !== rideId));
+        setFocusRideId(rideId);
+        setFocusDeadline(Date.now() + REQUEST_FOCUS_SECONDS * 1000);
+    }
     // Socket is primary; polling catches missed events, reconnects, and late GPS updates.
     useEffect(() => {
         if (!token || !isOnline || !isAvailable || loading) return;
@@ -827,10 +840,6 @@ function DriverDashboard() {
     const completeBlocked = selectedRide?.status === "TRIP_STARTED" && (pendingStop || Boolean(selectedRide?.stopWaitingSince));
     const userId = user?._id || user?.id;
     const firstName = user?.firstName || "Driver";
-    const turnDistance = formatMeters(navigationInfo?.stepDistanceMeters);
-    const etaClock = navigationInfo?.durationMinutes
-        ? new Date(clock + navigationInfo.durationMinutes * 60000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-        : null;
     /* ---------- Sheet content builders ---------- */
     const statusPill = (
         <span className="dx-status" data-on={isOnline}>
@@ -928,19 +937,11 @@ function DriverDashboard() {
                     <p className="dx-muted">{isOnline ? t("dHome.requestsAppear") : t("dHome.goOnlineHint")}</p>
                 </div>
             ) : (
-                namedRequests.map((ride) => {
-                    const left = Math.max(0, Math.ceil(((nextBidAt[ride.rideId] || 0) - clock) / 1000));
-                    return (
-                        <DriverRequestCard key={ride.rideId} ride={ride}
-                            price={offerPrices[ride.rideId]}
-                            onPriceChange={(value) => setOfferPrices((p) => ({ ...p, [ride.rideId]: value }))}
-                            onSend={() => sendOffer(ride)}
-                            busy={offerBusy === ride.rideId}
-                            disabled={Boolean(offerBusy)}
-                            submitted={submittedIds.includes(ride.rideId)}
-                            cooldownSeconds={left} />
-                    );
-                })
+                namedRequests.map((ride) => (
+                    <RideQueueRow key={ride.rideId} ride={ride}
+                        submitted={submittedIds.includes(ride.rideId)}
+                        onOpen={() => openRequest(ride.rideId)} />
+                ))
             )}
         </div>
     );
@@ -1222,121 +1223,44 @@ function DriverDashboard() {
             </section>
         </div>
     );
-    const primaryAction = selectedRide && ACTIONS[selectedRide.status] && (
-        pendingStop ? (
-            <SlideToConfirm
-                variant="lime"
-                disabled={busy}
-                label={busy
-                    ? "Please wait…"
-                    : selectedRide.stopWaitingSince
-                        ? "Slide to continue trip"
-                        : selectedRide.tripType === "ROUND_TRIP" && stopsDone === stopsTotal - 1
-                            ? "Slide · Arrived at outbound destination"
-                            : `Slide · Arrived at stop ${stopsDone + 1}`}
-                onConfirm={() => updateStop(selectedRide.stopWaitingSince ? "CONTINUE" : "ARRIVE")}
+    const tripPanel = rideInProgress && (
+        <TripStepPanel
+            key={`${selectedRide._id}:${selectedRide.status}:${stopsDone}:${Boolean(selectedRide.stopWaitingSince)}`}
+            status={selectedRide.status}
+            passengerName={passengerNameOf(selectedRide)}
+            tripType={selectedRide.tripType}
+            stopsDone={stopsDone}
+            stopsTotal={stopsTotal}
+            pendingStop={pendingStop}
+            stopWaiting={Boolean(selectedRide.stopWaitingSince)}
+            targetPoint={nextTarget}
+            targetPlace={targetTitle}
+            navigationInfo={navigationInfo}
+            waitingTime={waitingSince ? waitingTime : null}
+            completeBlocked={completeBlocked}
+            busy={busy}
+            unread={unreadMessages}
+            onAdvance={advanceTrip}
+            onStopAction={updateStop}
+            onChat={() => { markMessagesRead(); setChatOpen(true); }}
+        />
+    );
+    const endedPanel = rideEnded && (
+        <RideEndedPanel status={selectedRide.status} firstName={firstName} finalPrice={selectedRide.finalPrice} onDone={finishRide} />
+    );
+    const waitingRides = namedRequests.filter((r) => !declinedIds.includes(r.rideId));
+    const unansweredRides = waitingRides.filter((r) => !submittedIds.includes(r.rideId));
+    const bannerRide = unansweredRides[0] || waitingRides[0] || null;
+    const homeBanner = !rideInProgress && !rideEnded && !focusRide && isOnline && bannerRide && (
+        <div className="pointer-events-none absolute inset-x-4 top-[calc(max(16px,env(safe-area-inset-top))+60px)] z-30 mx-auto max-w-xl">
+            <RideReturnBanner
+                kind={unansweredRides.length > 0 ? "available" : "offer"}
+                title={unansweredRides.length > 0
+                    ? (unansweredRides.length === 1 ? "1 ride is waiting for you" : `${unansweredRides.length} rides are waiting for you`)
+                    : "Offer sent, waiting for passenger"}
+                subtitle={`From ${placeText(bannerRide.pickup)}`}
+                onClick={() => openRequest(bannerRide.rideId)}
             />
-        ) : (
-            <SlideToConfirm
-                variant={selectedRide.status === "TRIP_STARTED" ? "ink" : "lime"}
-                disabled={busy || completeBlocked}
-                label={busy
-                    ? "Please wait…"
-                    : selectedRide.status === "TRIP_STARTED" &&
-                        selectedRide.tripType === "ROUND_TRIP"
-                        ? "Slide to complete round trip"
-                        : `Slide · ${ACTIONS[selectedRide.status][1]}`}
-                onConfirm={advanceTrip}
-            />
-        )
-    );
-    const tripPeek = rideInProgress && (
-        <div className="flex items-center gap-3 px-1 py-1">
-            <span className="h-3 w-3 shrink-0 rounded-full bg-[#087F5B] ring-4 ring-[#087F5B]/20" />
-            <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-extrabold">{STATUS_LABEL[selectedRide.status]}</p>
-                <p className="truncate text-xs text-pd-muted">
-                    {navigationInfo ? `${navigationInfo.distanceKm} km · approx. ${navigationInfo.durationMinutes} min · ${targetTitle}` : targetTitle}
-                </p>
-            </div>
-            <button type="button" onClick={() => setSheet("half")}
-                className="shrink-0 rounded-xl bg-[#087F5B] px-3 py-2 text-xs font-extrabold text-white">
-                Details
-            </button>
-        </div>
-    );
-    const tripBody = rideInProgress && (
-        <div className="space-y-3">
-            {primaryAction}
-            <div className="dx-stages" aria-label="Trip progress">
-                {STAGES.map((stage, i) => (
-                    <div key={stage} data-done={i <= stageIndex} data-current={i === stageIndex}>
-                        <span /><small>{stage}</small>
-                    </div>
-                ))}
-            </div>
-            {selectedRide.status === "DRIVER_SELECTED" && (
-                <div className="dx-banner dx-banner-lime">
-                    <CheckCircle2 size={18} />
-                    <p><strong>Assignment confirmed</strong><small>Route shown from your GPS position to the pickup. Tap “Head to pickup” to start.</small></p>
-                </div>
-            )}
-            {selectedRide.status === "DRIVER_ARRIVED" && (
-                <div className="dx-banner dx-banner-amber">
-                    <Hourglass size={18} />
-                    <p>
-                        <strong>Waiting for passenger</strong>
-                        <small>
-                            {waitingSince
-                                ? `Waiting time: ${waitingTime}`
-                                : "Waiting timer unavailable"}
-                        </small>
-                    </p>
-                </div>
-            )}
-            {selectedRide.stopWaitingSince && (
-                <div className="dx-banner dx-banner-amber">
-                    <Hourglass size={18} />
-                    <p><strong>Waiting at stop {stopsDone + 1}</strong><small>Since {new Date(selectedRide.stopWaitingSince).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</small></p>
-                </div>
-            )}
-            <ol className="dx-route dx-route-card">
-                <li data-done={selectedRide.status === "TRIP_STARTED"}><span className="dx-dot dx-dot-pickup"><Navigation size={11} /></span><p><small>Pickup</small>{placeText(labelPoint(selectedRide.pickup))}</p></li>
-                {selectedRide.stops?.map((stop, i) => (
-                    <li key={i} data-done={i < stopsDone} data-next={selectedRide.status === "TRIP_STARTED" && i === stopsDone}>
-                        <span className="dx-dot dx-dot-stop">{i + 1}</span><p><small>
-                            {selectedRide.tripType === "ROUND_TRIP" && i === selectedRide.stops.length - 1
-                                ? "Outbound Destination"
-                                : `Stop ${i + 1}`}
-                            {i < stopsDone ? " · done" : ""}
-                        </small>{placeText(labelPoint(stop))}</p>
-                    </li>
-                ))}
-                <li><span className="dx-dot dx-dot-drop"><Flag size={11} /></span><p><small>
-                    {selectedRide.tripType === "ROUND_TRIP" ? "Return to Pickup" : "Destination"}
-                </small>
-                    {placeText(labelPoint(selectedRide.destination))}</p></li>
-            </ol>
-            {completeBlocked && !pendingStop && <p className="dx-inline-warn">Continue from the current stop before completing.</p>}
-            <button type="button" className="dx-btn dx-btn-ink" onClick={() => { markMessagesRead(); setChatOpen(true); }}>
-                <MessageCircle size={18} /> Message passenger{unreadMessages > 0 && <span className="rounded-full bg-[#087F5B] px-2 py-0.5 text-xs font-extrabold text-white">{unreadMessages === 99 ? "99+" : unreadMessages}</span>}
-            </button>
-        </div>
-    );
-    const endedView = rideEnded && (
-        <div className="dx-ended" data-status={selectedRide.status}>
-            <span className="dx-ended-icon">{selectedRide.status === "TRIP_COMPLETED" ? <CheckCircle2 size={34} /> : <XCircle size={34} />}</span>
-            <h2>{STATUS_LABEL[selectedRide.status]}</h2>
-            {selectedRide.status === "TRIP_COMPLETED" ? (
-                <>
-                    <p className="dx-muted">Great job, {firstName}. Fare confirmed by the system.</p>
-                    <p className="dx-ended-fare">{money(selectedRide.finalPrice)}</p>
-                    <Link href="/driver/earnings" className="dx-btn-ghost mx-auto">View earnings <ChevronRight size={15} /></Link>
-                </>
-            ) : (
-                <p className="dx-muted">This trip is no longer active. No action is needed.</p>
-            )}
-            <button type="button" className="dx-btn dx-btn-lime dx-btn-xl" onClick={finishRide}>Back to ride requests <ArrowRight size={18} /></button>
         </div>
     );
     return (
@@ -1350,26 +1274,33 @@ function DriverDashboard() {
                         📦 Parcel Assigned! Tap to manage delivery →
                     </Link>
                 )}
-                <RideMap
-                    userLocation={location}
+                <DriverMap
                     locateRequest={locateRequest}
                     destination={nextTarget}
+                    targetKind={selectedRide?.status === "TRIP_STARTED" ? "destination" : "pickup"}
                     navigationMode={rideInProgress}
                     driverLocation={location}
                     vehicleType={activeVehicle?.vehicleType || null}
-                    followDriver={navigating}
+                    vehicleColor={activeVehicle?.color || null}
                     onRouteUpdate={setNavigationInfo}
                     sheetRatio={sheetRatio}
-                    rideRequestPoints={isOnline && isAvailable && !rideInProgress ? requests.map((ride) => ({ id: ride.rideId, point: ride.pickup })) : []}
-                    showNavigationControl={false}
-                    stops={[]}
+                    selectedRideId={focusRideId}
+                    onRideSelect={openRequest}
+                    rideRequests={isOnline && isAvailable && !rideInProgress ? requests.map((ride) => ({
+                        id: ride.rideId,
+                        point: ride.pickup,
+                        fare: ride.requestedPrice ? money(ride.requestedPrice) : "",
+                        label: placeText(ride.pickup),
+                    })) : []}
                 />
             </div>
-            {/* Minimal passenger-style map controls: menu at top-left, GPS bottom-right. */}
-            {rideInProgress && navigating && navigationInfo?.nextStep && (
-                <div className="pointer-events-none absolute left-[76px] right-4 top-[calc(max(16px,env(safe-area-inset-top)))] z-20 rounded-xl bg-pd-ink/90 px-3 py-2 text-pd-ink-text shadow-md">
-                    <p className="truncate text-xs font-semibold">{turnDistance ? `${turnDistance} · ` : ""}{navigationInfo.nextStep}</p>
-                </div>
+            {/* Menu sits at top-left; turn-by-turn guidance fills the rest of the top while a ride is active. */}
+            {rideInProgress && navigating && (
+                <NavigationBanner
+                    info={navigationInfo}
+                    targetKind={selectedRide?.status === "TRIP_STARTED" ? "destination" : "pickup"}
+                    className="pointer-events-none absolute left-[76px] right-3 top-[calc(max(16px,env(safe-area-inset-top)))] z-20"
+                />
             )}
             <div className="absolute left-4 top-[calc(max(16px,env(safe-area-inset-top)))] z-50">
                 <button type="button" aria-label="Open driver menu" aria-expanded={mapMenuOpen}
@@ -1426,7 +1357,7 @@ function DriverDashboard() {
                 </>
             )}
             <button type="button" onClick={locateMe} disabled={locating} aria-label="Centre on my location"
-                style={{ bottom: `calc(${heights[sheet]} + ${rideInProgress ? "18px" : "78px"})` }}
+                style={{ bottom: rideInProgress || rideEnded ? `${TRIP_PANEL_HEIGHT + 16}px` : `calc(${heights[sheet]} + 78px)` }}
                 className="absolute right-4 z-30 flex h-12 w-12 items-center justify-center rounded-2xl bg-pd-surface text-pd-text shadow-[0_6px_24px_rgba(17,17,17,0.12)] disabled:opacity-60">
                 <LocateFixed size={21} className={locating ? "animate-pulse" : ""} />
             </button>
@@ -1441,50 +1372,32 @@ function DriverDashboard() {
                         selectedRide.passengerId?.lastName
                     ].filter(Boolean).join(" ")} />
             )}
-            {rideInProgress && (
-                <div className="dx-quick" style={{ bottom: `calc(${heights[sheet]} + 12px)` }}>
-                    <button type="button" className="dx-fab relative" aria-label="Open chat with passenger"
-                        onClick={() => { markMessagesRead(); setChatOpen(true); }}>
-                        <MessageCircle size={18} />
-
-                        {selectedRide.passengerId?.profileImage && (
-                            <img
-                                src={selectedRide.passengerId.profileImage}
-                                alt="Passenger"
-                                className="absolute inset-0 h-full w-full rounded-2xl object-cover"
-                                onError={(e) => {
-                                    e.currentTarget.style.display = "none";
-                                }}
-                            />
-                        )}
-
-                        {unreadMessages > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#087F5B] px-1 text-[11px] font-extrabold text-white ring-2 ring-white">{unreadMessages === 99 ? "99+" : unreadMessages}</span>}
-                    </button>
-                    <span className="dx-target-chip"><MapPin size={13} /> {targetTitle}</span>
-                </div>
+            {rideInProgress || rideEnded ? (rideInProgress ? tripPanel : endedPanel) : (
+                <DriverSheet
+                    label="Driver dashboard"
+                    state={sheet}
+                    onStateChange={setSheet}
+                    heights={heights}
+                    bottomOffset="calc(68px + env(safe-area-inset-bottom))"
+                    peek={idlePeek}
+                >
+                    {idleBody}
+                </DriverSheet>
             )}
-            <DriverSheet
-                label={rideInProgress ? "Trip controls" : "Driver dashboard"}
-                state={sheet}
-                onStateChange={setSheet}
-                heights={heights}
-                bottomOffset={rideInProgress ? "0px" : "calc(68px + env(safe-area-inset-bottom))"}
-                peek={rideEnded ? null : rideInProgress ? tripPeek : idlePeek}
-            >
-                {rideEnded ? endedView : rideInProgress ? tripBody : idleBody}
-            </DriverSheet>
+            {homeBanner}
             {focusRide && !rideInProgress && (
-                <DriverRequestOverlay
+                <RideRequestCard
                     ride={focusRide}
+                    passengerName={passengerNameOf(focusRide)}
                     price={offerPrices[focusRide.rideId]}
                     onPriceChange={(value) => setOfferPrices((p) => ({ ...p, [focusRide.rideId]: value }))}
-                    onSend={() => {
-                        void sendOffer(focusRide);
-                        setDismissedIds((previous) => [...new Set([...previous, focusRide.rideId])]);
+                    onAccept={() => sendOffer(focusRide)}
+                    onDecline={() => {
+                        setDeclinedIds((previous) => [...new Set([...previous, focusRide.rideId])]);
                         setFocusRideId(null);
                     }}
-                    onReject={() => {
-                        setDismissedIds((previous) => [...new Set([...previous, focusRide.rideId])]);
+                    onClose={() => {
+                        setSeenIds((previous) => [...new Set([...previous, focusRide.rideId])]);
                         setFocusRideId(null);
                     }}
                     pickupDistanceText={focusPickupDistance}
@@ -1492,6 +1405,7 @@ function DriverDashboard() {
                     totalSeconds={REQUEST_FOCUS_SECONDS}
                     busy={offerBusy === focusRide.rideId}
                     submitted={submittedIds.includes(focusRide.rideId)}
+                    cooldownSeconds={Math.max(0, Math.ceil(((nextBidAt[focusRide.rideId] || 0) - clock) / 1000))}
                 />
             )}
             {!rideInProgress && <MobileBottomNav role="DRIVER" />}

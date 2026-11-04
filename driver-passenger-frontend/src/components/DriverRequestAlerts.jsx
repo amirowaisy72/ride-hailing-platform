@@ -323,7 +323,7 @@ export default function DriverRequestAlerts() {
         (item) =>
             !dismissed.has(item.key) &&
             !ignored.has(item.key) &&
-            !(pathname === "/driver" && item.service === "RIDE")
+            item.service !== "RIDE"
     );
     const ignoredItems = pending.filter(
         (item) => !dismissed.has(item.key) && ignored.has(item.key)
