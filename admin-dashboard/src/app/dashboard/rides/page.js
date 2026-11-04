@@ -1,11 +1,15 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
     Activity, CarFront, ChevronLeft, ChevronRight,
-    Clock3, RefreshCw, Route, Wallet,
+    Clock3, Map as MapIcon, RefreshCw, Route, Wallet, X,
 } from "lucide-react";
+import * as maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
+
+maplibregl.setWorkerUrl("/maplibre-worker.mjs");
 
 import AdminShell from "@/components/AdminShell";
 import { authenticatedAdminRequest } from "@/lib/adminSession";
@@ -44,6 +48,12 @@ const formatDate = (date) =>
         })
         : "—";
 
+// GeoJSON Point -> MapLibre [lng, lat]. Null when not saved.
+const pointOf = (place) =>
+    place?.coordinates?.length === 2
+        ? [place.coordinates[0], place.coordinates[1]]
+        : null;
+
 function StatusBadge({ status }) {
     const color =
         status === "TRIP_COMPLETED"
@@ -66,6 +76,10 @@ export default function RidesManagementPage() {
     const [pagination, setPagination] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [mapRide, setMapRide] = useState(null);
+    const [routeInfo, setRouteInfo] = useState(null);
+    const mapContainerRef = useRef(null);
+    const mapRef = useRef(null);
 
     const loadRides = useCallback(async () => {
         setLoading(true);
@@ -94,6 +108,137 @@ export default function RidesManagementPage() {
     useEffect(() => {
         loadRides();
     }, [loadRides]);
+
+    useEffect(() => {
+        if (!mapRide) return undefined;
+        const onKey = (event) => {
+            if (event.key === "Escape") setMapRide(null);
+        };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [mapRide]);
+
+    // Full-page ride map: same MapLibre + openfreemap style and same
+    // OSRM road route as the main app's RideMap. Falls back to a
+    // straight pickup-to-destination line if OSRM is unreachable.
+    useEffect(() => {
+        if (!mapRide) {
+            if (mapRef.current) {
+                mapRef.current.remove();
+                mapRef.current = null;
+            }
+            return undefined;
+        }
+        const container = mapContainerRef.current;
+        if (!container) return undefined;
+        const pickup = pointOf(mapRide.pickup);
+        const destination = pointOf(mapRide.destination);
+        if (!pickup || !destination) return undefined;
+        const stops = (mapRide.stops || []).map(pointOf).filter(Boolean);
+        const waypoints = [pickup, ...stops, destination];
+
+        const map = new maplibregl.Map({
+            container,
+            style: "https://tiles.openfreemap.org/styles/liberty",
+            center: pickup,
+            zoom: 12,
+        });
+        mapRef.current = map;
+        map.addControl(new maplibregl.NavigationControl(), "top-right");
+
+        const markers = [];
+        let cancelled = false;
+        map.on("load", async () => {
+            if (cancelled) return;
+            map.resize();
+            const addMarker = (point, color, label) => {
+                markers.push(
+                    new maplibregl.Marker({ color })
+                        .setLngLat(point)
+                        .setPopup(
+                            new maplibregl.Popup({ offset: 25 }).setText(label)
+                        )
+                        .addTo(map)
+                );
+            };
+            addMarker(pickup, "#087F5B", "Pickup");
+            stops.forEach((stop, index) =>
+                addMarker(stop, "#f59e0b", `Stop ${index + 1}`)
+            );
+            addMarker(destination, "#111111", "Destination");
+
+            const bounds = waypoints.reduce(
+                (box, point) => box.extend(point),
+                new maplibregl.LngLatBounds(waypoints[0], waypoints[0])
+            );
+            const drawLine = (coords) => {
+                if (cancelled || map.getSource("ride-route")) return;
+                map.addSource("ride-route", {
+                    type: "geojson",
+                    data: {
+                        type: "Feature",
+                        properties: {},
+                        geometry: { type: "LineString", coordinates: coords },
+                    },
+                });
+                map.addLayer({
+                    id: "ride-route-casing",
+                    type: "line",
+                    source: "ride-route",
+                    layout: { "line-join": "round", "line-cap": "round" },
+                    paint: {
+                        "line-color": "#ffffff",
+                        "line-width": 10,
+                        "line-opacity": 0.95,
+                    },
+                });
+                map.addLayer({
+                    id: "ride-route-line",
+                    type: "line",
+                    source: "ride-route",
+                    layout: { "line-join": "round", "line-cap": "round" },
+                    paint: {
+                        "line-color": "#111111",
+                        "line-width": 5.5,
+                        "line-opacity": 0.92,
+                    },
+                });
+                map.fitBounds(bounds, { padding: 60 });
+            };
+            try {
+                const coords = waypoints
+                    .map((point) => `${point[0]},${point[1]}`)
+                    .join(";");
+                const response = await fetch(
+                    `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`
+                );
+                if (!response.ok) throw new Error("OSRM unavailable");
+                const result = await response.json();
+                const route = result.routes?.[0];
+                if (!route?.geometry?.coordinates?.length) {
+                    throw new Error("No route");
+                }
+                if (cancelled) return;
+                setRouteInfo({
+                    distanceKm: Number((route.distance / 1000).toFixed(1)),
+                    durationMinutes: Math.max(
+                        1,
+                        Math.ceil(route.duration / 60)
+                    ),
+                });
+                drawLine(route.geometry.coordinates);
+            } catch {
+                drawLine(waypoints);
+            }
+        });
+
+        return () => {
+            cancelled = true;
+            markers.forEach((marker) => marker.remove());
+            map.remove();
+            mapRef.current = null;
+        };
+    }, [mapRide]);
 
     function changeFilter(nextFilter) {
         setFilter(nextFilter);
@@ -193,7 +338,7 @@ export default function RidesManagementPage() {
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[1080px] text-left text-sm">
+                            <table className="w-full min-w-[1200px] text-left text-sm">
                                 <thead className="bg-slate-50 text-xs text-slate-500">
                                     <tr>
                                         <th className="px-5 py-4">Ride</th>
@@ -204,6 +349,7 @@ export default function RidesManagementPage() {
                                         <th className="px-5 py-4">Final Fare</th>
                                         <th className="px-5 py-4">Settlement</th>
                                         <th className="px-5 py-4">Booked</th>
+                                        <th className="px-5 py-4">Map</th>
                                     </tr>
                                 </thead>
 
@@ -270,6 +416,25 @@ export default function RidesManagementPage() {
                                             <td className="px-5 py-4 text-xs text-slate-500">
                                                 {formatDate(ride.createdAt)}
                                             </td>
+
+                                            <td className="px-5 py-4">
+                                                {pointOf(ride.pickup) &&
+                                                pointOf(ride.destination) ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setRouteInfo(null);
+                                                            setMapRide(ride);
+                                                        }}
+                                                        className="flex items-center gap-1 rounded-xl border px-3 py-2 text-xs font-bold"
+                                                    >
+                                                        <MapIcon size={15} />
+                                                        Map
+                                                    </button>
+                                                ) : (
+                                                    "—"
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -312,6 +477,47 @@ export default function RidesManagementPage() {
                     will be added in a later phase.
                 </p>
             </div>
+
+            {mapRide && (
+                <div className="fixed inset-0 z-[120] flex flex-col bg-[#0E241F]">
+                    <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+                        <div>
+                            <p className="font-bold text-white">
+                                Ride {String(mapRide._id).slice(-10)}
+                                {mapRide.passenger?.name
+                                    ? ` · ${mapRide.passenger.name}`
+                                    : ""}
+                            </p>
+                            <p className="text-sm text-white/70">
+                                {statusNames[mapRide.status] || mapRide.status}
+                                {routeInfo
+                                    ? ` · ${routeInfo.distanceKm} km · ${routeInfo.durationMinutes} min`
+                                    : ""}
+                            </p>
+                            <p className="mt-1 text-xs font-bold text-emerald-300">
+                                Pickup to destination — press Esc to close
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setMapRide(null)}
+                            aria-label="Close fullscreen map"
+                            className="flex items-center gap-2 rounded-xl border border-white/25 px-4 py-2.5 text-sm font-bold text-white"
+                        >
+                            <X size={16} />
+                            Close
+                        </button>
+                    </div>
+                    {pointOf(mapRide.pickup) &&
+                    pointOf(mapRide.destination) ? (
+                        <div ref={mapContainerRef} className="min-h-0 flex-1" />
+                    ) : (
+                        <p className="p-10 text-center text-sm text-white/70">
+                            No location is saved for this ride.
+                        </p>
+                    )}
+                </div>
+            )}
         </AdminShell>
     );
 }

@@ -342,7 +342,8 @@ async function getRides(req, res) {
             Ride.find(filter)
                 .select(
                     "passengerId driverId status vehicleType requestedPrice " +
-                    "finalPrice distance createdAt completedAt settlementStatus"
+                    "finalPrice distance createdAt completedAt settlementStatus " +
+                    "pickup destination stops"
                 )
                 .sort({ createdAt: -1 })
                 .skip((page - 1) * limit)
