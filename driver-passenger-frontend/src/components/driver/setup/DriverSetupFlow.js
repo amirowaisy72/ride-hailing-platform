@@ -28,12 +28,12 @@ export default function DriverSetupFlow({
     vehicle = null,
     status = "PENDING",
     rejectionReason = "",
-    submitted = false,
     uploadingDoc = "",
     savingVehicle = false,
     submitting = false,
     refreshing = false,
     error = "",
+    notice = "",
     onUploadDoc,
     onSaveVehicle,
     onSubmit,
@@ -41,11 +41,12 @@ export default function DriverSetupFlow({
     onBack,
 }) {
     const docsDone = SETUP_DOCS.every((doc) => ready(docs[doc.type]));
-    const waiting = submitted || status === "UNDER_REVIEW";
-    const autoStep = waiting ? 3 : !docsDone ? 0 : !vehicle ? 1 : 2;
+    const needsFix = status === "REJECTED";
+    const waiting = status === "UNDER_REVIEW";
+    const autoStep = waiting || needsFix ? 3 : !docsDone ? 0 : !vehicle ? 1 : 2;
 
     const [picked, setPicked] = useState(null);
-    const step = picked !== null && picked < autoStep ? picked : autoStep;
+    const step = waiting ? 3 : picked !== null && picked < autoStep ? picked : autoStep;
     const doneCount = SETUP_DOCS.filter((doc) => ready(docs[doc.type])).length;
     const nothingYet = doneCount === 0 && !vehicle;
 
@@ -69,7 +70,7 @@ export default function DriverSetupFlow({
                 <DriverHelp />
             </header>
 
-            <Stepper step={step} autoStep={autoStep} onPick={setPicked} />
+            <Stepper step={step} autoStep={autoStep} onPick={setPicked} waiting={waiting} needsFix={needsFix} />
 
             <div key={step} className="sf-rise mx-auto flex w-full max-w-md flex-1 flex-col px-5 pb-[max(28px,env(safe-area-inset-bottom))]">
                 {step === 0 && (
@@ -80,8 +81,10 @@ export default function DriverSetupFlow({
                         uploadingDoc={uploadingDoc}
                         error={error}
                         onUploadDoc={onUploadDoc}
-                        onContinue={() => setPicked(null)}
+                        onContinue={() => setPicked(needsFix ? 1 : null)}
                         canContinue={docsDone}
+                        allowReplace={needsFix}
+                        rejectionReason={rejectionReason}
                     />
                 )}
                 {step === 1 && (
@@ -90,16 +93,20 @@ export default function DriverSetupFlow({
                         saving={savingVehicle}
                         error={error}
                         onSave={onSaveVehicle}
+                        onContinue={() => setPicked(2)}
                     />
                 )}
                 {step === 2 && (
                     <ReviewStep
-                        docs={docs}
                         vehicle={vehicle}
                         submitting={submitting}
                         error={error}
+                        notice={notice}
+                        rejectionReason={needsFix ? rejectionReason : ""}
+                        isRejected={needsFix}
                         onEditDocs={() => setPicked(0)}
                         onEditVehicle={() => setPicked(1)}
+                        onBackToStatus={() => setPicked(null)}
                         onSubmit={onSubmit}
                     />
                 )}
@@ -110,6 +117,7 @@ export default function DriverSetupFlow({
                         refreshing={refreshing}
                         onRefresh={onRefresh}
                         onFix={() => setPicked(0)}
+                        error={error}
                     />
                 )}
             </div>
@@ -117,7 +125,7 @@ export default function DriverSetupFlow({
     );
 }
 
-function Stepper({ step, autoStep, onPick }) {
+function Stepper({ step, autoStep, onPick, waiting, needsFix }) {
     return (
         <nav aria-label="Setup progress" className="mx-auto w-full max-w-md px-5 pb-2 pt-6">
             <p className="mb-3 text-sm font-bold uppercase tracking-wider text-pd-accent-text">
@@ -127,7 +135,7 @@ function Stepper({ step, autoStep, onPick }) {
                 {SETUP_STEPS.map((item, index) => {
                     const done = index < autoStep;
                     const current = index === step;
-                    const clickable = done && index !== step;
+                    const clickable = !waiting && index !== step && (done || (needsFix && index === 3));
 
                     return (
                         <li key={item.id} className="flex flex-1 flex-col items-start last:flex-none">
@@ -185,18 +193,25 @@ function ErrorNote({ message }) {
     );
 }
 
-function DocumentsStep({ docs, doneCount, welcome, uploadingDoc, error, onUploadDoc, onContinue, canContinue }) {
+function DocumentsStep({ docs, doneCount, welcome, uploadingDoc, error, onUploadDoc, onContinue, canContinue, allowReplace, rejectionReason }) {
     return (
         <>
             <StepHeading
-                title={welcome ? "Welcome to Safar" : "Upload your documents"}
+                title={allowReplace ? "Update your documents" : welcome ? "Welcome to Safar" : "Upload your documents"}
                 text={
-                    welcome
-                        ? "Your account is ready. Let us set it up in a few easy steps. First, upload 4 documents."
-                        : `${doneCount} of ${SETUP_DOCS.length} uploaded. Take a clear photo of each one.`
+                    allowReplace
+                        ? "Replace the documents that need changes, then continue."
+                        : welcome
+                            ? "Your account is ready. Let us set it up in a few easy steps. First, upload 4 documents."
+                            : `${doneCount} of ${SETUP_DOCS.length} uploaded. Take a clear photo of each one.`
                 }
             />
             <ErrorNote message={error} />
+            {allowReplace && rejectionReason && (
+                <p className="mb-4 rounded-2xl border border-pd-danger bg-pd-danger-soft px-4 py-3 text-base font-semibold text-pd-danger">
+                    Reason from Safar: {rejectionReason}
+                </p>
+            )}
             <ul className="flex flex-col gap-3">
                 {SETUP_DOCS.map((doc) => (
                     <DocRow
@@ -205,6 +220,7 @@ function DocumentsStep({ docs, doneCount, welcome, uploadingDoc, error, onUpload
                         status={docs[doc.type] || "NONE"}
                         busy={uploadingDoc === doc.type}
                         locked={Boolean(uploadingDoc) && uploadingDoc !== doc.type}
+                        allowReplace={allowReplace && docs[doc.type] !== "APPROVED"}
                         onUpload={onUploadDoc}
                     />
                 ))}
@@ -221,12 +237,21 @@ function DocumentsStep({ docs, doneCount, welcome, uploadingDoc, error, onUpload
     );
 }
 
-function DocRow({ doc, status, busy, locked, onUpload }) {
+function tomorrowDateInputValue() {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const year = tomorrow.getFullYear();
+    const month = String(tomorrow.getMonth() + 1).padStart(2, "0");
+    const day = String(tomorrow.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
+
+function DocRow({ doc, status, busy, locked, allowReplace, onUpload }) {
     const inputRef = useRef(null);
     const [expiry, setExpiry] = useState("");
     const Icon = DOC_ICONS[doc.icon] || FileText;
     const isReady = ready(status);
-    const needsDate = doc.needsExpiry && !isReady;
+    const needsDate = doc.needsExpiry && (!isReady || allowReplace);
     const rejected = status === "REJECTED";
 
     const tone = status === "APPROVED"
@@ -264,14 +289,14 @@ function DocRow({ doc, status, busy, locked, onUpload }) {
                         id={`expiry-${doc.type}`}
                         type="date"
                         value={expiry}
-                        min={new Date().toISOString().slice(0, 10)}
+                        min={tomorrowDateInputValue()}
                         onChange={(event) => setExpiry(event.target.value)}
                         className={inputClass}
                     />
                 </div>
             )}
 
-            {(!isReady || rejected) && (
+            {(!isReady || allowReplace || rejected) && (
                 <>
                     <input ref={inputRef} type="file" accept="image/*,.pdf" capture={undefined} hidden onChange={handleFile} />
                     <button
@@ -283,7 +308,7 @@ function DocRow({ doc, status, busy, locked, onUpload }) {
                         {busy ? (
                             <><Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> Uploading…</>
                         ) : (
-                            <><Camera className="h-5 w-5" aria-hidden="true" /> {needsDate && !expiry ? "Pick the expiry date first" : `Upload ${doc.title}`}</>
+                            <><Camera className="h-5 w-5" aria-hidden="true" /> {needsDate && !expiry ? "Pick the expiry date first" : `${allowReplace && isReady ? "Replace" : "Upload"} ${doc.title}`}</>
                         )}
                     </button>
                 </>
@@ -292,11 +317,19 @@ function DocRow({ doc, status, busy, locked, onUpload }) {
     );
 }
 
-function VehicleStep({ vehicle, saving, error, onSave }) {
-    const [form, setForm] = useState({ ...EMPTY_VEHICLE_FORM });
-    const [part, setPart] = useState(0);
+function VehicleStep({ vehicle, saving, error, onSave, onContinue }) {
+    const [form, setForm] = useState(() => vehicleToForm(vehicle));
+    const [part, setPart] = useState(vehicle ? 1 : 0);
+    const [editingVehicle, setEditingVehicle] = useState(false);
     const [formError, setFormError] = useState("");
     const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+
+    function editVehicle() {
+        setForm(vehicleToForm(vehicle));
+        setPart(1);
+        setEditingVehicle(true);
+        setFormError("");
+    }
 
     function next() {
         if (!form.vehicleType) {
@@ -307,7 +340,7 @@ function VehicleStep({ vehicle, saving, error, onSave }) {
         setPart(1);
     }
 
-    function save(event) {
+    async function save(event) {
         event.preventDefault();
         const message = validateVehicleForm(form);
         if (message) {
@@ -315,17 +348,24 @@ function VehicleStep({ vehicle, saving, error, onSave }) {
             return;
         }
         setFormError("");
-        onSave?.({
+        const saved = await onSave?.({
             ...form,
             registrationNumber: form.registrationNumber.trim().toUpperCase(),
         });
+        if (saved && vehicle) setEditingVehicle(false);
     }
 
-    if (vehicle) {
+    if (vehicle && !editingVehicle) {
         return (
             <>
-                <StepHeading title="Your vehicle is added" text="You can change it later from My Vehicles." />
+                <StepHeading title="Your vehicle is added" text="Continue to review, or edit the vehicle details." />
                 <VehicleSummary vehicle={vehicle} />
+                <div className="mt-auto flex flex-col gap-3 pt-6">
+                    <button type="button" className={primaryButton} onClick={onContinue}>Continue</button>
+                    <button type="button" onClick={editVehicle} className="min-h-12 rounded-2xl border border-pd-line-strong bg-pd-surface text-base font-extrabold text-pd-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pd-accent">
+                        Edit
+                    </button>
+                </div>
             </>
         );
     }
@@ -358,8 +398,13 @@ function VehicleStep({ vehicle, saving, error, onSave }) {
                         );
                     })}
                 </div>
-                <div className="mt-auto pt-6">
+                <div className="mt-auto flex flex-col gap-3 pt-6">
                     <button type="button" className={primaryButton} onClick={next}>Continue</button>
+                    {vehicle && editingVehicle && (
+                        <button type="button" onClick={() => setEditingVehicle(false)} className="min-h-12 text-base font-bold text-pd-muted">
+                            Cancel editing
+                        </button>
+                    )}
                 </div>
             </>
         );
@@ -367,8 +412,16 @@ function VehicleStep({ vehicle, saving, error, onSave }) {
 
     return (
         <form onSubmit={save} className="flex flex-1 flex-col">
-            <StepHeading title="Tell us about your vehicle" text="Only the number plate is a must." />
+            <StepHeading
+                title={vehicle && editingVehicle ? "Edit your vehicle" : "Tell us about your vehicle"}
+                text="Only the number plate is a must."
+            />
             <ErrorNote message={formError || error} />
+            {vehicle && editingVehicle && (
+                <p className="mb-4 rounded-2xl border border-pd-line bg-pd-surface px-4 py-3 text-sm leading-relaxed text-pd-muted">
+                    The current vehicle API registers a replacement; it cannot update an existing vehicle. Use a different plate to avoid a duplicate registration.
+                </p>
+            )}
             <div className="flex flex-col gap-4">
                 <Field id="veh-plate" label="Number plate" value={form.registrationNumber} onChange={(v) => set("registrationNumber", v.toUpperCase())} placeholder="e.g. LEA-1234" autoCapitalize="characters" />
                 <div className="grid grid-cols-2 gap-3">
@@ -401,11 +454,17 @@ function VehicleStep({ vehicle, saving, error, onSave }) {
             </div>
             <div className="mt-auto flex flex-col gap-3 pt-6">
                 <button type="submit" disabled={saving} className={primaryButton}>
-                    {saving ? <><Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> Saving…</> : "Save vehicle"}
+                    {saving ? <><Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> Saving…</> : vehicle && editingVehicle ? "Register replacement vehicle" : "Save vehicle"}
                 </button>
-                <button type="button" onClick={() => setPart(0)} className="min-h-12 text-base font-bold text-pd-muted">
-                    Change vehicle type
-                </button>
+                {vehicle && editingVehicle ? (
+                    <button type="button" onClick={() => setEditingVehicle(false)} className="min-h-12 text-base font-bold text-pd-muted">
+                        Cancel editing
+                    </button>
+                ) : (
+                    <button type="button" onClick={() => setPart(0)} className="min-h-12 text-base font-bold text-pd-muted">
+                        Change vehicle type
+                    </button>
+                )}
             </div>
         </form>
     );
@@ -418,6 +477,24 @@ function Field({ id, label, value, onChange, ...rest }) {
             <input id={id} value={value} onChange={(event) => onChange(event.target.value)} className={inputClass} {...rest} />
         </div>
     );
+}
+
+function vehicleToForm(vehicle) {
+    if (!vehicle) return { ...EMPTY_VEHICLE_FORM };
+
+    const color = COLOR_CHOICES.find(
+        (choice) => choice.name.toLowerCase() === String(vehicle.color || "").toLowerCase()
+    )?.name || vehicle.color || "";
+
+    return {
+        ...EMPTY_VEHICLE_FORM,
+        vehicleType: vehicle.vehicleType || "",
+        registrationNumber: vehicle.registrationNumber || "",
+        make: vehicle.make || "",
+        model: vehicle.model || "",
+        color,
+        modelYear: vehicle.modelYear ? String(vehicle.modelYear) : "",
+    };
 }
 
 function VehicleSummary({ vehicle }) {
@@ -438,11 +515,21 @@ function VehicleSummary({ vehicle }) {
     );
 }
 
-function ReviewStep({ docs, vehicle, submitting, error, onEditDocs, onEditVehicle, onSubmit }) {
+function ReviewStep({ vehicle, submitting, error, notice, rejectionReason, isRejected, onEditDocs, onEditVehicle, onBackToStatus, onSubmit }) {
     return (
         <>
             <StepHeading title="Everything look right?" text="Check once, then send it to us." />
             <ErrorNote message={error} />
+            {rejectionReason && (
+                <p className="mb-4 rounded-2xl border border-pd-danger bg-pd-danger-soft px-4 py-3 text-base font-semibold text-pd-danger">
+                    Reason from Safar: {rejectionReason}
+                </p>
+            )}
+            {notice && (
+                <p role="status" className="mb-4 rounded-2xl border border-pd-info bg-pd-info-soft px-4 py-3 text-base font-semibold text-pd-info">
+                    {notice}
+                </p>
+            )}
             <section aria-label="Documents" className="rounded-3xl border border-pd-line bg-pd-surface p-4 shadow-pd">
                 <div className="mb-2 flex items-center justify-between">
                     <h2 className="text-base font-extrabold">Documents</h2>
@@ -466,27 +553,31 @@ function ReviewStep({ docs, vehicle, submitting, error, onEditDocs, onEditVehicl
                 </div>
                 {vehicle && <VehicleSummary vehicle={vehicle} />}
             </section>
-            <div className="mt-auto pt-6">
+            <div className="mt-auto flex flex-col gap-3 pt-6">
                 <button type="button" onClick={onSubmit} disabled={submitting} className={primaryButton}>
                     {submitting ? <><Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> Sending…</> : <><Upload className="h-5 w-5" aria-hidden="true" /> Submit for checking</>}
                 </button>
+                {isRejected && (
+                    <button type="button" onClick={onBackToStatus} className="min-h-12 text-base font-bold text-pd-muted">
+                        Back to application status
+                    </button>
+                )}
             </div>
         </>
     );
 }
 
-function ApprovalStep({ status, rejectionReason, refreshing, onRefresh, onFix }) {
+function ApprovalStep({ status, rejectionReason, refreshing, onRefresh, onFix, error }) {
     const rejected = status === "REJECTED";
 
     if (rejected) {
         return (
             <>
                 <StepHeading title="We need a small fix" text="Some details were not accepted. Please check and send again." />
-                {rejectionReason && (
-                    <p className="mb-4 rounded-2xl border border-pd-danger bg-pd-danger-soft px-4 py-3 text-base font-semibold text-pd-danger">
-                        {rejectionReason}
-                    </p>
-                )}
+                <ErrorNote message={error} />
+                <p className="mb-4 rounded-2xl border border-pd-danger bg-pd-danger-soft px-4 py-3 text-base font-semibold text-pd-danger">
+                    {rejectionReason || "Safar has asked you to update your application. Please review your documents and send them again."}
+                </p>
                 <div className="mt-auto flex flex-col gap-3 pt-6">
                     <button type="button" onClick={onFix} className={primaryButton}>Fix my documents</button>
                     <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
@@ -517,6 +608,7 @@ function ApprovalStep({ status, rejectionReason, refreshing, onRefresh, onFix })
                 ))}
             </ul>
             <div className="mt-auto pt-6">
+                <ErrorNote message={error} />
                 <RefreshButton refreshing={refreshing} onRefresh={onRefresh} />
             </div>
         </>

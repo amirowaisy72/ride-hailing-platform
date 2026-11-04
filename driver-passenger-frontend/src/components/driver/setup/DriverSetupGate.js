@@ -1,79 +1,88 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import useSWR from "swr";
 import { apiRequest } from "@/lib/api";
+import { applyForService } from "@/lib/driverServicesService";
 import DriverSetupFlow from "@/components/driver/setup/DriverSetupFlow";
 import { SETUP_DOCS } from "@/components/driver/setup/setupConfig";
-
-const API_URL =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+import {
+    fetchDriverSetupDetails,
+    fetchDriverStatus,
+    getDriverSetupDetailsKey,
+    getDriverStatusKey,
+} from "@/components/driver/setup/setupData";
 
 const readSet = (key) => {
     try {
-        return JSON.parse(window.localStorage.getItem(key) || "[]");
+        const value = JSON.parse(window.localStorage.getItem(key) || "[]");
+        return Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
     } catch {
         return [];
     }
 };
 
-// Connects the guided setup UI to the existing driver APIs: document
-// upload, vehicle registration and the status endpoints. No new
-// endpoints or request shapes are used.
-export default function DriverSetupGate({ token, userId, driver, onApproved }) {
-    const docsKey = `safar-setup-docs-${userId}`;
-    const submittedKey = `safar-setup-submitted-${userId}`;
+const writeSet = (key, value) => {
+    try {
+        window.localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+        // Server state remains authoritative when browser storage is unavailable.
+    }
+};
 
-    const [approvedDocs, setApprovedDocs] = useState([]);
-    const [sentDocs, setSentDocs] = useState([]);
-    const [vehicle, setVehicle] = useState(null);
-    const [submitted, setSubmitted] = useState(false);
-    const [status, setStatus] = useState(driver?.verificationStatus || "PENDING");
-    const [rejectionReason, setRejectionReason] = useState(driver?.rejectionReason || "");
-    const [loaded, setLoaded] = useState(false);
+const displayStatus = (status) =>
+    String(status || "UNKNOWN").replaceAll("_", " ").toLowerCase();
+
+// The existing driver APIs expose approved required documents through
+// `missingDocuments`, but do not expose a driver-facing list of pending or
+// rejected document rows. This device's upload response is therefore only a
+// fallback for unapproved uploads; on a new device, pending uploads cannot be
+// distinguished from documents that were never sent. The documents endpoint
+// also creates rows rather than replacing them, so a rejected re-upload may
+// create another row until the backend adds a list/replace API.
+export default function DriverSetupGate({ token, userId, driver }) {
+    const docsKey = `safar-setup-docs-${userId}`;
+    const [sentDocs, setSentDocs] = useState(() => readSet(docsKey));
     const [uploadingDoc, setUploadingDoc] = useState("");
     const [savingVehicle, setSavingVehicle] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
-    const [error, setError] = useState("");
+    const [actionError, setActionError] = useState("");
+    const [notice, setNotice] = useState("");
 
-    const load = useCallback(async () => {
-        const [statusData, vehicleData, serviceData] = await Promise.all([
-            apiRequest("/drivers/me/status", { token }),
-            apiRequest("/drivers/me/vehicles", { token }),
-            apiRequest("/drivers/me/services", { token }),
-        ]);
+    const {
+        data: statusData,
+        error: statusError,
+        isLoading: statusLoading,
+        mutate: mutateStatus,
+    } = useSWR(getDriverStatusKey(token), fetchDriverStatus, {
+        revalidateOnFocus: true,
+    });
+    const {
+        data: setupData,
+        error: setupError,
+        isLoading: setupLoading,
+        mutate: mutateSetup,
+    } = useSWR(getDriverSetupDetailsKey(token), fetchDriverSetupDetails, {
+        revalidateOnFocus: true,
+    });
 
-        const next = statusData.driver;
-        setStatus(next?.verificationStatus || "PENDING");
-        setRejectionReason(next?.rejectionReason || "");
-        setVehicle((vehicleData.vehicles || [])[0] || null);
+    const serverDriver = statusData?.driver || driver;
+    const status = serverDriver?.verificationStatus || "PENDING";
+    const rejectionReason = serverDriver?.rejectionReason || "";
+    const vehicle = setupData?.vehicleData?.vehicles?.[0] || null;
+    const ride = setupData?.serviceData?.services?.find((item) => item.service === "RIDE");
+    const requiredDocs = ride?.requiredDocuments || SETUP_DOCS.map((doc) => doc.type);
+    const missingDocs = new Set(ride?.missingDocuments || requiredDocs);
+    const serverApprovedDocs = new Set(
+        requiredDocs.filter((type) => !missingDocs.has(type))
+    );
+    const error = actionError || statusError?.message || setupError?.message || "";
 
-        const ride = (serviceData.services || []).find((item) => item.service === "RIDE");
-        const missing = ride?.missingDocuments || SETUP_DOCS.map((doc) => doc.type);
-        setApprovedDocs(SETUP_DOCS.map((doc) => doc.type).filter((type) => !missing.includes(type)));
-
-        if (next?.verificationStatus === "APPROVED") onApproved?.(next);
-    }, [token, onApproved]);
-
-    useEffect(() => {
-        setSentDocs(readSet(docsKey));
-        setSubmitted(window.localStorage.getItem(submittedKey) === "1");
-
-        let cancelled = false;
-        load()
-            .catch((err) => !cancelled && setError(err.message))
-            .finally(() => !cancelled && setLoaded(true));
-
-        return () => {
-            cancelled = true;
-        };
-    }, [docsKey, submittedKey, load]);
-
-    const underReview = status === "UNDER_REVIEW";
     const docs = {};
     for (const doc of SETUP_DOCS) {
-        if (approvedDocs.includes(doc.type)) docs[doc.type] = "APPROVED";
-        else if (sentDocs.includes(doc.type) || underReview) docs[doc.type] = "UPLOADED";
+        if (serverApprovedDocs.has(doc.type)) docs[doc.type] = "APPROVED";
+        else if (status === "UNDER_REVIEW" || sentDocs.includes(doc.type)) docs[doc.type] = "UPLOADED";
         else docs[doc.type] = "NONE";
     }
 
@@ -81,7 +90,8 @@ export default function DriverSetupGate({ token, userId, driver, onApproved }) {
         if (!file || uploadingDoc) return;
 
         setUploadingDoc(type);
-        setError("");
+        setActionError("");
+        setNotice("");
 
         try {
             const formData = new FormData();
@@ -92,32 +102,29 @@ export default function DriverSetupGate({ token, userId, driver, onApproved }) {
             }
             formData.append("document", file);
 
-            const response = await fetch(`${API_URL}/drivers/me/documents`, {
+            const result = await apiRequest("/drivers/me/documents", {
                 method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
+                token,
                 body: formData,
             });
-            const result = await response.json();
-
-            if (!response.ok || !result.success) {
-                throw new Error(result.message || "Document upload failed");
-            }
-
-            const nextSent = Array.from(new Set([...sentDocs, type]));
+            const uploadedType = result.document?.documentType || type;
+            const nextSent = Array.from(new Set([...sentDocs, uploadedType]));
             setSentDocs(nextSent);
-            window.localStorage.setItem(docsKey, JSON.stringify(nextSent));
-        } catch (err) {
-            setError(err.message);
+            writeSet(docsKey, nextSent);
+            await Promise.all([mutateStatus(), mutateSetup()]);
+        } catch (uploadError) {
+            setActionError(uploadError.message);
         } finally {
             setUploadingDoc("");
         }
     }
 
     async function saveVehicle(form) {
-        if (savingVehicle) return;
+        if (savingVehicle) return false;
 
         setSavingVehicle(true);
-        setError("");
+        setActionError("");
+        setNotice("");
 
         try {
             await apiRequest("/drivers/me/vehicles", {
@@ -132,34 +139,71 @@ export default function DriverSetupGate({ token, userId, driver, onApproved }) {
                     ...(form.modelYear ? { modelYear: Number(form.modelYear) } : {}),
                 }),
             });
-            await load();
-        } catch (err) {
-            setError(err.message);
+
+            try {
+                await mutateSetup();
+            } catch (refreshError) {
+                setActionError(`Vehicle saved, but could not refresh the list: ${refreshError.message}`);
+            }
+            return true;
+        } catch (saveError) {
+            setActionError(saveError.message);
+            return false;
         } finally {
             setSavingVehicle(false);
         }
     }
 
-    function submit() {
-        setSubmitting(true);
-        window.localStorage.setItem(submittedKey, "1");
-        setSubmitted(true);
-        setSubmitting(false);
-    }
-
-    async function refresh() {
+    async function refresh({ preserveError = false } = {}) {
         setRefreshing(true);
-        setError("");
+        if (!preserveError) setActionError("");
+        setNotice("");
+
         try {
-            await load();
-        } catch (err) {
-            setError(err.message);
+            const [latestStatus] = await Promise.all([
+                mutateStatus(),
+                mutateSetup(),
+            ]);
+            return latestStatus?.driver || null;
+        } catch (refreshError) {
+            setActionError(refreshError.message);
+            return null;
         } finally {
             setRefreshing(false);
         }
     }
 
-    if (!loaded) {
+    async function submit() {
+        setSubmitting(true);
+        setActionError("");
+        setNotice("");
+
+        let applicationMessage = "";
+        let applicationError = "";
+        try {
+            const result = await applyForService("RIDE", {}, token);
+            applicationMessage = result.message || "Your application was saved.";
+        } catch (submitError) {
+            applicationError = submitError.message;
+        }
+
+        const latestDriver = await refresh({ preserveError: Boolean(applicationError) });
+        if (applicationError) {
+            setActionError(applicationError);
+        } else if (latestDriver) {
+            setNotice(
+                `${applicationMessage} Current driver status: ${displayStatus(latestDriver.verificationStatus)}.`
+            );
+        }
+
+        setSubmitting(false);
+    }
+
+    async function refreshStatus() {
+        await refresh();
+    }
+
+    if (statusLoading || setupLoading) {
         return <main className="min-h-dvh bg-pd-bg" aria-busy="true" />;
     }
 
@@ -169,16 +213,16 @@ export default function DriverSetupGate({ token, userId, driver, onApproved }) {
             vehicle={vehicle}
             status={status}
             rejectionReason={rejectionReason}
-            submitted={submitted && status !== "REJECTED"}
             uploadingDoc={uploadingDoc}
             savingVehicle={savingVehicle}
             submitting={submitting}
             refreshing={refreshing}
             error={error}
+            notice={notice}
             onUploadDoc={uploadDoc}
             onSaveVehicle={saveVehicle}
             onSubmit={submit}
-            onRefresh={refresh}
+            onRefresh={refreshStatus}
         />
     );
 }

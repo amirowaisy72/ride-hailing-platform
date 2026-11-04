@@ -28,7 +28,6 @@ import { DriverToast } from "@/components/driver/DriverMapControls";
 import useDriverNotifications from "@/components/driver/useDriverNotifications";
 import { useAuth } from "@/context/AuthContext";
 import { BRAND } from "@/config/brand";
-import DriverSetupGate from "@/components/driver/setup/DriverSetupGate";
 import { apiRequest } from "@/lib/api";
 import { submitDriverOffer } from "@/lib/driverRideService";
 import { getMyVehicles, selectVehicle, updateOnlineStatus, updateDriverLocation } from "@/lib/vehicleService";
@@ -1340,17 +1339,6 @@ function DriverDashboard() {
             <button type="button" className="dx-btn dx-btn-lime dx-btn-xl" onClick={finishRide}>Back to ride requests <ArrowRight size={18} /></button>
         </div>
     );
-    const needsSetup = !loading && driverProfile && ["PENDING", "UNDER_REVIEW", "REJECTED"].includes(driverProfile.verificationStatus);
-    if (needsSetup) {
-        return (
-            <DriverSetupGate
-                token={token}
-                userId={user?._id || user?.id || "driver"}
-                driver={driverProfile}
-                onApproved={setDriverProfile}
-            />
-        );
-    }
     return (
         <main className="driver-live-home dx-home" data-ride={rideInProgress ? "active" : "idle"}>
             <div className="absolute inset-0">
