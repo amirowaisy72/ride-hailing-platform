@@ -6,6 +6,8 @@ const PushDevice = require("../models/PushDevice");
 const IntegrationSetting = require("../models/IntegrationSetting");
 const BulkNotification = require("../models/BulkNotification");
 const LastAdminNotification = require("../models/LastAdminNotification");
+const UserAppVersion = require("../models/UserAppVersion");
+const AppVersionConfig = require("../models/AppVersionConfig");
 const { sendPushToUser } = require("../services/pushService");
 
 const MAX_BULK_RECIPIENTS = 500;
@@ -19,6 +21,7 @@ function parseFilters(body) {
     const driverDocuments =
         raw.driverDocuments === "NO_DOCUMENTS" ? "NO_DOCUMENTS" : "ALL";
     const onlyNotBulkNotified = raw.onlyNotBulkNotified === true;
+    const onlyNotUpdated = raw.onlyNotUpdated === true;
     let lastHours = null;
     if (raw.lastHours !== "" && raw.lastHours !== null && raw.lastHours !== undefined) {
         const parsed = Number(raw.lastHours);
@@ -39,7 +42,7 @@ function parseFilters(body) {
         }
         notNotifiedInLastHours = parsed;
     }
-    return { audience, driverDocuments, onlyNotBulkNotified, lastHours, notNotifiedInLastHours };
+    return { audience, driverDocuments, onlyNotBulkNotified, onlyNotUpdated, lastHours, notNotifiedInLastHours };
 }
 
 function displayName(user) {
@@ -115,6 +118,47 @@ async function findRecipients(filter) {
         users = users.filter((user) => !recentlySet.has(String(user._id)));
     }
 
+    // "Not on the latest app version": keep users whose last reported
+    // version is older than the admin-set latest version, plus users
+    // with no version row at all (builds older than the reporting
+    // feature report nothing, so no row means an old build). Users
+    // already on the latest version are excluded. When no latest
+    // version is configured anywhere, only the no-row users match.
+    let latestVersionCode = null;
+    let latestVersionName = null;
+    if (filter.onlyNotUpdated) {
+        const config = await AppVersionConfig.findOne({
+            platform: "android",
+        })
+            .select("latestVersionCode latestVersionName")
+            .lean();
+        if (config) {
+            latestVersionCode = config.latestVersionCode;
+            latestVersionName = config.latestVersionName;
+        } else {
+            const newest = await UserAppVersion.findOne({})
+                .sort({ appVersionCode: -1 })
+                .select("appVersionCode")
+                .lean();
+            if (newest) {
+                latestVersionCode = newest.appVersionCode;
+            }
+        }
+        const rows = await UserAppVersion.find({
+            userId: { $in: users.map((user) => user._id) },
+        })
+            .select("userId appVersionCode")
+            .lean();
+        const versionByUser = new Map(
+            rows.map((row) => [String(row.userId), row.appVersionCode])
+        );
+        users = users.filter((user) => {
+            const reported = versionByUser.get(String(user._id));
+            if (reported === undefined) return true;
+            return latestVersionCode !== null && reported < latestVersionCode;
+        });
+    }
+
     const userIds = users.map((user) => user._id);
     const deviceCounts = userIds.length
         ? await PushDevice.aggregate([
@@ -148,6 +192,8 @@ async function findRecipients(filter) {
         totalMatched: users.length,
         pushEnabled,
         skippedNoDeviceCount,
+        latestVersionCode,
+        latestVersionName,
     };
 }
 
@@ -157,8 +203,13 @@ async function previewBulkNotification(req, res) {
         if (filter.error) {
             return res.status(400).json({ success: false, message: filter.error });
         }
-        const { totalMatched, pushEnabled, skippedNoDeviceCount } =
-            await findRecipients(filter);
+        const {
+            totalMatched,
+            pushEnabled,
+            skippedNoDeviceCount,
+            latestVersionCode,
+            latestVersionName,
+        } = await findRecipients(filter);
         const sample = pushEnabled.slice(0, 20);
         const lastRows = sample.length
             ? await LastAdminNotification.find({
@@ -176,6 +227,8 @@ async function previewBulkNotification(req, res) {
             totalMatched,
             pushEnabledCount: pushEnabled.length,
             skippedNoDeviceCount,
+            latestVersionCode: filter.onlyNotUpdated ? latestVersionCode : null,
+            latestVersionName: filter.onlyNotUpdated ? latestVersionName : null,
             // Preview is capped at 20 rows; the send itself is capped at 500.
             sample: sample.map((user) => {
                 const last = lastByUser.get(user.id);

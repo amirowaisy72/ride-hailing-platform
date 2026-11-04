@@ -21,6 +21,7 @@ export default function CustomNotificationsPage() {
     const [bulkLastHours, setBulkLastHours] = useState("");
     const [bulkDocuments, setBulkDocuments] = useState("ALL");
     const [bulkNotNotifiedHours, setBulkNotNotifiedHours] = useState("");
+    const [bulkOnlyNotUpdated, setBulkOnlyNotUpdated] = useState(false);
     const [bulkTitle, setBulkTitle] = useState("");
     const [bulkBody, setBulkBody] = useState("");
     const [bulkPreview, setBulkPreview] = useState(null);
@@ -36,6 +37,7 @@ export default function CustomNotificationsPage() {
             lastHours: bulkLastHours === "" ? null : Number(bulkLastHours),
             driverDocuments: bulkDocuments,
             onlyNotBulkNotified: false,
+            onlyNotUpdated: bulkOnlyNotUpdated,
             notNotifiedInLastHours:
                 bulkNotNotifiedHours === "" ? null : Number(bulkNotNotifiedHours),
         };
@@ -397,6 +399,24 @@ export default function CustomNotificationsPage() {
                             </span>
                         </label>
 
+                        <label className="flex items-start gap-3 text-sm font-bold">
+                            <input
+                                type="checkbox"
+                                checked={bulkOnlyNotUpdated}
+                                onChange={(event) => setBulkOnlyNotUpdated(event.target.checked)}
+                                className="mt-1"
+                            />
+                            <span>
+                                Only users NOT on the latest app version
+                                <span className="block font-normal text-slate-500">
+                                    Users still on an older version, plus users who
+                                    never reported a version (older builds), are
+                                    included. Users already on the latest version
+                                    are excluded.
+                                </span>
+                            </span>
+                        </label>
+
                         <button
                             type="submit"
                             disabled={bulkPreviewing}
@@ -425,6 +445,13 @@ export default function CustomNotificationsPage() {
                                 {bulkPreview.pushEnabledCount} · Skipped (no device):{" "}
                                 {bulkPreview.skippedNoDeviceCount}
                             </p>
+                            {bulkPreview.filter?.onlyNotUpdated && (
+                                <p className="text-sm text-slate-500">
+                                    {bulkPreview.latestVersionCode
+                                        ? `Latest version: ${bulkPreview.latestVersionName || ""} (code ${bulkPreview.latestVersionCode}). Only users below it, plus users with no reported version, match.`
+                                        : "Latest version: not set anywhere — only users with no reported version match."}
+                                </p>
+                            )}
                             {bulkPreview.sample.length > 0 && (
                                 <div className="divide-y rounded-xl border">
                                     {bulkPreview.sample.map((user) => (
