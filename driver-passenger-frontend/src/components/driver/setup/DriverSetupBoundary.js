@@ -7,6 +7,7 @@ import {
     getDriverStatusKey,
 } from "@/components/driver/setup/setupData";
 import DriverSetupGate from "@/components/driver/setup/DriverSetupGate";
+import SafarLoader from "@/components/SafarLoader";
 
 export default function DriverSetupBoundary({ children }) {
     const { user, token, loading: authLoading } = useAuth();
@@ -34,11 +35,7 @@ export default function DriverSetupBoundary({ children }) {
     }
 
     if (isLoading) {
-        return (
-            <main className="flex min-h-dvh items-center justify-center bg-pd-bg px-6 text-pd-muted" aria-busy="true">
-                <p role="status" className="text-base font-semibold">Checking your driver status…</p>
-            </main>
-        );
+        return <SafarLoader />;
     }
 
     if (error?.status === 404) return children;

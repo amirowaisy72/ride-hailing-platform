@@ -5,6 +5,7 @@ import useSWR from "swr";
 import { apiRequest } from "@/lib/api";
 import { applyForService } from "@/lib/driverServicesService";
 import DriverSetupFlow from "@/components/driver/setup/DriverSetupFlow";
+import SafarLoader from "@/components/SafarLoader";
 import { SETUP_DOCS } from "@/components/driver/setup/setupConfig";
 import {
     fetchDriverSetupDetails,
@@ -204,7 +205,7 @@ export default function DriverSetupGate({ token, userId, driver }) {
     }
 
     if (statusLoading || setupLoading) {
-        return <main className="min-h-dvh bg-pd-bg" aria-busy="true" />;
+        return <SafarLoader />;
     }
 
     return (

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import SafarLoader from "@/components/SafarLoader";
 
 // AuthGuard now accepts either a single `role` (existing call sites
 // unchanged) or a `roles` array. With neither, it only requires a
@@ -27,11 +28,7 @@ export default function AuthGuard({ role, roles, children }) {
     }, [user, loading, allowed, router]);
 
     if (loading || !user || !allowed) {
-        return (
-            <div className="flex min-h-screen items-center justify-center">
-                Loading...
-            </div>
-        );
+        return <SafarLoader />;
     }
 
     return children;
