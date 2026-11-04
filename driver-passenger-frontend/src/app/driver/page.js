@@ -12,7 +12,8 @@ import {
     stopDriverBackgroundGPS
 } from "@/lib/backgroundDriverLocation";
 import AuthGuard from "@/components/AuthGuard";
-import RideMap from "@/components/RideMap";
+import DriverMap from "@/components/driver/map/DriverMap";
+import NavigationBanner from "@/components/driver/map/NavigationBanner";
 import { reverseGeocode } from "@/lib/locationService";
 import RideChat from "@/components/RideChat";
 import ParcelActivityBar from "@/components/ParcelActivityBar";
@@ -839,10 +840,6 @@ function DriverDashboard() {
     const completeBlocked = selectedRide?.status === "TRIP_STARTED" && (pendingStop || Boolean(selectedRide?.stopWaitingSince));
     const userId = user?._id || user?.id;
     const firstName = user?.firstName || "Driver";
-    const turnDistance = formatMeters(navigationInfo?.stepDistanceMeters);
-    const etaClock = navigationInfo?.durationMinutes
-        ? new Date(clock + navigationInfo.durationMinutes * 60000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-        : null;
     /* ---------- Sheet content builders ---------- */
     const statusPill = (
         <span className="dx-status" data-on={isOnline}>
@@ -1277,27 +1274,33 @@ function DriverDashboard() {
                         📦 Parcel Assigned! Tap to manage delivery →
                     </Link>
                 )}
-                <RideMap
-                    userLocation={location}
+                <DriverMap
                     locateRequest={locateRequest}
                     destination={nextTarget}
+                    targetKind={selectedRide?.status === "TRIP_STARTED" ? "destination" : "pickup"}
                     navigationMode={rideInProgress}
                     driverLocation={location}
                     vehicleType={activeVehicle?.vehicleType || null}
                     vehicleColor={activeVehicle?.color || null}
-                    followDriver={navigating}
                     onRouteUpdate={setNavigationInfo}
                     sheetRatio={sheetRatio}
-                    rideRequestPoints={isOnline && isAvailable && !rideInProgress ? requests.map((ride) => ({ id: ride.rideId, point: ride.pickup })) : []}
-                    showNavigationControl={false}
-                    stops={[]}
+                    selectedRideId={focusRideId}
+                    onRideSelect={openRequest}
+                    rideRequests={isOnline && isAvailable && !rideInProgress ? requests.map((ride) => ({
+                        id: ride.rideId,
+                        point: ride.pickup,
+                        fare: ride.requestedPrice ? money(ride.requestedPrice) : "",
+                        label: placeText(ride.pickup),
+                    })) : []}
                 />
             </div>
-            {/* Minimal passenger-style map controls: menu at top-left, GPS bottom-right. */}
-            {rideInProgress && navigating && navigationInfo?.nextStep && (
-                <div className="pointer-events-none absolute left-[76px] right-4 top-[calc(max(16px,env(safe-area-inset-top)))] z-20 rounded-xl bg-pd-ink/90 px-3 py-2 text-pd-ink-text shadow-md">
-                    <p className="truncate text-xs font-semibold">{turnDistance ? `${turnDistance} · ` : ""}{navigationInfo.nextStep}</p>
-                </div>
+            {/* Menu sits at top-left; turn-by-turn guidance fills the rest of the top while a ride is active. */}
+            {rideInProgress && navigating && (
+                <NavigationBanner
+                    info={navigationInfo}
+                    targetKind={selectedRide?.status === "TRIP_STARTED" ? "destination" : "pickup"}
+                    className="pointer-events-none absolute left-[76px] right-3 top-[calc(max(16px,env(safe-area-inset-top)))] z-20"
+                />
             )}
             <div className="absolute left-4 top-[calc(max(16px,env(safe-area-inset-top)))] z-50">
                 <button type="button" aria-label="Open driver menu" aria-expanded={mapMenuOpen}
