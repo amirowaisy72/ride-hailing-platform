@@ -7,7 +7,7 @@ import {
     Trash2, ChevronUp, Clock, Crosshair, LocateFixed,
     Map as MapIcon, MapPin, Minimize2, Minus, Navigation, Plus, Radio, Route as RouteIcon,
     ShieldCheck, Star, UserRound, Users, Volume2, VolumeX, X, Car, Menu, MessageCircle,
-    ChevronRight, Package, ShoppingBag,
+    ChevronRight, Package, ShoppingBag, ArrowLeft, Briefcase, House,
 } from "lucide-react";
 import { Geolocation } from "@capacitor/geolocation";
 import AuthGuard from "@/components/AuthGuard";
@@ -301,6 +301,7 @@ function PassengerDashboard() {
     const [mapInteracting, setMapInteracting] = useState(false);
     const [mapChatOpen, setMapChatOpen] = useState(false);
     const [bookingOpen, setBookingOpen] = useState(false);
+    const [stepState, setStepState] = useState({ step: "where", whereKey: null });
     const [menuOpen, setMenuOpen] = useState(false);
     const [manualPickup, setManualPickup] = useState(false);
     const [mapPickTarget, setMapPickTarget] = useState(null);
@@ -392,6 +393,22 @@ function PassengerDashboard() {
     const destinationSearchMode = Boolean(bookingSheetSearchStyle && destinationFocused && !destinationSelected);
     const [route, setRoute] = useState(null);
     const [routeLoading, setRouteLoading] = useState(false);
+    // A step only counts while the where-inputs it was chosen for are still
+    // current, so editing pickup/destination/stops returns to the first
+    // step. The route object itself is NOT the key: it is rebuilt on
+    // trip-type changes and GPS updates, which must not throw the user back
+    // to step 1 mid-flow. Coordinates are rounded (~11 m) so GPS jitter
+    // does not count as an edit.
+    const roundCoord = (point) => point
+        ? [Number(point.latitude).toFixed(4), Number(point.longitude).toFixed(4)]
+        : null;
+    const whereKey = JSON.stringify([
+        roundCoord(userLocation),
+        roundCoord(destination),
+        stops.map((stop) => roundCoord(stop)),
+    ]);
+    const bookStep = stepState.whereKey === whereKey ? stepState.step : "where";
+    const goStep = (step) => setStepState({ step, whereKey });
     const [vehicleType, setVehicleType] = useState("CAR_NON_AC");
     const [tripType, setTripType] = useState("ONE_WAY");
     const [passengerCount, setPassengerCount] = useState(1);
@@ -1086,13 +1103,13 @@ function PassengerDashboard() {
             <style>{MOTION_STYLES}</style>
 
             {deletingPlace && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/75 px-5 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-pd-scrim px-5 backdrop-blur-sm">
                     <div
                         role="alertdialog"
                         aria-modal="true"
                         aria-labelledby="delete-place-title"
                         aria-describedby="delete-place-description"
-                        className="w-full max-w-sm rounded-[28px] border border-[#373B44] bg-[#202329] p-6 text-white shadow-2xl"
+                        className="w-full max-w-sm rounded-[28px] border border-pd-line bg-pd-surface p-6 text-pd-text shadow-2xl"
                     >
                         <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10">
                             <Trash2 size={26} className="text-pd-danger" />
@@ -1102,9 +1119,9 @@ function PassengerDashboard() {
                             Remove saved place?
                         </h2>
 
-                        <p id="delete-place-description" className="mt-2 text-sm leading-6 text-[#AEB4BF]">
+                        <p id="delete-place-description" className="mt-2 text-sm leading-6 text-pd-muted">
                             Are you sure you want to remove{" "}
-                            <span className="font-bold text-white">
+                            <span className="font-bold text-pd-text">
                                 {deletingPlace.name}
                             </span>
                             ? You can save it again later.
@@ -1115,7 +1132,7 @@ function PassengerDashboard() {
                                 type="button"
                                 disabled={deleteBusy}
                                 onClick={() => setDeletingPlace(null)}
-                                className="flex-1 rounded-xl bg-[#343941] py-3.5 text-sm font-bold text-white disabled:opacity-50"
+                                className="flex-1 rounded-xl bg-pd-surface-2 py-3.5 text-sm font-bold text-pd-text disabled:opacity-50"
                             >
                                 Cancel
                             </button>
@@ -1160,7 +1177,7 @@ function PassengerDashboard() {
             )}
 
             {editingPlace && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 px-5 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-pd-scrim px-5 backdrop-blur-sm">
                     <form
                         onSubmit={async (e) => {
                             e.preventDefault();
@@ -1201,7 +1218,7 @@ function PassengerDashboard() {
                                 setSavingPlace(false);
                             }
                         }}
-                        className="w-full max-w-sm rounded-[28px] border border-[#363B45] bg-[#202329] p-5 text-white shadow-2xl"
+                        className="w-full max-w-sm rounded-[28px] border border-pd-line bg-pd-surface p-5 text-pd-text shadow-2xl"
                     >
                         <div className="mb-5 flex items-center justify-between">
                             <div>
@@ -1217,13 +1234,13 @@ function PassengerDashboard() {
                                 type="button"
                                 onClick={() => setEditingPlace(null)}
                                 disabled={savingPlace}
-                                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#343941] text-xl text-white"
+                                className="flex h-9 w-9 items-center justify-center rounded-full bg-pd-surface-2 text-xl text-pd-text"
                             >
                                 ×
                             </button>
                         </div>
 
-                        <label className="mb-2 block text-xs font-semibold text-[#B4BBC6]">
+                        <label className="mb-2 block text-xs font-semibold text-pd-muted">
                             LOCATION NAME
                         </label>
 
@@ -1235,7 +1252,7 @@ function PassengerDashboard() {
                             value={editPlaceName}
                             onChange={(e) => setEditPlaceName(e.target.value)}
                             placeholder="Enter location name"
-                            className="h-13 w-full rounded-xl border border-[#454B55] bg-[#15171C] px-4 py-3 text-sm font-semibold text-white outline-none transition-colors focus:border-[#087F5B]"
+                            className="h-13 w-full rounded-xl border border-pd-line-strong bg-pd-surface-2 px-4 py-3 text-sm font-semibold text-pd-text outline-none transition-colors focus:border-[#087F5B]"
                         />
 
                         <div className="mt-6 flex gap-3">
@@ -1243,7 +1260,7 @@ function PassengerDashboard() {
                                 type="button"
                                 disabled={savingPlace}
                                 onClick={() => setEditingPlace(null)}
-                                className="flex-1 rounded-xl bg-[#343941] py-3.5 text-sm font-bold text-white"
+                                className="flex-1 rounded-xl bg-pd-surface-2 py-3.5 text-sm font-bold text-pd-text"
                             >
                                 Cancel
                             </button>
@@ -1434,30 +1451,17 @@ function PassengerDashboard() {
             )}
 
             {!activeRide && !mapPickTarget && !bookingOpen && !mapInteracting && (
-                <div className="absolute inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] z-20 bg-[#15171B] px-4 pb-5 pt-4 shadow-[0_-14px_44px_rgba(0,0,0,0.45)]">
+                <div className="absolute inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] z-20 rounded-t-[28px] border-t border-pd-line bg-pd-surface px-4 pb-4 pt-3 shadow-[0_-12px_36px_rgba(17,17,17,0.16)]">
                     <div className="mx-auto max-w-lg space-y-3">
-                        <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                            <span className="shrink-0 rounded-xl bg-[#087F5B] px-4 py-3 text-[15px] font-extrabold text-white"><Car size={17} className="mr-1 inline" /> {t("pHome.tabRide")}</span>
-                            <Link
-                                href="/passenger/parcels"
-                                className="shrink-0 rounded-xl bg-[#23262C] px-4 py-3 text-[15px] font-bold text-white"
-                            >
-                                📦 {t("pHome.tabParcel")}
-                                <ParcelActivityBar token={token} role="PASSENGER" variant="badge" />
-                            </Link>
-                            <Link
-                                href="/passenger/buy-deliver"
-                                className="shrink-0 rounded-xl bg-[#23262C] px-4 py-3 text-[15px] font-bold text-white"
-                            >
-                                🛒 {t("pHome.tabBuyDeliver")}
-                            </Link>
-                            <Link
-                                href="/passenger/rentals"
-                                className="shrink-0 rounded-xl bg-[#23262C] px-4 py-3 text-[15px] font-bold text-white"
-                            >
-                                🚗 {t("pHome.tabRentals")}
-                            </Link>
-                        </div>
+                        <span className="mx-auto block h-1.5 w-10 rounded-full bg-pd-surface-3" aria-hidden="true" />
+                        <button type="button" onClick={() => setBookingOpen(true)}
+                            className="flex h-16 w-full items-center gap-3 rounded-2xl bg-pd-accent px-5 text-left text-pd-accent-ink shadow-[0_8px_24px_rgba(8,127,91,0.35)] transition-transform active:scale-[0.98]"
+                            aria-label={t("ride.whereToHowMuchAria")}>
+                            <Crosshair size={24} className="shrink-0" aria-hidden="true" />
+                            <span className="min-w-0 flex-1 truncate text-lg font-extrabold">{t("ride.whereToHowMuch")}</span>
+                            <ArrowRight size={22} className="shrink-0" aria-hidden="true" />
+                        </button>
+                        {destinationSelected && destinationQuery && <p className="truncate px-1 text-xs text-pd-muted">Last selected: {destinationQuery}</p>}
                         {activeRequests.length > 0 && (
                             <section aria-label={t("pHome.activeRequests")} className="space-y-2">
                                 <h2 className="px-1 text-xs font-extrabold uppercase tracking-wider text-pd-muted">
@@ -1467,28 +1471,44 @@ function PassengerDashboard() {
                                     <Link
                                         key={row.key}
                                         href={row.href}
-                                        className="flex items-center gap-3 rounded-2xl bg-pd-surface-2 px-3 py-2.5 text-pd-text transition-transform active:scale-[0.99]"
+                                        className="flex min-h-14 items-center gap-3 rounded-2xl border border-pd-line bg-pd-surface-2 px-3 py-2.5 text-pd-text transition-transform active:scale-[0.99]"
                                     >
-                                        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${row.kind === "BD" ? "bg-pd-accent-soft text-pd-accent-text" : "bg-pd-info-soft text-pd-info"}`}>
-                                            {row.kind === "BD" ? <ShoppingBag size={17} /> : <Package size={17} />}
+                                        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${row.kind === "BD" ? "bg-pd-accent-soft text-pd-accent-text" : "bg-pd-info-soft text-pd-info"}`}>
+                                            {row.kind === "BD" ? <ShoppingBag size={19} /> : <Package size={19} />}
                                         </span>
                                         <span className="min-w-0 flex-1">
                                             <span className="block truncate text-sm font-bold">{row.title}</span>
                                             <span className="block truncate text-xs text-pd-muted">{row.note}</span>
                                         </span>
-                                        <ChevronRight size={16} className="shrink-0 text-pd-faint" />
+                                        <ChevronRight size={18} className="shrink-0 text-pd-faint" />
                                     </Link>
                                 ))}
                             </section>
                         )}
-                        <button type="button" onClick={() => setBookingOpen(true)}
-                            className="flex w-full items-center gap-3 rounded-2xl bg-[#23262C] px-4 py-4 text-left shadow-sm transition-transform active:scale-[0.98]"
-                            aria-label={t("ride.whereToHowMuchAria")}>
-                            <Crosshair size={22} className="shrink-0 text-white" />
-                            <span className="min-w-0 flex-1 truncate text-base font-extrabold text-white">{t("ride.whereToHowMuch")}</span>
-                            <ArrowRight size={20} className="shrink-0 text-white" />
-                        </button>
-                        {destinationSelected && destinationQuery && <p className="truncate px-1 text-xs text-pd-muted">Last selected: {destinationQuery}</p>}
+                        <nav aria-label="Services" className="grid grid-cols-3 gap-2">
+                            <Link
+                                href="/passenger/parcels"
+                                className="relative flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-2xl bg-pd-surface-2 px-2 py-3 text-center text-pd-text transition-transform active:scale-95"
+                            >
+                                <Package size={24} className="text-pd-accent-text" aria-hidden="true" />
+                                <span className="text-[13px] font-bold leading-tight">{t("pHome.tabParcel")}</span>
+                                <ParcelActivityBar token={token} role="PASSENGER" variant="badge" />
+                            </Link>
+                            <Link
+                                href="/passenger/buy-deliver"
+                                className="flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-2xl bg-pd-surface-2 px-2 py-3 text-center text-pd-text transition-transform active:scale-95"
+                            >
+                                <ShoppingBag size={24} className="text-pd-accent-text" aria-hidden="true" />
+                                <span className="text-[13px] font-bold leading-tight">{t("pHome.tabBuyDeliver")}</span>
+                            </Link>
+                            <Link
+                                href="/passenger/rentals"
+                                className="flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-2xl bg-pd-surface-2 px-2 py-3 text-center text-pd-text transition-transform active:scale-95"
+                            >
+                                <Car size={24} className="text-pd-accent-text" aria-hidden="true" />
+                                <span className="text-[13px] font-bold leading-tight">{t("pHome.tabRentals")}</span>
+                            </Link>
+                        </nav>
                     </div>
                 </div>
             )}
@@ -1504,52 +1524,69 @@ function PassengerDashboard() {
                 className={`absolute inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] top-0 z-30 flex flex-col bg-pd-surface shadow-xl transition-transform duration-300 ease-out ${(!bookingOpen || fullScreenMap || activeRide) ? "pointer-events-none translate-y-[120%]" : ""}`}
             >
                 <div className="flex shrink-0 items-center justify-between border-b border-pd-line px-5 pb-3 pt-[max(16px,env(safe-area-inset-top))]">
-                    <button type="button" onClick={() => setBookingOpen(false)} aria-label="Back to map"
-                        className="flex h-11 w-11 items-center justify-center rounded-xl bg-pd-surface-2">
-                        <ChevronDown size={22} />
-                    </button>
-                    <strong className="text-base font-extrabold">{t("pHome.bookYourRide")}</strong>
-                    <span className="w-11" />
+                    {bookStep === "where" ? (
+                        <button type="button" onClick={() => setBookingOpen(false)} aria-label="Back to map"
+                            className="flex h-12 w-12 items-center justify-center rounded-xl bg-pd-surface-2">
+                            <ChevronDown size={24} />
+                        </button>
+                    ) : (
+                        <button type="button" onClick={() => goStep(bookStep === "fare" ? "ride" : "where")} aria-label="Previous step"
+                            className="flex h-12 w-12 items-center justify-center rounded-xl bg-pd-surface-2">
+                            <ArrowLeft size={22} />
+                        </button>
+                    )}
+                    <div className="text-center">
+                        <strong className="block text-base font-extrabold">
+                            {bookStep === "where" ? "Where are you going?" : bookStep === "ride" ? "Choose your ride" : "Set your fare"}
+                        </strong>
+                        <span className="mt-1 flex items-center justify-center gap-1.5" role="img"
+                            aria-label={`Step ${bookStep === "where" ? 1 : bookStep === "ride" ? 2 : 3} of 3`}>
+                            {["where", "ride", "fare"].map((id) => (
+                                <span key={id} className={`h-1.5 w-8 rounded-full ${id === bookStep ? "bg-pd-accent" : "bg-pd-surface-3"}`} />
+                            ))}
+                        </span>
+                    </div>
+                    <span className="w-12" />
                 </div>
 
                 <div className={`min-h-0 flex-1 px-4 pb-3 sm:px-6 ${destinationSearchMode ? "flex flex-col overflow-hidden" : "overflow-y-auto overscroll-contain"}`}>
                     <div className={`mx-auto w-full max-w-lg ${destinationSearchMode ? "flex min-h-0 flex-1 flex-col" : ""}`}>
 
-                        {savedPlaces.length > 0 && !destinationSearchMode && (
+                        {bookStep === "where" && savedPlaces.length > 0 && !destinationSearchMode && (
                             <div className="mb-3">
                                 <button
                                     type="button"
                                     onClick={() => setShowSavedPlaces((value) => !value)}
-                                    className="flex w-full items-center gap-2.5 rounded-xl border border-[#343741] bg-[#202228] px-3.5 py-2.5 text-left text-white transition-colors hover:bg-[#2A2D35]"
+                                    className="flex w-full items-center gap-2.5 rounded-xl border border-pd-line bg-pd-surface-2 px-3.5 py-2.5 text-left text-pd-text transition-colors hover:bg-pd-surface-3"
                                 >
-                                    <span className="text-lg">☆</span>
+                                    <Star size={20} className="shrink-0 text-pd-accent-text" aria-hidden="true" />
                                     <span className="flex-1 text-sm font-semibold">
                                         Saved Places
                                     </span>
-                                    <span className="rounded-md bg-[#343741] px-2 py-0.5 text-[11px] font-bold text-[#C9CDD5]">
+                                    <span className="rounded-md bg-pd-surface-2 px-2 py-0.5 text-[11px] font-bold text-pd-text-2">
                                         {savedPlaces.length}
                                     </span>
                                     <ChevronDown
                                         size={17}
-                                        className={`shrink-0 text-[#AEB4BF] transition-transform duration-200 ${showSavedPlaces ? "rotate-180" : ""
+                                        className={`shrink-0 text-pd-muted transition-transform duration-200 ${showSavedPlaces ? "rotate-180" : ""
                                             }`}
                                     />
                                 </button>
 
                                 {showSavedPlaces && (
-                                    <div className="mt-2 overflow-hidden rounded-xl border border-[#343741]">
+                                    <div className="mt-2 overflow-hidden rounded-xl border border-pd-line">
                                         {savedPlaces.map((place, index) => (
                                             <div
                                                 key={place._id}
-                                                className={`flex items-center gap-3 bg-[#1C1E24] px-3 py-3 ${index ? "border-t border-[#343741]" : ""
+                                                className={`flex items-center gap-3 bg-pd-surface px-3 py-3 ${index ? "border-t border-pd-line" : ""
                                                     }`}
                                             >
-                                                <span className="text-lg">
-                                                    {place.type === "HOME" ? "🏠" :
-                                                        place.type === "WORK" ? "💼" : "⭐"}
+                                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-pd-surface-2 text-pd-accent-text" aria-hidden="true">
+                                                    {place.type === "HOME" ? <House size={18} /> :
+                                                        place.type === "WORK" ? <Briefcase size={18} /> : <Star size={18} />}
                                                 </span>
 
-                                                <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">
+                                                <span className="min-w-0 flex-1 truncate text-sm font-medium text-pd-text">
                                                     {place.name}
                                                 </span>
 
@@ -1622,7 +1659,7 @@ function PassengerDashboard() {
                                                         setFare(null);
                                                         setShowSavedPlaces(false);
                                                     }}
-                                                    className="rounded-lg bg-[#343741] px-2.5 py-2 text-xs font-semibold text-white"
+                                                    className="rounded-lg bg-pd-surface-2 px-2.5 py-2 text-xs font-semibold text-pd-text"
                                                 >
                                                     Pickup
                                                 </button>
@@ -1654,6 +1691,7 @@ function PassengerDashboard() {
                             </div>
                         )}
 
+                        {bookStep === "where" && (<>
                         <div className={`rounded-2xl border border-pd-line bg-pd-surface shadow-[0_4px_18px_rgba(17,17,17,0.05)] ${destinationSearchMode ? "shrink-0" : ""}`}>
                             {/* While picking a destination, the pickup row
                                 collapses so results get the room (it
@@ -1679,7 +1717,7 @@ function PassengerDashboard() {
                                 />
                             </div>
                             <div className={`relative mx-3.5 border-t border-pd-line ${destinationSearchMode ? "hidden" : ""}`}>
-                                <span className="absolute -top-3 left-[9px] h-6 border-l-2 border-dotted border-[#C7CBD1]" aria-hidden="true" />
+                                <span className="absolute -top-3 left-[9px] h-6 border-l-2 border-dotted border-pd-line-strong" aria-hidden="true" />
                             </div>
                             <label className="flex items-center gap-3 px-3.5 py-3">
                                 <span className="flex h-5 w-5 shrink-0 items-center justify-center" aria-hidden="true">
@@ -1810,18 +1848,29 @@ function PassengerDashboard() {
                             </div>
                         )}
 
+                        </>)}
+
                         {route && !destinationSearchMode && (
                             <div className="rx-slide-up mt-5 space-y-4">
-                                <div className="grid grid-cols-3 gap-2">
-                                    <TripStat
-                                        icon={RouteIcon}
-                                        label={tripType === "ROUND_TRIP" ? t("pHome.roundTripDistance") : t("pHome.distance")}
-                                        value={`${route.distanceKm} km`}
-                                    />
-                                    <TripStat icon={Clock} label={t("pHome.duration")} value={t("pHome.minutes", { count: route.durationMinutes })} />
-                                    <TripStat icon={MapPin} label={t("pHome.arriveBy")} value={formatArrival(route.durationMinutes, offerClock)} />
-                                </div>
+                                {bookStep === "where" && (
+                                    <p className="flex items-center justify-center gap-2 rounded-2xl bg-pd-accent-soft px-4 py-3 text-base font-extrabold text-pd-accent-text">
+                                        <RouteIcon size={20} aria-hidden="true" />
+                                        {route.distanceKm} km · {t("pHome.minutes", { count: route.durationMinutes })}
+                                    </p>
+                                )}
+                                {bookStep === "fare" && (
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <TripStat
+                                            icon={RouteIcon}
+                                            label={tripType === "ROUND_TRIP" ? t("pHome.roundTripDistance") : t("pHome.distance")}
+                                            value={`${route.distanceKm} km`}
+                                        />
+                                        <TripStat icon={Clock} label={t("pHome.duration")} value={t("pHome.minutes", { count: route.durationMinutes })} />
+                                        <TripStat icon={MapPin} label={t("pHome.arriveBy")} value={formatArrival(route.durationMinutes, offerClock)} />
+                                    </div>
+                                )}
 
+                                {bookStep === "ride" && (<>
                                 <div>
                                     <h2 className="mb-2.5 text-sm font-bold uppercase tracking-wide text-pd-muted">{t("pHome.tripType")}</h2>
                                     <div className="grid grid-cols-2 gap-2">
@@ -1892,6 +1941,9 @@ function PassengerDashboard() {
                                     </div>
                                 </div>
 
+                                </>)}
+
+                                {bookStep === "fare" && (<>
                                 <div className="rounded-2xl bg-pd-surface-2 p-4">
                                     <div className="flex items-center justify-between">
                                         <p className="text-sm font-bold">{t("pHome.offerYourFare")}</p>
@@ -1960,6 +2012,7 @@ function PassengerDashboard() {
                                         <ShieldCheck size={14} aria-hidden="true" /> {t("pHome.verifiedDrivers")}
                                     </span>
                                 </div>
+                                </>)}
                             </div>
                         )}
                     </div>
@@ -1967,21 +2020,32 @@ function PassengerDashboard() {
 
                 <div className={`shrink-0 border-t border-pd-line bg-pd-surface px-4 pb-4 pt-3 sm:px-6 ${destinationSearchMode ? "hidden" : ""}`}>
                     <div className="mx-auto max-w-lg">
-                        {bookingHint && <p className="mb-2 text-center text-xs font-medium text-pd-muted">{bookingHint}</p>}
-                        <button
-                            type="button"
-                           
-                            onClick={bookRide}
-                            disabled={!canBook}
-                            className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#087F5B] text-base font-extrabold text-white shadow-[0_8px_24px_rgba(8,127,91,0.35)] transition-all active:scale-[0.98] disabled:bg-[#087F5B]/60 disabled:text-white/70 disabled:shadow-none"
-                        >
-                            {booking
-                                ? t("pHome.requesting")
-                                : activeRide
-                                    ? t("pHome.rideRequested")
-                                    : fare && fareIsValid ? `${t("pHome.findDriver")} · ${formatPKR(fareValue)}` : t("pHome.findDriver")}
-                            {!booking && <ArrowRight size={20} aria-hidden="true" />}
-                        </button>
+                        {bookStep !== "ride" && bookingHint && <p className="mb-2 text-center text-xs font-medium text-pd-muted">{bookingHint}</p>}
+                        {bookStep === "fare" ? (
+                            <button
+                                type="button"
+                                onClick={bookRide}
+                                disabled={!canBook}
+                                className="flex h-16 w-full items-center justify-center gap-2 rounded-2xl bg-pd-accent text-lg font-extrabold text-pd-accent-ink shadow-[0_8px_24px_rgba(8,127,91,0.35)] transition-all active:scale-[0.98] disabled:opacity-60 disabled:shadow-none"
+                            >
+                                {booking
+                                    ? t("pHome.requesting")
+                                    : activeRide
+                                        ? t("pHome.rideRequested")
+                                        : fare && fareIsValid ? `${t("pHome.findDriver")} · ${formatPKR(fareValue)}` : t("pHome.findDriver")}
+                                {!booking && <ArrowRight size={22} aria-hidden="true" />}
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => goStep(bookStep === "where" ? "ride" : "fare")}
+                                disabled={bookStep === "where" && (!route || routeLoading || citySupported === false)}
+                                className="flex h-16 w-full items-center justify-center gap-2 rounded-2xl bg-pd-accent text-lg font-extrabold text-pd-accent-ink shadow-[0_8px_24px_rgba(8,127,91,0.35)] transition-all active:scale-[0.98] disabled:opacity-60 disabled:shadow-none"
+                            >
+                                {bookStep === "where" ? "Next: choose your ride" : "Next: set your fare"}
+                                <ArrowRight size={22} aria-hidden="true" />
+                            </button>
+                        )}
                     </div>
                 </div>
             </section>
@@ -2019,7 +2083,7 @@ function PassengerDashboard() {
                                     onClick={() => { markMessagesRead(); setMapChatOpen(true); }}
                                     className="pointer-events-auto relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-pd-surface-2 text-pd-text">
                                     <MessageCircle size={19} />
-                                    {unreadMessages > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#087F5B] px-1 text-[11px] font-extrabold text-white ring-2 ring-white">{unreadMessages === 99 ? "99+" : unreadMessages}</span>}
+                                    {unreadMessages > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#087F5B] px-1 text-[11px] font-extrabold text-white ring-2 ring-pd-surface">{unreadMessages === 99 ? "99+" : unreadMessages}</span>}
                                 </button>
                             )}
                             <button type="button" onClick={() => { setMapChatOpen(false); setFullScreenMap(false); }}
@@ -2372,7 +2436,7 @@ function DriverSearchSheet({
                             <span className="flex items-center gap-2 text-sm font-semibold text-pd-text-2">
                                 <VehicleIcon size={18} aria-hidden="true" />
                                 {vehicle?.name || "Ride"}
-                                <span className="text-[#D1D5DB]">·</span>
+                                <span className="text-pd-faint">·</span>
                                 <Banknote size={16} aria-hidden="true" /> Cash
                             </span>
                             <span className="rounded-full bg-pd-accent-soft px-3 py-1 text-sm font-extrabold">
@@ -2495,7 +2559,7 @@ function OfferCard({ offer, requestedPrice, rideVehicleType, isBest, clock, busy
                         <span className="flex h-12 w-12 items-center justify-center rounded-full bg-pd-ink text-sm font-extrabold text-[#087F5B]">
                             {getInitials(name)}
                         </span>
-                        <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-[#087F5B] text-white">
+                        <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-pd-surface bg-[#087F5B] text-white">
                             <VehicleIcon size={12} />
                         </span>
                     </span>
@@ -2616,7 +2680,7 @@ function TripCompletedDialog({ rideId, ride, token, pickupLabel, destinationLabe
                     <>
                         <div className="text-center">
                             <span className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-[#087F5B]">
-                                <Check size={30} strokeWidth={3} className="text-white" aria-hidden="true" />
+                                <Check size={30} strokeWidth={3} className="text-pd-accent-ink" aria-hidden="true" />
                             </span>
                             <h2 className="text-xl font-extrabold tracking-tight">You&apos;ve arrived!</h2>
                             <p className="mt-1 text-sm text-pd-muted">Thanks for riding with us.</p>
