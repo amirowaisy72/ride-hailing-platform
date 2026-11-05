@@ -5,6 +5,7 @@ const { authorize } = require("../middleware/roleMiddleware");
 const {
     createServiceArea,
     getServiceAreas,
+    updateServiceArea,
     updateAreaStatus,
 } = require("../controllers/serviceAreaController");
 
@@ -270,6 +271,7 @@ router.post("/local-addresses", async (req, res) => {
 
 router.post("/", createServiceArea);
 router.get("/", getServiceAreas);
+router.patch("/:id", updateServiceArea);
 router.patch("/:id/status", updateAreaStatus);
 
 module.exports = router;

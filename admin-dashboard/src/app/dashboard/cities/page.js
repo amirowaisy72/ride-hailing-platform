@@ -29,6 +29,10 @@ export default function CitiesPage() {
     const [areas, setAreas] = useState([]);
     const [fullscreenArea, setFullscreenArea] = useState(null);
     const fullscreenContainerRef = useRef(null);
+    // Editing an existing area: the area being edited (null = creating
+    // a new one). Its name/city/polygon are loaded into the same form
+    // and drawing map used for creating areas.
+    const [editingArea, setEditingArea] = useState(null);
     const [points, setPoints] = useState([]);
     const [name, setName] = useState("");
     const [city, setCity] = useState("");
@@ -372,7 +376,54 @@ export default function CitiesPage() {
         updateMapPoints(mapRef.current, []);
     }
 
-    async function createArea() {
+    // Load an existing area into the editor: name/city into the form,
+    // its polygon ring (without the closing repeat point) as the
+    // editable points, drawing mode on, map fitted to the boundary.
+    function startEdit(area) {
+        const ring = area.polygon?.coordinates?.[0] || [];
+        const openRing = ring.length > 1 ? ring.slice(0, -1) : ring;
+
+        setEditingArea(area);
+        setName(area.name || "");
+        setCity(area.city || "");
+        setError("");
+        setMessage("");
+        pointsRef.current = [...openRing];
+        setPoints([...openRing]);
+        drawingRef.current = true;
+        setDrawing(true);
+        updateMapPoints(mapRef.current, openRing);
+
+        if (mapRef.current && openRing.length) {
+            const bounds = openRing.reduce(
+                (result, point) => result.extend(point),
+                new maplibregl.LngLatBounds(openRing[0], openRing[0])
+            );
+            mapRef.current.fitBounds(bounds, { padding: 60, maxZoom: 13 });
+        }
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function cancelEdit() {
+        setEditingArea(null);
+        setName("");
+        setCity("");
+        setError("");
+        setMessage("");
+        setDrawing(false);
+        drawingRef.current = false;
+        resetDrawing();
+    }
+
+    function removeLastPoint() {
+        const next = pointsRef.current.slice(0, -1);
+        pointsRef.current = next;
+        setPoints([...next]);
+        updateMapPoints(mapRef.current, next);
+    }
+
+    async function saveArea() {
         if (busy) return;
 
         if (!city.trim() || !name.trim() || points.length < 3) {
@@ -387,16 +438,35 @@ export default function CitiesPage() {
         try {
             const coordinates = [[...points, points[0]]];
 
-            await authenticatedAdminRequest("/admin/service-areas", {
-                method: "POST",
-                body: JSON.stringify({
-                    name: name.trim(),
-                    city: city.trim(),
-                    coordinates,
-                }),
-            });
+            if (editingArea) {
+                // Update the existing area (name, city and polygon).
+                await authenticatedAdminRequest(
+                    `/admin/service-areas/${editingArea._id}`,
+                    {
+                        method: "PATCH",
+                        body: JSON.stringify({
+                            name: name.trim(),
+                            city: city.trim(),
+                            coordinates,
+                        }),
+                    }
+                );
 
-            setMessage("City service area created. Activate it below.");
+                setMessage("Service area updated.");
+            } else {
+                await authenticatedAdminRequest("/admin/service-areas", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        name: name.trim(),
+                        city: city.trim(),
+                        coordinates,
+                    }),
+                });
+
+                setMessage("City service area created. Activate it below.");
+            }
+
+            setEditingArea(null);
             setName("");
             setCity("");
             setDrawing(false);
@@ -766,6 +836,15 @@ export default function CitiesPage() {
 
                         <button
                             type="button"
+                            onClick={removeLastPoint}
+                            disabled={points.length === 0}
+                            className="rounded-xl border px-4 py-3 text-sm font-bold disabled:opacity-40"
+                        >
+                            Remove Last Point
+                        </button>
+
+                        <button
+                            type="button"
                             onClick={resetDrawing}
                             className="rounded-xl border px-4 py-3 text-sm font-bold"
                         >
@@ -775,12 +854,31 @@ export default function CitiesPage() {
                         <button
                             type="button"
                             disabled={busy || points.length < 3}
-                            onClick={createArea}
+                            onClick={saveArea}
                             className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
                         >
-                            Save Service Area
+                            {editingArea ? "Save Changes" : "Save Service Area"}
                         </button>
+
+                        {editingArea && (
+                            <button
+                                type="button"
+                                onClick={cancelEdit}
+                                className="rounded-xl border border-red-200 px-4 py-3 text-sm font-bold text-red-600"
+                            >
+                                Cancel Edit
+                            </button>
+                        )}
                     </div>
+
+                    {editingArea && (
+                        <p className="mb-3 rounded-xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+                            Editing: {editingArea.city} — {editingArea.name}.
+                            Click the map to add boundary points and expand
+                            the area, or Clear Points and redraw it. Save
+                            Changes to update it.
+                        </p>
+                    )}
 
                     <p className="mb-3 text-xs text-slate-500">
                         {drawing
@@ -838,6 +936,14 @@ export default function CitiesPage() {
                                 <button
                                     type="button"
                                     disabled={busy}
+                                    onClick={() => startEdit(area)}
+                                    className="rounded-xl border border-emerald-600 px-4 py-2 text-sm font-semibold text-emerald-700 disabled:opacity-50"
+                                >
+                                    Edit
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={busy}
                                     onClick={() => toggleArea(area)}
                                     className="rounded-xl bg-[#087F5B] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
                                 >
@@ -871,15 +977,28 @@ export default function CitiesPage() {
                                 {" · "}Boundary view — press Esc to close
                             </p>
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => setFullscreenArea(null)}
-                            aria-label="Close fullscreen map"
-                            className="flex items-center gap-2 rounded-xl border border-white/25 px-4 py-2.5 text-sm font-bold text-white"
-                        >
-                            <X size={16} />
-                            Close
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const area = fullscreenArea;
+                                    setFullscreenArea(null);
+                                    startEdit(area);
+                                }}
+                                className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white"
+                            >
+                                Edit Area
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setFullscreenArea(null)}
+                                aria-label="Close fullscreen map"
+                                className="flex items-center gap-2 rounded-xl border border-white/25 px-4 py-2.5 text-sm font-bold text-white"
+                            >
+                                <X size={16} />
+                                Close
+                            </button>
+                        </div>
                     </div>
                     {fullscreenArea.polygon?.coordinates?.[0]?.length ? (
                         <div
