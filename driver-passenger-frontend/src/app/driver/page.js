@@ -1,10 +1,9 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    ArrowRight, CarFront, CheckCircle2, ChevronRight, Compass, CornerUpRight, FileCheck2,
-    Flag, Hourglass, LifeBuoy, MapPin, MessageCircle, Navigation, Power, RefreshCw, Satellite, Star, UserRound,
+    ArrowRight, CheckCircle2, ChevronRight, Compass, CornerUpRight, Flag, LifeBuoy, MapPin, MessageCircle, Navigation, Power, RefreshCw, Satellite, UserRound,
     WifiOff, XCircle, Menu, X, Bell, BellRing, Volume2, VolumeX, LocateFixed, Wallet,
-    CircleAlert, ClipboardList, LayoutGrid, Store,
+    LayoutGrid, Store,
 } from "lucide-react";
 import { Geolocation } from "@capacitor/geolocation";
 import {
@@ -26,6 +25,7 @@ import { money, placeText, vehicleNames } from "@/components/driver/DriverReques
 import RideRequestCard, { RideQueueRow, passengerNameOf } from "@/components/driver/ride/RideRequestCard";
 import TripStepPanel, { RideEndedPanel, TRIP_PANEL_HEIGHT } from "@/components/driver/ride/TripStepPanel";
 import RideReturnBanner from "@/components/driver/ride/RideReturnBanner";
+import GuidedHomeCard from "@/components/driver/home/GuidedHomeCard";
 import { DriverToast } from "@/components/driver/DriverMapControls";
 import useDriverNotifications from "@/components/driver/useDriverNotifications";
 import { useAuth } from "@/context/AuthContext";
@@ -34,11 +34,9 @@ import { apiRequest } from "@/lib/api";
 import { submitDriverOffer } from "@/lib/driverRideService";
 import { getMyVehicles, selectVehicle, updateOnlineStatus, updateDriverLocation } from "@/lib/vehicleService";
 import { getMyServices } from "@/lib/driverServicesService";
-import ServiceEarnings from "@/components/driver/ServiceEarnings";
-import { SERVICE_META, SERVICE_ORDER, STATUS_META, humanizeReason, pendingActionsFor } from "@/components/driver/ServiceMeta";
+import { SERVICE_META, STATUS_META, humanizeReason } from "@/components/driver/ServiceMeta";
 import { getRealtimeSocket } from "@/lib/socket";
 import { useRideUnreadMessages } from "@/hooks/useRideUnreadMessages";
-import { COMPLAINT_CATEGORIES, COMPLAINT_STATUS_META } from "@/components/ComplaintsSection";
 // Allowed driver-side transitions (unchanged backend contract).
 
 const PARCEL_LINK = "/driver/parcels";
@@ -200,6 +198,8 @@ function DriverDashboard() {
     const [driverProfile, setDriverProfile] = useState(null);
     const [homeEarnings, setHomeEarnings] = useState(null);
     const [myServices, setMyServices] = useState(null);
+    const [pendingVehicles, setPendingVehicles] = useState([]);
+    const [guidedHeight, setGuidedHeight] = useState(260);
     const [onlineBlock, setOnlineBlock] = useState(null);
     const loadMyServices = useCallback(async () => {
         if (!token) return null;
@@ -270,7 +270,10 @@ function DriverDashboard() {
     const sheetPx = sheet === "peek" ? (rideInProgress ? 118 : 148)
         : sheet === "half" ? Math.min(viewportH * 0.52, rideInProgress ? 460 : 440)
             : viewportH * 0.7;
-    const sheetRatio = rideInProgress ? Math.min(0.62, TRIP_PANEL_HEIGHT / Math.max(1, viewportH)) : Math.min(0.75, (sheetPx + navH) / Math.max(1, viewportH));
+    const guidedActive = !rideInProgress && !rideEnded && !isOnline;
+    const sheetRatio = rideInProgress ? Math.min(0.62, TRIP_PANEL_HEIGHT / Math.max(1, viewportH))
+        : guidedActive ? Math.min(0.7, (guidedHeight + navH + 12) / Math.max(1, viewportH))
+            : Math.min(0.75, (sheetPx + navH) / Math.max(1, viewportH));
     // Ride lifecycle drives the layout: navigation collapses the sheet to keep the map dominant.
     useEffect(() => {
         if (!selectedRide) { setNavigationInfo(null); return; }
@@ -321,6 +324,7 @@ function DriverDashboard() {
                 setSelectedVehicle(driver?.currentVehicleId || "");
                 setSavedVehicle(driver?.currentVehicleId || "");
                 setVehicles((vehicleData.vehicles || []).filter((v) => v.verificationStatus === "APPROVED" && v.isActive));
+                setPendingVehicles((vehicleData.vehicles || []).filter((v) => v.verificationStatus === "PENDING" && v.isActive));
                 setSelectedRide(active.ride || null);
                 const coordinates = driver?.currentLocation?.coordinates;
                 if (Array.isArray(coordinates) && coordinates.length === 2 && !(coordinates[0] === 0 && coordinates[1] === 0)) {
@@ -730,6 +734,7 @@ function DriverDashboard() {
         try {
             await selectVehicle(selectedVehicle, token);
             setSavedVehicle(selectedVehicle);
+            setTab("requests");
             notify({ kind: "success", title: "Active vehicle updated", key: `veh:${selectedVehicle}:${Date.now()}`, sound: false });
         } catch (error) {
             reportError(error, "Couldn't update vehicle");
@@ -837,6 +842,33 @@ function DriverDashboard() {
         return formatMeters(haversineMeters(location, { latitude: lat, longitude: lng }));
     })();
     const activeVehicle = vehicles.find((v) => v._id === selectedVehicle);
+    // Guided home: the driver is always in exactly one of these steps.
+    const chosenVehicle = vehicles.find((v) => v._id === savedVehicle) || null;
+    const guidedStep = isOnline ? "online"
+        : chosenVehicle ? "offline"
+            : vehicles.length === 0 && pendingVehicles.length > 0 ? "pending"
+                : "choose";
+    const choosingVehicle = tab === "vehicle" && guidedStep !== "online";
+    const showGuidedCard = !rideInProgress && !rideEnded && guidedStep !== "online";
+    // With a single approved vehicle there is nothing to pick: preselect it.
+    useEffect(() => {
+        if (!selectedVehicle && vehicles.length === 1) setSelectedVehicle(vehicles[0]._id);
+    }, [vehicles, selectedVehicle]);
+    // While admin is checking the vehicle, quietly re-check so the driver is never stuck on stale news.
+    useEffect(() => {
+        if (guidedStep !== "pending" || !token) return;
+        const timer = setInterval(async () => {
+            if (typeof document !== "undefined" && document.hidden) return;
+            try {
+                const vehicleData = await getMyVehicles(token);
+                setVehicles((vehicleData.vehicles || []).filter((v) => v.verificationStatus === "APPROVED" && v.isActive));
+                setPendingVehicles((vehicleData.vehicles || []).filter((v) => v.verificationStatus === "PENDING" && v.isActive));
+            } catch {
+                // Keep showing the current step; the next check will retry.
+            }
+        }, 30000);
+        return () => clearInterval(timer);
+    }, [guidedStep, token]);
     const completeBlocked = selectedRide?.status === "TRIP_STARTED" && (pendingStop || Boolean(selectedRide?.stopWaitingSince));
     const userId = user?._id || user?.id;
     const firstName = user?.firstName || "Driver";
@@ -945,282 +977,11 @@ function DriverDashboard() {
             )}
         </div>
     );
-    const vehicleView = (
-        <div className="space-y-3">
-            <h2 className="dx-h2">{t("dHome.activeVehicle")}</h2>
-            {vehicles.length === 0 ? (
-                <div className="dx-empty">
-                    <span className="dx-empty-icon"><CarFront size={24} /></span>
-                    <p className="font-extrabold">{t("dHome.noApprovedVehicles")}</p>
-                    <p className="dx-muted">{t("dHome.registerVehicle")}</p>
-                </div>
-            ) : (
-                <div className="space-y-2" role="radiogroup" aria-label="Approved vehicles">
-                    {vehicles.map((v) => (
-                        <button key={v._id} type="button" role="radio" aria-checked={selectedVehicle === v._id}
-                            disabled={isOnline} onClick={() => setSelectedVehicle(v._id)} className="dx-vehicle" data-active={selectedVehicle === v._id}>
-                            <span className="dx-vehicle-icon"><CarFront size={18} /></span>
-                            <span className="min-w-0 flex-1 text-left">
-                                <strong>{vehicleNames[v.vehicleType] || v.vehicleType}</strong>
-                                <small>{v.registrationNumber}{savedVehicle === v._id ? " · current" : ""}</small>
-                            </span>
-                            <span className="dx-radio" />
-                        </button>
-                    ))}
-                </div>
-            )}
-            {isOnline && <p className="dx-inline-warn">{t("dHome.goOfflineToChange")}</p>}
-            <button type="button" className="dx-btn dx-btn-lime w-full" onClick={saveVehicle}
-                disabled={isOnline || busy || !selectedVehicle || selectedVehicle === savedVehicle}>
-                {selectedVehicle && selectedVehicle === savedVehicle ? "Active vehicle set" : "Set active vehicle"}
-            </button>
-            <div className="grid grid-cols-2 gap-2">
-                <Link href="/driver/vehicles" className="dx-link-card"><CarFront size={17} /> Vehicles <ChevronRight size={15} /></Link>
-                <Link href="/driver/documents" className="dx-link-card"><FileCheck2 size={17} /> Documents <ChevronRight size={15} /></Link>
-            </div>
-        </div>
-    );
+    // Online home: only the live requests. Earnings, tasks, vehicles and
+    // documents live on their own tabs.
     const idleBody = (
         <div className="space-y-4 pb-4">
-
-            {/* Earnings first: today's earnings large, week + rating alongside */}
-            <section className="overflow-hidden rounded-3xl bg-[#087F5B] p-5 text-white shadow-lg shadow-[#087F5B]/25">
-                <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-white/75">
-                            {t("dHome.todaysEarnings")}
-                        </p>
-                        <p className="mt-1 text-4xl font-black tracking-tight">
-                            {money(homeEarnings?.daily?.today?.earnings ?? 0)}
-                        </p>
-                        <p className="mt-1.5 text-xs font-semibold text-white/85">
-                            {t("dHome.tripsToday", { trips: homeEarnings?.daily?.today?.trips ?? 0, week: money(homeEarnings?.daily?.week?.earnings ?? 0) })}
-                        </p>
-                    </div>
-                    <div className="flex shrink-0 flex-col items-end gap-2">
-                        <span className="flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-xs font-extrabold">
-                            <Star size={13} className="fill-amber-300 text-amber-300" />
-                            {driverProfile?.ratingCount
-                                ? `${Number(driverProfile.rating).toFixed(1)} (${driverProfile.ratingCount})`
-                                : t("dHome.newDriver")}
-                        </span>
-                        <span className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-extrabold ${isOnline ? "bg-pd-surface text-[#087F5B]" : "bg-black/25 text-white"}`}>
-                            <span className={`h-2 w-2 rounded-full ${isOnline ? "bg-[#087F5B]" : "bg-white/60"}`} />
-                            {isOnline ? t("dHome.online") : t("dHome.offline")}
-                        </span>
-                    </div>
-                </div>
-                <div className="mt-4 flex items-center justify-between border-t border-white/20 pt-3 text-xs font-semibold text-white/85">
-                    <span>{t("dHome.allTimeNet", { amount: money(homeEarnings?.summary?.netEarnings ?? 0), trips: homeEarnings?.summary?.completedTrips ?? 0 })}</span>
-                    <Link href="/driver/earnings" className="flex items-center gap-1 font-extrabold text-white">
-                        {t("dHome.viewEarnings")} <ChevronRight size={14} />
-                    </Link>
-                </div>
-            </section>
-
-            {/* Active Tasks + earnings-by-service shortcuts */}
-            <Link
-               
-                href="/driver/tasks"
-                className="flex items-center gap-3 rounded-2xl border border-pd-line bg-pd-surface p-3 text-pd-text shadow-sm"
-            >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
-                    <ClipboardList size={20} />
-                </span>
-                <span className="min-w-0 flex-1">
-                    <span className="block text-xs font-bold text-pd-muted">
-                        {t("dHome.activeTasks")}
-                    </span>
-                    <span className="block truncate text-sm font-extrabold">
-                        {t("dHome.activeTasksHint")}
-                    </span>
-                </span>
-                <ChevronRight size={16} className="shrink-0 text-pd-muted" />
-            </Link>
-
-            <ServiceEarnings token={token} compact />
-
-            {/* Blocked from going online: the specific per-service reasons */}
-            {onlineBlock && (
-                <section className="rounded-2xl border border-red-200 bg-pd-danger-soft p-3 text-pd-text">
-                    <div className="flex items-start gap-2">
-                        <CircleAlert size={18} className="mt-0.5 shrink-0 text-pd-danger" />
-                        <div className="min-w-0 flex-1">
-                            <p className="text-sm font-extrabold">{t("dHome.cantGoOnline")}</p>
-                            <p className="mt-0.5 text-xs font-semibold text-pd-text-2">{onlineBlock.message}</p>
-                            {onlineBlock.services.map((service) => (
-                                <p key={service.service} className="mt-1.5 text-xs font-semibold">
-                                    {SERVICE_META[service.service]?.short}:{" "}
-                                    {(service.blockedReasons || []).map(humanizeReason).filter(Boolean).slice(0, 2).join(" · ")
-                                        || (STATUS_META[service.status]?.label || service.status)}
-                                </p>
-                            ))}
-                            <Link href="/driver/services" className="mt-2.5 inline-block rounded-lg bg-[#087F5B] px-3 py-1.5 text-xs font-extrabold text-white">
-                                {t("dHome.fixInServices")}
-                            </Link>
-                        </div>
-                    </div>
-                </section>
-            )}
-
-            {/* My Services summary: per-service readiness at a glance */}
-            <section className="rounded-2xl border border-pd-line bg-pd-surface p-3 text-pd-text">
-                <div className="flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                        <LayoutGrid size={20} className="shrink-0 text-pd-accent-text" />
-                        <div className="min-w-0">
-                            <p className="text-xs font-bold text-pd-muted">{t("dHome.myServices")}</p>
-                            <p className="truncate text-sm font-extrabold">
-                                {myServices
-                                    ? t("dHome.servicesReady", { ready: myServices.filter((sv) => sv.eligible).length, total: myServices.length })
-                                    : t("dHome.loadingServices")}
-                            </p>
-                        </div>
-                    </div>
-                    <Link href="/driver/services" className="shrink-0 rounded-xl bg-pd-surface-2 px-3 py-2 text-xs font-bold">
-                        {t("dHome.manage")}
-                    </Link>
-                </div>
-                {myServices && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                        {SERVICE_ORDER.map((key) => {
-                            const service = myServices.find((s) => s.service === key);
-                            if (!service) return null;
-                            const meta = SERVICE_META[key];
-                            const statusMeta = STATUS_META[service.status] || STATUS_META.NOT_APPLIED;
-                            const ServiceIcon = meta.Icon;
-                            return (
-                                <span key={key} className="flex items-center gap-1.5 rounded-full bg-pd-surface-2 py-1.5 pl-2.5 pr-3 text-xs font-bold">
-                                    <ServiceIcon size={14} className="text-pd-accent-text" />
-                                    {meta.short}
-                                    <span className={`h-2 w-2 rounded-full ${service.eligible ? "bg-[#087F5B]" : statusMeta.dot}`} />
-                                    <span className="font-semibold text-pd-muted">{service.eligible ? t("dHome.ready") : statusMeta.label}</span>
-                                </span>
-                            );
-                        })}
-                    </div>
-                )}
-            </section>
-
-            {/* Pending actions: service-specific, never a generic prompt */}
-            {myServices && pendingActionsFor(myServices).length > 0 && (
-                <section className="rounded-2xl border border-amber-200 bg-pd-warning-soft p-3 text-pd-text">
-                    <div className="flex items-center gap-2">
-                        <CircleAlert size={18} className="shrink-0 text-pd-warning" />
-                        <p className="text-sm font-extrabold">{t("dHome.pendingActions")}</p>
-                        <span className="flex min-h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-extrabold text-white">
-                            {pendingActionsFor(myServices).length}
-                        </span>
-                    </div>
-                    <div className="mt-1 divide-y divide-amber-100">
-                        {pendingActionsFor(myServices).slice(0, 4).map((action) => (
-                            <Link key={action.key} href={action.href} className="flex items-center gap-2 py-2 text-sm font-semibold">
-                                <span className="min-w-0 flex-1">{action.text}</span>
-                                <ChevronRight size={15} className="shrink-0 text-pd-warning" />
-                            </Link>
-                        ))}
-                    </div>
-                    <Link href="/driver/services" className="mt-1 inline-block text-xs font-extrabold text-[#087F5B]">
-                        {t("dHome.openMyServices")}
-                    </Link>
-                </section>
-            )}
-
-            {/* Quick Actions */}
-            <section className="grid grid-cols-5 gap-2">
-                {[
-                    { href: "/driver/parcels", icon: Package, label: t("dHome.parcels"), count: parcelRequests.length, active: true },
-                    { href: "/driver/services", icon: LayoutGrid, label: t("dHome.services") },
-                    { href: "/driver/earnings", icon: Wallet, label: t("dHome.earnings") },
-                    { href: "/driver/vehicles", icon: CarFront, label: t("dHome.vehicles") },
-                    { href: "/driver/documents", icon: FileCheck2, label: t("dHome.documents") },
-                ].map(({ href, icon: Icon, label, count, active }) => (
-                    <Link
-                        key={href}
-                        href={href}
-                        className="relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl border border-pd-line bg-pd-surface text-pd-text shadow-sm"
-                    >
-                        <Icon size={20} />
-                        <span className="text-[10px] font-bold">{label}</span>
-                        {active && (
-                            <span className="flex items-center gap-1 text-[10px] font-extrabold text-pd-accent-text">
-                                <ParcelActivityBar token={token} role="DRIVER" variant="badge" />
-                            </span>
-                        )}
-                        {count > 0 && (
-                            <span className="absolute right-1 top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-pd-accent px-1 text-[10px] font-extrabold text-pd-accent-ink">
-                                {count}
-                            </span>
-                        )}
-                    </Link>
-                ))}
-            </section>
-
-            {/* Incoming Requests */}
-            <section className="space-y-3">
-                {requestsView}
-            </section>
-
-            {/* Active Vehicle */}
-            <section className="rounded-2xl border border-pd-line bg-pd-surface p-3 text-pd-text">
-                <div className="flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                        <CarFront size={20} className="shrink-0 text-pd-accent-text" />
-                        <div className="min-w-0">
-                            <p className="text-xs font-bold text-pd-muted">{t("dHome.activeVehicle")}</p>
-                            <p className="truncate text-sm font-extrabold">
-                                {activeVehicle
-                                    ? `${vehicleNames[activeVehicle.vehicleType] || activeVehicle.vehicleType} · ${activeVehicle.registrationNumber}`
-                                    : t("dHome.noVehicleSelected")}
-                            </p>
-                        </div>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => setTab(tab === "vehicle" ? "requests" : "vehicle")}
-                        className="shrink-0 rounded-xl bg-pd-surface-2 px-3 py-2 text-xs font-bold"
-                    >
-                        {tab === "vehicle" ? t("common.close") : t("dHome.change")}
-                    </button>
-                </div>
-                {tab === "vehicle" && (
-                    <div className="mt-4 border-t border-pd-line pt-4">
-                        {vehicleView}
-                    </div>
-                )}
-            </section>
-
-            {/* My complaints: latest statuses at a glance */}
-            <section className="rounded-2xl border border-pd-line bg-pd-surface p-3 text-pd-text">
-                <div className="flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                        <LifeBuoy size={20} className="shrink-0 text-pd-accent-text" />
-                        <div className="min-w-0">
-                            <p className="text-xs font-bold text-pd-muted">{t("dHome.helpComplaints")}</p>
-                            <p className="truncate text-sm font-extrabold">
-                                {myComplaints.length === 0
-                                    ? "No complaints filed"
-                                    : `${myComplaints.filter((c) => c.status === "OPEN" || c.status === "IN_REVIEW").length} in progress · ${myComplaints.length} total`}
-                            </p>
-                        </div>
-                    </div>
-                    <Link href="/driver/complaints" className="shrink-0 rounded-xl bg-pd-surface-2 px-3 py-2 text-xs font-bold">
-                        Open
-                    </Link>
-                </div>
-                {myComplaints.slice(0, 2).map((complaint) => {
-                    const meta = COMPLAINT_STATUS_META[complaint.status] || COMPLAINT_STATUS_META.OPEN;
-                    const category = COMPLAINT_CATEGORIES.find((c) => c.value === complaint.category)?.label || "Other";
-                    return (
-                        <div key={complaint._id} className="mt-3 flex items-center justify-between gap-3 border-t border-pd-line pt-3">
-                            <p className="min-w-0 truncate text-sm font-semibold">{category} complaint</p>
-                            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${meta.classes}`}>
-                                {meta.label}
-                            </span>
-                        </div>
-                    );
-                })}
-            </section>
+            {requestsView}
         </div>
     );
     const tripPanel = rideInProgress && (
@@ -1310,11 +1071,20 @@ function DriverDashboard() {
                     {!mapMenuOpen && notifications.unread > 0 && <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-[#087F5B] ring-2 ring-white" />}
                 </button>
             </div>
+            {!rideInProgress && !rideEnded && (
+                <Link href="/driver/complaints" aria-label="Help and support"
+                    className="absolute right-4 top-[calc(max(16px,env(safe-area-inset-top)))] z-30 flex h-12 items-center gap-2 rounded-2xl bg-pd-surface px-4 text-sm font-extrabold text-pd-text shadow-[0_6px_24px_rgba(17,17,17,0.12)]">
+                    <LifeBuoy size={20} aria-hidden="true" /> Help
+                </Link>
+            )}
             {mapMenuOpen && (
                 <>
                     <button type="button" aria-label="Close driver menu" onClick={() => setMapMenuOpen(false)}
                         className="absolute inset-0 z-40 bg-black/20" />
                     <nav aria-label="Driver menu" className="absolute left-4 top-[calc(max(16px,env(safe-area-inset-top))+60px)] z-50 w-72 max-w-[calc(100vw-32px)] rounded-2xl bg-pd-surface p-2 text-pd-text shadow-xl">
+                        <Link href="/driver/complaints" onClick={() => setMapMenuOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-extrabold text-pd-accent-text hover:bg-pd-surface-2">
+                            <LifeBuoy size={19} /> Help and support
+                        </Link>
                         <Link href="/driver/account" onClick={() => setMapMenuOpen(false)} className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold hover:bg-pd-surface-2">
                             <UserRound size={19} /> {t("dHome.myAccount")}
                         </Link>
@@ -1357,7 +1127,7 @@ function DriverDashboard() {
                 </>
             )}
             <button type="button" onClick={locateMe} disabled={locating} aria-label="Centre on my location"
-                style={{ bottom: rideInProgress || rideEnded ? `${TRIP_PANEL_HEIGHT + 16}px` : `calc(${heights[sheet]} + 78px)` }}
+                style={{ bottom: rideInProgress || rideEnded ? `${TRIP_PANEL_HEIGHT + 16}px` : showGuidedCard ? `calc(${guidedHeight}px + 68px + 24px + env(safe-area-inset-bottom))` : `calc(${heights[sheet]} + 78px)` }}
                 className="absolute right-4 z-30 flex h-12 w-12 items-center justify-center rounded-2xl bg-pd-surface text-pd-text shadow-[0_6px_24px_rgba(17,17,17,0.12)] disabled:opacity-60">
                 <LocateFixed size={21} className={locating ? "animate-pulse" : ""} />
             </button>
@@ -1372,7 +1142,33 @@ function DriverDashboard() {
                         selectedRide.passengerId?.lastName
                     ].filter(Boolean).join(" ")} />
             )}
-            {rideInProgress || rideEnded ? (rideInProgress ? tripPanel : endedPanel) : (
+            {showGuidedCard && (
+                <GuidedHomeCard
+                    step={guidedStep}
+                    loading={loading}
+                    vehicles={vehicles}
+                    selectedVehicle={selectedVehicle}
+                    savedVehicle={savedVehicle}
+                    chosenVehicle={chosenVehicle}
+                    choosing={choosingVehicle}
+                    busy={busy}
+                    onlineBlock={onlineBlock}
+                    blockedLine={onlineBlock?.services?.map((service) => (
+                        <p key={service.service} className="mt-1 text-xs font-semibold">
+                            {SERVICE_META[service.service]?.short}:{" "}
+                            {(service.blockedReasons || []).map(humanizeReason).filter(Boolean).slice(0, 2).join(" · ")
+                                || (STATUS_META[service.status]?.label || service.status)}
+                        </p>
+                    ))}
+                    onOpenChoose={() => setTab("vehicle")}
+                    onCloseChoose={() => setTab("requests")}
+                    onSelectVehicle={setSelectedVehicle}
+                    onSaveVehicle={saveVehicle}
+                    onGoOnline={toggleOnline}
+                    onHeight={setGuidedHeight}
+                />
+            )}
+            {rideInProgress || rideEnded ? (rideInProgress ? tripPanel : endedPanel) : guidedStep !== "online" ? null : (
                 <DriverSheet
                     label="Driver dashboard"
                     state={sheet}
