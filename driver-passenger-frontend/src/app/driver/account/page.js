@@ -222,6 +222,16 @@ function DriverAccount() {
                         <span className="text-xs text-[#087F5B]">{t("account.open")}</span>
                     </Link>
                     <Link
+                        href="/driver/vehicles"
+                        className="flex items-center gap-3 border-b py-3"
+                    >
+                        <CarFront size={20} className="text-[#087F5B]" />
+                        <span className="flex-1 text-sm font-semibold">
+                            My Vehicles
+                        </span>
+                        <span className="text-xs text-[#087F5B]">{t("account.open")}</span>
+                    </Link>
+                    <Link
                         href="/driver/profile"
                         className="flex items-center gap-3 border-b py-3"
                     >

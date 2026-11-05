@@ -134,6 +134,11 @@ export default function GuidedHomeCard({
                             {busy ? "Please wait…" : unchanged ? "Keep this vehicle" : "Use this vehicle"}
                         </BigButton>
                     </div>
+                    <div className="mt-3 text-center">
+                        <Link href="/driver/vehicles" className="inline-flex min-h-11 items-center font-extrabold text-pd-accent-text underline">
+                            Add another vehicle
+                        </Link>
+                    </div>
                 </section>
             </div>
         );
@@ -171,6 +176,11 @@ export default function GuidedHomeCard({
                             Your vehicle is with admin for checking. You will be able to go online as soon as it is approved.
                         </p>
                     </div>
+                    <div className="mt-3 text-center">
+                        <Link href="/driver/vehicles" className="inline-flex min-h-11 items-center font-extrabold text-pd-accent-text underline">
+                            Add another vehicle
+                        </Link>
+                    </div>
                 </section>
             </div>
         );
@@ -193,6 +203,9 @@ export default function GuidedHomeCard({
                                 Change
                             </button>
                         )}
+                        <Link href="/driver/vehicles" className="shrink-0 py-2 font-extrabold text-pd-accent-text underline">
+                            Add vehicle
+                        </Link>
                     </p>
                 )}
                 {onlineBlock && (

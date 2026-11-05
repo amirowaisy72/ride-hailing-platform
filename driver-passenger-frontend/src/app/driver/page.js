@@ -1036,7 +1036,6 @@ function DriverDashboard() {
                     </Link>
                 )}
                 <DriverMap
-                    token={token}
                     locateRequest={locateRequest}
                     destination={nextTarget}
                     targetKind={selectedRide?.status === "TRIP_STARTED" ? "destination" : "pickup"}
