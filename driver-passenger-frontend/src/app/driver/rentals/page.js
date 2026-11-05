@@ -4,13 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
     ArrowLeft,
-    BadgeCheck,
+    ArrowRight,
     CalendarDays,
     CarFront,
     CheckCircle2,
+    ChevronDown,
     CircleAlert,
-    CircleDollarSign,
-    ClipboardList,
     FileCheck2,
     Hourglass,
     KeyRound,
@@ -43,6 +42,95 @@ const MIN_EXPIRY_DATE = new Date(
     Date.now() + 86400000
 ).toLocaleDateString("en-CA");
 
+// One status per document type: APPROVED beats PENDING beats ON_FILE
+// beats REJECTED beats nothing. Only the last two ever ask for an upload.
+const STATUS_RANK = {
+    APPROVED: 5,
+    PENDING: 4,
+    ON_FILE: 3,
+    REJECTED: 2,
+};
+
+function normaliseDocStatus(raw) {
+    const value = String(raw || "").toUpperCase();
+    if (value === "APPROVED" || value === "VERIFIED") return "APPROVED";
+    if (["PENDING", "UNDER_REVIEW", "SUBMITTED"].includes(value)) {
+        return "PENDING";
+    }
+    if (value === "REJECTED" || value === "EXPIRED") return "REJECTED";
+    return null;
+}
+
+function resolveDocument(type, partner) {
+    const candidates = [];
+    const own = (partner.documents || []).find(
+        (doc) => doc.documentType === type
+    );
+    if (own) {
+        const status = normaliseDocStatus(own.verificationStatus);
+        if (status) {
+            candidates.push({
+                status,
+                source: "partner",
+                expiry: own.expiryDate || null,
+                reason: own.rejectionReason || "",
+            });
+        }
+    }
+    (partner.linkedDocuments || []).forEach((doc) => {
+        if ((doc.documentType || doc.type) !== type) return;
+        const status = normaliseDocStatus(doc.verificationStatus || doc.status);
+        if (status) {
+            candidates.push({
+                status,
+                source: "linked",
+                expiry: doc.expiryDate || doc.expiresAt || null,
+                reason: doc.rejectionReason || "",
+            });
+        }
+    });
+    // The backend's missingDocuments already counts approved driver
+    // documents: a required type missing from it is already satisfied.
+    if (
+        candidates.length === 0 &&
+        Array.isArray(partner.missingDocuments) &&
+        !partner.missingDocuments.includes(type)
+    ) {
+        candidates.push({
+            status: "ON_FILE",
+            source: "linked",
+            expiry: null,
+            reason: "",
+        });
+    }
+    const best = candidates.sort(
+        (a, b) => (STATUS_RANK[b.status] || 0) - (STATUS_RANK[a.status] || 0)
+    )[0];
+    const status = best?.status || "MISSING";
+    return {
+        type,
+        label: DOCUMENT_LABELS[type] || type.replaceAll("_", " "),
+        status,
+        fromDriverProfile:
+            best?.source === "linked" &&
+            !(partner.documents || []).some(
+                (doc) => doc.documentType === type
+            ),
+        expiry: best?.expiry || null,
+        reason: best?.reason || "",
+        satisfied: (STATUS_RANK[status] || 0) >= STATUS_RANK.ON_FILE,
+    };
+}
+
+const fmtDate = (value) =>
+    value
+        ? new Date(value).toLocaleDateString("en-PK", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+          })
+        : "";
+
 export default function DriverRentalsPage() {
     return (
         <AuthGuard role="DRIVER">
@@ -72,29 +160,16 @@ function Toggle({ checked, disabled, onChange, label }) {
             aria-label={label}
             disabled={disabled}
             onClick={() => onChange(!checked)}
-            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+            className={`relative h-8 w-14 shrink-0 rounded-full transition-colors ${
                 checked ? "bg-[#087F5B]" : "bg-pd-surface-3"
             } ${disabled ? "cursor-not-allowed opacity-40" : ""}`}
         >
             <span
-                className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${
-                    checked ? "left-[22px]" : "left-0.5"
+                className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${
+                    checked ? "left-[30px]" : "left-1"
                 }`}
             />
         </button>
-    );
-}
-
-function StatPlaceholder({ Icon, label, caption }) {
-    return (
-        <div className="rounded-2xl bg-pd-surface p-4 shadow-sm">
-            <Icon size={22} className="text-[#087F5B]" />
-            <p className="mt-2 text-xl font-extrabold text-pd-faint">—</p>
-            <p className="text-xs font-bold text-pd-text-2">{label}</p>
-            <p className="mt-0.5 text-[11px] leading-4 text-pd-faint">
-                {caption}
-            </p>
-        </div>
     );
 }
 
@@ -141,11 +216,8 @@ function BusinessFields({
     );
 }
 
-// T-20: chauffeur declaration form. The backend + admin approval
-// surface already existed, but a partner had no way to put their
-// chauffeur's name / licence number / licence expiry on file — and
-// admin approval is impossible without the licence number — so
-// With-Driver bookings could never open. This form is that link.
+// Chauffeur declaration. Everything already on file is prefilled, so
+// nothing is typed twice.
 function ChauffeurDetailsFields({ partner, token, notify, reload }) {
     const [name, setName] = useState(partner.chauffeurName || "");
     const [licenceNumber, setLicenceNumber] = useState(
@@ -160,6 +232,11 @@ function ChauffeurDetailsFields({ partner, token, notify, reload }) {
     const chauffeurStatus =
         partner.chauffeurVerificationStatus || "NOT_APPLIED";
     const meta = STATUS_META[chauffeurStatus] || STATUS_META.NOT_APPLIED;
+    const onFile = Boolean(
+        partner.chauffeurName ||
+            partner.chauffeurLicenceNumber ||
+            partner.chauffeurLicenceExpiry
+    );
 
     const changed =
         name.trim() !== (partner.chauffeurName || "") ||
@@ -193,9 +270,12 @@ function ChauffeurDetailsFields({ partner, token, notify, reload }) {
     }
 
     return (
-        <div className="mt-4 rounded-xl border border-pd-line p-3">
+        <section
+            id="chauffeur-details"
+            className="scroll-mt-24 rounded-[24px] bg-pd-surface p-5 shadow-sm"
+        >
             <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-extrabold">Chauffeur details</p>
+                <h3 className="text-base font-extrabold">Chauffeur details</h3>
                 <span
                     className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-extrabold ${meta.pill}`}
                 >
@@ -209,6 +289,13 @@ function ChauffeurDetailsFields({ partner, token, notify, reload }) {
                 exactly as printed on the licence. Changing them after
                 approval sends the chauffeur back for review.
             </p>
+            {onFile && (
+                <p className="mt-2 flex items-start gap-2 rounded-xl bg-pd-success-soft p-2.5 text-xs font-semibold text-[#087F5B]">
+                    <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
+                    We already have details on file — they are filled in
+                    below. Change them only if something is wrong.
+                </p>
+            )}
             {chauffeurStatus === "REJECTED" &&
                 partner.chauffeurRejectionReason && (
                     <p className="mt-2 rounded-lg bg-pd-danger-soft p-2.5 text-xs font-semibold text-pd-danger">
@@ -256,13 +343,13 @@ function ChauffeurDetailsFields({ partner, token, notify, reload }) {
                     type="button"
                     onClick={saveChauffeur}
                     disabled={busy}
-                    className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#087F5B] font-bold text-white disabled:opacity-40"
+                    className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#087F5B] text-base font-bold text-white disabled:opacity-40"
                 >
                     <ShieldCheck size={18} />
                     {busy ? "Please wait…" : "Save chauffeur details"}
                 </button>
             )}
-        </div>
+        </section>
     );
 }
 
@@ -303,10 +390,29 @@ function ApplyForm({ token, notify, onApplied }) {
             <p className="mt-1 text-sm leading-6 text-pd-muted">
                 List your car on Safar Rentals and earn from bookings. Safar
                 collects its booking fee when a booking is confirmed, so your
-                rental price is yours. Vehicle listings open in the next
-                update — complete your partner verification now so you can go
-                live on day one.
+                rental price is yours.
             </p>
+
+            <ol className="mt-4 space-y-2 rounded-2xl bg-pd-surface-2 p-3 text-xs font-semibold text-pd-text-2">
+                <li className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#087F5B] text-[10px] font-extrabold text-white">
+                        1
+                    </span>
+                    Tell us about your business — this screen
+                </li>
+                <li className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-pd-surface-3 text-[10px] font-extrabold text-pd-muted">
+                        2
+                    </span>
+                    Add only the documents we do not already have
+                </li>
+                <li className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-pd-surface-3 text-[10px] font-extrabold text-pd-muted">
+                        3
+                    </span>
+                    Safar approves you, then you list your first car
+                </li>
+            </ol>
 
             <div className="mt-5">
                 <BusinessFields
@@ -318,20 +424,366 @@ function ApplyForm({ token, notify, onApplied }) {
                 />
             </div>
 
+            <p className="mt-4 flex items-start gap-2 text-xs leading-5 text-pd-muted">
+                <CheckCircle2
+                    size={14}
+                    className="mt-0.5 shrink-0 text-[#087F5B]"
+                />
+                Documents you already gave us for your driver account are
+                reused — you will never upload the same one twice.
+            </p>
+
             <button
                 type="button"
                 onClick={submit}
                 disabled={busy}
-                className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#087F5B] font-bold text-white disabled:opacity-40"
+                className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#087F5B] text-base font-bold text-white disabled:opacity-40"
             >
-                <ShieldCheck size={18} />
+                <ShieldCheck size={19} />
                 {busy ? "Please wait…" : "Start application"}
             </button>
         </section>
     );
 }
 
-function PartnerPanel({ partner, token, notify, reload }) {
+function scrollToId(id) {
+    document
+        .getElementById(id)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// The single most obvious thing to do next, in plain words.
+function NextStepCard({ partner, documents, onNavigate }) {
+    const status = partner.applicationStatus;
+    const outstanding = documents.filter((doc) => !doc.satisfied);
+    const chauffeurIncomplete =
+        partner.providesChauffeur &&
+        !(
+            partner.chauffeurName &&
+            partner.chauffeurLicenceNumber &&
+            partner.chauffeurLicenceExpiry
+        );
+
+    let step;
+    if (status === "SUSPENDED") {
+        step = {
+            tone: "danger",
+            title: "Account suspended",
+            text: "Bookings and listings are paused. Contact Safar support to resolve this.",
+        };
+    } else if (outstanding.length > 0) {
+        step = {
+            tone: "primary",
+            title: `Add ${outstanding.length} document${outstanding.length === 1 ? "" : "s"}`,
+            text: `Still needed: ${outstanding.map((doc) => doc.label).join(", ")}.`,
+            action: "Upload documents",
+            onClick: () => scrollToId("partner-documents"),
+        };
+    } else if (chauffeurIncomplete) {
+        step = {
+            tone: "primary",
+            title: "Add your chauffeur details",
+            text: "Name and licence details let Safar verify your chauffeur for With Driver bookings.",
+            action: "Add chauffeur details",
+            onClick: () => scrollToId("chauffeur-details"),
+        };
+    } else if (status === "APPROVED") {
+        step = {
+            tone: "primary",
+            title: "You are approved — list your car",
+            text: "Add a vehicle with its prices and photos. It goes live after a quick check.",
+            action: "Go to My Fleet",
+            onClick: () => onNavigate("fleet"),
+        };
+    } else {
+        step = {
+            tone: "waiting",
+            title: "Nothing to do — Safar is reviewing",
+            text: "Everything is submitted. You will be notified when your business is approved.",
+        };
+    }
+
+    const toneClass =
+        step.tone === "danger"
+            ? "bg-pd-danger-soft text-pd-danger"
+            : step.tone === "waiting"
+              ? "bg-pd-warning-soft text-pd-warning"
+              : "bg-[#087F5B] text-white";
+
+    return (
+        <section className={`rounded-[24px] p-5 shadow-sm ${toneClass}`}>
+            <p className="text-[11px] font-extrabold uppercase tracking-wider opacity-80">
+                {step.tone === "primary" ? "Your next step" : "Status"}
+            </p>
+            <h2 className="mt-1 flex items-center gap-2 text-lg font-extrabold">
+                {step.tone === "waiting" && <Hourglass size={18} />}
+                {step.title}
+            </h2>
+            <p className="mt-1 text-sm leading-6 opacity-90">{step.text}</p>
+            {step.action && (
+                <button
+                    type="button"
+                    onClick={step.onClick}
+                    className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-base font-extrabold text-[#087F5B]"
+                >
+                    {step.action}
+                    <ArrowRight size={18} />
+                </button>
+            )}
+        </section>
+    );
+}
+
+// What is done, what is open, what is blocking going live.
+function SetupChecklist({ partner, documents }) {
+    const status = partner.applicationStatus;
+    const doneDocs = documents.filter((doc) => doc.satisfied).length;
+    const chauffeurDone =
+        !partner.providesChauffeur ||
+        Boolean(
+            partner.chauffeurName &&
+                partner.chauffeurLicenceNumber &&
+                partner.chauffeurLicenceExpiry
+        );
+    const approved = status === "APPROVED";
+
+    const steps = [
+        {
+            key: "business",
+            label: "Business details",
+            done: true,
+            detail: partner.businessName || "Application started",
+        },
+        {
+            key: "docs",
+            label: "Documents",
+            done: doneDocs === documents.length,
+            detail:
+                documents.length === 0
+                    ? "Nothing to upload"
+                    : doneDocs === documents.length
+                      ? "All submitted"
+                      : `${doneDocs} of ${documents.length} done`,
+            target: "partner-documents",
+        },
+        ...(partner.providesChauffeur
+            ? [
+                  {
+                      key: "chauffeur",
+                      label: "Chauffeur details",
+                      done: chauffeurDone,
+                      detail: chauffeurDone
+                          ? (
+                                STATUS_META[
+                                    partner.chauffeurVerificationStatus
+                                ] || STATUS_META.NOT_APPLIED
+                            ).label
+                          : "Needed for With Driver",
+                      target: "chauffeur-details",
+                  },
+              ]
+            : []),
+        {
+            key: "approval",
+            label: "Safar approval",
+            done: approved,
+            detail: approved
+                ? "Approved"
+                : status === "REJECTED"
+                  ? "Rejected — fix and resubmit"
+                  : "Waiting for Safar",
+        },
+    ];
+
+    const doneCount = steps.filter((step) => step.done).length;
+
+    return (
+        <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+                <h3 className="text-base font-extrabold">Setup progress</h3>
+                <span className="text-xs font-extrabold text-[#087F5B]">
+                    {doneCount} of {steps.length} done
+                </span>
+            </div>
+            <div
+                className="mt-3 h-2 overflow-hidden rounded-full bg-pd-surface-3"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={steps.length}
+                aria-valuenow={doneCount}
+                aria-label="Setup progress"
+            >
+                <div
+                    className="h-full rounded-full bg-[#087F5B] transition-all"
+                    style={{ width: `${(doneCount / steps.length) * 100}%` }}
+                />
+            </div>
+            <ul className="mt-3 divide-y divide-pd-line">
+                {steps.map((step) => {
+                    const content = (
+                        <>
+                            {step.done ? (
+                                <CheckCircle2
+                                    size={20}
+                                    className="shrink-0 text-[#087F5B]"
+                                />
+                            ) : (
+                                <CircleAlert
+                                    size={20}
+                                    className="shrink-0 text-pd-warning"
+                                />
+                            )}
+                            <span className="min-w-0 flex-1 text-left">
+                                <span className="block text-sm font-bold">
+                                    {step.label}
+                                </span>
+                                <span className="block truncate text-xs text-pd-muted">
+                                    {step.detail}
+                                </span>
+                            </span>
+                            {!step.done && step.target && (
+                                <ArrowRight
+                                    size={16}
+                                    className="shrink-0 text-pd-faint"
+                                />
+                            )}
+                        </>
+                    );
+                    return (
+                        <li key={step.key}>
+                            {!step.done && step.target ? (
+                                <button
+                                    type="button"
+                                    onClick={() => scrollToId(step.target)}
+                                    className="flex min-h-14 w-full items-center gap-3 py-2"
+                                >
+                                    {content}
+                                </button>
+                            ) : (
+                                <div className="flex min-h-14 items-center gap-3 py-2">
+                                    {content}
+                                </div>
+                            )}
+                        </li>
+                    );
+                })}
+            </ul>
+        </section>
+    );
+}
+
+function DocumentRow({
+    doc,
+    file,
+    expiry,
+    uploading,
+    onSelect,
+    onExpiry,
+    onUpload,
+}) {
+    const { type, label, status, satisfied } = doc;
+    const pill =
+        status === "APPROVED"
+            ? { text: "Approved", cls: "bg-pd-success-soft text-[#087F5B]" }
+            : status === "PENDING"
+              ? { text: "Under review", cls: "bg-pd-warning-soft text-pd-warning" }
+              : status === "ON_FILE"
+                ? { text: "Already on file", cls: "bg-pd-success-soft text-[#087F5B]" }
+                : status === "REJECTED"
+                  ? { text: "Rejected", cls: "bg-pd-danger-soft text-pd-danger" }
+                  : { text: "Missing", cls: "bg-pd-surface-3 text-pd-muted" };
+
+    return (
+        <li className="py-3">
+            <div className="flex items-center gap-2.5">
+                {satisfied ? (
+                    <CheckCircle2
+                        size={20}
+                        className="shrink-0 text-[#087F5B]"
+                    />
+                ) : (
+                    <CircleAlert
+                        size={20}
+                        className="shrink-0 text-pd-warning"
+                    />
+                )}
+                <span className="min-w-0 flex-1 text-sm font-semibold">
+                    {label}
+                </span>
+                <span
+                    className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-extrabold ${pill.cls}`}
+                >
+                    {pill.text}
+                </span>
+            </div>
+
+            {satisfied && (
+                <p className="mt-1 pl-[30px] text-xs text-pd-muted">
+                    {doc.fromDriverProfile
+                        ? "Already submitted on your driver profile — nothing to upload."
+                        : "Submitted — nothing more to upload."}
+                    {doc.expiry ? ` Expires ${fmtDate(doc.expiry)}.` : ""}
+                </p>
+            )}
+
+            {status === "REJECTED" && doc.reason && (
+                <p className="mt-1.5 pl-[30px] text-xs font-semibold text-pd-danger">
+                    {doc.reason}
+                </p>
+            )}
+
+            {!satisfied && (
+                <div className="mt-2.5 pl-[30px]">
+                    <label className="block cursor-pointer rounded-2xl border-2 border-dashed border-pd-line bg-pd-success-soft p-4 text-center">
+                        <UploadCloud
+                            size={22}
+                            className="mx-auto text-[#087F5B]"
+                        />
+                        <span className="mt-1 block truncate text-sm font-semibold">
+                            {file?.name || "Tap to choose a photo"}
+                        </span>
+                        <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            onChange={(event) =>
+                                onSelect(type, event.target.files?.[0])
+                            }
+                        />
+                    </label>
+                    {type === "DRIVING_LICENSE" && (
+                        <label className="mt-3 block">
+                            <span className="text-xs font-semibold">
+                                Licence expiry date
+                            </span>
+                            <input
+                                type="date"
+                                dir="ltr"
+                                min={MIN_EXPIRY_DATE}
+                                value={expiry || ""}
+                                onChange={(event) =>
+                                    onExpiry(type, event.target.value)
+                                }
+                                className="mt-1.5 h-12 w-full rounded-xl border px-3"
+                            />
+                        </label>
+                    )}
+                    <button
+                        type="button"
+                        disabled={!file || Boolean(uploading)}
+                        onClick={() => onUpload(type)}
+                        className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#087F5B] text-sm font-bold text-white disabled:opacity-40"
+                    >
+                        <FileCheck2 size={16} />
+                        {uploading === type ? "Uploading…" : `Upload ${label}`}
+                    </button>
+                </div>
+            )}
+        </li>
+    );
+}
+
+function PartnerPanel({ partner, token, notify, reload, onNavigate }) {
     const status = partner.applicationStatus;
     // Keyed remounts (see parent) re-initialise these from fresh
     // server state after every save or document review change.
@@ -345,9 +797,10 @@ function PartnerPanel({ partner, token, notify, reload }) {
     const [files, setFiles] = useState({});
     const [expiryDates, setExpiryDates] = useState({});
     const [uploading, setUploading] = useState("");
+    const [detailsOpen, setDetailsOpen] = useState(status !== "APPROVED");
 
-    const documentsByType = new Map(
-        (partner.documents || []).map((doc) => [doc.documentType, doc])
+    const documents = (partner.requiredDocuments || []).map((type) =>
+        resolveDocument(type, partner)
     );
     const detailsChanged =
         businessName.trim() !== (partner.businessName || "") ||
@@ -436,241 +889,159 @@ function PartnerPanel({ partner, token, notify, reload }) {
 
     return (
         <>
+            <NextStepCard
+                partner={partner}
+                documents={documents}
+                onNavigate={onNavigate}
+            />
+
+            {status === "REJECTED" && (
+                <p className="rounded-xl bg-pd-danger-soft p-4 text-sm font-semibold text-pd-danger">
+                    Application rejected
+                    {partner.rejectionReason
+                        ? ` — ${partner.rejectionReason}`
+                        : ""}
+                    . Fix the documents below and submit again.
+                </p>
+            )}
+            {status === "SUSPENDED" && partner.suspensionReason && (
+                <p className="rounded-xl bg-pd-danger-soft p-4 text-sm font-semibold text-pd-danger">
+                    This partner account is suspended — {partner.suspensionReason}
+                    .
+                </p>
+            )}
+
+            <SetupChecklist partner={partner} documents={documents} />
+
+            {documents.length > 0 && (
+                <section
+                    id="partner-documents"
+                    className="scroll-mt-24 rounded-[24px] bg-pd-surface p-5 shadow-sm"
+                >
+                    <h3 className="text-base font-extrabold">
+                        Partner verification (KYC)
+                    </h3>
+                    <p className="mt-1 text-xs leading-5 text-pd-muted">
+                        Anything already approved or under review on your
+                        driver profile is ticked here — you only upload what
+                        is genuinely missing.
+                    </p>
+                    <ul className="mt-2 divide-y divide-pd-line">
+                        {documents.map((doc) => (
+                            <DocumentRow
+                                key={doc.type}
+                                doc={doc}
+                                file={files[doc.type]}
+                                expiry={expiryDates[doc.type]}
+                                uploading={uploading}
+                                onSelect={selectFile}
+                                onExpiry={(type, value) =>
+                                    setExpiryDates((previous) => ({
+                                        ...previous,
+                                        [type]: value,
+                                    }))
+                                }
+                                onUpload={uploadDocument}
+                            />
+                        ))}
+                    </ul>
+                </section>
+            )}
+
+            {partner.providesChauffeur && (
+                <ChauffeurDetailsFields
+                    partner={partner}
+                    token={token}
+                    notify={notify}
+                    reload={reload}
+                />
+            )}
+
             <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-pd-success-soft text-[#087F5B]">
-                        <Store size={24} />
+                <button
+                    type="button"
+                    onClick={() => setDetailsOpen((open) => !open)}
+                    aria-expanded={detailsOpen}
+                    className="flex min-h-12 w-full items-center gap-3 text-left"
+                >
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-pd-success-soft text-[#087F5B]">
+                        <Store size={22} />
                     </span>
-                    <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <h2 className="text-lg font-extrabold">
+                    <span className="min-w-0 flex-1">
+                        <span className="flex flex-wrap items-center gap-2">
+                            <span className="text-base font-extrabold">
                                 {partner.businessName || "Rental Partner"}
-                            </h2>
+                            </span>
                             <StatusBadge status={status} />
-                        </div>
-                        <p className="mt-1 text-sm text-pd-muted">
-                            {status === "APPROVED"
-                                ? "Your rental business is verified. Listings open in the next update."
-                                : "Complete the verification below — Safar reviews every Rental Partner before listings go live."}
-                        </p>
-                    </div>
-                </div>
-
-                {status === "REJECTED" && (
-                    <p className="mt-4 rounded-xl bg-pd-danger-soft p-3 text-sm font-semibold text-pd-danger">
-                        Application rejected
-                        {partner.rejectionReason
-                            ? ` — ${partner.rejectionReason}`
-                            : ""}
-                        . Fix the documents below and submit again.
-                    </p>
-                )}
-                {status === "SUSPENDED" && (
-                    <p className="mt-4 rounded-xl bg-pd-danger-soft p-3 text-sm font-semibold text-pd-danger">
-                        This partner account is suspended
-                        {partner.suspensionReason
-                            ? ` — ${partner.suspensionReason}`
-                            : ""}
-                        .
-                    </p>
-                )}
-                {(status === "PENDING" || status === "UNDER_REVIEW") && (
-                    <p className="mt-4 flex items-start gap-2 rounded-xl bg-pd-warning-soft p-3 text-sm font-semibold text-pd-warning">
-                        <Hourglass size={16} className="mt-0.5 shrink-0" />
-                        Safar is reviewing your KYC documents. You will be
-                        notified when your business is approved.
-                    </p>
-                )}
-
-                <div className="mt-5">
-                    <BusinessFields
-                        businessName={businessName}
-                        setBusinessName={setBusinessName}
-                        providesChauffeur={providesChauffeur}
-                        setProvidesChauffeur={setProvidesChauffeur}
-                        partner={partner}
+                        </span>
+                        <span className="block text-xs text-pd-muted">
+                            Business details
+                        </span>
+                    </span>
+                    <ChevronDown
+                        size={18}
+                        className={`shrink-0 text-pd-faint transition-transform ${detailsOpen ? "rotate-180" : ""}`}
                     />
-                </div>
+                </button>
 
-                {detailsChanged && (
+                {detailsOpen && (
+                    <div className="mt-4">
+                        <BusinessFields
+                            businessName={businessName}
+                            setBusinessName={setBusinessName}
+                            providesChauffeur={providesChauffeur}
+                            setProvidesChauffeur={setProvidesChauffeur}
+                            partner={partner}
+                        />
+                        {detailsChanged && (
+                            <button
+                                type="button"
+                                onClick={saveDetails}
+                                disabled={busy}
+                                className="mt-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#087F5B] text-base font-bold text-white disabled:opacity-40"
+                            >
+                                <ShieldCheck size={18} />
+                                {busy ? "Please wait…" : "Save & submit"}
+                            </button>
+                        )}
+                    </div>
+                )}
+            </section>
+
+            {status === "APPROVED" && (
+                <section className="grid grid-cols-2 gap-3">
                     <button
                         type="button"
-                        onClick={saveDetails}
-                        disabled={busy}
-                        className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#087F5B] font-bold text-white disabled:opacity-40"
+                        onClick={() => onNavigate("fleet")}
+                        className="flex min-h-24 flex-col items-start justify-between rounded-[24px] bg-pd-surface p-4 text-left shadow-sm"
                     >
-                        <ShieldCheck size={18} />
-                        {busy ? "Please wait…" : "Save & submit"}
+                        <CarFront size={24} className="text-[#087F5B]" />
+                        <span>
+                            <span className="block text-sm font-extrabold">
+                                My Fleet
+                            </span>
+                            <span className="block text-xs text-pd-muted">
+                                Cars, prices, dates
+                            </span>
+                        </span>
                     </button>
-                )}
-
-                {partner.providesChauffeur && (
-                    <ChauffeurDetailsFields
-                        partner={partner}
-                        token={token}
-                        notify={notify}
-                        reload={reload}
-                    />
-                )}
-            </section>
-
-            <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
-                <h3 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-pd-muted">
-                    <ClipboardList size={14} /> Partner verification (KYC)
-                </h3>
-                <ul className="mt-1 divide-y divide-pd-line">
-                    {(partner.requiredDocuments || []).map((type) => {
-                        const doc = documentsByType.get(type);
-                        const docStatus = doc?.verificationStatus;
-                        const label =
-                            DOCUMENT_LABELS[type] || type.replaceAll("_", " ");
-                        return (
-                            <li key={type} className="py-3">
-                                <div className="flex items-center gap-2.5">
-                                    {docStatus === "APPROVED" ? (
-                                        <CheckCircle2
-                                            size={18}
-                                            className="shrink-0 text-[#087F5B]"
-                                        />
-                                    ) : (
-                                        <CircleAlert
-                                            size={18}
-                                            className="shrink-0 text-pd-warning"
-                                        />
-                                    )}
-                                    <span className="min-w-0 flex-1 text-sm font-semibold">
-                                        {label}
-                                    </span>
-                                    <span
-                                        className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-extrabold ${
-                                            docStatus === "APPROVED"
-                                                ? "bg-pd-success-soft text-[#087F5B]"
-                                                : docStatus === "REJECTED"
-                                                  ? "bg-pd-danger-soft text-pd-danger"
-                                                  : docStatus === "PENDING"
-                                                    ? "bg-pd-warning-soft text-pd-warning"
-                                                    : "bg-pd-surface-3 text-pd-muted"
-                                        }`}
-                                    >
-                                        {docStatus === "APPROVED"
-                                            ? "Approved"
-                                            : docStatus === "REJECTED"
-                                              ? "Rejected"
-                                              : docStatus === "PENDING"
-                                                ? "Under review"
-                                                : "Missing"}
-                                    </span>
-                                </div>
-                                {docStatus === "REJECTED" &&
-                                    doc?.rejectionReason && (
-                                        <p className="mt-1.5 pl-7 text-xs font-semibold text-pd-danger">
-                                            {doc.rejectionReason}
-                                        </p>
-                                    )}
-                                {docStatus !== "APPROVED" && (
-                                    <div className="mt-2.5 pl-7">
-                                        <label className="block cursor-pointer rounded-xl border-2 border-dashed border-pd-line bg-pd-success-soft p-3 text-center">
-                                            <UploadCloud
-                                                size={20}
-                                                className="mx-auto text-[#087F5B]"
-                                            />
-                                            <span className="mt-1 block truncate text-xs font-semibold">
-                                                {files[type]?.name ||
-                                                    "Choose document image"}
-                                            </span>
-                                            <input
-                                                type="file"
-                                                accept="image/jpeg,image/png,image/webp"
-                                                className="hidden"
-                                                onChange={(event) =>
-                                                    selectFile(
-                                                        type,
-                                                        event.target.files?.[0]
-                                                    )
-                                                }
-                                            />
-                                        </label>
-                                        {type === "DRIVING_LICENSE" && (
-                                            <label className="mt-3 block">
-                                                <span className="text-xs font-semibold">
-                                                    Licence expiry date
-                                                </span>
-                                                <input
-                                                    type="date"
-                                                    min={MIN_EXPIRY_DATE}
-                                                    value={
-                                                        expiryDates[type] || ""
-                                                    }
-                                                    onChange={(event) =>
-                                                        setExpiryDates(
-                                                            (previous) => ({
-                                                                ...previous,
-                                                                [type]: event
-                                                                    .target
-                                                                    .value,
-                                                            })
-                                                        )
-                                                    }
-                                                    className="mt-1.5 h-11 w-full rounded-xl border px-3"
-                                                />
-                                            </label>
-                                        )}
-                                        <button
-                                            type="button"
-                                            disabled={
-                                                !files[type] || Boolean(uploading)
-                                            }
-                                            onClick={() =>
-                                                uploadDocument(type)
-                                            }
-                                            className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#087F5B] text-sm font-bold text-white disabled:opacity-40"
-                                        >
-                                            <FileCheck2 size={16} />
-                                            {uploading === type
-                                                ? "Uploading…"
-                                                : `Upload ${label}`}
-                                        </button>
-                                    </div>
-                                )}
-                            </li>
-                        );
-                    })}
-                </ul>
-            </section>
-
-            <section>
-                <h3 className="px-1 text-xs font-extrabold uppercase tracking-wider text-pd-muted">
-                    Business overview
-                </h3>
-                <div className="mt-2 grid grid-cols-2 gap-3">
-                    <StatPlaceholder
-                        Icon={CarFront}
-                        label="Listed vehicles"
-                        caption="Vehicle listings open in the next update."
-                    />
-                    <StatPlaceholder
-                        Icon={CalendarDays}
-                        label="Upcoming bookings"
-                        caption="Bookings appear here once listings go live."
-                    />
-                    <StatPlaceholder
-                        Icon={KeyRound}
-                        label="Active rentals"
-                        caption="No rentals yet — finish verification to be ready."
-                    />
-                    <StatPlaceholder
-                        Icon={CircleDollarSign}
-                        label="Monthly revenue"
-                        caption="Rental earnings will be tracked here."
-                    />
-                </div>
-                <p className="mt-3 flex items-start gap-2 rounded-xl bg-pd-success-soft p-3 text-xs leading-5 text-[#087F5B]">
-                    <BadgeCheck size={15} className="mt-0.5 shrink-0" />
-                    Safar Rentals launches With Driver bookings first. Partners
-                    with approved KYC will be able to list vehicles as soon as
-                    listings open.
-                </p>
-            </section>
+                    <button
+                        type="button"
+                        onClick={() => onNavigate("bookings")}
+                        className="flex min-h-24 flex-col items-start justify-between rounded-[24px] bg-pd-surface p-4 text-left shadow-sm"
+                    >
+                        <CalendarDays size={24} className="text-[#087F5B]" />
+                        <span>
+                            <span className="block text-sm font-extrabold">
+                                Bookings
+                            </span>
+                            <span className="block text-xs text-pd-muted">
+                                Requests and handovers
+                            </span>
+                        </span>
+                    </button>
+                </section>
+            )}
         </>
     );
 }
@@ -736,8 +1107,19 @@ function RentalBusinessScreen() {
               (partner.documents || [])
                   .map((doc) => `${doc.documentType}:${doc.verificationStatus}`)
                   .join(","),
+              (partner.linkedDocuments || [])
+                  .map(
+                      (doc) =>
+                          `${doc.documentType || doc.type}:${doc.verificationStatus || doc.status}`
+                  )
+                  .join(","),
           ].join("|")
         : "none";
+
+    function navigate(tab) {
+        setActiveTab(tab);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
 
     return (
         <main className="driver-subpage min-h-dvh bg-pd-bg pb-28 text-pd-text">
@@ -747,12 +1129,12 @@ function RentalBusinessScreen() {
                 <div className="mx-auto max-w-xl">
                     <Link
                         href="/driver/account"
-                        className="inline-flex items-center gap-2 text-sm font-semibold"
+                        className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold"
                     >
                         <ArrowLeft size={19} />
                         Back to Account
                     </Link>
-                    <h1 className="mt-7 flex items-center gap-3 text-3xl font-extrabold">
+                    <h1 className="mt-5 flex items-center gap-3 text-3xl font-extrabold">
                         <Store size={30} />
                         My Rental Business
                     </h1>
@@ -779,7 +1161,7 @@ function RentalBusinessScreen() {
                 {notice && (
                     <p
                         role={notice.kind === "error" ? "alert" : "status"}
-                        className={`rounded-xl p-4 text-sm font-semibold ${
+                        className={`sticky top-2 z-30 rounded-xl p-4 text-sm font-semibold shadow-md ${
                             notice.kind === "error"
                                 ? "bg-pd-danger-soft text-pd-danger"
                                 : "bg-pd-success-soft text-[#087F5B]"
@@ -797,7 +1179,7 @@ function RentalBusinessScreen() {
                         <button
                             type="button"
                             onClick={() => void load()}
-                            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-[#087F5B] px-4 py-2.5 text-sm font-bold text-white"
+                            className="mt-3 inline-flex h-12 items-center gap-2 rounded-xl bg-[#087F5B] px-4 text-sm font-bold text-white"
                         >
                             <RefreshCw size={15} /> Try again
                         </button>
@@ -836,7 +1218,7 @@ function RentalBusinessScreen() {
                                 role="tab"
                                 aria-selected={activeTab === tab.key}
                                 onClick={() => setActiveTab(tab.key)}
-                                className={`rounded-xl py-2.5 text-xs font-extrabold ${
+                                className={`min-h-11 rounded-xl py-2.5 text-xs font-extrabold ${
                                     activeTab === tab.key
                                         ? "bg-[#087F5B] text-white shadow-sm"
                                         : "text-pd-muted"
@@ -855,6 +1237,7 @@ function RentalBusinessScreen() {
                         token={token}
                         notify={notify}
                         reload={load}
+                        onNavigate={navigate}
                     />
                 )}
 

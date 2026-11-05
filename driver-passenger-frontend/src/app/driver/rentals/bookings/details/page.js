@@ -68,6 +68,50 @@ const fmtDateTime = (value) =>
           })
         : "—";
 
+// One obvious next action per booking status, shown at the top.
+const NEXT_STEP = {
+    REQUESTED: {
+        urgent: true,
+        title: "Accept or reject this request",
+        text: "Accepting holds the car for these dates.",
+    },
+    PROVIDER_ACCEPTED: {
+        urgent: false,
+        title: "Waiting for the booking fee",
+        text: "The customer pays Safar's fee. Keep the car free meanwhile.",
+    },
+    PAYMENT_PENDING: {
+        urgent: false,
+        title: "Safar is verifying the fee",
+        text: "The booking confirms automatically.",
+    },
+    CONFIRMED: {
+        urgent: true,
+        title: "Hand over the car",
+        text: "Ask for the pickup OTP, photograph the car and record fuel and odometer.",
+    },
+    PICKUP_VERIFIED: {
+        urgent: true,
+        title: "Start the rental",
+        text: "Tap start when the customer drives away.",
+    },
+    RENTAL_ACTIVE: {
+        urgent: true,
+        title: "Record the return when the car is back",
+        text: "Inspect the car with the customer and submit the return.",
+    },
+    RETURN_PENDING: {
+        urgent: false,
+        title: "Waiting for the customer",
+        text: "They confirm the inspection and settle any dues.",
+    },
+    DISPUTED: {
+        urgent: true,
+        title: "This booking is under dispute",
+        text: "Check the details below and use chat to resolve it.",
+    },
+};
+
 export default function PartnerRentalBookingPage() {
     return (
         <AuthGuard role="DRIVER">
@@ -264,6 +308,27 @@ function BookingScreen() {
                 ) : booking ? (
                     <>
                         <JobStepBar service="RENTAL" status={status} />
+                        {NEXT_STEP[status] && (
+                            <section
+                                className={`rounded-[24px] p-5 shadow-sm ${
+                                    NEXT_STEP[status].urgent
+                                        ? "bg-[#087F5B] text-white"
+                                        : "bg-pd-surface-2 text-pd-text-2"
+                                }`}
+                            >
+                                <p className="text-[11px] font-extrabold uppercase tracking-wider opacity-80">
+                                    {NEXT_STEP[status].urgent
+                                        ? "Your next step"
+                                        : "Nothing to do right now"}
+                                </p>
+                                <p className="mt-1 text-lg font-extrabold">
+                                    {NEXT_STEP[status].title}
+                                </p>
+                                <p className="mt-0.5 text-sm opacity-90">
+                                    {NEXT_STEP[status].text}
+                                </p>
+                            </section>
+                        )}
                         <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                             <div className="flex items-center gap-2">
                                 <span
