@@ -548,109 +548,11 @@ export default function DashboardPage() {
                                 </p>
                             </Link>
 
-                            <Link
-                                href="/dashboard/today-rides"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
-                            >
-                                <div className="flex items-start justify-between">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-[#087F5B]">
-                                        <CheckCircle2 size={20} />
-                                    </div>
-                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
-                                </div>
-                                <p className="mt-3 text-sm text-slate-500">
-                                    Today&apos;s Completed Rides
-                                </p>
-                                <p className="mt-1 text-2xl font-extrabold">
-                                    {important.todayCompletedRides?.count ?? 0}
-                                </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
-                                    <span className="block">
-                                        {(important.todayCompletedRides?.count ?? 0) === 0
-                                            ? "No rides completed yet today."
-                                            : `${important.todayCompletedRides.count} ride${important.todayCompletedRides.count === 1 ? "" : "s"} completed today.`}
-                                    </span>
-                                    <span className="block">
-                                        {new Date().toLocaleDateString("en-PK", {
-                                            timeZone: "Asia/Karachi",
-                                            day: "numeric",
-                                            month: "short",
-                                            year: "numeric",
-                                        })}
-                                    </span>
-                                </p>
-                            </Link>
+                            
 
-                            <Link
-                                href="/dashboard/today-rides"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
-                            >
-                                <div className="flex items-start justify-between">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
-                                        <CarFront size={20} />
-                                    </div>
-                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
-                                </div>
-                                <p className="mt-3 text-sm text-slate-500">
-                                    Drivers Online Now
-                                </p>
-                                <p className="mt-1 text-2xl font-extrabold">
-                                    {important.onlineDrivers?.count ?? 0}
-                                </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
-                                    {(important.onlineDrivers?.count ?? 0) === 0 ? (
-                                        "No drivers online right now."
-                                    ) : (
-                                        <>
-                                            <span className="block font-bold text-[#087F5B]">
-                                                {important.onlineDrivers.availableCount} available for rides now.
-                                            </span>
-                                            {(important.onlineDrivers?.recent || []).slice(0, 2).map((item) => (
-                                                <span key={item.id} className="block truncate">
-                                                    {item.name} · {timeAgo(item.lastLocationUpdate)}
-                                                </span>
-                                            ))}
-                                        </>
-                                    )}
-                                </p>
-                            </Link>
+                            
 
-                            <Link
-                                href="/dashboard/app-version"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
-                            >
-                                <div className="flex items-start justify-between">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
-                                        <Smartphone size={20} />
-                                    </div>
-                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
-                                </div>
-                                <p className="mt-3 text-sm text-slate-500">
-                                    Latest App Version
-                                </p>
-                                {important.appVersion ? (
-                                    <>
-                                        <p className="mt-1 text-2xl font-extrabold">
-                                            {important.appVersion.latestVersionName}
-                                        </p>
-                                        <p className="mt-2 text-xs leading-5 text-slate-500">
-                                            <span className="block">
-                                                {important.appVersion.latestUsers} users on latest
-                                                · {important.appVersion.unknownUsers} unknown.
-                                            </span>
-                                            {importantDelta !== null && (
-                                                <span className="block font-bold text-[#087F5B]">
-                                                    +{importantDelta} more people are on latest version now.
-                                                </span>
-                                            )}
-                                        </p>
-                                    </>
-                                ) : (
-                                    <p className="mt-2 text-xs text-slate-500">
-                                        No latest version configured yet.
-                                    </p>
-                                )}
-                            </Link>
+                            
 
                             <Link
                                 href="/dashboard/rentals"
@@ -975,6 +877,156 @@ export default function DashboardPage() {
                                         `${important.settlementsNeedingAttention.pending ?? 0} pending · ${important.settlementsNeedingAttention.failed ?? 0} failed payouts.`
                                     )}
                                 </p>
+                            </Link>
+                        </div>
+                    </section>
+                )}
+
+                {important && (
+                    <section>
+                        <div className="mb-4 flex items-center justify-between gap-4">
+                            <h3 className="text-xl font-extrabold">
+                                Live Status
+                            </h3>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+<Link
+                                href="/dashboard/today-rides"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                                        <CarFront size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Drivers Online Now
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold">
+                                    {important.onlineDrivers?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.onlineDrivers?.count ?? 0) === 0 ? (
+                                        "No drivers online right now."
+                                    ) : (
+                                        <>
+                                            <span className="block font-bold text-[#087F5B]">
+                                                {important.onlineDrivers.availableCount} available for rides now.
+                                            </span>
+                                            {(important.onlineDrivers?.recent || []).slice(0, 2).map((item) => (
+                                                <span key={item.id} className="block truncate">
+                                                    {item.name} · {timeAgo(item.lastLocationUpdate)}
+                                                </span>
+                                            ))}
+                                        </>
+                                    )}
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/passengers"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                                        <Users size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Online Passengers
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold">
+                                    {important.onlinePassengers?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.onlinePassengers?.count ?? 0) === 0 ? (
+                                        "No passengers active right now."
+                                    ) : (
+                                        <>
+                                            <span className="block font-bold text-[#087F5B]">
+                                                Active in the last 15 minutes.
+                                            </span>
+                                            {(important.onlinePassengers?.recent || []).slice(0, 2).map((item) => (
+                                                <span key={item.id} className="block truncate">
+                                                    {item.name} · {timeAgo(item.updatedAt)}
+                                                </span>
+                                            ))}
+                                        </>
+                                    )}
+                                </p>
+                            </Link>
+
+<Link
+                                href="/dashboard/today-rides"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-[#087F5B]">
+                                        <CheckCircle2 size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Today&apos;s Completed Rides
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold">
+                                    {important.todayCompletedRides?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    <span className="block">
+                                        {(important.todayCompletedRides?.count ?? 0) === 0
+                                            ? "No rides completed yet today."
+                                            : `${important.todayCompletedRides.count} ride${important.todayCompletedRides.count === 1 ? "" : "s"} completed today.`}
+                                    </span>
+                                    <span className="block">
+                                        {new Date().toLocaleDateString("en-PK", {
+                                            timeZone: "Asia/Karachi",
+                                            day: "numeric",
+                                            month: "short",
+                                            year: "numeric",
+                                        })}
+                                    </span>
+                                </p>
+                            </Link>
+
+<Link
+                                href="/dashboard/app-version"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                                        <Smartphone size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Latest App Version
+                                </p>
+                                {important.appVersion ? (
+                                    <>
+                                        <p className="mt-1 text-2xl font-extrabold">
+                                            {important.appVersion.latestVersionName}
+                                        </p>
+                                        <p className="mt-2 text-xs leading-5 text-slate-500">
+                                            <span className="block">
+                                                {important.appVersion.latestUsers} users on latest
+                                                · {important.appVersion.unknownUsers} unknown.
+                                            </span>
+                                            {importantDelta !== null && (
+                                                <span className="block font-bold text-[#087F5B]">
+                                                    +{importantDelta} more people are on latest version now.
+                                                </span>
+                                            )}
+                                        </p>
+                                    </>
+                                ) : (
+                                    <p className="mt-2 text-xs text-slate-500">
+                                        No latest version configured yet.
+                                    </p>
+                                )}
                             </Link>
                         </div>
                     </section>

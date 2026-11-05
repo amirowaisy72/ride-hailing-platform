@@ -433,6 +433,13 @@ module.exports = {
 async function getImportant(req, res) {
     try {
         const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        // Passenger "online" window: the app has no live presence
+        // flag for passengers (drivers have isOnline + location),
+        // so online means the app reported its version in the last
+        // 15 minutes (launch/login report). The window is wider
+        // than the drivers' 2-minute location window because an app
+        // report only happens on launch/login, not continuously.
+        const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000);
 
         // "Only new" registration windows: the dashboard sends the
         // last time each card was clicked (localStorage, per card).
@@ -492,6 +499,7 @@ async function getImportant(req, res) {
             totalUsers,
             latestVersionUsers,
             reportedUsers,
+            onlinePassengerRows,
             rentalPartnersPending,
             rentalListingsPending,
             rentalBookingsAwaitingAccept,
@@ -620,6 +628,16 @@ async function getImportant(req, res) {
                 })
                 : Promise.resolve(0),
             UserAppVersion.countDocuments({}),
+            // ADDITIVE ONLY: online passengers for the Live Status
+            // section. Rows are app-version reports, so the role
+            // filter happens in JS after populating the user.
+            UserAppVersion.find({
+                updatedAt: { $gte: fifteenMinAgo },
+            })
+                .populate("userId", "firstName lastName role")
+                .select("userId updatedAt")
+                .sort({ updatedAt: -1 })
+                .lean(),
             // ADDITIVE ONLY: every remaining pending queue across
             // all services, so no waiting item can hide from the
             // Important section. No existing query or response
@@ -684,6 +702,14 @@ async function getImportant(req, res) {
             }
             driversById.get(key).count += 1;
         }
+
+        // Online passengers: app-version rows from the last 15
+        // minutes whose user is a passenger (drivers report too,
+        // so the role filter matters). Count is the full filtered
+        // total, not the limited recent list.
+        const onlinePassengers = (onlinePassengerRows || []).filter(
+            (row) => row.userId && row.userId.role === "PASSENGER"
+        );
 
         return res.json({
             success: true,
@@ -818,6 +844,19 @@ async function getImportant(req, res) {
                         rideSettleFailed +
                         parcelSettleFailed +
                         purchaseSettleFailed,
+                },
+                // ADDITIVE ONLY: passengers active in the last 15
+                // minutes (see the window comment above). Recent
+                // names are for the Live Status card only.
+                onlinePassengers: {
+                    count: onlinePassengers.length,
+                    recent: onlinePassengers.slice(0, 5).map((row) => ({
+                        id: row.userId._id,
+                        name: [row.userId.firstName, row.userId.lastName]
+                            .filter(Boolean)
+                            .join(" ") || "Passenger",
+                        updatedAt: row.updatedAt,
+                    })),
                 },
             },
         });
