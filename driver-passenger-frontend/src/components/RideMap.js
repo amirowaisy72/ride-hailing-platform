@@ -48,12 +48,6 @@ const MAP_STYLES = `
 .rx-map-dest-pin{position:absolute;left:0;top:0;width:35px;height:35px;border-radius:50%;background:${MARKER_SLATE};border:3.5px solid #fff;filter:drop-shadow(0 7px 11px rgba(9,24,17,.5));display:grid;place-items:center}
 .rx-map-dest svg{display:block}
 .rx-map-stop{width:28px;height:28px;border-radius:50%;background:#fff;border:3px solid ${DARK};color:${DARK};font:800 12px/1 system-ui,sans-serif;display:grid;place-items:center;box-shadow:0 3px 10px rgba(17,17,17,.25)}
-.rx-map-driver{position:relative;width:50px;height:50px}
-.rx-map-driver-pulse{position:absolute;inset:-8px;border-radius:50%;background:rgba(8,127,91,.4);animation:rx-map-pulse 2.2s ease-out infinite}
-.rx-map-driver-heading{position:absolute;inset:-11px;opacity:0;transition:transform .6s ease,opacity .3s ease}
-.rx-map-driver-heading.is-visible{opacity:1}
-.rx-map-driver-heading::before{content:"";position:absolute;left:50%;top:0;margin-left:-7px;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:10px solid ${MARKER_SLATE}}
-.rx-map-driver-body{position:absolute;inset:0;border-radius:50%;background:${ACCENT};border:3.5px solid #fff;display:grid;place-items:center;filter:drop-shadow(0 8px 13px rgba(9,24,17,.5))}
 .rx-map-cell{position:relative;width:44px;height:44px;display:grid;place-items:center;animation:rx-map-fade .35s ease-out both}
 .rx-map-cell-veh{position:relative;z-index:2;display:block;object-fit:contain;filter:drop-shadow(0 5px 5px rgba(9,24,17,.38));transition:transform .4s ease;pointer-events:none;user-select:none}
 .rx-map-cell-ground{position:absolute;z-index:1;left:50%;top:50%;width:30px;height:30px;margin:-13px 0 0 -15px;border-radius:50%;background:radial-gradient(circle,rgba(9,24,17,.22) 0%,rgba(9,24,17,0) 70%)}
@@ -86,7 +80,7 @@ const MAP_STYLES = `
 .rx-map-wave-fore{transform-box:view-box;transform-origin:5.4px 8.2px;animation:rx-map-wave-fore 1s ease-in-out -.12s infinite}
 @keyframes rx-map-wave{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
 @keyframes rx-map-wave-fore{0%,100%{transform:rotate(16deg)}50%{transform:rotate(-16deg)}}
-@media (prefers-reduced-motion: reduce){.rx-map-radar,.rx-map-driver-pulse,.rx-map-cell,.rx-map-wave-arm,.rx-map-wave-fore{animation:none!important}.rx-map-radar{opacity:.35;transform:scale(.6)}}
+@media (prefers-reduced-motion: reduce){.rx-map-radar,.rx-map-cell,.rx-map-wave-arm,.rx-map-wave-fore{animation:none!important}.rx-map-radar{opacity:.35;transform:scale(.6)}}
 `;
 const PLACE_POPUP_STYLES = `
 .safar-place-popup-dark .maplibregl-popup-content {
@@ -179,10 +173,6 @@ function vehicleIconMarkup(type, color, size) {
     return iconCache.get(key);
 }
 
-function driverBodyMarkup(type) {
-    return `<span class="rx-map-pin-tail rx-map-pin-tail--green"></span>${vehicleGlyphSvg(type, MARKER_WHITE, 23)}`;
-}
-
 function createPickupElement() {
     const element = document.createElement("div");
     element.className = "rx-map-pickup";
@@ -218,13 +208,6 @@ function createStopElement(index) {
     return element;
 }
 
-function createDriverElement(type) {
-    const element = document.createElement("div");
-    element.className = "rx-map-driver";
-    element.setAttribute("aria-label", "Driver live location");
-    element.innerHTML = `<span class="rx-map-driver-pulse"></span><span class="rx-map-driver-heading"></span><span class="rx-map-driver-body">${driverBodyMarkup(type)}</span>`;
-    return element;
-}
 // Privacy-protected anonymous grid cells; these are NOT drivers' exact positions.
 
 function createRequestElement() {
@@ -732,13 +715,14 @@ export default function RideMap({
             return;
         }
         if (!driverRef.current) {
-            driverRef.current = passengerView
-                ? new maplibregl.Marker({ element: createDriverElement(vehicleType) }).setLngLat(point).addTo(map)
-                : new maplibregl.Marker({
-                    element: createVehicleElement(vehicleType, vehicleColor, isNightTime(themeRef.current)),
-                    rotationAlignment: "map",
-                    pitchAlignment: "map",
-                }).setLngLat(point).addTo(map);
+            // Both views use the real vehicle sprite (same as the
+            // driver end). The old passenger-view cartoon glyph in a
+            // green circle is gone.
+            driverRef.current = new maplibregl.Marker({
+                element: createVehicleElement(vehicleType, vehicleColor, isNightTime(themeRef.current)),
+                rotationAlignment: "map",
+                pitchAlignment: "map",
+            }).setLngLat(point).addTo(map);
             driverShownRef.current = point;
         } else {
             // Glide between real GPS fixes so the vehicle moves smoothly instead of jumping.
@@ -766,14 +750,8 @@ export default function RideMap({
         const previous = lastDriverPointRef.current;
         const movedBearing = previous ? bearingBetween(previous, point) : null;
         lastDriverPointRef.current = point;
-        if (movedBearing != null && !passengerView) {
+        if (movedBearing != null) {
             driverRef.current?.setRotation(movedBearing);
-        } else if (movedBearing != null) {
-            const heading = driverRef.current?.getElement().querySelector(".rx-map-driver-heading");
-            if (heading) {
-                heading.style.transform = `rotate(${movedBearing - map.getBearing()}deg)`;
-                heading.classList.add("is-visible");
-            }
         }
         if (passengerView) {
             if (navigationMode && mapReady) frameTargets([point, targetPoint], `driver:${phaseKey}`, forceFrame);
@@ -796,15 +774,9 @@ export default function RideMap({
     useEffect(() => {
         const element = driverRef.current?.getElement();
         if (!element) return;
-        if (!passengerView) {
-            updateVehicleElement(element, vehicleType, vehicleColor, isNightTime(resolvedTheme));
-            return;
-        }
-        const body = element.querySelector(".rx-map-driver-body");
-        if (body) body.innerHTML = driverBodyMarkup(vehicleType);
+        updateVehicleElement(element, vehicleType, vehicleColor, isNightTime(resolvedTheme));
     }, [vehicleType, vehicleColor]);
     useEffect(() => {
-        if (passengerView) return;
         const apply = () => setVehicleNight(driverRef.current?.getElement(), isNightTime(resolvedTheme));
         apply();
         const timer = setInterval(apply, 60000);

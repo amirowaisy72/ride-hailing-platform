@@ -2260,7 +2260,7 @@ function PassengerDashboard() {
                     onFinish={finishCompletedTrip}
                 />
             )}
-            {!mapInteracting && <MobileBottomNav role="PASSENGER" />}
+            <MobileBottomNav role="PASSENGER" />
         </main>
     );
 }
