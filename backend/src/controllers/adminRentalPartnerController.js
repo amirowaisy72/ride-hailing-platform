@@ -4,6 +4,7 @@ const cloudinary = require("../integrations/cloudinary/cloudinary");
 const {
     missingKycDocuments,
     loadRentalPartnerDocuments,
+    loadDriverDocumentsForUser,
     applyChauffeurVerification,
 } = require("../services/rentalPartnerService");
 
@@ -87,7 +88,17 @@ const updateRentalPartnerStatus = async (req, res) => {
 
         if (status === "APPROVED") {
             const documents = await loadRentalPartnerDocuments(partner._id);
-            const missing = missingKycDocuments(partner, documents);
+            // Cross-profile documents: an APPROVED driver document
+            // of the same type satisfies the partner requirement,
+            // so the admin can approve without a second upload.
+            const driverDocuments = await loadDriverDocumentsForUser(
+                partner.userId
+            );
+            const missing = missingKycDocuments(
+                partner,
+                documents,
+                driverDocuments
+            );
 
             if (missing.length > 0) {
                 return res.status(400).json({

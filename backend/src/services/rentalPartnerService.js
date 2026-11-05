@@ -1,4 +1,6 @@
 const RentalPartnerDocument = require("../models/RentalPartnerDocument");
+const Driver = require("../models/Driver");
+const DriverDocument = require("../models/DriverDocument");
 const { approvedDocumentTypes } = require("./eligibilityService");
 
 // Phase 2 (Rentals foundation) — shared Rental Partner KYC rules.
@@ -23,8 +25,76 @@ function requiredKycDocuments(partner) {
     return required;
 }
 
-function missingKycDocuments(partner, documents, now = new Date()) {
-    const approved = approvedDocumentTypes(documents, now);
+// Cross-profile documents (Amir rule): a document the same person
+// already provided on their driver profile is never asked again on
+// the partner profile. An APPROVED (and unexpired) driver document
+// satisfies the partner requirement outright; a PENDING one counts
+// as already submitted — shown, not re-asked — while its review is
+// still open on the driver side. Only types with no document
+// anywhere, or only a REJECTED one, are ever asked for.
+async function loadDriverDocumentsForUser(userId) {
+    const driver = await Driver.findOne({ userId }).select("_id");
+
+    if (!driver) return [];
+
+    return DriverDocument.find({ driverId: driver._id });
+}
+
+function linkedKycDocuments(partner, partnerDocuments, driverDocuments) {
+    const required = requiredKycDocuments(partner);
+    const partnerLive = new Set(
+        (partnerDocuments || [])
+            .filter((doc) =>
+                doc.verificationStatus === "PENDING" ||
+                doc.verificationStatus === "APPROVED"
+            )
+            .map((doc) => doc.documentType)
+    );
+
+    const linked = [];
+
+    for (const type of required) {
+        if (partnerLive.has(type)) continue;
+
+        const candidates = (driverDocuments || []).filter(
+            (doc) =>
+                doc.documentType === type &&
+                (doc.verificationStatus === "APPROVED" ||
+                    doc.verificationStatus === "PENDING")
+        );
+
+        if (candidates.length === 0) continue;
+
+        candidates.sort((a, b) => {
+            const rank = (doc) =>
+                doc.verificationStatus === "APPROVED" ? 0 : 1;
+            if (rank(a) !== rank(b)) return rank(a) - rank(b);
+            return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+        });
+
+        const doc = candidates[0];
+
+        linked.push({
+            documentType: type,
+            verificationStatus: doc.verificationStatus,
+            expiryDate: doc.expiryDate || null,
+            source: "DRIVER_PROFILE",
+        });
+    }
+
+    return linked;
+}
+
+function missingKycDocuments(
+    partner,
+    documents,
+    driverDocuments = [],
+    now = new Date()
+) {
+    const approved = new Set([
+        ...approvedDocumentTypes(documents, now),
+        ...approvedDocumentTypes(driverDocuments, now),
+    ]);
 
     return requiredKycDocuments(partner).filter(
         (type) => !approved.has(type)
@@ -274,6 +344,8 @@ module.exports = {
     requiredKycDocuments,
     missingKycDocuments,
     loadRentalPartnerDocuments,
+    loadDriverDocumentsForUser,
+    linkedKycDocuments,
     parseChauffeurDetails,
     applyChauffeurDeclaration,
     applyChauffeurVerification,

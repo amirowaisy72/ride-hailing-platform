@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
 const Driver = require("../models/Driver");
 const DriverDocument = require("../models/DriverDocument");
+const RentalPartner = require("../models/RentalPartner");
+const RentalPartnerDocument = require("../models/RentalPartnerDocument");
 const UserAppVersion = require("../models/UserAppVersion");
 const Vehicle = require("../models/Vehicle");
 const Ride = require("../models/Ride");
@@ -307,6 +309,30 @@ const updateDriverStatus = async (req, res) => {
                     )
                     .map((doc) => doc.documentType)
             );
+
+            // Cross-profile documents (Amir rule): an APPROVED
+            // partner document of the same type satisfies the driver
+            // requirement too — the same person, already verified by
+            // an admin once, is never asked twice.
+            const rentalPartner = await RentalPartner.findOne({
+                userId: driver.userId,
+            });
+
+            if (rentalPartner) {
+                const partnerDocuments = await RentalPartnerDocument.find({
+                    rentalPartnerId: rentalPartner._id,
+                    verificationStatus: "APPROVED",
+                });
+
+                for (const doc of partnerDocuments) {
+                    if (
+                        !doc.expiryDate ||
+                        doc.expiryDate > new Date()
+                    ) {
+                        uploadedTypes.add(doc.documentType);
+                    }
+                }
+            }
 
             const missing = requiredDocuments.filter(
                 (type) => !uploadedTypes.has(type)

@@ -7,6 +7,8 @@ const {
     requiredKycDocuments,
     missingKycDocuments,
     loadRentalPartnerDocuments,
+    loadDriverDocumentsForUser,
+    linkedKycDocuments,
     applyChauffeurDeclaration,
 } = require("../services/rentalPartnerService");
 
@@ -17,7 +19,7 @@ const {
 // bookings arrive in a later phase.
 // ---------------------------------------------------------------------------
 
-function partnerState(partner, documents) {
+function partnerState(partner, documents, driverDocuments = []) {
     return {
         id: partner._id,
         businessName: partner.businessName,
@@ -31,7 +33,18 @@ function partnerState(partner, documents) {
         chauffeurLicenceExpiry: partner.chauffeurLicenceExpiry,
         chauffeurRejectionReason: partner.chauffeurRejectionReason,
         requiredDocuments: requiredKycDocuments(partner),
-        missingDocuments: missingKycDocuments(partner, documents),
+        missingDocuments: missingKycDocuments(
+            partner,
+            documents,
+            driverDocuments
+        ),
+        // Documents already provided on the driver profile: shown
+        // as already submitted, never asked again.
+        linkedDocuments: linkedKycDocuments(
+            partner,
+            documents,
+            driverDocuments
+        ),
         documents: documents.map((doc) => ({
             id: doc._id,
             documentType: doc.documentType,
@@ -89,7 +102,14 @@ const applyForRentalPartner = async (req, res) => {
         partner.rejectionReason = null;
 
         const documents = await loadRentalPartnerDocuments(partner._id);
-        const missing = missingKycDocuments(partner, documents);
+        const driverDocuments = await loadDriverDocumentsForUser(
+            partner.userId
+        );
+        const missing = missingKycDocuments(
+            partner,
+            documents,
+            driverDocuments
+        );
 
         partner.applicationStatus =
             missing.length === 0 ? "PENDING" : "INCOMPLETE";
@@ -103,7 +123,7 @@ const applyForRentalPartner = async (req, res) => {
                 partner.applicationStatus === "PENDING"
                     ? "Application submitted for review"
                     : "Application saved — KYC documents incomplete",
-            rentalPartner: partnerState(partner, documents),
+            rentalPartner: partnerState(partner, documents, driverDocuments),
         });
     } catch (error) {
         if (error.code === 11000) {
@@ -136,10 +156,13 @@ const getMyRentalPartner = async (req, res) => {
         }
 
         const documents = await loadRentalPartnerDocuments(partner._id);
+        const driverDocuments = await loadDriverDocumentsForUser(
+            partner.userId
+        );
 
         return res.json({
             success: true,
-            rentalPartner: partnerState(partner, documents),
+            rentalPartner: partnerState(partner, documents, driverDocuments),
         });
     } catch (error) {
         console.error("Rental partner load error:", error.message);
@@ -271,11 +294,14 @@ const updateMyChauffeurDetails = async (req, res) => {
         await partner.save();
 
         const documents = await loadRentalPartnerDocuments(partner._id);
+        const driverDocuments = await loadDriverDocumentsForUser(
+            partner.userId
+        );
 
         return res.json({
             success: true,
             message: "Chauffeur details saved",
-            rentalPartner: partnerState(partner, documents),
+            rentalPartner: partnerState(partner, documents, driverDocuments),
         });
     } catch (error) {
         console.error("Chauffeur declaration error:", error.message);
