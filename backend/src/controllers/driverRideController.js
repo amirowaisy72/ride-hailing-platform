@@ -2,6 +2,7 @@ const Ride = require("../models/Ride");
 const Driver = require("../models/Driver");
 const Vehicle = require("../models/Vehicle");
 const DriverMissedRide = require("../models/DriverMissedRide");
+const RideOffer = require("../models/RideOffer");
 const { canReceiveRideRequests } = require("../services/eligibilityService");
 const { servableRideTypes } = require("../services/driverMatchingService");
 
@@ -78,7 +79,29 @@ const getAvailableRides = async (req, res) => {
             .sort({ createdAt: -1 })
             .select("pickup destination stops requestedPrice vehicleType tripType distance estimatedDuration status createdAt");
 
-        return res.json({ success: true, rides });
+        // The driver's own live offers ride along with the feed, so a
+        // reload still shows their bid instead of the original fare.
+        // Additive only: one optional field on rides the driver has
+        // offered on; every other ride is unchanged.
+        let myOffers = [];
+        if (rides.length > 0) {
+            myOffers = await RideOffer.find({
+                driverId: driver._id,
+                rideId: { $in: rides.map((ride) => ride._id) },
+                status: "PENDING",
+            }).select("rideId price status");
+        }
+        const offersByRide = new Map(
+            myOffers.map((offer) => [String(offer.rideId), offer])
+        );
+        const ridesWithOffers = rides.map((ride) => {
+            const plain = ride.toObject();
+            const offer = offersByRide.get(String(ride._id));
+            if (offer) plain.myOffer = { price: offer.price, status: offer.status };
+            return plain;
+        });
+
+        return res.json({ success: true, rides: ridesWithOffers });
     } catch (error) {
         console.error("Available rides error:", error.message);
         return res.status(500).json({

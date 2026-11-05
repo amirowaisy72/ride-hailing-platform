@@ -24,7 +24,7 @@ function initialsOf(name) {
  */
 export default function RideRequestCard({
     ride, passengerName, pickupDistanceText, secondsLeft, totalSeconds,
-    price, onPriceChange, onAccept, onDecline, onClose, busy, submitted, cooldownSeconds = 0,
+    price, onPriceChange, onAccept, onDecline, onClose, onMinimize, busy, submitted, cooldownSeconds = 0,
 }) {
     const [adjusting, setAdjusting] = useState(false);
     const base = Number(ride.requestedPrice) || 0;
@@ -145,6 +145,14 @@ export default function RideRequestCard({
                             <Check size={22} aria-hidden /> {busy ? "Sending…" : acceptLabel}
                         </button>
                     </div>
+                )}
+
+                {onMinimize && (
+                    <button type="button" onClick={onMinimize}
+                        className="mx-auto flex min-h-11 items-center gap-1.5 px-3 text-base font-bold text-pd-text-2 underline underline-offset-4">
+                        See all requests
+                        <ChevronDown size={18} aria-hidden />
+                    </button>
                 )}
 
                 <div className="flex flex-col gap-3">

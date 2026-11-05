@@ -190,6 +190,11 @@ function DriverDashboard() {
     const [offerPrices, setOfferPrices] = useState({});
     const [submittedIds, setSubmittedIds] = useState([]);
     const [focusRideId, setFocusRideId] = useState(null);
+    // True when the driver explicitly tapped Open. An explicitly opened
+    // card must stay open even for a ride the driver already offered on
+    // (the focus card renders a submitted state); only the automatic
+    // takeover is cleared once a ride is answered.
+    const [focusManual, setFocusManual] = useState(false);
     const [focusDeadline, setFocusDeadline] = useState(0);
     // declined: the driver said no. seen: the card was shown and left
     // unanswered; those rides stay reachable from the banner and the list.
@@ -302,6 +307,22 @@ function DriverDashboard() {
                 const live = new Set(previous.filter((r) => r.live).map((r) => r.rideId));
                 return (data.rides || []).map((ride) => ({ ...ride, rideId: String(ride._id), live: live.has(String(ride._id)) }));
             });
+            // Rehydrate the driver's own live offers after a reload:
+            // offer prices and submitted state are otherwise session
+            // only, so a reload would show the original fare again.
+            // Only fills prices the driver is not currently editing.
+            const offered = (data.rides || []).filter((ride) => ride.myOffer && ride.myOffer.status === "PENDING");
+            if (offered.length > 0) {
+                setOfferPrices((previous) => {
+                    const next = { ...previous };
+                    for (const ride of offered) {
+                        const id = String(ride._id);
+                        if (next[id] === undefined) next[id] = ride.myOffer.price;
+                    }
+                    return next;
+                });
+                setSubmittedIds((previous) => [...new Set([...previous, ...offered.map((ride) => String(ride._id))])]);
+            }
         } catch (error) {
             reportError(error, "Couldn't load ride requests");
         }
@@ -347,11 +368,15 @@ function DriverDashboard() {
     useEffect(() => {
         if (selectedRide) {
             if (focusRideId) setFocusRideId(null);
+            setFocusManual(false);
             return;
         }
         if (focusRideId) {
             const stillOpen = requests.some((r) => r.rideId === focusRideId);
-            if (!stillOpen || submittedIds.includes(focusRideId)) setFocusRideId(null);
+            if (!stillOpen || (submittedIds.includes(focusRideId) && !focusManual)) {
+                setFocusRideId(null);
+                setFocusManual(false);
+            }
             return;
         }
         // Any waiting request the driver has not answered or seen takes
@@ -361,18 +386,31 @@ function DriverDashboard() {
             setFocusRideId(next.rideId);
             setFocusDeadline(Date.now() + REQUEST_FOCUS_SECONDS * 1000);
         }
-    }, [requests, selectedRide, focusRideId, submittedIds, declinedIds, seenIds]);
+    }, [requests, selectedRide, focusRideId, submittedIds, declinedIds, seenIds, focusManual]);
     useEffect(() => {
         if (focusRideId && focusDeadline && clock >= focusDeadline) {
             setSeenIds((previous) => [...new Set([...previous, focusRideId])]);
             setFocusRideId(null);
+            setFocusManual(false);
         }
     }, [clock, focusRideId, focusDeadline]);
     function openRequest(rideId) {
         setSeenIds((previous) => previous.filter((id) => id !== rideId));
         setDeclinedIds((previous) => previous.filter((id) => id !== rideId));
         setFocusRideId(rideId);
+        setFocusManual(true);
         setFocusDeadline(Date.now() + REQUEST_FOCUS_SECONDS * 1000);
+    }
+    // Minimize: close the focus card WITHOUT declining, and mark every
+    // currently listed ride as seen so the takeover does not instantly
+    // pop the next card. The driver browses the list and opens any ride
+    // manually; a genuinely new ride (unseen) still pops on arrival.
+    function minimizeFocus() {
+        if (!focusRideId) return;
+        const visibleIds = requests.map((r) => r.rideId);
+        setSeenIds((previous) => [...new Set([...previous, focusRideId, ...visibleIds])]);
+        setFocusRideId(null);
+        setFocusManual(false);
     }
     // Socket is primary; polling catches missed events, reconnects, and late GPS updates.
     useEffect(() => {
@@ -1191,11 +1229,14 @@ function DriverDashboard() {
                     onDecline={() => {
                         setDeclinedIds((previous) => [...new Set([...previous, focusRide.rideId])]);
                         setFocusRideId(null);
+                        setFocusManual(false);
                     }}
                     onClose={() => {
                         setSeenIds((previous) => [...new Set([...previous, focusRide.rideId])]);
                         setFocusRideId(null);
+                        setFocusManual(false);
                     }}
+                    onMinimize={minimizeFocus}
                     pickupDistanceText={focusPickupDistance}
                     secondsLeft={focusSecondsLeft}
                     totalSeconds={REQUEST_FOCUS_SECONDS}
