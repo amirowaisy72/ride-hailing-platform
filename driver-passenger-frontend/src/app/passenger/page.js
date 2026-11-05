@@ -301,7 +301,7 @@ function PassengerDashboard() {
     const [mapInteracting, setMapInteracting] = useState(false);
     const [mapChatOpen, setMapChatOpen] = useState(false);
     const [bookingOpen, setBookingOpen] = useState(false);
-    const [stepState, setStepState] = useState({ step: "where", route: null });
+    const [stepState, setStepState] = useState({ step: "where", whereKey: null });
     const [menuOpen, setMenuOpen] = useState(false);
     const [manualPickup, setManualPickup] = useState(false);
     const [mapPickTarget, setMapPickTarget] = useState(null);
@@ -393,10 +393,22 @@ function PassengerDashboard() {
     const destinationSearchMode = Boolean(bookingSheetSearchStyle && destinationFocused && !destinationSelected);
     const [route, setRoute] = useState(null);
     const [routeLoading, setRouteLoading] = useState(false);
-    // A step only counts while the route it was chosen for is still current,
-    // so editing pickup/destination/stops always returns to the first step.
-    const bookStep = route && stepState.route === route ? stepState.step : "where";
-    const goStep = (step) => setStepState({ step, route });
+    // A step only counts while the where-inputs it was chosen for are still
+    // current, so editing pickup/destination/stops returns to the first
+    // step. The route object itself is NOT the key: it is rebuilt on
+    // trip-type changes and GPS updates, which must not throw the user back
+    // to step 1 mid-flow. Coordinates are rounded (~11 m) so GPS jitter
+    // does not count as an edit.
+    const roundCoord = (point) => point
+        ? [Number(point.latitude).toFixed(4), Number(point.longitude).toFixed(4)]
+        : null;
+    const whereKey = JSON.stringify([
+        roundCoord(userLocation),
+        roundCoord(destination),
+        stops.map((stop) => roundCoord(stop)),
+    ]);
+    const bookStep = stepState.whereKey === whereKey ? stepState.step : "where";
+    const goStep = (step) => setStepState({ step, whereKey });
     const [vehicleType, setVehicleType] = useState("CAR_NON_AC");
     const [tripType, setTripType] = useState("ONE_WAY");
     const [passengerCount, setPassengerCount] = useState(1);
