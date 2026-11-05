@@ -65,7 +65,11 @@ const MAP_STYLES = `
 @keyframes rx-map-radar{0%{transform:scale(.12);opacity:.95}100%{transform:scale(1);opacity:0}}
 @keyframes rx-map-pulse{0%{transform:scale(.7);opacity:.9}100%{transform:scale(1.5);opacity:0}}
 @keyframes rx-map-fade{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion: reduce){.rx-map-radar,.rx-map-driver-pulse,.rx-map-cell{animation:none!important}.rx-map-radar{opacity:.35;transform:scale(.6)}}
+.rx-map-wave-arm{transform-box:view-box;transform-origin:8.5px 9.9px;animation:rx-map-wave 1s ease-in-out infinite}
+.rx-map-wave-fore{transform-box:view-box;transform-origin:5.4px 8.2px;animation:rx-map-wave-fore 1s ease-in-out -.12s infinite}
+@keyframes rx-map-wave{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
+@keyframes rx-map-wave-fore{0%,100%{transform:rotate(16deg)}50%{transform:rotate(-16deg)}}
+@media (prefers-reduced-motion: reduce){.rx-map-radar,.rx-map-driver-pulse,.rx-map-cell,.rx-map-wave-arm,.rx-map-wave-fore{animation:none!important}.rx-map-radar{opacity:.35;transform:scale(.6)}}
 `;
 const PLACE_POPUP_STYLES = `
 .safar-place-popup-dark .maplibregl-popup-content {
