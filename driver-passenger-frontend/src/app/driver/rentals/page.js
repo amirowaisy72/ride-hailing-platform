@@ -453,7 +453,7 @@ function scrollToId(id) {
 }
 
 // The single most obvious thing to do next, in plain words.
-function NextStepCard({ partner, documents, onNavigate }) {
+function NextStepCard({ partner, documents, onNavigate, onSubmit }) {
     const status = partner.applicationStatus;
     const outstanding = documents.filter((doc) => !doc.satisfied);
     const chauffeurIncomplete =
@@ -494,6 +494,25 @@ function NextStepCard({ partner, documents, onNavigate }) {
             text: "Add a vehicle with its prices and photos. It goes live after a quick check.",
             action: "Go to My Fleet",
             onClick: () => onNavigate("fleet"),
+        };
+    } else if (
+        status === "INCOMPLETE" ||
+        status === "NOT_APPLIED" ||
+        status === "REJECTED"
+    ) {
+        // Unsubmitted, not under review: the application never reached
+        // Safar (documents can complete via the linked driver profile
+        // without apply ever running again), so the next step is to
+        // submit it — not to wait for a review that is not happening.
+        step = {
+            tone: "primary",
+            title: "Submit your application",
+            text:
+                status === "REJECTED"
+                    ? "Fixes are in — submit again and Safar will review your business."
+                    : "Everything is ready — submit it and Safar will review your business.",
+            action: "Submit application",
+            onClick: onSubmit,
         };
     } else {
         step = {
@@ -893,6 +912,7 @@ function PartnerPanel({ partner, token, notify, reload, onNavigate }) {
                 partner={partner}
                 documents={documents}
                 onNavigate={onNavigate}
+                onSubmit={saveDetails}
             />
 
             {status === "REJECTED" && (

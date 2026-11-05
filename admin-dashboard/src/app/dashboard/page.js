@@ -20,6 +20,27 @@ const snippet = (text, length = 70) => {
     return value.length > length ? `${value.slice(0, length)}…` : value;
 };
 
+// Important cards with something to do stand out from the quiet ones: a
+// stronger amber (red for disputes) border + tint + count colour when the
+// count is 1 or more, so the admin sees at a glance what needs action.
+// Cards at 0 keep the quiet slate style.
+const impHot = (count) => {
+    const n = Number(count);
+    return Number.isFinite(n) && n > 0;
+};
+const impCardClass = (count, red = false) =>
+    impHot(count)
+        ? red
+            ? "group rounded-[22px] border-2 border-red-500 bg-red-50 p-4 shadow-md transition hover:border-red-600 hover:shadow-lg"
+            : "group rounded-[22px] border-2 border-amber-500 bg-amber-50 p-4 shadow-md transition hover:border-amber-600 hover:shadow-lg"
+        : "group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md";
+const impCountClass = (count, red = false) =>
+    impHot(count)
+        ? red
+            ? "mt-1 text-2xl font-extrabold text-red-700"
+            : "mt-1 text-2xl font-extrabold text-amber-700"
+        : "mt-1 text-2xl font-extrabold";
+
 // "More people on latest version" is measured against the last
 // time THIS browser loaded the Important section — stored
 // locally, never sent anywhere. A new latest version resets it.
@@ -330,7 +351,7 @@ export default function DashboardPage() {
                                 onClick={() =>
                                     markSeen(COMPLAINTS_SEEN_KEY, complaintRecent)
                                 }
-                                className="group rounded-[22px] border border-red-100 bg-white p-4 shadow-sm transition hover:border-red-200 hover:shadow-md"
+                                className={impCardClass(important.openComplaints.count, true)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600">
@@ -341,7 +362,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     Open Complaints
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(important.openComplaints.count, true)}>
                                     {important.openComplaints.count}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -368,7 +389,7 @@ export default function DashboardPage() {
                                 onClick={() =>
                                     markSeen(FEEDBACK_SEEN_KEY, feedbackRecent)
                                 }
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                                className={impCardClass(important.newFeedback.count)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
@@ -379,7 +400,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     New Feedback
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(important.newFeedback.count)}>
                                     {important.newFeedback.count}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -402,7 +423,7 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/vehicles"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                                className={impCardClass(overview?.pendingVehicles ?? "—")}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-[#087F5B]">
@@ -413,7 +434,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     Vehicles Pending Verification
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(overview?.pendingVehicles ?? "—")}>
                                     {overview?.pendingVehicles ?? "—"}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -423,7 +444,7 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/drivers"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                                className={impCardClass(pendingDocData.count)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
@@ -434,7 +455,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     Driver Documents Pending Review
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(pendingDocData.count)}>
                                     {pendingDocData.count}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -458,7 +479,7 @@ export default function DashboardPage() {
                             <Link
                                 href="/dashboard/passengers"
                                 onClick={() => markSeenAt(PASSENGERS_SEEN_AT_KEY)}
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                                className={impCardClass(important.newPassengers?.count ?? 0)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
@@ -469,7 +490,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     New Passengers
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(important.newPassengers?.count ?? 0)}>
                                     {important.newPassengers?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -494,7 +515,7 @@ export default function DashboardPage() {
                             <Link
                                 href="/dashboard/drivers"
                                 onClick={() => markSeenAt(DRIVERS_SEEN_AT_KEY)}
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                                className={impCardClass(important.newDrivers?.count ?? 0)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-[#087F5B]">
@@ -505,7 +526,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     New Drivers
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(important.newDrivers?.count ?? 0)}>
                                     {important.newDrivers?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -529,7 +550,7 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/rides"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                                className={impCardClass(important.activeRides.count)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-[#087F5B]">
@@ -540,7 +561,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     Active Rides Right Now
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(important.activeRides.count)}>
                                     {important.activeRides.count}
                                 </p>
                                 <p className="mt-2 text-xs text-slate-500">
@@ -556,7 +577,7 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/rentals"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                                className={impCardClass(important.rentalPartnersPending?.count ?? 0)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
@@ -567,21 +588,52 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     Rental Partners Pending Review
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(important.rentalPartnersPending?.count ?? 0)}>
                                     {important.rentalPartnersPending?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
                                     {(important.rentalPartnersPending?.count ?? 0) === 0 ? (
                                         "No partners waiting for KYC review."
                                     ) : (
-                                        "Partners waiting for KYC review. Approve or reject from the Partners tab."
+                                        "Partners waiting for KYC review, including complete applications not yet submitted. Approve or reject from the Partners tab."
                                     )}
                                 </p>
                             </Link>
 
                             <Link
                                 href="/dashboard/rentals"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                                className={impCardClass(
+                                    important.rentalChauffeursPending?.count ?? 0
+                                )}
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                                        <Users size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Chauffeur Verifications Pending
+                                </p>
+                                <p
+                                    className={impCountClass(
+                                        important.rentalChauffeursPending?.count ?? 0
+                                    )}
+                                >
+                                    {important.rentalChauffeursPending?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.rentalChauffeursPending?.count ?? 0) === 0 ? (
+                                        "No chauffeur details waiting for verification."
+                                    ) : (
+                                        "Chauffeurs waiting for verification. Review from the Partners tab."
+                                    )}
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/rentals"
+                                className={impCardClass(important.rentalListingsPending?.count ?? 0)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
@@ -592,7 +644,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     Rental Listings Pending
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(important.rentalListingsPending?.count ?? 0)}>
                                     {important.rentalListingsPending?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -606,7 +658,7 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/rentals"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                                className={impCardClass(important.rentalBookingsAwaitingAccept?.count ?? 0)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
@@ -617,7 +669,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     Rental Bookings Awaiting Accept
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(important.rentalBookingsAwaitingAccept?.count ?? 0)}>
                                     {important.rentalBookingsAwaitingAccept?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -631,7 +683,7 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/rentals"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                                className={impCardClass(important.rentalBookingsAwaitingPayment?.count ?? 0)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
@@ -642,7 +694,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     Rental Bookings Awaiting Payment
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(important.rentalBookingsAwaitingPayment?.count ?? 0)}>
                                     {important.rentalBookingsAwaitingPayment?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -656,7 +708,7 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/rentals"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                                className={impCardClass(important.rentalReturnsPending?.count ?? 0)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
@@ -667,7 +719,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     Rental Returns Pending
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(important.rentalReturnsPending?.count ?? 0)}>
                                     {important.rentalReturnsPending?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -681,7 +733,7 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/rentals"
-                                className="group rounded-[22px] border border-red-100 bg-white p-4 shadow-sm transition hover:border-red-200 hover:shadow-md"
+                                className={impCardClass(important.rentalBookingsDisputed?.count ?? 0, true)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600">
@@ -692,7 +744,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     Rental Bookings Disputed
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(important.rentalBookingsDisputed?.count ?? 0, true)}>
                                     {important.rentalBookingsDisputed?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -706,7 +758,7 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/rentals"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                                className={impCardClass(important.rentalFeeRefundsDue?.count ?? 0)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
@@ -717,7 +769,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     Rental Fee Refunds Due
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(important.rentalFeeRefundsDue?.count ?? 0)}>
                                     {important.rentalFeeRefundsDue?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -731,7 +783,7 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/parcels"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                                className={impCardClass(important.parcelsAwaitingDriver?.count ?? 0)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
@@ -742,7 +794,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     Parcels Awaiting Driver
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(important.parcelsAwaitingDriver?.count ?? 0)}>
                                     {important.parcelsAwaitingDriver?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -756,7 +808,7 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/buy-deliver"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                                className={impCardClass(important.buyDeliverAwaitingShopper?.count ?? 0)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
@@ -767,7 +819,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     Buy &amp; Deliver Awaiting Shopper
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(important.buyDeliverAwaitingShopper?.count ?? 0)}>
                                     {important.buyDeliverAwaitingShopper?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -781,7 +833,7 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/buy-deliver"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                                className={impCardClass(important.buyDeliverAwaitingApproval?.count ?? 0)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
@@ -792,7 +844,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     Buy &amp; Deliver Awaiting Approval
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(important.buyDeliverAwaitingApproval?.count ?? 0)}>
                                     {important.buyDeliverAwaitingApproval?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -806,7 +858,7 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/buy-deliver"
-                                className="group rounded-[22px] border border-red-100 bg-white p-4 shadow-sm transition hover:border-red-200 hover:shadow-md"
+                                className={impCardClass(important.buyDeliverDisputed?.count ?? 0, true)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600">
@@ -817,7 +869,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     Buy &amp; Deliver Disputed
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(important.buyDeliverDisputed?.count ?? 0, true)}>
                                     {important.buyDeliverDisputed?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -831,7 +883,7 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/bank-transfers"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                                className={impCardClass(important.bankTransfersPending?.count ?? 0)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
@@ -842,7 +894,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     Bank Transfers Pending
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(important.bankTransfersPending?.count ?? 0)}>
                                     {important.bankTransfersPending?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">
@@ -856,7 +908,7 @@ export default function DashboardPage() {
 
                             <Link
                                 href="/dashboard/settlements"
-                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                                className={impCardClass(important.settlementsNeedingAttention?.count ?? 0)}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
@@ -867,7 +919,7 @@ export default function DashboardPage() {
                                 <p className="mt-3 text-sm text-slate-500">
                                     Settlements Needing Attention
                                 </p>
-                                <p className="mt-1 text-2xl font-extrabold">
+                                <p className={impCountClass(important.settlementsNeedingAttention?.count ?? 0)}>
                                     {important.settlementsNeedingAttention?.count ?? 0}
                                 </p>
                                 <p className="mt-2 text-xs leading-5 text-slate-500">

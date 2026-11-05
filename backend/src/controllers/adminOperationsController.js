@@ -18,6 +18,11 @@ const PurchaseOrder = require("../models/PurchaseOrder");
 const PaymentOrder = require("../models/PaymentOrder");
 const ParcelSettlement = require("../models/ParcelSettlement");
 const PurchaseSettlement = require("../models/PurchaseSettlement");
+const {
+    loadRentalPartnerDocuments,
+    loadDriverDocumentsForUser,
+    missingKycDocuments,
+} = require("../services/rentalPartnerService");
 
 const activeStatuses = [
     "REQUESTED",
@@ -66,6 +71,30 @@ async function getOverview(req, res) {
                 },
             ]),
         ]);
+
+        // Ready-but-unsubmitted partners: application INCOMPLETE yet every
+        // required KYC document already satisfied (own or linked driver
+        // documents). These never reach the review queue on their own —
+        // the driver UI used to tell them "Safar is reviewing" while
+        // nothing was submitted — so they count here instead of hiding
+        // from the Important section.
+        const incompletePartners = await RentalPartner.find({
+            applicationStatus: "INCOMPLETE",
+        })
+            .select("_id userId providesChauffeur")
+            .lean();
+        let readyIncompletePartners = 0;
+        for (const incomplete of incompletePartners) {
+            const ownDocs = await loadRentalPartnerDocuments(incomplete._id);
+            const driverDocs = await loadDriverDocumentsForUser(incomplete.userId);
+            if (
+                missingKycDocuments(incomplete, ownDocs, driverDocs).length === 0
+            ) {
+                readyIncompletePartners += 1;
+            }
+        }
+        const rentalPartnersPending =
+            rentalPartnersSubmitted + readyIncompletePartners;
 
         return res.json({
             success: true,
@@ -500,7 +529,8 @@ async function getImportant(req, res) {
             latestVersionUsers,
             reportedUsers,
             onlinePassengerRows,
-            rentalPartnersPending,
+            rentalPartnersSubmitted,
+            rentalChauffeursPending,
             rentalListingsPending,
             rentalBookingsAwaitingAccept,
             rentalBookingsAwaitingPayment,
@@ -644,6 +674,10 @@ async function getImportant(req, res) {
             // field is changed by these additions.
             RentalPartner.countDocuments({
                 applicationStatus: { $in: ["PENDING", "UNDER_REVIEW"] },
+            }),
+            RentalPartner.countDocuments({
+                providesChauffeur: true,
+                chauffeurVerificationStatus: { $in: ["PENDING", "UNDER_REVIEW"] },
             }),
             RentalVehicle.countDocuments({ listingStatus: "PENDING" }),
             RentalBooking.countDocuments({ status: "REQUESTED" }),
@@ -809,6 +843,7 @@ async function getImportant(req, res) {
                 // linked dashboard page; nothing here changes any
                 // existing field.
                 rentalPartnersPending: { count: rentalPartnersPending },
+                rentalChauffeursPending: { count: rentalChauffeursPending },
                 rentalListingsPending: { count: rentalListingsPending },
                 rentalBookingsAwaitingAccept: {
                     count: rentalBookingsAwaitingAccept,
