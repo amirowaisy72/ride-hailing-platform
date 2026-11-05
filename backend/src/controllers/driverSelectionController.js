@@ -5,7 +5,10 @@ const RideOffer = require("../models/RideOffer");
 const Driver = require("../models/Driver");
 const Vehicle = require("../models/Vehicle");
 const { publishEvent } = require("../services/socketService");
-const { findNearbyDrivers } = require("../services/driverMatchingService");
+const {
+    findNearbyDrivers,
+    servableRideTypes,
+} = require("../services/driverMatchingService");
 const { sendPushToUser } = require("../services/pushService");
 const { canReceiveRideRequests } = require("../services/eligibilityService");
 
@@ -73,15 +76,24 @@ const selectDriver = async (req, res) => {
 
                 if (!driver) return { error: "Driver unavailable" };
 
-                const validVehicle = await Vehicle.exists({
+                // The vehicle check must follow the same one-way car
+                // rule as the feed and offer gates: a CAR_AC driver may
+                // serve a CAR_NON_AC request, so an exact vehicleType
+                // match here would reject a valid accept. Ownership,
+                // approval and active status are still required.
+                const currentVehicle = await Vehicle.findOne({
                     _id: driver.currentVehicleId,
                     driverId: driver._id,
-                    vehicleType: ride.vehicleType,
                     verificationStatus: "APPROVED",
                     isActive: true,
                 }).session(session);
 
-                if (!validVehicle) {
+                if (
+                    !currentVehicle ||
+                    !servableRideTypes(
+                        currentVehicle.vehicleType
+                    ).includes(ride.vehicleType)
+                ) {
                     throw new Error("DRIVER_VEHICLE_INVALID");
                 }
 
