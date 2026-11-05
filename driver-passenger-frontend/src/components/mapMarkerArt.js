@@ -13,17 +13,38 @@ const svgWrap = (inner, size, filled) =>
         : `fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`
     } aria-hidden="true">${inner}</svg>`;
 
-/** Standing passenger with one arm raised, hailing a ride. */
+/**
+ * Standing passenger with one arm raised, waving to hail a ride. The raised
+ * arm carries the rx-map-wave-* classes: RideMap's MAP_STYLES rotates it at
+ * the shoulder (and the forearm at the elbow); without those styles the arm
+ * simply rests in the raised pose.
+ */
 export function hailingPersonSvg(color = MARKER_WHITE, size = 20) {
+    const limb = `fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"`;
     return `<span style="display:grid;place-items:center;color:${color}">` +
         svgWrap(
-            `<circle cx="10.4" cy="4.4" r="2" fill="currentColor" stroke="none"/>` +
-            `<path d="M11.3 7.3 L16.2 3.2"/>` + // raised arm
-            `<path d="M11.3 7.5 L8.4 10.8"/>` + // relaxed arm
-            `<path d="M11.5 7.1 L10.9 13.4"/>` + // torso
-            `<path d="M10.9 13.4 L8.2 20.6"/>` + // leg
-            `<path d="M10.9 13.4 L14.1 20.4"/>`, // leg
-            size
+            // head, neck
+            `<ellipse cx="12" cy="4.6" rx="2.3" ry="2.6"/>` +
+            `<rect x="11" y="6.8" width="2" height="1.8" rx="0.8"/>` +
+            // torso
+            `<path d="M9.6 8 H14.4 C15.7 8 16.3 8.9 16.1 10.2 L15.6 15.8 H8.4 L7.9 10.2 C7.7 8.9 8.3 8 9.6 8 Z"/>` +
+            // legs and shoes
+            `<rect x="8.5" y="14.8" width="3.2" height="7" rx="1.4"/>` +
+            `<rect x="12.3" y="14.8" width="3.2" height="7" rx="1.4"/>` +
+            `<ellipse cx="9.9" cy="21.8" rx="2" ry="0.9"/>` +
+            `<ellipse cx="14.1" cy="21.8" rx="2" ry="0.9"/>` +
+            // relaxed arm and hand
+            `<path d="M15.5 9.9 L17 15" ${limb}/>` +
+            `<ellipse cx="17.1" cy="16.3" rx="1.2" ry="1.4"/>` +
+            // waving arm: upper arm pivots at the shoulder, forearm and hand at the elbow
+            `<g class="rx-map-wave-arm">` +
+            `<path d="M8.5 9.9 L5.4 8.2" ${limb}/>` +
+            `<g class="rx-map-wave-fore">` +
+            `<path d="M5.4 8.2 L5 4.4" ${limb}/>` +
+            `<ellipse cx="5" cy="3.1" rx="1.35" ry="1.7"/>` +
+            `</g></g>`,
+            size,
+            true
         ) +
         `</span>`;
 }
