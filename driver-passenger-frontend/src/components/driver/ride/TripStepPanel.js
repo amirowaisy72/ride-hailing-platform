@@ -184,7 +184,11 @@ export function RideEndedPanel({ status, firstName, finalPrice, onDone }) {
     const title = completed ? "Trip complete" : status === "EXPIRED" ? "Ride expired" : "Ride cancelled";
     return (
         <section aria-label={title}
-            className="fixed inset-x-0 bottom-0 z-40 mx-auto flex w-full max-w-xl flex-col items-center gap-4 rounded-t-[28px] bg-pd-surface px-4 pt-6 pb-[max(16px,env(safe-area-inset-bottom))] text-center text-pd-text shadow-pd-lg">
+            // The bottom tab bar returns after a trip ends, so this panel
+            // sits above it (same 68px + safe-area offset the idle sheet
+            // uses). At bottom-0 the tab bar covered the Back button.
+            style={{ bottom: "calc(68px + env(safe-area-inset-bottom))" }}
+            className="fixed inset-x-0 z-40 mx-auto flex w-full max-w-xl flex-col items-center gap-4 rounded-t-[28px] bg-pd-surface px-4 pt-6 pb-[max(16px,env(safe-area-inset-bottom))] text-center text-pd-text shadow-pd-lg">
             <span className="flex size-20 items-center justify-center rounded-full"
                 style={{
                     background: completed ? "var(--pd-accent-soft)" : "var(--pd-danger-soft)",
