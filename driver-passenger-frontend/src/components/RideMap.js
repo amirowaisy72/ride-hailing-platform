@@ -34,10 +34,9 @@ const DEFAULT_PADDING_RATIO = 0.62;
 const TRACKING_PADDING_RATIO = 0.42;
 
 const MAP_STYLES = `
-.rx-map-pickup{position:relative;width:46px;height:46px;display:grid;place-items:center;cursor:grab}
-.rx-map-pickup-halo{position:absolute;z-index:1;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgba(8,127,91,.16);border:1.5px solid rgba(8,127,91,.4);pointer-events:none}
-.rx-map-pickup-pin{position:relative;z-index:2;width:37px;height:37px;border-radius:50%;background:${ACCENT};border:3.5px solid #fff;filter:drop-shadow(0 7px 12px rgba(9,24,17,.5));display:grid;place-items:center}
-.rx-map-pickup-pin svg{display:block}
+.rx-map-pickup{position:relative;width:36px;height:34px;cursor:grab}
+.rx-map-pickup>span{position:relative;z-index:1}
+.rx-map-pickup-ground{position:absolute;z-index:0;left:50%;bottom:-1px;width:28px;height:9px;margin-left:-14px;border-radius:50%;background:radial-gradient(ellipse,rgba(9,24,17,.35) 0%,rgba(9,24,17,0) 70%);pointer-events:none}
 .rx-map-pin-tail{position:absolute;left:50%;top:calc(100% - 4px);transform:translateX(-50%);width:0;height:0;border:6px solid transparent;pointer-events:none}
 .rx-map-pin-tail--green{border-top:8px solid ${ACCENT}}
 .rx-map-pin-tail--slate{border-top:8px solid ${MARKER_SLATE}}
@@ -57,6 +56,22 @@ const MAP_STYLES = `
 .rx-map-cell{position:relative;width:44px;height:44px;display:grid;place-items:center;animation:rx-map-fade .35s ease-out both}
 .rx-map-cell-veh{position:relative;z-index:2;display:block;object-fit:contain;filter:drop-shadow(0 5px 5px rgba(9,24,17,.38));transition:transform .4s ease;pointer-events:none;user-select:none}
 .rx-map-cell-ground{position:absolute;z-index:1;left:50%;top:50%;width:30px;height:30px;margin:-13px 0 0 -15px;border-radius:50%;background:radial-gradient(circle,rgba(9,24,17,.22) 0%,rgba(9,24,17,0) 70%)}
+.rx-map-cell-vehwrap{position:relative;z-index:2;display:block}
+.rx-map-cell-beam,.rx-map-cell-lamp,.rx-map-cell-tail{position:absolute;opacity:0;transition:opacity 600ms ease}
+.rx-map-cell-beam{left:50%;bottom:86%;width:calc(var(--cell-w) * 3.6);height:calc(var(--cell-h) * 2.3);transform:translateX(-50%);background:linear-gradient(to top,rgba(255,244,205,.78),rgba(255,238,190,.32) 45%,rgba(255,236,180,0) 100%);clip-path:polygon(38% 100%,62% 100%,100% 0,0 0);filter:blur(7px);mix-blend-mode:screen}
+.rx-map-cell-lamp{top:3%;width:7px;height:7px;border-radius:9999px;background:#fffbe8;box-shadow:0 0 6px 3px rgba(255,246,210,.95),0 0 16px 6px rgba(255,236,170,.55)}
+.rx-map-cell-lamp--l{left:14%}
+.rx-map-cell-lamp--r{right:14%}
+.rx-map-cell-tail{bottom:2%;width:6px;height:4px;border-radius:2px;background:#ff4d4d;box-shadow:0 0 8px 3px rgba(255,60,60,.7)}
+.rx-map-cell-tail--l{left:16%}
+.rx-map-cell-tail--r{right:16%}
+.rx-map-cell--bike .rx-map-cell-lamp--l,.rx-map-cell--bike .rx-map-cell-tail--l{left:50%;transform:translateX(-50%)}
+.rx-map-cell--bike .rx-map-cell-lamp--r,.rx-map-cell--bike .rx-map-cell-tail--r{display:none}
+.rx-map-cell--bike .rx-map-cell-beam{width:calc(var(--cell-w) * 4.4)}
+.rx-map-cell--rickshaw .rx-map-cell-lamp--l{left:50%;transform:translateX(-50%);top:0}
+.rx-map-cell--rickshaw .rx-map-cell-lamp--r{display:none}
+.rx-map-cell--night .rx-map-cell-beam{opacity:1}
+.rx-map-cell--night .rx-map-cell-lamp,.rx-map-cell--night .rx-map-cell-tail{opacity:1}
 .rx-map-cell-count{position:absolute;z-index:3;left:50%;bottom:-13px;transform:translateX(-50%);min-width:20px;height:18px;padding:0 6px;border-radius:9px;background:#fff;color:${ACCENT};font:800 11px/18px system-ui,sans-serif;text-align:center;box-shadow:0 2px 8px rgba(9,24,17,.28);white-space:nowrap}
 /* Pending passenger requests are distinct from nearby driver grid cells. */
 .rx-map-request{position:relative;width:39px;height:39px;border:3.5px solid #fff;border-radius:50%;background:#087F5B;color:#FFFFFF;display:grid;place-items:center;box-shadow:0 0 0 7px rgba(8,127,91,.18);filter:drop-shadow(0 6px 10px rgba(9,24,17,.5))}
@@ -64,7 +79,8 @@ const MAP_STYLES = `
 .rx-map-cell-halo{position:absolute;z-index:0;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:rgba(8,127,91,.13);border:1px solid rgba(8,127,91,.32);pointer-events:none}
 @keyframes rx-map-radar{0%{transform:scale(.12);opacity:.95}100%{transform:scale(1);opacity:0}}
 @keyframes rx-map-pulse{0%{transform:scale(.7);opacity:.9}100%{transform:scale(1.5);opacity:0}}
-@keyframes rx-map-fade{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+/* Marker roots must never animate transform: MapLibre positions markers with an inline transform, and a transform animation with fill both overrides it permanently — that dropped driver cells to the map's top-left corner. Opacity only. */
+@keyframes rx-map-fade{from{opacity:0}to{opacity:1}}
 .rx-map-wave-arm{transform-box:view-box;transform-origin:8.5px 9.9px;animation:rx-map-wave 1s ease-in-out infinite}
 .rx-map-wave-fore{transform-box:view-box;transform-origin:5.4px 8.2px;animation:rx-map-wave-fore 1s ease-in-out -.12s infinite}
 @keyframes rx-map-wave{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
@@ -170,7 +186,10 @@ function createPickupElement() {
     const element = document.createElement("div");
     element.className = "rx-map-pickup";
     element.setAttribute("aria-label", "Pickup location");
-    element.innerHTML = `<span class="rx-map-pickup-halo"></span><span class="rx-map-radar"></span><span class="rx-map-radar rx-map-radar-delay"></span><span class="rx-map-pickup-pin"><span class="rx-map-pin-tail rx-map-pin-tail--green"></span>${hailingPersonSvg(MARKER_WHITE, 21)}</span>`;
+    // No circle pin: just the man, bigger, feet on the coordinate
+    // (marker anchor "bottom") with a ground shadow, so he stands on
+    // the map instead of floating inside a badge.
+    element.innerHTML = `<span class="rx-map-pickup-ground"></span>${hailingPersonSvg(MARKER_WHITE, 32)}`;
     return element;
 }
 
@@ -212,14 +231,17 @@ function createRequestElement() {
     return el;
 }
 
-function createCellElement(cell, fallbackType) {
+function createCellElement(cell, fallbackType, night) {
     const element = document.createElement("div");
     const count = Math.max(1, Number(cell.count) || 1);
-    element.className = "rx-map-cell";
+    const kind = normalizeVehicleType(cell.vehicleType || fallbackType);
+    element.className = `rx-map-cell rx-map-cell--${kind.toLowerCase()}${night ? " rx-map-cell--night" : ""}`;
     element.title = `${count} available driver${count > 1 ? "s" : ""} in this approximate area`;
     element.setAttribute("aria-label", element.title);
-    const sprite = CELL_SPRITES[normalizeVehicleType(cell.vehicleType || fallbackType)];
-    element.innerHTML = `<span class="rx-map-cell-halo"></span><span class="rx-map-cell-ground"></span><img class="rx-map-cell-veh" src="${sprite.src}" width="${sprite.w}" height="${sprite.h}" alt="" draggable="false" />${count > 1 ? `<span class="rx-map-cell-count">${count}</span>` : ""}`;
+    const sprite = CELL_SPRITES[kind];
+    // Night lights mirror the driver-end vehicle (sf-veh): a beam cone,
+    // glowing headlamps and red tail lights, shown only when night.
+    element.innerHTML = `<span class="rx-map-cell-halo"></span><span class="rx-map-cell-ground"></span><span class="rx-map-cell-vehwrap" style="--cell-w:${sprite.w}px;--cell-h:${sprite.h}px;width:${sprite.w}px;height:${sprite.h}px"><span class="rx-map-cell-beam"></span><img class="rx-map-cell-veh" src="${sprite.src}" width="${sprite.w}" height="${sprite.h}" alt="" draggable="false" /><span class="rx-map-cell-lamp rx-map-cell-lamp--l"></span><span class="rx-map-cell-lamp rx-map-cell-lamp--r"></span><span class="rx-map-cell-tail rx-map-cell-tail--l"></span><span class="rx-map-cell-tail rx-map-cell-tail--r"></span></span>${count > 1 ? `<span class="rx-map-cell-count">${count}</span>` : ""}`;
     return element;
 }
 
@@ -660,7 +682,7 @@ export default function RideMap({
             return;
         }
         if (!pickupRef.current) {
-            pickupRef.current = new maplibregl.Marker({ element: createPickupElement(), draggable: Boolean(onPickupChange) })
+            pickupRef.current = new maplibregl.Marker({ element: createPickupElement(), anchor: "bottom", draggable: Boolean(onPickupChange) })
                 .setLngLat(point).addTo(map);
             pickupRef.current.on("dragend", () => {
                 const position = pickupRef.current.getLngLat();
@@ -814,11 +836,11 @@ export default function RideMap({
         nearbyRefs.current = [];
         (Array.isArray(nearbyDriverCells) ? nearbyDriverCells : []).forEach((cell) => {
             if (!Number.isFinite(cell.latitude) || !Number.isFinite(cell.longitude)) return;
-            nearbyRefs.current.push(new maplibregl.Marker({ element: createCellElement(cell, vehicleType) })
+            nearbyRefs.current.push(new maplibregl.Marker({ element: createCellElement(cell, vehicleType, isNightTime(resolvedTheme)) })
                 .setLngLat([cell.longitude, cell.latitude]).addTo(map));
         });
         return () => { nearbyRefs.current.forEach((marker) => marker.remove()); nearbyRefs.current = []; };
-    }, [mapReady, JSON.stringify(nearbyDriverCells), vehicleType]);
+    }, [mapReady, JSON.stringify(nearbyDriverCells), vehicleType, resolvedTheme]);
     // Pending passenger pickups (driver discovery only); do not expose passenger identity.
     useEffect(() => {
         const map = mapRef.current;
