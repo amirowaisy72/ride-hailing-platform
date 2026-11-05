@@ -8,7 +8,13 @@ import {
     MARKER_SLATE, MARKER_WHITE, flagSvg, hailingPersonSvg, vehicleGlyphSvg,
 } from "@/components/mapMarkerArt";
 import { useTheme } from "@/components/theme/ThemeProvider";
-import { createVehicleElement, updateVehicleElement, setVehicleNight, isNightTime } from "@/components/driver/vehicleMarker";
+import { createVehicleElement, updateVehicleElement, setVehicleNight, isNightTime, normalizeVehicleType } from "@/components/driver/vehicleMarker";
+
+const CELL_SPRITES = {
+    CAR: { src: "/vehicles/car-top.png", w: 24, h: 49 },
+    BIKE: { src: "/vehicles/bike-top.png", w: 18, h: 39 },
+    RICKSHAW: { src: "/vehicles/rickshaw-top.png", w: 25, h: 44 },
+};
 maplibregl.setWorkerUrl("/maplibre-worker.mjs");
 
 const DARK = "#111111";
@@ -48,13 +54,14 @@ const MAP_STYLES = `
 .rx-map-driver-heading.is-visible{opacity:1}
 .rx-map-driver-heading::before{content:"";position:absolute;left:50%;top:0;margin-left:-7px;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:10px solid ${MARKER_SLATE}}
 .rx-map-driver-body{position:absolute;inset:0;border-radius:50%;background:${ACCENT};border:3.5px solid #fff;display:grid;place-items:center;filter:drop-shadow(0 8px 13px rgba(9,24,17,.5))}
-.rx-map-cell{position:relative;width:38px;height:38px;display:grid;place-items:center}
+.rx-map-cell{position:relative;width:44px;height:44px;display:grid;place-items:center;animation:rx-map-fade .35s ease-out both}
+.rx-map-cell-veh{position:relative;z-index:2;display:block;object-fit:contain;filter:drop-shadow(0 5px 5px rgba(9,24,17,.38));transition:transform .4s ease;pointer-events:none;user-select:none}
+.rx-map-cell-ground{position:absolute;z-index:1;left:50%;top:50%;width:30px;height:30px;margin:-13px 0 0 -15px;border-radius:50%;background:radial-gradient(circle,rgba(9,24,17,.22) 0%,rgba(9,24,17,0) 70%)}
+.rx-map-cell-count{position:absolute;z-index:3;left:50%;bottom:-13px;transform:translateX(-50%);min-width:20px;height:18px;padding:0 6px;border-radius:9px;background:#fff;color:${ACCENT};font:800 11px/18px system-ui,sans-serif;text-align:center;box-shadow:0 2px 8px rgba(9,24,17,.28);white-space:nowrap}
 /* Pending passenger requests are distinct from nearby driver grid cells. */
 .rx-map-request{position:relative;width:39px;height:39px;border:3.5px solid #fff;border-radius:50%;background:#087F5B;color:#FFFFFF;display:grid;place-items:center;box-shadow:0 0 0 7px rgba(8,127,91,.18);filter:drop-shadow(0 6px 10px rgba(9,24,17,.5))}
 .rx-map-request svg{width:19px;height:19px}
-.rx-map-cell-halo{position:absolute;inset:-12px;border-radius:50%;border:1.5px dashed rgba(17,17,17,.35);background:rgba(8,127,91,.2)}
-.rx-map-cell-body{position:relative;width:36px;height:36px;border-radius:50%;background:#fff;border:2px solid ${DARK};display:grid;place-items:center;box-shadow:0 3px 10px rgba(17,17,17,.25)}
-.rx-map-cell-count{position:absolute;right:-7px;bottom:-7px;min-width:19px;height:19px;padding:0 4px;border-radius:10px;background:${DARK};color:${ACCENT};font:800 10px/15px system-ui,sans-serif;text-align:center;border:2px solid #fff}
+.rx-map-cell-halo{position:absolute;z-index:0;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:rgba(8,127,91,.13);border:1px solid rgba(8,127,91,.32);pointer-events:none}
 @keyframes rx-map-radar{0%{transform:scale(.12);opacity:.95}100%{transform:scale(1);opacity:0}}
 @keyframes rx-map-pulse{0%{transform:scale(.7);opacity:.9}100%{transform:scale(1.5);opacity:0}}
 @keyframes rx-map-fade{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
@@ -207,7 +214,8 @@ function createCellElement(cell, fallbackType) {
     element.className = "rx-map-cell";
     element.title = `${count} available driver${count > 1 ? "s" : ""} in this approximate area`;
     element.setAttribute("aria-label", element.title);
-    element.innerHTML = `<span class="rx-map-cell-halo"></span><span class="rx-map-cell-body">${vehicleIconMarkup(cell.vehicleType || fallbackType, DARK, 18)}</span>${count > 1 ? `<span class="rx-map-cell-count">${count}</span>` : ""}`;
+    const sprite = CELL_SPRITES[normalizeVehicleType(cell.vehicleType || fallbackType)];
+    element.innerHTML = `<span class="rx-map-cell-halo"></span><span class="rx-map-cell-ground"></span><img class="rx-map-cell-veh" src="${sprite.src}" width="${sprite.w}" height="${sprite.h}" alt="" draggable="false" />${count > 1 ? `<span class="rx-map-cell-count">${count}</span>` : ""}`;
     return element;
 }
 
@@ -416,7 +424,7 @@ export default function RideMap({
             // desaturated and semi-transparent in both themes so they can
             // never be confused with the prominent live passenger/driver
             // markers (full-opacity Safar green, white ring, shadow).
-            const placesMuted = theme === "dark" ? "#4F7263" : "#86A696";
+            const placesMuted = theme === "dark" ? "#3F8E73" : "#2E8F70";
             map.addLayer({
                 id: "safar-local-cluster-halo",
                 type: "circle",
@@ -424,8 +432,8 @@ export default function RideMap({
                 filter: ["has", "point_count"],
                 paint: {
                     "circle-color": placesMuted,
-                    "circle-opacity": theme === "dark" ? 0.13 : 0.16,
-                    "circle-radius": ["step", ["get", "point_count"], 16, 10, 20, 50, 25],
+                    "circle-opacity": theme === "dark" ? 0.2 : 0.18,
+                    "circle-radius": ["step", ["get", "point_count"], 22, 10, 27, 50, 33],
                 },
             });
 
@@ -436,11 +444,11 @@ export default function RideMap({
                 filter: ["has", "point_count"],
                 paint: {
                     "circle-color": placesMuted,
-                    "circle-opacity": 0.55,
-                    "circle-radius": ["step", ["get", "point_count"], 12, 10, 15, 50, 19],
+                    "circle-opacity": 0.92,
+                    "circle-radius": ["step", ["get", "point_count"], 15, 10, 19, 50, 24],
                     "circle-stroke-color": "#FFFFFF",
-                    "circle-stroke-opacity": 0.65,
-                    "circle-stroke-width": 1.5,
+                    "circle-stroke-opacity": 1,
+                    "circle-stroke-width": 2.5,
                 },
             });
 
@@ -452,11 +460,11 @@ export default function RideMap({
                 layout: {
                     "text-field": ["get", "point_count_abbreviated"],
                     "text-font": ["Open Sans Semibold"],
-                    "text-size": 11,
+                    "text-size": 13,
+                    "text-allow-overlap": true,
                 },
                 paint: {
                     "text-color": "#FFFFFF",
-                    "text-opacity": 0.95,
                 },
             });
 
@@ -467,12 +475,12 @@ export default function RideMap({
                 filter: ["!", ["has", "point_count"]],
                 minzoom: 15,
                 paint: {
-                    "circle-radius": ["interpolate", ["linear"], ["zoom"], 15, 4.5, 18, 5.5],
+                    "circle-radius": ["interpolate", ["linear"], ["zoom"], 15, 6, 18, 8],
                     "circle-color": placesMuted,
-                    "circle-opacity": 0.8,
-                    "circle-stroke-width": 1.5,
+                    "circle-opacity": 0.95,
+                    "circle-stroke-width": 2.5,
                     "circle-stroke-color": "#FFFFFF",
-                    "circle-stroke-opacity": 0.85,
+                    "circle-stroke-opacity": 1,
                 },
             });
 
