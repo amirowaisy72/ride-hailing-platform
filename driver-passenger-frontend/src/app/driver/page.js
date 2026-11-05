@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    ArrowRight, CheckCircle2, ChevronRight, Compass, CornerUpRight, Flag, LifeBuoy, MapPin, MessageCircle, Navigation, Power, RefreshCw, Satellite, UserRound,
+    ArrowRight, CheckCircle2, ChevronRight, ChevronDown, ChevronUp, Compass, CornerUpRight, Flag, LifeBuoy, MapPin, MessageCircle, Navigation, Power, RefreshCw, Satellite, UserRound,
     WifiOff, XCircle, Menu, X, Bell, BellRing, Volume2, VolumeX, LocateFixed, Wallet,
     LayoutGrid, Store,
 } from "lucide-react";
@@ -12,7 +12,6 @@ import {
 } from "@/lib/backgroundDriverLocation";
 import AuthGuard from "@/components/AuthGuard";
 import DriverMap from "@/components/driver/map/DriverMap";
-import NavigationBanner from "@/components/driver/map/NavigationBanner";
 import { reverseGeocode } from "@/lib/locationService";
 import RideChat from "@/components/RideChat";
 import ParcelActivityBar from "@/components/ParcelActivityBar";
@@ -238,6 +237,7 @@ function DriverDashboard() {
 
     const waitingTime = `${String(Math.floor(waitingSeconds / 60)).padStart(2, "0")}:${String(waitingSeconds % 60).padStart(2, "0")}`;
     const [navigationInfo, setNavigationInfo] = useState(null);
+    const [tripPanelOpen, setTripPanelOpen] = useState(false);
     const [sheet, setSheet] = useState("half");
     const [chatOpen, setChatOpen] = useState(false);
     const [mapMenuOpen, setMapMenuOpen] = useState(false);
@@ -266,7 +266,6 @@ function DriverDashboard() {
                 ? "Return to pickup"
                 : "Destination")
         : "Passenger pickup";
-    const navigating = rideInProgress && ["DRIVER_EN_ROUTE", "TRIP_STARTED"].includes(selectedRide.status);
     // Sheet geometry — the map camera is told how much of the screen the sheet covers.
     const navH = rideInProgress ? 0 : 68;
     const heights = useMemo(() => (rideInProgress
@@ -279,6 +278,13 @@ function DriverDashboard() {
     const sheetRatio = rideInProgress ? Math.min(0.62, TRIP_PANEL_HEIGHT / Math.max(1, viewportH))
         : guidedActive ? Math.min(0.7, (guidedHeight + navH + 12) / Math.max(1, viewportH))
             : Math.min(0.75, (sheetPx + navH) / Math.max(1, viewportH));
+    // While the driver is travelling the map goes fullscreen: the trip
+    // panel auto-hides at the start of each driving leg and comes back on
+    // its own when the trip needs action (arrival, waiting, end). A small
+    // floating Trip button lets the driver reopen it mid-drive.
+    const travelling = rideInProgress && ["DRIVER_EN_ROUTE", "TRIP_STARTED"].includes(selectedRide.status);
+    const hideTripPanel = travelling && !tripPanelOpen;
+    useEffect(() => { if (travelling) setTripPanelOpen(false); }, [travelling]);
     // Ride lifecycle drives the layout: navigation collapses the sheet to keep the map dominant.
     useEffect(() => {
         if (!selectedRide) { setNavigationInfo(null); return; }
@@ -1082,7 +1088,7 @@ function DriverDashboard() {
                     vehicleType={activeVehicle?.vehicleType || null}
                     vehicleColor={activeVehicle?.color || null}
                     onRouteUpdate={setNavigationInfo}
-                    sheetRatio={sheetRatio}
+                    sheetRatio={hideTripPanel ? 0 : sheetRatio}
                     selectedRideId={focusRideId}
                     onRideSelect={openRequest}
                     rideRequests={isOnline && isAvailable && !rideInProgress ? requests.map((ride) => ({
@@ -1093,14 +1099,7 @@ function DriverDashboard() {
                     })) : []}
                 />
             </div>
-            {/* Menu sits at top-left; turn-by-turn guidance fills the rest of the top while a ride is active. */}
-            {rideInProgress && navigating && (
-                <NavigationBanner
-                    info={navigationInfo}
-                    targetKind={selectedRide?.status === "TRIP_STARTED" ? "destination" : "pickup"}
-                    className="pointer-events-none absolute left-[76px] right-3 top-[calc(max(16px,env(safe-area-inset-top)))] z-20"
-                />
-            )}
+
             <div className="absolute left-4 top-[calc(max(16px,env(safe-area-inset-top)))] z-50">
                 <button type="button" aria-label="Open driver menu" aria-expanded={mapMenuOpen}
                     onClick={() => { setMapMenuOpen((open) => !open); notifications.markRead(); }}
@@ -1165,10 +1164,18 @@ function DriverDashboard() {
                 </>
             )}
             <button type="button" onClick={locateMe} disabled={locating} aria-label="Centre on my location"
-                style={{ bottom: rideInProgress || rideEnded ? `${TRIP_PANEL_HEIGHT + 16}px` : showGuidedCard ? `calc(${guidedHeight}px + 68px + 24px + env(safe-area-inset-bottom))` : `calc(${heights[sheet]} + 78px)` }}
+                style={{ bottom: hideTripPanel ? "calc(16px + env(safe-area-inset-bottom))" : rideInProgress || rideEnded ? `${TRIP_PANEL_HEIGHT + 16}px` : showGuidedCard ? `calc(${guidedHeight}px + 68px + 24px + env(safe-area-inset-bottom))` : `calc(${heights[sheet]} + 78px)` }}
                 className="absolute right-4 z-30 flex h-12 w-12 items-center justify-center rounded-2xl bg-pd-surface text-pd-text shadow-[0_6px_24px_rgba(17,17,17,0.12)] disabled:opacity-60">
                 <LocateFixed size={21} className={locating ? "animate-pulse" : ""} />
             </button>
+            {travelling && (
+                <button type="button" onClick={() => setTripPanelOpen((open) => !open)} aria-label={tripPanelOpen ? "Hide trip panel" : "Show trip panel"}
+                    style={{ bottom: tripPanelOpen ? `${TRIP_PANEL_HEIGHT + 16}px` : "calc(16px + env(safe-area-inset-bottom))" }}
+                    className="absolute left-1/2 z-30 flex h-12 -translate-x-1/2 items-center gap-2 rounded-full bg-pd-surface px-4 text-sm font-extrabold text-pd-text shadow-[0_6px_24px_rgba(17,17,17,0.12)]">
+                    {tripPanelOpen ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+                    Trip
+                </button>
+            )}
             <DriverToast toast={notifications.toast} onDismiss={notifications.dismissToast} />
             {rideInProgress && chatOpen && (
                 <RideChat rideId={selectedRide._id} token={token} userId={userId}
@@ -1206,7 +1213,7 @@ function DriverDashboard() {
                     onHeight={setGuidedHeight}
                 />
             )}
-            {rideInProgress || rideEnded ? (rideInProgress ? tripPanel : endedPanel) : guidedStep !== "online" ? null : (
+            {rideInProgress || rideEnded ? (rideInProgress ? (hideTripPanel ? null : tripPanel) : endedPanel) : guidedStep !== "online" ? null : (
                 <DriverSheet
                     label="Driver dashboard"
                     state={sheet}
