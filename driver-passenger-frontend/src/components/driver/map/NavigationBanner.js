@@ -52,7 +52,10 @@ export default function NavigationBanner({ info, targetKind = "pickup", classNam
         <section
             aria-label="Navigation"
             aria-live="polite"
-            className={`overflow-hidden rounded-2xl bg-pd-ink text-pd-ink-text shadow-[0_10px_30px_rgba(0,0,0,0.28)] ${className}`}
+            // In dark theme the inverted ink card would render white, so
+            // it uses a normal surface card there instead. Light theme
+            // keeps the exact inverted look it already had.
+            className={`overflow-hidden rounded-2xl bg-pd-ink text-pd-ink-text shadow-[0_10px_30px_rgba(0,0,0,0.28)] dark:border dark:border-pd-line dark:bg-pd-surface dark:text-pd-text ${className}`}
         >
             <div className="flex items-center gap-3 p-3">
                 <span className="flex size-16 shrink-0 items-center justify-center rounded-xl bg-pd-accent text-pd-accent-ink" aria-hidden>
@@ -66,7 +69,7 @@ export default function NavigationBanner({ info, targetKind = "pickup", classNam
                 </div>
             </div>
             {info?.durationMinutes != null && !arrived && (
-                <div className="flex items-center gap-4 border-t border-white/15 px-4 py-2.5 text-base font-bold">
+                <div className="flex items-center gap-4 border-t border-white/15 px-4 py-2.5 text-base font-bold dark:border-pd-line">
                     <span className="flex items-center gap-1.5"><Clock3 size={18} aria-hidden />{info.durationMinutes} min</span>
                     <span className="flex items-center gap-1.5"><Route size={18} aria-hidden />{formatDistance(info.remainingMeters ?? info.distanceKm * 1000)}</span>
                     <span className="ml-auto opacity-85">Arrive {arrivalClock(info.durationMinutes)}</span>

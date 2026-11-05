@@ -5,8 +5,10 @@ import { BellRing, CarFront, ChevronRight, Clock3 } from "lucide-react";
 
 const KINDS = {
     active: { Icon: CarFront, tone: "bg-pd-accent text-pd-accent-ink" },
-    available: { Icon: BellRing, tone: "bg-pd-ink text-pd-ink-text" },
-    offer: { Icon: Clock3, tone: "bg-pd-ink text-pd-ink-text" },
+    // In dark theme the inverted ink card would render white, so these
+    // use a normal surface card there instead. Light theme is unchanged.
+    available: { Icon: BellRing, tone: "bg-pd-ink text-pd-ink-text dark:border dark:border-pd-line dark:bg-pd-surface dark:text-pd-text" },
+    offer: { Icon: Clock3, tone: "bg-pd-ink text-pd-ink-text dark:border dark:border-pd-line dark:bg-pd-surface dark:text-pd-text" },
 };
 
 /**
