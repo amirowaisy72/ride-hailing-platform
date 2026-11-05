@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Navigation, RotateCw } from "lucide-react";
+import { apiRequest } from "@/lib/api";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { flagSvg, hailingPersonSvg } from "@/components/mapMarkerArt";
 import {
@@ -17,6 +18,31 @@ import {
 maplibregl.setWorkerUrl("/maplibre-worker.mjs");
 
 const ROUTE_SOURCE = "dm-route";
+const PLACES_SOURCE = "safar-local-places";
+
+// Same corridor LocalAddress dataset as the passenger map, converted to
+// clustered GeoJSON points. Rendered muted and semi-transparent so the
+// points stay background reference data, never competing with the live
+// vehicle or ride-request markers.
+function addressGeoJSON(addresses) {
+    return {
+        type: "FeatureCollection",
+        features: (addresses || [])
+            .filter((a) =>
+                a.name?.trim() &&
+                Number.isFinite(Number(a.latitude)) &&
+                Number.isFinite(Number(a.longitude))
+            )
+            .map((a) => ({
+                type: "Feature",
+                geometry: {
+                    type: "Point",
+                    coordinates: [Number(a.longitude), Number(a.latitude)],
+                },
+                properties: { name: a.name },
+            })),
+    };
+}
 const OFF_ROUTE_METERS = 70;
 const REROUTE_COOLDOWN_MS = 8000;
 const FOLLOW_RESUME_MS = 10000;
@@ -126,6 +152,7 @@ export default function DriverMap({
     onRideSelect = null,
     onRouteUpdate = null,
     locateRequest = 0,
+    token = null,
     sheetRatio = 0.3,
     routeProvider = fetchOsrmRoute,
     center = [69.3451, 30.3753],
@@ -360,6 +387,171 @@ export default function DriverMap({
         if (!map || !mapReady) return;
         addRouteLayers(map, themeRef.current, remainingRef.current);
     }, [mapReady, styleEpoch]);
+
+    // Corridor location points (LocalAddress dataset, same as the
+    // passenger map): muted clustered dots, background only. Like the
+    // route layers they are (re)added after every style swap, and the
+    // data reloads for the visible bounds whenever the map moves.
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !mapReady || !token) return undefined;
+        const dark = themeRef.current === "dark";
+        const placesMuted = dark ? "#4F7263" : "#86A696";
+        // Keep the points under the route lines when a route is drawn.
+        const beforeId = ["dm-route-glow", "dm-route-casing", "dm-route-line"].find((id) => map.getLayer(id));
+        if (!map.getSource(PLACES_SOURCE)) {
+            map.addSource(PLACES_SOURCE, {
+                type: "geojson",
+                data: addressGeoJSON([]),
+                cluster: true,
+                clusterMaxZoom: 15,
+                clusterRadius: 50,
+            });
+            map.addLayer({
+                id: "safar-local-cluster-halo",
+                type: "circle",
+                source: PLACES_SOURCE,
+                filter: ["has", "point_count"],
+                paint: {
+                    "circle-color": placesMuted,
+                    "circle-opacity": dark ? 0.13 : 0.16,
+                    "circle-radius": ["step", ["get", "point_count"], 16, 10, 20, 50, 25],
+                },
+            }, beforeId);
+            map.addLayer({
+                id: "safar-local-clusters",
+                type: "circle",
+                source: PLACES_SOURCE,
+                filter: ["has", "point_count"],
+                paint: {
+                    "circle-color": placesMuted,
+                    "circle-opacity": 0.55,
+                    "circle-radius": ["step", ["get", "point_count"], 12, 10, 15, 50, 19],
+                    "circle-stroke-color": "#FFFFFF",
+                    "circle-stroke-opacity": 0.65,
+                    "circle-stroke-width": 1.5,
+                },
+            }, beforeId);
+            map.addLayer({
+                id: "safar-local-cluster-count",
+                type: "symbol",
+                source: PLACES_SOURCE,
+                filter: ["has", "point_count"],
+                layout: {
+                    "text-field": ["get", "point_count_abbreviated"],
+                    "text-font": ["Open Sans Semibold"],
+                    "text-size": 11,
+                },
+                paint: { "text-color": "#FFFFFF", "text-opacity": 0.95 },
+            }, beforeId);
+            map.addLayer({
+                id: "safar-local-dots",
+                type: "circle",
+                source: PLACES_SOURCE,
+                filter: ["!", ["has", "point_count"]],
+                minzoom: 15,
+                paint: {
+                    "circle-radius": ["interpolate", ["linear"], ["zoom"], 15, 4.5, 18, 5.5],
+                    "circle-color": placesMuted,
+                    "circle-opacity": 0.8,
+                    "circle-stroke-width": 1.5,
+                    "circle-stroke-color": "#FFFFFF",
+                    "circle-stroke-opacity": 0.85,
+                },
+            }, beforeId);
+            map.addLayer({
+                id: "safar-local-labels",
+                type: "symbol",
+                source: PLACES_SOURCE,
+                filter: ["!", ["has", "point_count"]],
+                minzoom: 16,
+                layout: {
+                    "text-field": [
+                        "case",
+                        [">", ["length", ["get", "name"]], 22],
+                        ["concat", ["slice", ["get", "name"], 0, 22], "…"],
+                        ["get", "name"]
+                    ],
+                    "text-size": ["interpolate", ["linear"], ["zoom"], 16, 10, 18, 11],
+                    "text-font": ["Open Sans Semibold"],
+                    "text-variable-anchor": ["top", "bottom", "left", "right"],
+                    "text-radial-offset": 1.5,
+                    "text-justify": "auto",
+                    "text-max-width": 16,
+                    "text-padding": 12,
+                    "text-optional": true,
+                    "text-letter-spacing": 0.02,
+                    "text-allow-overlap": false,
+                    "text-ignore-placement": false,
+                    "symbol-sort-key": 1,
+                },
+                paint: {
+                    "text-color": dark ? "#D7E0DA" : "#3D4A44",
+                    "text-opacity": 0.9,
+                    "text-halo-color": dark ? "#16181D" : "#FFFFFF",
+                    "text-halo-width": 2,
+                    "text-halo-blur": 0.5,
+                },
+            }, beforeId);
+        }
+        let cancelled = false;
+        async function loadVisiblePlaces() {
+            if (cancelled || map.getZoom() < 14) return;
+            const bounds = map.getBounds();
+            const params = new URLSearchParams({
+                west: String(bounds.getWest()),
+                south: String(bounds.getSouth()),
+                east: String(bounds.getEast()),
+                north: String(bounds.getNorth()),
+            });
+            try {
+                const data = await apiRequest(`/service-areas/local-addresses/map?${params}`, { token });
+                if (!cancelled && map.getSource(PLACES_SOURCE)) {
+                    map.getSource(PLACES_SOURCE).setData(addressGeoJSON(data.addresses || []));
+                }
+            } catch (error) {
+                console.warn("Local map labels:", error.message);
+            }
+        }
+        const handleClusterClick = (event) => {
+            const feature = event.features?.[0];
+            if (!feature) return;
+            const fallback = () => {
+                map.easeTo({
+                    center: feature.geometry.coordinates,
+                    zoom: Math.min(map.getZoom() + 2, 20),
+                    duration: 500,
+                });
+            };
+            const source = map.getSource(PLACES_SOURCE);
+            const clusterId = feature.properties?.cluster_id;
+            if (source && typeof source.getClusterExpansionZoom === "function" && clusterId != null) {
+                source.getClusterExpansionZoom(clusterId, (error, zoom) => {
+                    if (error || !Number.isFinite(zoom)) {
+                        fallback();
+                        return;
+                    }
+                    map.easeTo({ center: feature.geometry.coordinates, zoom: Math.min(zoom, 20), duration: 500 });
+                });
+            } else {
+                fallback();
+            }
+        };
+        const handleClusterEnter = () => { map.getCanvas().style.cursor = "pointer"; };
+        const handleClusterLeave = () => { map.getCanvas().style.cursor = ""; };
+        loadVisiblePlaces();
+        map.on("moveend", loadVisiblePlaces);
+        map.on("click", "safar-local-clusters", handleClusterClick);
+        map.on("mouseenter", "safar-local-clusters", handleClusterEnter);
+        map.on("mouseleave", "safar-local-clusters", handleClusterLeave);
+        return () => {
+            cancelled = true;
+            map.off("moveend", loadVisiblePlaces);
+            map.off("click", "safar-local-clusters", handleClusterClick);
+            map.off("mouseenter", "safar-local-clusters", handleClusterEnter);
+            map.off("mouseleave", "safar-local-clusters", handleClusterLeave);
+        };
+    }, [mapReady, styleEpoch, token]);
 
     // Fetch the road route to the current target; refetch when the target changes or the driver leaves the line.
     useEffect(() => {
