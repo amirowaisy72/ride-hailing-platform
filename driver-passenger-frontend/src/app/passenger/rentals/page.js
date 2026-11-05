@@ -1,22 +1,31 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Geolocation } from "@capacitor/geolocation";
 import {
     ArrowLeft,
     CalendarDays,
     CarFront,
+    ChevronDown,
     ChevronRight,
-    Fuel,
     MapPin,
     RefreshCw,
     Search,
+    SlidersHorizontal,
     Star,
     Users,
 } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import RentalWhenPicker, {
+    cheapestUnit,
+    defaultWindow,
+    estimateTotal,
+    formatDuration,
+    tr,
+    windowHours,
+} from "@/components/rentals/RentalWhenPicker";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage, storedLanguage } from "@/components/i18n/LanguageProvider";
 import { formatPKR } from "@/lib/rideDisplay";
@@ -26,6 +35,9 @@ import {
     StatusPill,
     rentalStatusMeta,
 } from "@/components/order/PurchaseTimeline";
+
+const DRAFT_KEY = "rentals-search-draft";
+const FINISHED = ["COMPLETED", "CANCELLED", "NO_SHOW"];
 
 export default function RentalsPage() {
     return (
@@ -45,33 +57,126 @@ function priceLine(vehicle) {
     return urdu ? "قیمت پوچھنے پر" : "Price on request";
 }
 
-// Same local-input formatting as the booking page (vehicle/page.js).
-function toLocalInput(date) {
-    const pad = (n) => String(n).padStart(2, "0");
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+// What the renter should do next, in one short line. `urgent` ones are
+// things the renter must act on; the rest are just status.
+function nextAction(booking) {
+    switch (booking.status) {
+        case "REQUESTED":
+            return { label: tr("Waiting for the owner to accept", "مالک کی منظوری کا انتظار"), urgent: false };
+        case "PROVIDER_ACCEPTED":
+            return { label: tr("Pay the booking fee", "بکنگ فیس ادا کریں"), urgent: true };
+        case "PAYMENT_PENDING":
+            return { label: tr("Safar is checking your payment", "سفر آپ کی ادائیگی چیک کر رہا ہے"), urgent: false };
+        case "CONFIRMED":
+            return { label: tr("Show your pickup code at handover", "حوالگی پر اپنا پک اپ کوڈ دکھائیں"), urgent: true };
+        case "PICKUP_VERIFIED":
+        case "RENTAL_ACTIVE":
+            return {
+                label: booking.endAt
+                    ? tr(
+                        `Return by ${new Date(booking.endAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`,
+                        `واپسی: ${new Date(booking.endAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`
+                    )
+                    : tr("Rental in progress", "کرایہ جاری ہے"),
+                urgent: false,
+            };
+        case "RETURN_PENDING":
+            return { label: tr("Confirm the return", "واپسی کی تصدیق کریں"), urgent: true };
+        case "COMPLETED":
+            return booking.ratedAt ? null : { label: tr("Rate this rental", "اس کرائے کو ریٹ کریں"), urgent: true };
+        case "DISPUTED":
+            return { label: tr("Under review by our team", "ہماری ٹیم جائزہ لے رہی ہے"), urgent: false };
+        default:
+            return null;
+    }
+}
+
+function BookingCard({ booking, t }) {
+    const action = nextAction(booking);
+    return (
+        <Link
+            href={`/passenger/rentals/bookings/details?id=${booking._id}`}
+            className="block rounded-[24px] bg-pd-surface p-4 shadow-sm transition-transform active:scale-[0.99]"
+        >
+            <div className="flex items-start justify-between gap-3">
+                <p className="min-w-0 flex-1 truncate text-[15px] font-extrabold">
+                    {booking.vehicle ? vehicleTitle(booking.vehicle) : t("rentals.bookingFallback")}
+                </p>
+                <StatusPill meta={rentalStatusMeta(booking.status)} />
+            </div>
+            <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-pd-muted">
+                <CalendarDays size={13} />
+                {booking.startAt ? new Date(booking.startAt).toLocaleDateString([], { month: "short", day: "numeric" }) : ""}
+                {" → "}
+                {booking.endAt ? new Date(booking.endAt).toLocaleDateString([], { month: "short", day: "numeric" }) : ""}
+                <span className="text-pd-faint">·</span> Ref {booking.bookingRef}
+            </p>
+            <p className="mt-2 text-sm font-extrabold text-[#087F5B]">
+                {formatPKR(booking.rentalCharges)}
+                <span className="ml-2 text-xs font-semibold text-pd-faint">
+                    {booking.mode === "SELF_DRIVE" ? t("rentals.selfDrive") : t("rentals.withDriver")} · {String(booking.billingUnit || "").toLowerCase()}
+                </span>
+            </p>
+            {action && (
+                <p
+                    className={`mt-3 flex min-h-11 items-center justify-between gap-2 rounded-2xl px-3.5 text-[13px] font-extrabold ${
+                        action.urgent ? "bg-[#087F5B] text-white" : "bg-pd-surface-2 text-pd-text-2"
+                    }`}
+                >
+                    <span>{action.label}</span>
+                    <ChevronRight size={16} aria-hidden="true" />
+                </p>
+            )}
+        </Link>
+    );
+}
+
+// Whatever the renter last typed in this tab, so coming back from a vehicle
+// page does not wipe the search.
+function readDraft() {
+    if (typeof window === "undefined") return null;
+    try {
+        const draft = JSON.parse(window.sessionStorage.getItem(DRAFT_KEY) || "null");
+        if (!draft) return null;
+        const start = new Date(draft.startAt || "");
+        const end = new Date(draft.endAt || "");
+        const windowOk = Number.isFinite(start.getTime()) && Number.isFinite(end.getTime()) && end > start && start.getTime() > Date.now() - 60_000;
+        return { ...draft, windowOk };
+    } catch {
+        return null;
+    }
 }
 
 function RentalsDashboard() {
-    const { user, token } = useAuth();
+    const { token } = useAuth();
     const { t } = useLanguage();
-    const [mode, setMode] = useState("");
-    // T-18: the search dates used to start EMPTY and render as bare
-    // half-width native controls — their segments clipped to fragments
-    // like "11/2026" and an inverted pickup/return pair was silently
-    // sent. They now default like the booking page (pickup in 2h,
-    // return 24h later) and are validated before searching.
-    const [startAt, setStartAt] = useState(() => toLocalInput(new Date(Date.now() + 2 * 60 * 60 * 1000)));
-    const [endAt, setEndAt] = useState(() => toLocalInput(new Date(Date.now() + 26 * 60 * 60 * 1000)));
-    const [minSeats, setMinSeats] = useState("");
-    const [transmission, setTransmission] = useState("");
-    const [maxDailyPrice, setMaxDailyPrice] = useState("");
-    const [nearMe, setNearMe] = useState(false);
+    const [draft] = useState(readDraft);
+    const [mode, setMode] = useState(draft?.mode || "");
+    const [window_, setWindow] = useState(() => (draft?.windowOk ? { startAt: draft.startAt, endAt: draft.endAt } : defaultWindow()));
+    const [minSeats, setMinSeats] = useState(draft?.minSeats || "");
+    const [transmission, setTransmission] = useState(draft?.transmission || "");
+    const [maxDailyPrice, setMaxDailyPrice] = useState(draft?.maxDailyPrice || "");
+    const [nearMe, setNearMe] = useState(Boolean(draft?.nearMe));
+    const [moreOpen, setMoreOpen] = useState(Boolean(draft?.minSeats || draft?.transmission || draft?.nearMe));
 
     const [vehicles, setVehicles] = useState([]);
     const [searching, setSearching] = useState(false);
     const [searched, setSearched] = useState(false);
+    const [appliedWindow, setAppliedWindow] = useState(null);
     const [bookings, setBookings] = useState([]);
     const [error, setError] = useState("");
+    const [applied, setApplied] = useState(Boolean(draft?.applied));
+
+    const { startAt, endAt } = window_;
+
+    useEffect(() => {
+        try {
+            window.sessionStorage.setItem(
+                DRAFT_KEY,
+                JSON.stringify({ mode, startAt, endAt, minSeats, transmission, maxDailyPrice, nearMe, applied })
+            );
+        } catch { /* Storage blocked — nothing to keep. */ }
+    }, [mode, startAt, endAt, minSeats, transmission, maxDailyPrice, nearMe, applied]);
 
     const loadBookings = useCallback(async () => {
         if (!token) return;
@@ -87,10 +192,9 @@ function RentalsDashboard() {
         return () => { cancelled = true; };
     }, [loadBookings]);
 
-    async function runSearch() {
+    async function runSearch({ restoring = false } = {}) {
         if (searching) return;
-        // T-18: never send an inverted or unparseable window — the
-        // backend ignored it silently and the results looked random.
+        // Never send an inverted or unparseable window.
         if (startAt && endAt) {
             const start = new Date(startAt);
             const end = new Date(endAt);
@@ -125,15 +229,23 @@ function RentalsDashboard() {
             const data = await searchRentalVehicles(params, token);
             setVehicles(data.vehicles || []);
             setSearched(true);
+            setApplied(true);
+            setAppliedWindow({ startAt, endAt });
         } catch (e) {
             setError(e.message);
+            if (restoring) setApplied(false);
         } finally {
             setSearching(false);
         }
     }
 
+    // First load: an unfiltered list, or the last search the renter ran.
     useEffect(() => {
         if (!token) return;
+        if (applied) {
+            const timer = setTimeout(() => void runSearch({ restoring: true }), 0);
+            return () => clearTimeout(timer);
+        }
         let cancelled = false;
         (async () => {
             try {
@@ -147,7 +259,19 @@ function RentalsDashboard() {
             }
         })();
         return () => { cancelled = true; };
+        // Runs once per sign-in; later searches are user-triggered.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [token]);
+
+    const { active, past } = useMemo(() => {
+        const activeList = bookings.filter((b) => !FINISHED.includes(b.status) || (b.status === "COMPLETED" && !b.ratedAt));
+        const pastList = bookings.filter((b) => !activeList.includes(b));
+        const weight = (b) => (nextAction(b)?.urgent ? 0 : 1);
+        activeList.sort((a, b) => weight(a) - weight(b));
+        return { active: activeList, past: pastList };
+    }, [bookings]);
+
+    const resultHours = appliedWindow ? windowHours(appliedWindow.startAt, appliedWindow.endAt) : 0;
 
     const inputCls =
         "w-full rounded-2xl border border-pd-line bg-pd-surface-2 px-3.5 py-3 text-sm font-semibold text-pd-text outline-none focus:border-[#087F5B] focus:ring-2 focus:ring-[#087F5B]/25";
@@ -167,24 +291,27 @@ function RentalsDashboard() {
             </div>
 
             <div className="mx-auto max-w-xl space-y-5 px-4 pt-4">
-                <section className="relative overflow-hidden rounded-[24px] bg-[#111111] p-5 text-white shadow-sm">
-                    <div className="absolute -right-8 -top-10 h-40 w-40 rounded-full bg-[#087F5B]/30" aria-hidden="true" />
-                    <div className="relative">
-                        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
-                            <CarFront size={24} aria-hidden="true" />
-                        </span>
-                        <h2 className="mt-3 text-[22px] font-extrabold leading-tight">{t("rentals.heroTitle")}</h2>
-                        <p className="mt-1 max-w-sm text-sm leading-relaxed text-pd-faint">
-                            {t("rentals.heroText")}
-                        </p>
-                    </div>
-                </section>
+                {/* Bookings that need the renter's attention come first */}
+                {active.length > 0 && (
+                    <section aria-labelledby="my-bookings-title">
+                        <h2 id="my-bookings-title" className="mb-3 px-1 text-xs font-bold uppercase tracking-wider text-pd-muted">
+                            {t("rentals.myBookings")}
+                        </h2>
+                        <div className="space-y-3">
+                            {active.map((booking) => <BookingCard key={booking._id} booking={booking} t={t} />)}
+                        </div>
+                    </section>
+                )}
 
                 {/* Search */}
-                <section className="space-y-3 rounded-[24px] bg-pd-surface p-4 shadow-sm" aria-labelledby="rental-search-title">
-                    <h2 id="rental-search-title" className="flex items-center gap-2 text-[15px] font-extrabold">
-                        <Search size={17} className="text-[#087F5B]" /> {t("rentals.findVehicle")}
-                    </h2>
+                <section className="space-y-4 rounded-[24px] bg-pd-surface p-4 shadow-sm" aria-labelledby="rental-search-title">
+                    <div>
+                        <h2 id="rental-search-title" className="flex items-center gap-2 text-[17px] font-extrabold">
+                            <CarFront size={19} className="text-[#087F5B]" /> {t("rentals.findVehicle")}
+                        </h2>
+                        <p className="mt-1 text-sm leading-relaxed text-pd-muted">{t("rentals.heroText")}</p>
+                    </div>
+
                     <div className="grid grid-cols-3 gap-1 rounded-2xl bg-pd-bg p-1" role="radiogroup" aria-label={t("rentals.mode")}>
                         {[
                             ["", t("rentals.anyMode")],
@@ -197,85 +324,93 @@ function RentalsDashboard() {
                                 role="radio"
                                 aria-checked={mode === value}
                                 onClick={() => setMode(value)}
-                                className={`min-h-10 rounded-xl text-[13px] font-bold ${mode === value ? "bg-pd-surface text-pd-text shadow-sm" : "text-pd-muted"}`}
+                                className={`min-h-11 rounded-xl text-[13px] font-bold ${mode === value ? "bg-pd-surface text-pd-text shadow-sm" : "text-pd-muted"}`}
                             >
                                 {label}
                             </button>
                         ))}
                     </div>
-                    {/* T-18: full-width stacked date fields with dir=ltr —
-                        the half-width pair clipped the native segments
-                        into garbled fragments and flipped in RTL. */}
-                    <div className="space-y-3">
-                        <div>
-                            <label htmlFor="r-start" className="mb-1.5 block text-xs font-bold text-pd-muted">{t("rentals.pickupFrom")}</label>
-                            <input id="r-start" type="datetime-local" dir="ltr" value={startAt} onChange={(e) => setStartAt(e.target.value)} className={inputCls} />
-                        </div>
-                        <div>
-                            <label htmlFor="r-end" className="mb-1.5 block text-xs font-bold text-pd-muted">{t("rentals.returnBy")}</label>
-                            <input id="r-end" type="datetime-local" dir="ltr" min={startAt || undefined} value={endAt} onChange={(e) => setEndAt(e.target.value)} className={inputCls} />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label htmlFor="r-seats" className="mb-1.5 block text-xs font-bold text-pd-muted">{t("rentals.minSeats")}</label>
-                            <select id="r-seats" value={minSeats} onChange={(e) => setMinSeats(e.target.value)} className={inputCls}>
-                                <option value="">Any</option>
-                                {[2, 4, 5, 7, 12].map((n) => <option key={n} value={n}>{t("rentals.seatsPlus", { n })}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label htmlFor="r-trans" className="mb-1.5 block text-xs font-bold text-pd-muted">{t("rentals.transmission")}</label>
-                            <select id="r-trans" value={transmission} onChange={(e) => setTransmission(e.target.value)} className={inputCls}>
-                                <option value="">Any</option>
-                                <option value="AUTOMATIC">{t("rentals.automatic")}</option>
-                                <option value="MANUAL">{t("rentals.manual")}</option>
-                            </select>
-                        </div>
-                    </div>
+
+                    <RentalWhenPicker startAt={startAt} endAt={endAt} onChange={setWindow} idPrefix="r" />
+
                     <div>
-                        <label htmlFor="r-max" className="mb-1.5 block text-xs font-bold text-pd-muted">{t("rentals.maxDailyPrice")}</label>
+                        <label htmlFor="r-max" className="mb-1.5 block text-xs font-bold text-pd-text-2">{t("rentals.maxDailyPrice")}</label>
                         <input
                             id="r-max"
                             type="text"
                             inputMode="numeric"
                             value={maxDailyPrice}
                             onChange={(e) => setMaxDailyPrice(e.target.value.replace(/[^\d]/g, ""))}
-                            placeholder="e.g. 8000"
+                            placeholder={tr("e.g. 8000 (optional)", "مثلاً 8000 (اختیاری)")}
                             className={inputCls}
                         />
                     </div>
-                    <label className="flex items-center justify-between gap-3 rounded-2xl bg-pd-surface-2 px-4 py-3">
-                        <span className="flex items-center gap-2 text-sm font-bold">
-                            <MapPin size={16} className="text-[#087F5B]" /> Near me (within 50 km)
-                        </span>
+
+                    <div>
                         <button
                             type="button"
-                            role="switch"
-                            aria-checked={nearMe}
-                            aria-label={t("rentals.nearMe")}
-                            onClick={() => setNearMe((v) => !v)}
-                            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${nearMe ? "bg-[#087F5B]" : "bg-pd-surface-3"}`}
+                            onClick={() => setMoreOpen((open) => !open)}
+                            aria-expanded={moreOpen}
+                            aria-controls="r-more-filters"
+                            className="flex min-h-11 w-full items-center justify-between gap-2 rounded-2xl bg-pd-surface-2 px-4 text-sm font-extrabold"
                         >
-                            <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${nearMe ? "left-[22px]" : "left-0.5"}`} />
+                            <span className="flex items-center gap-2"><SlidersHorizontal size={16} className="text-[#087F5B]" /> {tr("More filters", "مزید فلٹر")}</span>
+                            <ChevronDown size={17} className={`transition-transform ${moreOpen ? "rotate-180" : ""}`} aria-hidden="true" />
                         </button>
-                    </label>
+                        {moreOpen && (
+                            <div id="r-more-filters" className="mt-3 space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label htmlFor="r-seats" className="mb-1.5 block text-xs font-bold text-pd-text-2">{t("rentals.minSeats")}</label>
+                                        <select id="r-seats" value={minSeats} onChange={(e) => setMinSeats(e.target.value)} className={inputCls}>
+                                            <option value="">{tr("Any", "کوئی بھی")}</option>
+                                            {[2, 4, 5, 7, 12].map((n) => <option key={n} value={n}>{t("rentals.seatsPlus", { n })}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label htmlFor="r-trans" className="mb-1.5 block text-xs font-bold text-pd-text-2">{t("rentals.transmission")}</label>
+                                        <select id="r-trans" value={transmission} onChange={(e) => setTransmission(e.target.value)} className={inputCls}>
+                                            <option value="">{tr("Any", "کوئی بھی")}</option>
+                                            <option value="AUTOMATIC">{t("rentals.automatic")}</option>
+                                            <option value="MANUAL">{t("rentals.manual")}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="flex min-h-12 items-center justify-between gap-3 rounded-2xl bg-pd-surface-2 px-4 py-2">
+                                    <span id="r-near-label" className="flex items-center gap-2 text-sm font-bold">
+                                        <MapPin size={16} className="text-[#087F5B]" /> {tr("Near me (within 50 km)", "میرے قریب (50 کلومیٹر کے اندر)")}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={nearMe}
+                                        aria-labelledby="r-near-label"
+                                        onClick={() => setNearMe((v) => !v)}
+                                        className={`relative h-8 w-14 shrink-0 rounded-full transition-colors ${nearMe ? "bg-[#087F5B]" : "bg-pd-surface-3"}`}
+                                    >
+                                        <span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${nearMe ? "left-[30px]" : "left-1"}`} />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {error && <p role="alert" className="rounded-2xl bg-pd-danger-soft px-4 py-3 text-sm font-semibold text-pd-danger">{error}</p>}
+
                     <button
                         type="button"
                         onClick={() => void runSearch()}
                         disabled={searching}
-                        className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#087F5B] text-sm font-extrabold text-white disabled:opacity-60"
+                        className="flex h-14 w-full items-center justify-center gap-2 rounded-[20px] bg-[#087F5B] text-[15px] font-extrabold text-white shadow-sm disabled:opacity-60"
                     >
-                        <Search size={17} /> {searching ? t("rentals.searching") : t("rentals.searchVehicles")}
+                        <Search size={18} /> {searching ? t("rentals.searching") : t("rentals.searchVehicles")}
                     </button>
                 </section>
-
-                {error && <p role="alert" className="rounded-2xl bg-pd-danger-soft px-4 py-3 text-sm font-semibold text-pd-danger">{error}</p>}
 
                 {/* Results */}
                 <section aria-labelledby="vehicles-title">
                     <h2 id="vehicles-title" className="mb-3 px-1 text-xs font-bold uppercase tracking-wider text-pd-muted">
-                        Available vehicles {searched && <span className="ml-1 rounded-full bg-pd-surface px-2 py-0.5 text-[10px] text-pd-muted shadow-sm">{vehicles.length}</span>}
+                        {tr("Available vehicles", "دستیاب گاڑیاں")} {searched && <span className="ml-1 rounded-full bg-pd-surface px-2 py-0.5 text-[10px] text-pd-muted shadow-sm">{vehicles.length}</span>}
                     </h2>
                     {searching && vehicles.length === 0 ? (
                         <div className="space-y-3" aria-busy="true">
@@ -292,14 +427,19 @@ function RentalsDashboard() {
                             </p>
                         </div>
                     ) : (
-                        <div className="space-y-3">
+                        <div className={`space-y-3 transition-opacity ${searching ? "opacity-60" : ""}`}>
                             {vehicles.map((vehicle) => {
                                 const photo = vehiclePhoto(vehicle);
                                 const vid = vehicleIdOf(vehicle);
+                                const bestUnit = resultHours ? cheapestUnit(vehicle.pricing, resultHours) : "";
+                                const estimate = bestUnit ? estimateTotal(vehicle.pricing, bestUnit, resultHours) : null;
+                                const query = appliedWindow
+                                    ? `&startAt=${encodeURIComponent(appliedWindow.startAt)}&endAt=${encodeURIComponent(appliedWindow.endAt)}`
+                                    : "";
                                 return (
                                     <Link
                                         key={vid}
-                                        href={`/passenger/rentals/vehicle?vehicleId=${vid}`}
+                                        href={`/passenger/rentals/vehicle?vehicleId=${vid}${query}`}
                                         className="flex gap-3 rounded-[24px] bg-pd-surface p-3.5 shadow-sm transition-transform active:scale-[0.99]"
                                     >
                                         <span className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-2xl bg-pd-surface-3 text-pd-faint">
@@ -330,6 +470,14 @@ function RentalsDashboard() {
                                                 <MapPin size={12} className="shrink-0" /> {vehicle.pickupAreaLabel || t("rentals.pickupAreaAfter")}
                                             </span>
                                             <span className="mt-1.5 block text-[15px] font-extrabold text-[#087F5B]">{priceLine(vehicle)}</span>
+                                            {estimate && (
+                                                <span className="block text-xs font-bold text-pd-text-2">
+                                                    {tr(
+                                                        `${formatPKR(estimate.total)} for ${formatDuration(resultHours)}`,
+                                                        `${formatDuration(resultHours)} کے لیے ${formatPKR(estimate.total)}`
+                                                    )}
+                                                </span>
+                                            )}
                                         </span>
                                         <ChevronRight size={18} className="self-center text-pd-faint" />
                                     </Link>
@@ -339,48 +487,17 @@ function RentalsDashboard() {
                     )}
                 </section>
 
-                {/* My bookings */}
-                {bookings.length > 0 && (
-                    <section aria-labelledby="my-bookings-title">
-                        <h2 id="my-bookings-title" className="mb-3 px-1 text-xs font-bold uppercase tracking-wider text-pd-muted">
-                            {t("rentals.myBookings")}
-                        </h2>
-                        <div className="space-y-3">
-                            {bookings.map((booking) => (
-                                <Link
-                                    key={booking._id}
-                                    href={`/passenger/rentals/bookings/details?id=${booking._id}`}
-                                    className="block rounded-[24px] bg-pd-surface p-4 shadow-sm transition-transform active:scale-[0.99]"
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <p className="min-w-0 flex-1 truncate text-[15px] font-extrabold">
-                                            {booking.vehicle ? vehicleTitle(booking.vehicle) : t("rentals.bookingFallback")}
-                                        </p>
-                                        <StatusPill meta={rentalStatusMeta(booking.status)} />
-                                    </div>
-                                    <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-pd-muted">
-                                        <CalendarDays size={13} />
-                                        {booking.startAt ? new Date(booking.startAt).toLocaleDateString([], { month: "short", day: "numeric" }) : ""}
-                                        {" → "}
-                                        {booking.endAt ? new Date(booking.endAt).toLocaleDateString([], { month: "short", day: "numeric" }) : ""}
-                                        <span className="text-pd-faint">·</span> Ref {booking.bookingRef}
-                                    </p>
-                                    <p className="mt-2 text-sm font-extrabold text-[#087F5B]">
-                                        {formatPKR(booking.rentalCharges)}
-                                        <span className="ml-2 text-xs font-semibold text-pd-faint">
-                                            {booking.mode === "SELF_DRIVE" ? t("rentals.selfDrive") : t("rentals.withDriver")} · {String(booking.billingUnit || "").toLowerCase()}
-                                        </span>
-                                    </p>
-                                </Link>
-                            ))}
+                {past.length > 0 && (
+                    <details className="group rounded-[24px] bg-pd-surface p-4 shadow-sm">
+                        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-sm font-extrabold">
+                            <span>{tr("Past bookings", "پچھلی بکنگز")} ({past.length})</span>
+                            <ChevronDown size={17} className="transition-transform group-open:rotate-180" aria-hidden="true" />
+                        </summary>
+                        <div className="mt-3 space-y-3">
+                            {past.map((booking) => <BookingCard key={booking._id} booking={booking} t={t} />)}
                         </div>
-                    </section>
+                    </details>
                 )}
-
-                <p className="flex items-start gap-2 px-1 text-xs leading-relaxed text-pd-faint">
-                    <Fuel size={14} className="mt-0.5 shrink-0" />
-                    Every listing shows its fuel policy, mileage limit and cancellation terms before you book — no surprises at pickup.
-                </p>
             </div>
 
             <MobileBottomNav role="PASSENGER" />
