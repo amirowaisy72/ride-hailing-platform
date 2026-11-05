@@ -67,6 +67,8 @@ const MAP_STYLES = `
 .rx-map-cell--rickshaw .rx-map-cell-lamp--r{display:none}
 .rx-map-cell--night .rx-map-cell-beam{opacity:1}
 .rx-map-cell--night .rx-map-cell-lamp,.rx-map-cell--night .rx-map-cell-tail{opacity:1}
+/* Passenger-view driver marker: lamps + tails only, no beam cone. On the zoomed-out route map the cone reads as a giant white wedge; nearby-driver cells keep their beams. */
+.sf-veh--passenger.is-night .sf-veh-beam{display:none}
 .rx-map-cell-count{position:absolute;z-index:3;left:50%;bottom:-13px;transform:translateX(-50%);min-width:20px;height:18px;padding:0 6px;border-radius:9px;background:#fff;color:${ACCENT};font:800 11px/18px system-ui,sans-serif;text-align:center;box-shadow:0 2px 8px rgba(9,24,17,.28);white-space:nowrap}
 /* Pending passenger requests are distinct from nearby driver grid cells. */
 .rx-map-request{position:relative;width:39px;height:39px;border:3.5px solid #fff;border-radius:50%;background:#087F5B;color:#FFFFFF;display:grid;place-items:center;box-shadow:0 0 0 7px rgba(8,127,91,.18);filter:drop-shadow(0 6px 10px rgba(9,24,17,.5))}
@@ -717,9 +719,12 @@ export default function RideMap({
         if (!driverRef.current) {
             // Both views use the real vehicle sprite (same as the
             // driver end). The old passenger-view cartoon glyph in a
-            // green circle is gone.
+            // green circle is gone. Passenger view also hides the
+            // beam cone (lamps + tails stay on).
+            const vehicleElement = createVehicleElement(vehicleType, vehicleColor, isNightTime(themeRef.current));
+            if (passengerView) vehicleElement.classList.add("sf-veh--passenger");
             driverRef.current = new maplibregl.Marker({
-                element: createVehicleElement(vehicleType, vehicleColor, isNightTime(themeRef.current)),
+                element: vehicleElement,
                 rotationAlignment: "map",
                 pitchAlignment: "map",
             }).setLngLat(point).addTo(map);
@@ -775,7 +780,10 @@ export default function RideMap({
         const element = driverRef.current?.getElement();
         if (!element) return;
         updateVehicleElement(element, vehicleType, vehicleColor, isNightTime(resolvedTheme));
-    }, [vehicleType, vehicleColor]);
+        // updateVehicleElement rebuilds className, so re-apply the
+        // passenger marker class that hides the beam cone.
+        if (passengerView) element.classList.add("sf-veh--passenger");
+    }, [vehicleType, vehicleColor, passengerView]);
     useEffect(() => {
         const apply = () => setVehicleNight(driverRef.current?.getElement(), isNightTime(resolvedTheme));
         apply();

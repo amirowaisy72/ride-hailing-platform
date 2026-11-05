@@ -1381,6 +1381,7 @@ function PassengerDashboard() {
                     passengerView
                     searching={searchingForDriver}
                     vehicleType={activeRide?.vehicleType || vehicleType}
+                    vehicleColor={activeRide?.driverId?.vehicle?.color || activeRide?.driverId?.vehicleColor || null}
                     sheetRatio={sheetRatio}
                     showNavigationControl={false}
                 />
