@@ -1,7 +1,16 @@
 const ServiceArea = require("../models/ServiceArea");
 
 // Shared GeoJSON polygon check: a closed ring of at least 4 finite
-// [lng, lat] points, first point repeated at the end.
+// [lng, lat] points, first point repeated at the end, and no
+// self-crossing edges (a bowtie boundary is never saved).
+function segmentsCross(p1, p2, p3, p4) {
+    const d = (p2[0] - p1[0]) * (p4[1] - p3[1]) - (p2[1] - p1[1]) * (p4[0] - p3[0]);
+    if (d === 0) return false;
+    const t = ((p3[0] - p1[0]) * (p4[1] - p3[1]) - (p3[1] - p1[1]) * (p4[0] - p3[0])) / d;
+    const u = ((p3[0] - p1[0]) * (p2[1] - p1[1]) - (p3[1] - p1[1]) * (p2[0] - p1[0])) / d;
+    return t > 0 && t < 1 && u > 0 && u < 1;
+}
+
 function polygonError(coordinates) {
     if (!Array.isArray(coordinates)) return "Valid polygon coordinates required";
 
@@ -19,6 +28,18 @@ function polygonError(coordinates) {
         JSON.stringify(ring[0]) !== JSON.stringify(ring[ring.length - 1])
     ) {
         return "Invalid GeoJSON polygon";
+    }
+
+    const open = ring.slice(0, -1);
+    const n = open.length;
+    for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+            if (j === i + 1) continue;
+            if (i === 0 && j === n - 1) continue;
+            if (segmentsCross(open[i], open[(i + 1) % n], open[j], open[(j + 1) % n])) {
+                return "Polygon crosses itself — move a corner so the boundary does not cross";
+            }
+        }
     }
 
     return null;

@@ -19,6 +19,69 @@ const emptyGeometry = {
     features: [],
 };
 
+// --- Polygon geometry helpers (pure, unit-tested in the fix script) ---
+// Points are [lng, lat]. The ring is OPEN (first point NOT repeated).
+function distToSegment(p, a, b) {
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const len2 = dx * dx + dy * dy;
+    let t = len2 === 0 ? 0 : ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len2;
+    t = Math.max(0, Math.min(1, t));
+    const cx = a[0] + t * dx;
+    const cy = a[1] + t * dy;
+    return Math.hypot(p[0] - cx, p[1] - cy);
+}
+
+// Index of the boundary edge (i -> next vertex, wrapping) nearest to p.
+function nearestEdgeIndex(p, ring) {
+    let best = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < ring.length; i++) {
+        const d = distToSegment(p, ring[i], ring[(i + 1) % ring.length]);
+        if (d < bestDist) {
+            bestDist = d;
+            best = i;
+        }
+    }
+    return best;
+}
+
+// Insert p into the ring in boundary order: after the nearest edge's
+// start vertex. Appending in click order is what made bowties.
+function insertPointInOrder(p, ring) {
+    if (ring.length < 3) return [...ring, p];
+    const edge = nearestEdgeIndex(p, ring);
+    const next = [...ring];
+    next.splice(edge + 1, 0, p);
+    return next;
+}
+
+function segmentsCross(p1, p2, p3, p4) {
+    const d = (p2[0] - p1[0]) * (p4[1] - p3[1]) - (p2[1] - p1[1]) * (p4[0] - p3[0]);
+    if (d === 0) return false; // parallel / collinear: not a crossing
+    const t = ((p3[0] - p1[0]) * (p4[1] - p3[1]) - (p3[1] - p1[1]) * (p4[0] - p3[0])) / d;
+    const u = ((p3[0] - p1[0]) * (p2[1] - p1[1]) - (p3[1] - p1[1]) * (p2[0] - p1[0])) / d;
+    return t > 0 && t < 1 && u > 0 && u < 1;
+}
+
+// True when any two non-adjacent boundary edges cross (bowtie shape).
+function polygonSelfIntersects(ring) {
+    const n = ring.length;
+    if (n < 4) return false;
+    const edge = (i) => [ring[i], ring[(i + 1) % n]];
+    for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+            // Adjacent edges share a vertex; first/last also share one.
+            if (j === i + 1) continue;
+            if (i === 0 && j === n - 1) continue;
+            const [a1, a2] = edge(i);
+            const [b1, b2] = edge(j);
+            if (segmentsCross(a1, a2, b1, b2)) return true;
+        }
+    }
+    return false;
+}
+
 export default function CitiesPage() {
     const { confirmDialog } = useAdminDialog();
     const [mapContainer, setMapContainer] = useState(null);
@@ -33,7 +96,17 @@ export default function CitiesPage() {
     // a new one). Its name/city/polygon are loaded into the same form
     // and drawing map used for creating areas.
     const [editingArea, setEditingArea] = useState(null);
+    // Ref mirror of editingArea: the map click handler is registered
+    // once at mount, so it must read the current value from a ref.
+    const editingAreaRef = useRef(null);
     const [points, setPoints] = useState([]);
+    // Edit UX: snapshot of the polygon as loaded (Reset restores it),
+    // undo stack of point arrays, draggable corner markers, and a flag
+    // that stops a marker drag from also firing a map click.
+    const originalPointsRef = useRef([]);
+    const historyRef = useRef([]);
+    const cornerMarkersRef = useRef([]);
+    const suppressClickRef = useRef(false);
     const [name, setName] = useState("");
     const [city, setCity] = useState("");
     const [cityResults, setCityResults] = useState([]);
@@ -295,6 +368,8 @@ export default function CitiesPage() {
         let addressMarker = null;
 
         map.on("click", (event) => {
+            if (suppressClickRef.current) return;
+
             if (!drawingRef.current) {
                 setAddressLat(event.lngLat.lat.toFixed(7));
                 setAddressLng(event.lngLat.lng.toFixed(7));
@@ -314,9 +389,15 @@ export default function CitiesPage() {
                 event.lngLat.lat,
             ];
 
-            pointsRef.current = [...pointsRef.current, coordinate];
-            setPoints([...pointsRef.current]);
-            updateMapPoints(map, pointsRef.current);
+            // Expanding an existing area: insert the click on the
+            // nearest boundary edge, in boundary order — never append
+            // it at the end, which is what made the bowtie shape.
+            // Drawing a brand-new area (< 3 points) still appends.
+            pushHistory();
+            const next = editingAreaRef.current && pointsRef.current.length >= 3
+                ? insertPointInOrder(coordinate, pointsRef.current)
+                : [...pointsRef.current, coordinate];
+            applyPoints(next);
         });
 
         return () => {
@@ -368,12 +449,86 @@ export default function CitiesPage() {
                     }]
                     : [],
         });
+
+        syncCornerMarkers(map, coordinates);
+    }
+
+    // Numbered, draggable corner markers. Dragging a corner moves just
+    // that vertex (the boundary order never changes, so the shape stays
+    // valid); the marker number is the vertex position in the ring.
+    function syncCornerMarkers(map, coordinates) {
+        cornerMarkersRef.current.forEach((marker) => marker.remove());
+        cornerMarkersRef.current = [];
+
+        if (!drawingRef.current) return;
+
+        coordinates.forEach((point, index) => {
+            const el = document.createElement("div");
+            el.textContent = String(index + 1);
+            el.title = `Corner ${index + 1} — drag to move`;
+            el.style.cssText =
+                "width:26px;height:26px;border-radius:50%;background:#087F5B;" +
+                "color:#fff;font-size:13px;font-weight:800;display:flex;" +
+                "align-items:center;justify-content:center;border:2px solid #fff;" +
+                "box-shadow:0 1px 5px rgba(0,0,0,.4);cursor:grab;touch-action:none;";
+
+            const marker = new maplibregl.Marker({
+                element: el,
+                draggable: true,
+            })
+                .setLngLat(point)
+                .addTo(map);
+
+            marker.on("dragstart", () => {
+                suppressClickRef.current = true;
+                pushHistory();
+            });
+
+            marker.on("dragend", () => {
+                const lngLat = marker.getLngLat();
+                const next = [...pointsRef.current];
+                next[index] = [lngLat.lng, lngLat.lat];
+                pointsRef.current = next;
+                setPoints([...next]);
+                updateMapPoints(map, next);
+                setTimeout(() => {
+                    suppressClickRef.current = false;
+                }, 200);
+            });
+
+            cornerMarkersRef.current.push(marker);
+        });
+    }
+
+    // Single place that applies a new point list: state + map + markers.
+    function applyPoints(next) {
+        pointsRef.current = next;
+        setPoints([...next]);
+        updateMapPoints(mapRef.current, next);
+    }
+
+    function pushHistory() {
+        historyRef.current.push([...pointsRef.current]);
+        if (historyRef.current.length > 50) historyRef.current.shift();
+    }
+
+    function undoLastChange() {
+        const previous = historyRef.current.pop();
+        if (!previous) return;
+        applyPoints(previous);
+        setError("");
+    }
+
+    // Restore the polygon exactly as it was when Edit started (unsaved).
+    function resetShape() {
+        pushHistory();
+        applyPoints([...originalPointsRef.current]);
+        setError("");
     }
 
     function resetDrawing() {
-        pointsRef.current = [];
-        setPoints([]);
-        updateMapPoints(mapRef.current, []);
+        pushHistory();
+        applyPoints([]);
     }
 
     // Load an existing area into the editor: name/city into the form,
@@ -384,15 +539,16 @@ export default function CitiesPage() {
         const openRing = ring.length > 1 ? ring.slice(0, -1) : ring;
 
         setEditingArea(area);
+        editingAreaRef.current = area;
         setName(area.name || "");
         setCity(area.city || "");
         setError("");
         setMessage("");
-        pointsRef.current = [...openRing];
-        setPoints([...openRing]);
+        originalPointsRef.current = [...openRing];
+        historyRef.current = [];
+        applyPoints([...openRing]);
         drawingRef.current = true;
         setDrawing(true);
-        updateMapPoints(mapRef.current, openRing);
 
         if (mapRef.current && openRing.length) {
             const bounds = openRing.reduce(
@@ -406,21 +562,25 @@ export default function CitiesPage() {
     }
 
     function cancelEdit() {
+        // Discard every unsaved change: the saved polygon is untouched.
         setEditingArea(null);
+        editingAreaRef.current = null;
         setName("");
         setCity("");
         setError("");
         setMessage("");
         setDrawing(false);
         drawingRef.current = false;
-        resetDrawing();
+        historyRef.current = [];
+        originalPointsRef.current = [];
+        pointsRef.current = [];
+        setPoints([]);
+        updateMapPoints(mapRef.current, []);
     }
 
     function removeLastPoint() {
-        const next = pointsRef.current.slice(0, -1);
-        pointsRef.current = next;
-        setPoints([...next]);
-        updateMapPoints(mapRef.current, next);
+        pushHistory();
+        applyPoints(pointsRef.current.slice(0, -1));
     }
 
     async function saveArea() {
@@ -428,6 +588,12 @@ export default function CitiesPage() {
 
         if (!city.trim() || !name.trim() || points.length < 3) {
             setError("Enter city/name and draw at least 3 boundary points.");
+            return;
+        }
+
+        // Never save a broken (self-crossing) shape.
+        if (polygonSelfIntersects(points)) {
+            setError("Boundary crosses itself — drag a numbered corner or press Undo until the shape is a clean outline, then save.");
             return;
         }
 
@@ -467,11 +633,16 @@ export default function CitiesPage() {
             }
 
             setEditingArea(null);
+            editingAreaRef.current = null;
             setName("");
             setCity("");
             setDrawing(false);
             drawingRef.current = false;
-            resetDrawing();
+            historyRef.current = [];
+            originalPointsRef.current = [];
+            pointsRef.current = [];
+            setPoints([]);
+            updateMapPoints(mapRef.current, []);
             await loadAreas();
         } catch (err) {
             setError(err.message);
@@ -845,6 +1016,25 @@ export default function CitiesPage() {
 
                         <button
                             type="button"
+                            onClick={undoLastChange}
+                            disabled={points.length === 0}
+                            className="rounded-xl border px-4 py-3 text-sm font-bold disabled:opacity-40"
+                        >
+                            Undo
+                        </button>
+
+                        {editingArea && (
+                            <button
+                                type="button"
+                                onClick={resetShape}
+                                className="rounded-xl border px-4 py-3 text-sm font-bold"
+                            >
+                                Reset Shape
+                            </button>
+                        )}
+
+                        <button
+                            type="button"
                             onClick={resetDrawing}
                             className="rounded-xl border px-4 py-3 text-sm font-bold"
                         >
@@ -853,7 +1043,7 @@ export default function CitiesPage() {
 
                         <button
                             type="button"
-                            disabled={busy || points.length < 3}
+                            disabled={busy || points.length < 3 || polygonSelfIntersects(points)}
                             onClick={saveArea}
                             className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
                         >
@@ -874,17 +1064,27 @@ export default function CitiesPage() {
                     {editingArea && (
                         <p className="mb-3 rounded-xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
                             Editing: {editingArea.city} — {editingArea.name}.
-                            Click the map to add boundary points and expand
-                            the area, or Clear Points and redraw it. Save
-                            Changes to update it.
+                            Drag a numbered corner to move it, or tap a
+                            boundary edge to add a point there and drag it
+                            outward to expand. Undo goes back one change;
+                            Reset Shape restores the saved boundary without
+                            saving. Save Changes to update it.
                         </p>
                     )}
 
                     <p className="mb-3 text-xs text-slate-500">
                         {drawing
-                            ? "Click the map to place boundary points in order."
+                            ? "Drag a numbered corner to move it, or tap an edge to add a point there."
                             : "Use zoom controls, then Start Drawing."}
                         {" "}Points: {points.length}
+                        {points.length >= 4 && (
+                            <span className={polygonSelfIntersects(points) ? "font-bold text-red-600" : "font-bold text-emerald-700"}>
+                                {" · "}
+                                {polygonSelfIntersects(points)
+                                    ? "⚠️ Shape crosses itself — drag a corner or Undo"
+                                    : "✓ Shape is OK"}
+                            </span>
+                        )}
                     </p>
 
                     <div
