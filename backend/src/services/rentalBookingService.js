@@ -17,6 +17,13 @@
 //  - A booking can NEVER reach CONFIRMED without a VERIFIED booking-fee
 //    payment (in the pilot: a manual bank transfer an admin verified).
 //    Unverified payments confirm nothing.
+//  - EXCEPTION (2026-11-05, rentals are FREE while no payment method
+//    is configured): an ADMIN may confirm a booking as a FREE booking
+//    (flags.freeBooking) from REQUESTED / PROVIDER_ACCEPTED /
+//    PAYMENT_PENDING. No fee is charged, verified or collected; the
+//    booking is marked freeBooking so the dashboard shows it as free.
+//    Partners/passengers can never take this path — only the admin
+//    endpoint passes the flag.
 //  - The booking fee is a percentage of the rental charges ONLY — never
 //    of the deposit.
 //
@@ -50,14 +57,17 @@ const RENTAL_STATUSES = [
 // vehicle has actually changed hands; terminal states are closed.
 const RENTAL_TRANSITIONS = {
     SEARCHING: ["REQUESTED", "CANCELLED"],
-    REQUESTED: ["PROVIDER_ACCEPTED", "CANCELLED", "DISPUTED"],
+    REQUESTED: ["PROVIDER_ACCEPTED", "CONFIRMED", "CANCELLED", "DISPUTED"],
     // Accepting places a temporary calendar HOLD and starts the
     // payment clock; the booking then advances to PAYMENT_PENDING.
-    PROVIDER_ACCEPTED: ["PAYMENT_PENDING", "CANCELLED", "DISPUTED"],
+    // (Free bookings: an admin may also confirm straight from here.)
+    PROVIDER_ACCEPTED: ["PAYMENT_PENDING", "CONFIRMED", "CANCELLED", "DISPUTED"],
     // CONFIRMED is reachable ONLY from PAYMENT_PENDING and ONLY with a
     // verified fee payment (flags.feeVerified — see canTransition).
     // An admin rejecting a payment proof does NOT move this state: the
     // booking stays PAYMENT_PENDING and the passenger resubmits.
+    // (Free bookings: an admin may confirm from here with
+    // flags.freeBooking instead of a verified fee.)
     PAYMENT_PENDING: ["CONFIRMED", "CANCELLED", "DISPUTED"],
     CONFIRMED: ["PICKUP_VERIFIED", "CANCELLED", "NO_SHOW", "DISPUTED"],
     PICKUP_VERIFIED: ["RENTAL_ACTIVE", "DISPUTED"],
@@ -94,7 +104,12 @@ function nextStatuses(status) {
 
 // `flags.feeVerified` gates the PAYMENT_PENDING -> CONFIRMED edge: the
 // fee must have been VERIFIED (manual-payment admin verification in the
-// pilot) before any booking confirms. `flags.otpVerified` gates the
+// pilot) before any booking confirms. `flags.freeBooking` is the admin
+// free-booking exception: it allows CONFIRMED from REQUESTED,
+// PROVIDER_ACCEPTED or PAYMENT_PENDING with NO fee charged or verified
+// (rentals are free while no payment method is configured). A verified
+// fee alone never opens the REQUESTED/PROVIDER_ACCEPTED -> CONFIRMED
+// edges. `flags.otpVerified` gates the
 // CONFIRMED -> PICKUP_VERIFIED edge: the handover can only be recorded
 // against the passenger's pickup OTP (the hash check itself lives in
 // the controller, which passes the outcome in here).
@@ -103,8 +118,14 @@ function canTransition(from, to, flags = {}) {
         return false;
     }
 
-    if (to === "CONFIRMED" && flags.feeVerified !== true) {
-        return false;
+    if (to === "CONFIRMED") {
+        if (flags.freeBooking === true) {
+            return ["REQUESTED", "PROVIDER_ACCEPTED", "PAYMENT_PENDING"].includes(from);
+        }
+        if (flags.feeVerified !== true) {
+            return false;
+        }
+        return from === "PAYMENT_PENDING";
     }
 
     if (to === "PICKUP_VERIFIED" && flags.otpVerified !== true) {

@@ -94,6 +94,19 @@ test("CONFIRMED is impossible without a VERIFIED fee payment", () => {
     assert.strictEqual(canTransition("PAYMENT_PENDING", "CONFIRMED", { feeVerified: true }), true);
 });
 
+test("free bookings confirm without any fee (admin only)", () => {
+    // A verified fee alone never opens the early edges.
+    assert.strictEqual(canTransition("REQUESTED", "CONFIRMED", { feeVerified: true }), false);
+    assert.strictEqual(canTransition("PROVIDER_ACCEPTED", "CONFIRMED", { feeVerified: true }), false);
+    // The free-booking flag opens them, with no fee involved.
+    assert.strictEqual(canTransition("REQUESTED", "CONFIRMED", { freeBooking: true }), true);
+    assert.strictEqual(canTransition("PROVIDER_ACCEPTED", "CONFIRMED", { freeBooking: true }), true);
+    assert.strictEqual(canTransition("PAYMENT_PENDING", "CONFIRMED", { freeBooking: true }), true);
+    // And it opens nothing else.
+    assert.strictEqual(canTransition("REQUESTED", "CONFIRMED", {}), false);
+    assert.strictEqual(canTransition("CONFIRMED", "COMPLETED", { freeBooking: true }), false);
+});
+
 test("pickup verification is gated on the OTP", () => {
     assert.strictEqual(canTransition("CONFIRMED", "PICKUP_VERIFIED"), false);
     assert.strictEqual(canTransition("CONFIRMED", "PICKUP_VERIFIED", { otpVerified: true }), true);

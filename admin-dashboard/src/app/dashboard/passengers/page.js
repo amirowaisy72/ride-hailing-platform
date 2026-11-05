@@ -88,6 +88,18 @@ export default function PassengersPage() {
         loadPassengers();
     }, [loadPassengers]);
 
+    // Deep link from a rental booking (?q=name or email): pre-fill the
+    // search so the passenger's row is shown straight away.
+    useEffect(() => {
+        const q = new URLSearchParams(window.location.search).get("q");
+        if (q) {
+            setSearchInput(q);
+            setSearch(q);
+            setPage(1);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     function submitSearch(event) {
         event.preventDefault();
         setPage(1);

@@ -120,6 +120,11 @@ const rentalBookingSchema = new mongoose.Schema({
     },
 
     // --- Booking-fee manual payment -----------------------------------
+    // Free bookings (2026-11-05): rentals are FREE while no payment
+    // method is configured, so an admin may confirm a booking with no
+    // fee charged or verified. Set ONLY by confirmRentalBookingFree;
+    // feePayment stays NOT_SUBMITTED (never VERIFIED — no money moved).
+    freeBooking: { type: Boolean, default: false },
     // status: NOT_SUBMITTED -> SUBMITTED -> VERIFIED | REJECTED
     // (REJECTED returns the proof to the passenger for resubmission;
     // the booking itself stays PAYMENT_PENDING).

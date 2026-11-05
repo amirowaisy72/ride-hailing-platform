@@ -3,6 +3,7 @@ const crypto = require("node:crypto");
 const RentalPartner = require("../models/RentalPartner");
 const RentalVehicle = require("../models/RentalVehicle");
 const RentalBooking = require("../models/RentalBooking");
+const User = require("../models/User");
 const CommissionSettings = require("../models/CommissionSettings");
 const {
     makeEvent,
@@ -30,6 +31,91 @@ const {
 // ---------------------------------------------------------------------------
 
 const getGlobalSettingsDoc = () => CommissionSettings.findOne({ key: "GLOBAL" });
+
+// ---------------------------------------------------------------------------
+// Admin booking enrichment (ADDITIVE, 2026-11-05): the admin bookings list
+// and detail previously returned only ObjectIds (passengerId,
+// rentalPartnerId, vehicleId), so the dashboard could not show WHO
+// requested a booking or WHOSE car it is. These helpers attach the
+// linked passenger, rental partner (+ partner account) and vehicle to
+// each booking. No existing field is removed, renamed or reshaped.
+// ---------------------------------------------------------------------------
+
+const userDisplayName = (u) =>
+    u ? `${u.firstName || ""} ${u.lastName || ""}`.trim() || u.email || "—" : null;
+
+const pickUser = (u) =>
+    u
+        ? {
+            _id: u._id,
+            name: userDisplayName(u),
+            email: u.email || null,
+            phone: u.phone || null,
+        }
+        : null;
+
+const pickPartner = (p, partnerUser) =>
+    p
+        ? {
+            _id: p._id,
+            businessName: p.businessName || null,
+            applicationStatus: p.applicationStatus || null,
+            chauffeurName: p.chauffeurName || null,
+            providesChauffeur: !!p.providesChauffeur,
+            chauffeurVerificationStatus: p.chauffeurVerificationStatus || null,
+            user: pickUser(partnerUser),
+        }
+        : null;
+
+// Batch-loads the linked records for plain (lean) bookings and returns
+// each booking serialized with passenger / rentalPartner / partnerUser
+// attached. The shared serializer omits the vehicle plate, so the admin
+// view adds registrationNumber (admin-only; the public serializer is
+// untouched).
+async function enrichBookingsAdmin(bookings) {
+    const ids = (values) => [...new Set(values.filter(Boolean).map(String))];
+    const passengerIds = ids(bookings.map((b) => b.passengerId));
+    const partnerUserIds = ids(bookings.map((b) => b.partnerUserId));
+    const rentalPartnerIds = ids(bookings.map((b) => b.rentalPartnerId));
+    const vehicleIds = ids(bookings.map((b) => b.vehicleId));
+
+    const [users, partners, vehicles] = await Promise.all([
+        passengerIds.length || partnerUserIds.length
+            ? User.find({ _id: { $in: [...passengerIds, ...partnerUserIds] } })
+                .select("firstName lastName email phone")
+                .lean()
+            : [],
+        rentalPartnerIds.length
+            ? RentalPartner.find({ _id: { $in: rentalPartnerIds } }).lean()
+            : [],
+        vehicleIds.length
+            ? RentalVehicle.find({ _id: { $in: vehicleIds } })
+                .select("+exactPickupAddress +pickupContactName +pickupContactPhone")
+                .lean()
+            : [],
+    ]);
+
+    const userById = new Map(users.map((u) => [String(u._id), u]));
+    const partnerById = new Map(partners.map((p) => [String(p._id), p]));
+    const vehicleById = new Map(vehicles.map((v) => [String(v._id), v]));
+
+    return bookings.map((b) => {
+        const vehicle = vehicleById.get(String(b.vehicleId));
+        const serialized = serializeBooking(b, vehicle || null);
+        if (serialized.vehicle && vehicle) {
+            serialized.vehicle.registrationNumber = vehicle.registrationNumber || null;
+        }
+        return {
+            ...serialized,
+            passenger: pickUser(userById.get(String(b.passengerId))),
+            rentalPartner: pickPartner(
+                partnerById.get(String(b.rentalPartnerId)),
+                userById.get(String(b.partnerUserId))
+            ),
+            partnerUser: pickUser(userById.get(String(b.partnerUserId))),
+        };
+    });
+}
 
 // ---------------------------------------------------------------------------
 // Listing moderation
@@ -273,7 +359,7 @@ const listRentalBookingsAdmin = async (req, res) => {
 
         return res.json({
             success: true,
-            bookings: bookings.map((b) => serializeBooking(b, null)),
+            bookings: await enrichBookingsAdmin(bookings),
         });
     } catch {
         return res.status(500).json({
@@ -312,9 +398,12 @@ const getRentalBookingAdmin = async (req, res) => {
         const bookingDoc =
             typeof fresh.toObject === "function" ? fresh.toObject() : fresh;
 
+        // ADDITIVE: attach who requested it and whose car it is.
+        const [enriched] = await enrichBookingsAdmin([bookingDoc]);
+
         return res.json({
             success: true,
-            booking: { ...bookingDoc, pickupOtpHash: undefined },
+            booking: { ...enriched, pickupOtpHash: undefined },
             vehicle: vehicleDoc,
         });
     } catch {
@@ -339,9 +428,11 @@ const listPendingFeePayments = async (req, res) => {
             .limit(200)
             .lean();
 
+        const enriched = await enrichBookingsAdmin(bookings);
+
         return res.json({
             success: true,
-            payments: bookings.map((b) => ({
+            payments: enriched.map((b) => ({
                 bookingId: b._id,
                 bookingRef: b.bookingRef,
                 passengerId: b.passengerId,
@@ -352,6 +443,10 @@ const listPendingFeePayments = async (req, res) => {
                 paymentDeadlineAt: b.paymentDeadlineAt,
                 feePayment: b.feePayment,
                 createdAt: b.createdAt,
+                // ADDITIVE: who paid / whose car, so the queue is actionable.
+                passenger: b.passenger || null,
+                rentalPartner: b.rentalPartner || null,
+                vehicle: b.vehicle || null,
             })),
         });
     } catch {
@@ -465,6 +560,125 @@ const verifyRentalFeePayment = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Unable to verify payment",
+        });
+    }
+};
+
+// Free booking confirmation (2026-11-05, admin-only). Rentals are
+// FREE while no payment method is configured, so the PKR 175 booking
+// fee must NOT block a booking. An admin confirms it as a FREE
+// booking: no fee is charged, verified or collected (feePayment stays
+// NOT_SUBMITTED), the booking is marked freeBooking, and it moves to
+// CONFIRMED from REQUESTED / PROVIDER_ACCEPTED / PAYMENT_PENDING.
+// This is the ONLY path that confirms without a verified fee, and it
+// is admin-only — partners and passengers cannot take it.
+const confirmRentalBookingFree = async (req, res) => {
+    try {
+        const raw = await RentalBooking.findById(req.params.id);
+
+        if (!raw) {
+            return res.status(404).json({
+                success: false,
+                message: "Booking not found",
+            });
+        }
+
+        const booking = await expireHoldIfNeeded(raw);
+
+        if (!["REQUESTED", "PROVIDER_ACCEPTED", "PAYMENT_PENDING"].includes(booking.status)) {
+            return res.status(409).json({
+                success: false,
+                message: `A ${booking.status} booking cannot be confirmed as a free booking`,
+            });
+        }
+
+        if (booking.feePayment?.status === "VERIFIED") {
+            return res.status(409).json({
+                success: false,
+                message: "The booking fee was already verified — use the normal confirmation",
+            });
+        }
+
+        // Same calendar re-check as the paid confirmation: never
+        // double-book the vehicle for an overlapping window.
+        const conflicts = await RentalBooking.find({
+            vehicleId: booking.vehicleId,
+            _id: { $ne: booking._id },
+            status: {
+                $in: ["CONFIRMED", "PICKUP_VERIFIED", "RENTAL_ACTIVE", "RETURN_PENDING"],
+            },
+            startAt: { $lt: booking.endAt },
+            endAt: { $gt: booking.startAt },
+        })
+            .select("_id bookingRef")
+            .lean();
+
+        if (conflicts.length) {
+            return res.status(409).json({
+                success: false,
+                code: "VEHICLE_DOUBLE_BOOKED",
+                message: "The vehicle has since been confirmed for an overlapping booking",
+                conflictingBookingRef: conflicts[0].bookingRef,
+            });
+        }
+
+        const pickupOtp = cryptoRandomOtp();
+
+        const updated = await transitionBooking({
+            filter: { _id: booking._id },
+            fromStatus: booking.status,
+            toStatus: "CONFIRMED",
+            set: {
+                freeBooking: true,
+                acceptedAt: booking.acceptedAt || new Date(),
+                confirmedAt: new Date(),
+                pickupOtpHash: hashOtp(pickupOtp),
+                pickupOtpAttempts: 0,
+            },
+            event: {
+                entry: makeEvent("FREE_BOOKING_CONFIRMED", "ADMIN", req.user._id, {
+                    fromStatus: booking.status,
+                    toStatus: "CONFIRMED",
+                    note: "Confirmed as a free booking — no fee charged (rentals free, no payment method configured).",
+                }),
+            },
+            flags: { freeBooking: true },
+        });
+
+        if (!updated) {
+            return res.status(409).json({
+                success: false,
+                message: "Booking status changed. Please refresh.",
+            });
+        }
+
+        notifyPassenger(
+            updated,
+            { status: "CONFIRMED", message: "Your booking is confirmed" },
+            "Booking Confirmed",
+            `Your rental booking ${updated.bookingRef} is confirmed — free of charge. Pickup details are now unlocked.`,
+            "RENTAL_BOOKING_CONFIRMED"
+        );
+
+        notifyPartner(
+            updated,
+            "rental:booking:updated",
+            { status: "CONFIRMED", message: "A booking was confirmed" },
+            "Booking Confirmed",
+            `Booking ${updated.bookingRef} is confirmed as a free booking (no fee charged).`,
+            "RENTAL_BOOKING_CONFIRMED"
+        );
+
+        const [enriched] = await enrichBookingsAdmin([
+            typeof updated.toObject === "function" ? updated.toObject() : updated,
+        ]);
+
+        return res.json({ success: true, booking: enriched });
+    } catch (error) {
+        console.error("Confirm free rental booking error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Unable to confirm booking",
         });
     }
 };
@@ -1001,6 +1215,7 @@ module.exports = {
     getRentalBookingAdmin,
     listPendingFeePayments,
     verifyRentalFeePayment,
+    confirmRentalBookingFree,
     rejectRentalFeePayment,
     markRentalFeeRefunded,
     getSuspiciousCancellations,

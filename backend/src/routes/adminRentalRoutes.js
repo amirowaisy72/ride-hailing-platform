@@ -10,6 +10,7 @@ const {
     getRentalBookingAdmin,
     listPendingFeePayments,
     verifyRentalFeePayment,
+    confirmRentalBookingFree,
     rejectRentalFeePayment,
     markRentalFeeRefunded,
     getSuspiciousCancellations,
@@ -34,8 +35,10 @@ router.get("/settings", getRentalSettings);
 router.patch("/settings", updateRentalSettings);
 
 // Manual fee-payment verification queue — the ONLY route to CONFIRMED
+// for PAID bookings. Free bookings use confirm-free below instead.
 router.get("/payments/pending", listPendingFeePayments);
 router.post("/bookings/:id/verify-payment", verifyRentalFeePayment);
+router.post("/bookings/:id/confirm-free", confirmRentalBookingFree);
 router.post("/bookings/:id/reject-payment", rejectRentalFeePayment);
 router.post("/bookings/:id/mark-refunded", markRentalFeeRefunded);
 

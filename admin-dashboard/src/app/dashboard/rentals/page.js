@@ -67,6 +67,17 @@ export default function RentalsAdminPage() {
     const [tab, setTab] = useState("payments");
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
+    // Partner opened from a booking's detail view — the Partners tab
+    // switches to "All partners" and highlights that partner's card.
+    const [partnerFocus, setPartnerFocus] = useState("");
+
+    function showPartner(partnerId) {
+        if (!partnerId) return;
+        setPartnerFocus(String(partnerId));
+        setTab("partners");
+        setError("");
+        setMessage("");
+    }
 
     return (
         <AdminShell title="Rentals">
@@ -74,8 +85,11 @@ export default function RentalsAdminPage() {
                 <div className="rounded-2xl bg-white p-6 shadow-sm">
                     <h2 className="text-2xl font-extrabold">Rental Operations</h2>
                     <p className="mt-2 text-sm text-slate-500">
-                        Booking-fee verification is the only route to a CONFIRMED booking —
-                        verify the manual bank transfer against the platform account before approving.
+                        Booking-fee verification is the only route to a CONFIRMED booking for
+                        PAID bookings — verify the manual bank transfer against the platform
+                        account before approving. Rentals are currently FREE (no payment
+                        method configured), so an admin can also confirm a booking without
+                        any fee via “Confirm without fee” on the booking itself.
                     </p>
 
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -115,13 +129,26 @@ export default function RentalsAdminPage() {
                     <PaymentsTab setError={setError} setMessage={setMessage} />
                 )}
                 {tab === "bookings" && (
-                    <BookingsTab setError={setError} setMessage={setMessage} />
+                    <BookingsTab
+                        setError={setError}
+                        setMessage={setMessage}
+                        onShowPartner={showPartner}
+                        onShowListings={() => {
+                            setTab("listings");
+                            setError("");
+                            setMessage("");
+                        }}
+                    />
                 )}
                 {tab === "listings" && (
                     <ListingsTab setError={setError} setMessage={setMessage} />
                 )}
                 {tab === "partners" && (
-                    <PartnersTab setError={setError} setMessage={setMessage} />
+                    <PartnersTab
+                        setError={setError}
+                        setMessage={setMessage}
+                        focusPartnerId={partnerFocus}
+                    />
                 )}
                 {tab === "reports" && <ReportsTab setError={setError} />}
                 {tab === "settings" && (
@@ -242,6 +269,11 @@ function PaymentsTab({ setError, setMessage }) {
                                         Booking {payment.bookingRef}
                                     </p>
                                     <p className="mt-1 text-xs text-slate-500">
+                                        {payment.passenger?.name ? `Passenger: ${payment.passenger.name}${payment.passenger.phone ? ` · ${payment.passenger.phone}` : ""} · ` : ""}
+                                        {payment.vehicle ? `${[payment.vehicle.brand, payment.vehicle.model, payment.vehicle.year].filter(Boolean).join(" ")}${payment.vehicle.registrationNumber ? ` · ${payment.vehicle.registrationNumber}` : ""} · ` : ""}
+                                        {payment.rentalPartner?.businessName || "—"}
+                                    </p>
+                                    <p className="mt-1 text-xs text-slate-500">
                                         Submitted {when(payment.feePayment?.submittedAt)} ·
                                         payment deadline {when(payment.paymentDeadlineAt)}
                                     </p>
@@ -313,7 +345,13 @@ function PaymentsTab({ setError, setMessage }) {
 // Bookings + detail (events, inspections, disputes, refunds)
 // ---------------------------------------------------------------------
 
-function BookingsTab({ setError, setMessage }) {
+function vehicleLabel(booking) {
+    const v = booking.vehicle || {};
+    const name = [v.brand, v.model, v.year].filter(Boolean).join(" ");
+    return name || "—";
+}
+
+function BookingsTab({ setError, setMessage, onShowPartner, onShowListings }) {
     const [bookings, setBookings] = useState([]);
     const [status, setStatus] = useState("ALL");
     const [loading, setLoading] = useState(true);
@@ -387,10 +425,13 @@ function BookingsTab({ setError, setMessage }) {
             </div>
 
             <div className="mt-4 overflow-x-auto">
-                <table className="w-full min-w-[760px] text-left text-sm">
+                <table className="w-full min-w-[1080px] text-left text-sm">
                     <thead>
                         <tr className="border-b text-xs uppercase tracking-wide text-slate-400">
                             <th className="px-3 py-3 font-bold">Ref</th>
+                            <th className="px-3 py-3 font-bold">Passenger</th>
+                            <th className="px-3 py-3 font-bold">Vehicle</th>
+                            <th className="px-3 py-3 font-bold">Partner</th>
                             <th className="px-3 py-3 font-bold">Window</th>
                             <th className="px-3 py-3 font-bold">Charges</th>
                             <th className="px-3 py-3 font-bold">Fee</th>
@@ -403,11 +444,45 @@ function BookingsTab({ setError, setMessage }) {
                         {bookings.map((booking) => (
                             <tr key={booking.id || booking._id} className="border-b last:border-0">
                                 <td className="px-3 py-3 font-bold">{booking.bookingRef}</td>
+                                <td className="px-3 py-3">
+                                    {booking.passenger?.name ? (
+                                        <a
+                                            href={`/dashboard/passengers?q=${encodeURIComponent(booking.passenger.email || booking.passenger.name)}`}
+                                            className="font-bold text-[#087F5B] underline"
+                                        >
+                                            {booking.passenger.name}
+                                        </a>
+                                    ) : (
+                                        <span className="text-slate-400">—</span>
+                                    )}
+                                    {booking.passenger?.phone && (
+                                        <span className="block text-xs text-slate-500">{booking.passenger.phone}</span>
+                                    )}
+                                </td>
+                                <td className="px-3 py-3">
+                                    <span className="font-semibold">{vehicleLabel(booking)}</span>
+                                    {booking.vehicle?.registrationNumber && (
+                                        <span className="block text-xs text-slate-500">{booking.vehicle.registrationNumber}</span>
+                                    )}
+                                </td>
+                                <td className="px-3 py-3">
+                                    {booking.rentalPartner?.businessName ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => onShowPartner?.(booking.rentalPartner._id)}
+                                            className="text-left font-bold text-[#087F5B] underline"
+                                        >
+                                            {booking.rentalPartner.businessName}
+                                        </button>
+                                    ) : (
+                                        <span className="text-slate-400">—</span>
+                                    )}
+                                </td>
                                 <td className="whitespace-nowrap px-3 py-3 text-slate-500">
                                     {when(booking.startAt)} → {when(booking.endAt)}
                                 </td>
                                 <td className="px-3 py-3">{money(booking.rentalCharges)}</td>
-                                <td className="px-3 py-3">{money(booking.bookingFee)}</td>
+                                <td className="px-3 py-3">{booking.freeBooking ? "Free" : money(booking.bookingFee)}</td>
                                 <td className="px-3 py-3">{money(booking.securityDeposit)}</td>
                                 <td className="px-3 py-3"><StatusChip status={booking.status} /></td>
                                 <td className="px-3 py-3">
@@ -438,6 +513,8 @@ function BookingsTab({ setError, setMessage }) {
                     onClose={() => setDetail(null)}
                     setError={setError}
                     setMessage={setMessage}
+                    onShowPartner={onShowPartner}
+                    onShowListings={onShowListings}
                     onChanged={async () => {
                         await load();
                         const id = detail?.booking?._id;
@@ -486,7 +563,7 @@ function InspectionBlock({ title, inspection }) {
     );
 }
 
-function BookingDetailModal({ detail, loading, onClose, setError, setMessage, onChanged }) {
+function BookingDetailModal({ detail, loading, onClose, setError, setMessage, onChanged, onShowPartner, onShowListings }) {
     const { confirmDialog } = useAdminDialog();
     const [outcome, setOutcome] = useState("COMPLETED");
     const [fault, setFault] = useState("NONE");
@@ -495,6 +572,26 @@ function BookingDetailModal({ detail, loading, onClose, setError, setMessage, on
     const [localError, setLocalError] = useState("");
 
     const booking = detail?.booking;
+
+    async function confirmFree() {
+        if (!(await confirmDialog(
+            `Confirm booking ${booking.bookingRef} as a FREE booking? No fee will be charged — rentals are currently free and no payment method is configured.`
+        ))) return;
+        setBusy(true);
+        setLocalError("");
+        try {
+            await authenticatedAdminRequest(
+                `/admin/rentals/bookings/${booking._id}/confirm-free`,
+                { method: "POST" }
+            );
+            setMessage(`Booking ${booking.bookingRef} confirmed as a free booking.`);
+            await onChanged?.();
+        } catch (err) {
+            setLocalError(err.message);
+        } finally {
+            setBusy(false);
+        }
+    }
 
     // State starts fresh for every booking: the parent mounts this
     // component with key={booking id}, so no reset effect is needed.
@@ -575,9 +672,119 @@ function BookingDetailModal({ detail, loading, onClose, setError, setMessage, on
                         <p className="mt-1 text-sm text-slate-500">
                             {when(booking.startAt)} → {when(booking.endAt)} · {pretty(booking.mode || "")}
                         </p>
+                        {booking.freeBooking && (
+                            <p className="mt-2 inline-block rounded-lg bg-emerald-100 px-2.5 py-1 text-xs font-extrabold text-[#087F5B]">
+                                FREE BOOKING — no fee charged
+                            </p>
+                        )}
                     </div>
                     <StatusChip status={booking.status} />
                 </div>
+
+                {/* Who requested it, whose car it is — added 2026-11-05:
+                    the booking used to show only ref/window/charges. */}
+                <section className="mt-5 rounded-2xl border p-4">
+                    <h4 className="text-sm font-extrabold uppercase tracking-wide text-slate-400">Passenger · Vehicle · Partner</h4>
+                    <div className="mt-3 grid gap-4 sm:grid-cols-3">
+                        <div>
+                            <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">Passenger</p>
+                            {booking.passenger?.name ? (
+                                <>
+                                    <a
+                                        href={`/dashboard/passengers?q=${encodeURIComponent(booking.passenger.email || booking.passenger.name)}`}
+                                        className="mt-1 block font-bold text-[#087F5B] underline"
+                                    >
+                                        {booking.passenger.name}
+                                    </a>
+                                    {booking.passenger.phone ? (
+                                        <a href={`tel:${booking.passenger.phone}`} className="mt-0.5 block text-sm text-slate-600 underline">
+                                            {booking.passenger.phone}
+                                        </a>
+                                    ) : (
+                                        <p className="mt-0.5 text-sm text-slate-500">No phone number</p>
+                                    )}
+                                    {booking.passenger.email && (
+                                        <p className="text-sm text-slate-500">{booking.passenger.email}</p>
+                                    )}
+                                </>
+                            ) : (
+                                <p className="mt-1 text-sm text-slate-500">Not shown — passenger record missing.</p>
+                            )}
+                        </div>
+                        <div>
+                            <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">Vehicle</p>
+                            {booking.vehicle ? (
+                                <>
+                                    <p className="mt-1 font-bold">
+                                        {vehicleLabel(booking)}
+                                        {booking.vehicle.registrationNumber ? ` · ${booking.vehicle.registrationNumber}` : ""}
+                                    </p>
+                                    <p className="text-sm text-slate-500">
+                                        {[booking.vehicle.transmission, booking.vehicle.seats ? `${booking.vehicle.seats} seats` : "", booking.vehicle.hasAC ? "AC" : ""].filter(Boolean).join(" · ") || "—"}
+                                        {booking.vehicle.pickupAreaLabel ? ` · ${booking.vehicle.pickupAreaLabel}` : ""}
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => onShowListings?.()}
+                                        className="mt-1 text-sm font-bold text-[#087F5B] underline"
+                                    >
+                                        View in Listings
+                                    </button>
+                                </>
+                            ) : (
+                                <p className="mt-1 text-sm text-slate-500">Not shown — listing missing.</p>
+                            )}
+                        </div>
+                        <div>
+                            <p className="text-xs font-extrabold uppercase tracking-wide text-slate-400">Rental partner</p>
+                            {booking.rentalPartner?.businessName ? (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => onShowPartner?.(booking.rentalPartner._id)}
+                                        className="mt-1 block text-left font-bold text-[#087F5B] underline"
+                                    >
+                                        {booking.rentalPartner.businessName}
+                                    </button>
+                                    {booking.rentalPartner.user?.name && (
+                                        <p className="mt-0.5 text-sm text-slate-600">{booking.rentalPartner.user.name}</p>
+                                    )}
+                                    {booking.rentalPartner.user?.phone ? (
+                                        <a href={`tel:${booking.rentalPartner.user.phone}`} className="block text-sm text-slate-600 underline">
+                                            {booking.rentalPartner.user.phone}
+                                        </a>
+                                    ) : null}
+                                    {booking.rentalPartner.user?.email && (
+                                        <p className="text-sm text-slate-500">{booking.rentalPartner.user.email}</p>
+                                    )}
+                                    {booking.mode === "WITH_DRIVER" && booking.rentalPartner.chauffeurName && (
+                                        <p className="mt-0.5 text-sm text-slate-500">Chauffeur: {booking.rentalPartner.chauffeurName}</p>
+                                    )}
+                                </>
+                            ) : (
+                                <p className="mt-1 text-sm text-slate-500">Not shown — partner record missing.</p>
+                            )}
+                        </div>
+                    </div>
+                </section>
+
+                {!booking.freeBooking && ["REQUESTED", "PROVIDER_ACCEPTED", "PAYMENT_PENDING"].includes(booking.status) && (
+                    <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                        <p className="text-sm font-bold text-[#087F5B]">Rentals are currently free — no payment is required for this booking.</p>
+                        <p className="mt-1 text-sm text-slate-600">
+                            Confirm it now without the PKR {booking.bookingFee} booking fee. No money is charged or collected.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={confirmFree}
+                            disabled={busy}
+                            className="mt-3 flex items-center gap-2 rounded-xl bg-[#087F5B] px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+                        >
+                            <CheckCircle2 size={16} />
+                            {busy ? "Confirming…" : "Confirm without fee (free booking)"}
+                        </button>
+                    </div>
+                )}
 
                 {localError && (
                     <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-600">
@@ -591,7 +798,7 @@ function BookingDetailModal({ detail, loading, onClose, setError, setMessage, on
                         <dl className="mt-2 divide-y rounded-xl border text-sm">
                             {[
                                 ["Rental charges", money(booking.rentalCharges)],
-                                ["Booking fee (platform)", money(booking.bookingFee)],
+                                ["Booking fee (platform)", booking.freeBooking ? `${money(booking.bookingFee)} — waived (free booking)` : money(booking.bookingFee)],
                                 ["Security deposit", money(booking.securityDeposit)],
                                 ["Fee payment", `${pretty(booking.feePayment?.status || "—")}${booking.feePayment?.reference ? ` · ${booking.feePayment.reference}` : ""}`],
                                 ["Fee refund", `${pretty(booking.feeRefund?.status || "NONE")}${booking.feeRefund?.amount ? ` · ${money(booking.feeRefund.amount)}` : ""}`],
@@ -924,9 +1131,11 @@ const PARTNER_DOC_LABELS = {
     VEHICLE_OWNERSHIP: "Vehicle ownership",
 };
 
-function PartnersTab({ setError, setMessage }) {
+function PartnersTab({ setError, setMessage, focusPartnerId }) {
     const { confirmDialog, promptDialog } = useAdminDialog();
-    const [mode, setMode] = useState("PENDING");
+    // Opened from a booking: show ALL partners (a confirmed partner
+    // is not in the pending queue) and highlight the focused card.
+    const [mode, setMode] = useState(focusPartnerId ? "ALL" : "PENDING");
     const [partners, setPartners] = useState([]);
     const [loading, setLoading] = useState(true);
     const [busyId, setBusyId] = useState("");
@@ -957,6 +1166,12 @@ function PartnersTab({ setError, setMessage }) {
             await load();
         })();
     }, [load]);
+
+    // Scroll the focused partner's card into view once it loads.
+    useEffect(() => {
+        if (!focusPartnerId || loading || partners.length === 0) return;
+        document.getElementById(`partner-${focusPartnerId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, [focusPartnerId, loading, partners]);
 
     async function setStatus(partner, nextStatus) {
         const body = { status: nextStatus };
@@ -1151,7 +1366,11 @@ function PartnersTab({ setError, setMessage }) {
                         const user = partner.userId || {};
                         const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
                         return (
-                            <div key={partner._id} className="rounded-xl border border-slate-100 p-4">
+                            <div
+                                key={partner._id}
+                                id={`partner-${partner._id}`}
+                                className={`rounded-xl border p-4 ${focusPartnerId === String(partner._id) ? "border-[#087F5B] ring-2 ring-[#087F5B]/40" : "border-slate-100"}`}
+                            >
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div>
                                         <p className="font-extrabold">
