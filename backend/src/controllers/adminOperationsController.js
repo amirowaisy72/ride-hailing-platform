@@ -72,29 +72,6 @@ async function getOverview(req, res) {
             ]),
         ]);
 
-        // Ready-but-unsubmitted partners: application INCOMPLETE yet every
-        // required KYC document already satisfied (own or linked driver
-        // documents). These never reach the review queue on their own —
-        // the driver UI used to tell them "Safar is reviewing" while
-        // nothing was submitted — so they count here instead of hiding
-        // from the Important section.
-        const incompletePartners = await RentalPartner.find({
-            applicationStatus: "INCOMPLETE",
-        })
-            .select("_id userId providesChauffeur")
-            .lean();
-        let readyIncompletePartners = 0;
-        for (const incomplete of incompletePartners) {
-            const ownDocs = await loadRentalPartnerDocuments(incomplete._id);
-            const driverDocs = await loadDriverDocumentsForUser(incomplete.userId);
-            if (
-                missingKycDocuments(incomplete, ownDocs, driverDocs).length === 0
-            ) {
-                readyIncompletePartners += 1;
-            }
-        }
-        const rentalPartnersPending =
-            rentalPartnersSubmitted + readyIncompletePartners;
 
         return res.json({
             success: true,
@@ -703,6 +680,39 @@ async function getImportant(req, res) {
             ParcelSettlement.countDocuments({ status: "FAILED" }),
             PurchaseSettlement.countDocuments({ status: "FAILED" }),
         ]);
+        // Ready-but-unsubmitted partners: application INCOMPLETE yet every
+        // required KYC document already satisfied (own or linked driver
+        // documents). These never reach the review queue on their own —
+        // the driver UI used to tell them "Safar is reviewing" while
+        // nothing was submitted — so they count here instead of hiding
+        // from the Important section. Guarded: this additive count must
+        // never break the endpoint, so any failure falls back to the
+        // submitted-only count.
+        let readyIncompletePartners = 0;
+        try {
+            const incompletePartners = await RentalPartner.find({
+                applicationStatus: "INCOMPLETE",
+            })
+                .select("_id userId providesChauffeur")
+                .lean();
+            for (const incomplete of incompletePartners) {
+                const ownDocs = await loadRentalPartnerDocuments(incomplete._id);
+                const driverDocs = await loadDriverDocumentsForUser(
+                    incomplete.userId
+                );
+                if (
+                    missingKycDocuments(incomplete, ownDocs, driverDocs)
+                        .length === 0
+                ) {
+                    readyIncompletePartners += 1;
+                }
+            }
+        } catch (error) {
+            console.error("Admin important ready-incomplete:", error.message);
+        }
+        const rentalPartnersPending =
+            rentalPartnersSubmitted + readyIncompletePartners;
+
 
         // Group pending-review documents by driver for a readable
         // list (newest document first, from the sort above).
