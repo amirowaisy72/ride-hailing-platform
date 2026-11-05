@@ -43,6 +43,9 @@ const MARKER_STYLES = `
 @keyframes dm-pulse{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.5);opacity:0}}
 @media (prefers-reduced-motion: reduce){.dm-ride-pulse{animation:none;opacity:.35}}
 .maplibregl-ctrl-attrib{font-size:10px}
+.maplibregl-ctrl.maplibregl-ctrl-attrib{background:rgba(12,13,16,.72);color:#9aa0aa;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+.maplibregl-ctrl-attrib a{color:#c4c8cf}
+.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button{color:#c4c8cf}
 `;
 
 const getPoint = (point) => {
@@ -365,7 +368,11 @@ export default function DriverMap({
     useEffect(() => {
         const map = mapRef.current;
         if (!mapReady || !map) return undefined;
-        const from = driverPointRef.current;
+        // Use the position prop, not the ref: the ref is synced by a
+        // later effect, so on a mid-trip reload this effect could run
+        // with a stale null ref and the route would never be requested
+        // (no line, no error, no retry).
+        const from = driverPoint;
         if (!navigationMode || !destinationPoint || !from) {
             routeRef.current = null;
             remainingRef.current = EMPTY_LINE;

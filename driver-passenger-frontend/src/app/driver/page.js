@@ -1170,10 +1170,8 @@ function DriverDashboard() {
             </button>
             {travelling && (
                 <button type="button" onClick={() => setTripPanelOpen((open) => !open)} aria-label={tripPanelOpen ? "Hide trip panel" : "Show trip panel"}
-                    style={{ bottom: tripPanelOpen ? `${TRIP_PANEL_HEIGHT + 16}px` : "calc(16px + env(safe-area-inset-bottom))" }}
-                    className="absolute left-1/2 z-30 flex h-12 -translate-x-1/2 items-center gap-2 rounded-full bg-pd-surface px-4 text-sm font-extrabold text-pd-text shadow-[0_6px_24px_rgba(17,17,17,0.12)]">
+                    className="absolute right-3 top-[calc(max(16px,env(safe-area-inset-top)))] z-30 flex h-10 w-10 items-center justify-center rounded-full bg-pd-surface text-pd-text shadow-[0_6px_24px_rgba(17,17,17,0.12)]">
                     {tripPanelOpen ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
-                    Trip
                 </button>
             )}
             <DriverToast toast={notifications.toast} onDismiss={notifications.dismissToast} />
