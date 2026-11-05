@@ -1562,7 +1562,7 @@ function PassengerDashboard() {
                                 className="flex min-h-[92px] flex-col items-center justify-center gap-2 rounded-2xl bg-pd-surface-2 px-1 py-3 text-center text-pd-text transition-transform active:scale-95"
                             >
                                 <span className="grid h-11 w-11 place-items-center rounded-2xl bg-pd-accent-soft text-pd-accent-text">
-                                    <Clock size={24} strokeWidth={1.8} aria-hidden="true" />
+                                    <Car size={24} strokeWidth={1.8} aria-hidden="true" />
                                 </span>
                                 <span className="text-[12px] font-bold leading-tight">{t("pHome.tabRentals")}</span>
                             </Link>
