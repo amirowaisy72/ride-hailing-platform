@@ -302,7 +302,7 @@ function VehicleDetail() {
     const modeLabel = (m) => (m === "SELF_DRIVE" ? t("rentals.selfDrive") : t("rentals.withDriver"));
 
     const totalCard = estimate && (
-        <div className="rounded-2xl bg-pd-ink px-4 py-3.5 text-pd-ink-text" aria-live="polite">
+        <div className="rounded-2xl bg-pd-surface-2 px-4 py-3.5 text-pd-text" aria-live="polite">
             <div className="flex items-end justify-between gap-3">
                 <div>
                     <p className="text-xs font-bold opacity-80">{tr("Rental total", "کرائے کی کل رقم")}</p>
@@ -313,7 +313,7 @@ function VehicleDetail() {
                     <span className="block">{formatDuration(hours)}</span>
                 </p>
             </div>
-            <p className="mt-2 border-t border-white/15 pt-2 text-xs font-medium opacity-80">
+            <p className="mt-2 border-t border-pd-line pt-2 text-xs font-medium opacity-80">
                 {tr(
                     `Plus a refundable security deposit of ${formatPKR(vehicle.securityDeposit || 0)} at pickup. The booking fee is only due after the owner accepts.`,
                     `اس کے علاوہ پک اپ پر ${formatPKR(vehicle.securityDeposit || 0)} قابلِ واپسی سیکیورٹی ڈپازٹ۔ بکنگ فیس مالک کے قبول کرنے کے بعد ہی دینی ہوگی۔`
