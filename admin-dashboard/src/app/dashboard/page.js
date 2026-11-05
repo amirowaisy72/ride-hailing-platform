@@ -20,10 +20,12 @@ const snippet = (text, length = 70) => {
     return value.length > length ? `${value.slice(0, length)}…` : value;
 };
 
-// Important cards with something to do stand out from the quiet ones: a
-// stronger amber (red for disputes) border + tint + count colour when the
-// count is 1 or more, so the admin sees at a glance what needs action.
-// Cards at 0 keep the quiet slate style.
+// Important cards with something to do stand out from the quiet ones.
+// NOTE: the .admin-dark theme in globals.css recolours white, slate and
+// pastel (bg-*-50) surfaces to dark green, so a pale amber tint is
+// invisible there. Saturated blue-600 (red-600 for disputes) is not
+// covered by any dark-theme rule, so it shows as a real coloured card
+// with white text. Cards at 0 keep the quiet style.
 const impHot = (count) => {
     const n = Number(count);
     return Number.isFinite(n) && n > 0;
@@ -31,15 +33,19 @@ const impHot = (count) => {
 const impCardClass = (count, red = false) =>
     impHot(count)
         ? red
-            ? "group rounded-[22px] border-2 border-red-500 bg-red-50 p-4 shadow-md transition hover:border-red-600 hover:shadow-lg"
-            : "group rounded-[22px] border-2 border-amber-500 bg-amber-50 p-4 shadow-md transition hover:border-amber-600 hover:shadow-lg"
+            ? "group rounded-[22px] border-2 border-red-400 bg-red-600 p-4 shadow-md transition hover:border-red-300 hover:shadow-lg"
+            : "group rounded-[22px] border-2 border-blue-400 bg-blue-600 p-4 shadow-md transition hover:border-blue-300 hover:shadow-lg"
         : "group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md";
-const impCountClass = (count, red = false) =>
+const impCountClass = (count) =>
     impHot(count)
-        ? red
-            ? "mt-1 text-2xl font-extrabold text-red-700"
-            : "mt-1 text-2xl font-extrabold text-amber-700"
+        ? "mt-1 text-2xl font-extrabold text-white"
         : "mt-1 text-2xl font-extrabold";
+const impTitleClass = (count) =>
+    impHot(count) ? "mt-3 text-sm text-white" : "mt-3 text-sm text-slate-500";
+const impSubClass = (count) =>
+    impHot(count)
+        ? "mt-2 text-xs leading-5 text-white/80"
+        : "mt-2 text-xs leading-5 text-slate-500";
 
 // "More people on latest version" is measured against the last
 // time THIS browser loaded the Important section — stored
@@ -359,13 +365,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-red-600" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.openComplaints.count)}>
                                     Open Complaints
                                 </p>
                                 <p className={impCountClass(important.openComplaints.count, true)}>
                                     {important.openComplaints.count}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(important.openComplaints.count)}>
                                     {newComplaints.length > 0 ? (
                                         <>
                                             <span className="block font-bold text-red-600">
@@ -397,13 +403,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.newFeedback.count)}>
                                     New Feedback
                                 </p>
                                 <p className={impCountClass(important.newFeedback.count)}>
                                     {important.newFeedback.count}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(important.newFeedback.count)}>
                                     {newFeedback.length > 0 ? (
                                         <>
                                             <span className="block font-bold text-[#087F5B]">
@@ -431,13 +437,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(overview?.pendingVehicles ?? "—")}>
                                     Vehicles Pending Verification
                                 </p>
                                 <p className={impCountClass(overview?.pendingVehicles ?? "—")}>
                                     {overview?.pendingVehicles ?? "—"}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(overview?.pendingVehicles ?? "—")}>
                                     Vehicles waiting for verification.
                                 </p>
                             </Link>
@@ -452,13 +458,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(pendingDocData.count)}>
                                     Driver Documents Pending Review
                                 </p>
                                 <p className={impCountClass(pendingDocData.count)}>
                                     {pendingDocData.count}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(pendingDocData.count)}>
                                     {pendingDocData.count === 0 ? (
                                         "No documents pending review."
                                     ) : (
@@ -487,13 +493,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.newPassengers?.count ?? 0)}>
                                     New Passengers
                                 </p>
                                 <p className={impCountClass(important.newPassengers?.count ?? 0)}>
                                     {important.newPassengers?.count ?? 0}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(important.newPassengers?.count ?? 0)}>
                                     {(important.newPassengers?.count ?? 0) === 0 ? (
                                         "No new passengers yet."
                                     ) : (
@@ -523,13 +529,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.newDrivers?.count ?? 0)}>
                                     New Drivers
                                 </p>
                                 <p className={impCountClass(important.newDrivers?.count ?? 0)}>
                                     {important.newDrivers?.count ?? 0}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(important.newDrivers?.count ?? 0)}>
                                     {(important.newDrivers?.count ?? 0) === 0 ? (
                                         "No new drivers yet."
                                     ) : (
@@ -558,13 +564,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-[#087F5B]" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.activeRides.count)}>
                                     Active Rides Right Now
                                 </p>
                                 <p className={impCountClass(important.activeRides.count)}>
                                     {important.activeRides.count}
                                 </p>
-                                <p className="mt-2 text-xs text-slate-500">
+                                <p className={impSubClass(important.activeRides.count)}>
                                     Rides currently in progress.
                                 </p>
                             </Link>
@@ -585,13 +591,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.rentalPartnersPending?.count ?? 0)}>
                                     Rental Partners Pending Review
                                 </p>
                                 <p className={impCountClass(important.rentalPartnersPending?.count ?? 0)}>
                                     {important.rentalPartnersPending?.count ?? 0}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(important.rentalPartnersPending?.count ?? 0)}>
                                     {(important.rentalPartnersPending?.count ?? 0) === 0 ? (
                                         "No partners waiting for KYC review."
                                     ) : (
@@ -612,7 +618,7 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.rentalChauffeursPending?.count ?? 0)}>
                                     Chauffeur Verifications Pending
                                 </p>
                                 <p
@@ -622,7 +628,7 @@ export default function DashboardPage() {
                                 >
                                     {important.rentalChauffeursPending?.count ?? 0}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(important.rentalChauffeursPending?.count ?? 0)}>
                                     {(important.rentalChauffeursPending?.count ?? 0) === 0 ? (
                                         "No chauffeur details waiting for verification."
                                     ) : (
@@ -641,13 +647,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.rentalListingsPending?.count ?? 0)}>
                                     Rental Listings Pending
                                 </p>
                                 <p className={impCountClass(important.rentalListingsPending?.count ?? 0)}>
                                     {important.rentalListingsPending?.count ?? 0}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(important.rentalListingsPending?.count ?? 0)}>
                                     {(important.rentalListingsPending?.count ?? 0) === 0 ? (
                                         "No listings waiting for approval."
                                     ) : (
@@ -666,13 +672,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.rentalBookingsAwaitingAccept?.count ?? 0)}>
                                     Rental Bookings Awaiting Accept
                                 </p>
                                 <p className={impCountClass(important.rentalBookingsAwaitingAccept?.count ?? 0)}>
                                     {important.rentalBookingsAwaitingAccept?.count ?? 0}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(important.rentalBookingsAwaitingAccept?.count ?? 0)}>
                                     {(important.rentalBookingsAwaitingAccept?.count ?? 0) === 0 ? (
                                         "No bookings waiting for the owner to accept."
                                     ) : (
@@ -691,13 +697,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.rentalBookingsAwaitingPayment?.count ?? 0)}>
                                     Rental Bookings Awaiting Payment
                                 </p>
                                 <p className={impCountClass(important.rentalBookingsAwaitingPayment?.count ?? 0)}>
                                     {important.rentalBookingsAwaitingPayment?.count ?? 0}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(important.rentalBookingsAwaitingPayment?.count ?? 0)}>
                                     {(important.rentalBookingsAwaitingPayment?.count ?? 0) === 0 ? (
                                         "No bookings waiting for payment."
                                     ) : (
@@ -716,13 +722,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.rentalReturnsPending?.count ?? 0)}>
                                     Rental Returns Pending
                                 </p>
                                 <p className={impCountClass(important.rentalReturnsPending?.count ?? 0)}>
                                     {important.rentalReturnsPending?.count ?? 0}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(important.rentalReturnsPending?.count ?? 0)}>
                                     {(important.rentalReturnsPending?.count ?? 0) === 0 ? (
                                         "No returns waiting for confirmation."
                                     ) : (
@@ -741,13 +747,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-red-600" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.rentalBookingsDisputed?.count ?? 0)}>
                                     Rental Bookings Disputed
                                 </p>
                                 <p className={impCountClass(important.rentalBookingsDisputed?.count ?? 0, true)}>
                                     {important.rentalBookingsDisputed?.count ?? 0}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(important.rentalBookingsDisputed?.count ?? 0)}>
                                     {(important.rentalBookingsDisputed?.count ?? 0) === 0 ? (
                                         "No disputed rentals."
                                     ) : (
@@ -766,13 +772,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.rentalFeeRefundsDue?.count ?? 0)}>
                                     Rental Fee Refunds Due
                                 </p>
                                 <p className={impCountClass(important.rentalFeeRefundsDue?.count ?? 0)}>
                                     {important.rentalFeeRefundsDue?.count ?? 0}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(important.rentalFeeRefundsDue?.count ?? 0)}>
                                     {(important.rentalFeeRefundsDue?.count ?? 0) === 0 ? (
                                         "No fee refunds due."
                                     ) : (
@@ -791,13 +797,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.parcelsAwaitingDriver?.count ?? 0)}>
                                     Parcels Awaiting Driver
                                 </p>
                                 <p className={impCountClass(important.parcelsAwaitingDriver?.count ?? 0)}>
                                     {important.parcelsAwaitingDriver?.count ?? 0}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(important.parcelsAwaitingDriver?.count ?? 0)}>
                                     {(important.parcelsAwaitingDriver?.count ?? 0) === 0 ? (
                                         "No parcels waiting for a driver."
                                     ) : (
@@ -816,13 +822,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.buyDeliverAwaitingShopper?.count ?? 0)}>
                                     Buy &amp; Deliver Awaiting Shopper
                                 </p>
                                 <p className={impCountClass(important.buyDeliverAwaitingShopper?.count ?? 0)}>
                                     {important.buyDeliverAwaitingShopper?.count ?? 0}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(important.buyDeliverAwaitingShopper?.count ?? 0)}>
                                     {(important.buyDeliverAwaitingShopper?.count ?? 0) === 0 ? (
                                         "No orders waiting for a shopper."
                                     ) : (
@@ -841,13 +847,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.buyDeliverAwaitingApproval?.count ?? 0)}>
                                     Buy &amp; Deliver Awaiting Approval
                                 </p>
                                 <p className={impCountClass(important.buyDeliverAwaitingApproval?.count ?? 0)}>
                                     {important.buyDeliverAwaitingApproval?.count ?? 0}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(important.buyDeliverAwaitingApproval?.count ?? 0)}>
                                     {(important.buyDeliverAwaitingApproval?.count ?? 0) === 0 ? (
                                         "No shopped costs waiting for approval."
                                     ) : (
@@ -866,13 +872,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-red-600" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.buyDeliverDisputed?.count ?? 0)}>
                                     Buy &amp; Deliver Disputed
                                 </p>
                                 <p className={impCountClass(important.buyDeliverDisputed?.count ?? 0, true)}>
                                     {important.buyDeliverDisputed?.count ?? 0}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(important.buyDeliverDisputed?.count ?? 0)}>
                                     {(important.buyDeliverDisputed?.count ?? 0) === 0 ? (
                                         "No disputed orders."
                                     ) : (
@@ -891,13 +897,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.bankTransfersPending?.count ?? 0)}>
                                     Bank Transfers Pending
                                 </p>
                                 <p className={impCountClass(important.bankTransfersPending?.count ?? 0)}>
                                     {important.bankTransfersPending?.count ?? 0}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(important.bankTransfersPending?.count ?? 0)}>
                                     {(important.bankTransfersPending?.count ?? 0) === 0 ? (
                                         "No bank transfers waiting for verification."
                                     ) : (
@@ -916,13 +922,13 @@ export default function DashboardPage() {
                                     </div>
                                     <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
                                 </div>
-                                <p className="mt-3 text-sm text-slate-500">
+                                <p className={impTitleClass(important.settlementsNeedingAttention?.count ?? 0)}>
                                     Settlements Needing Attention
                                 </p>
                                 <p className={impCountClass(important.settlementsNeedingAttention?.count ?? 0)}>
                                     {important.settlementsNeedingAttention?.count ?? 0}
                                 </p>
-                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                <p className={impSubClass(important.settlementsNeedingAttention?.count ?? 0)}>
                                     {(important.settlementsNeedingAttention?.count ?? 0) === 0 ? (
                                         "No pending or failed payouts."
                                     ) : (
