@@ -236,8 +236,8 @@
 }
 
 .dx-status[data-on="true"] {
-    background: #111111;
-    color: var(--dx-lime)
+    background: #E7F6EF;
+    color: #087F5B
 }
 
 .dx-status-dot {
@@ -535,14 +535,30 @@
 }
 
 .dx-power[data-on="true"] {
-    background: #111;
-    color: var(--dx-lime);
-    box-shadow: 0 8px 22px rgba(17, 17, 17, .3)
+    background: #fff;
+    color: #111;
+    border: 1.5px solid #E2E5E9;
+    box-shadow: 0 4px 14px rgba(17, 17, 17, .08)
 }
 
 .dx-power:disabled {
     opacity: .45;
     box-shadow: none
+}
+
+/* The "offer sent" top banner is only a brief confirmation: the Ride
+   Requests section below already shows the sent offer, so the banner
+   fades itself out a few seconds after the latest offer. A new offer
+   remounts it (via its key) and the short display starts again. */
+.dx-offer-banner {
+    animation: dx-banner-hide .3s ease 5s forwards;
+}
+
+@keyframes dx-banner-hide {
+    to {
+        opacity: 0;
+        visibility: hidden;
+    }
 }
 
 .dx-tabs {
@@ -1720,6 +1736,13 @@
 .dark .dx-status[data-on="true"] {
     background: #087F5B;
     color: #FFFFFF;
+}
+
+.dark .dx-power[data-on="true"] {
+    background: #111111;
+    color: var(--dx-lime);
+    border-color: transparent;
+    box-shadow: 0 8px 22px rgba(17, 17, 17, .3)
 }
 
 .dark .dx-notif-head button,

@@ -1057,7 +1057,10 @@ function DriverDashboard() {
     const unansweredRides = waitingRides.filter((r) => !submittedIds.includes(r.rideId));
     const bannerRide = unansweredRides[0] || waitingRides[0] || null;
     const homeBanner = !rideInProgress && !rideEnded && !focusRide && isOnline && bannerRide && (
-        <div className="pointer-events-none absolute inset-x-4 top-[calc(max(16px,env(safe-area-inset-top))+60px)] z-30 mx-auto max-w-xl">
+        <div
+            key={unansweredRides.length > 0 ? "available" : waitingRides.map((r) => r.rideId).join(",")}
+            className={`pointer-events-none absolute inset-x-4 top-[calc(max(16px,env(safe-area-inset-top))+60px)] z-30 mx-auto max-w-xl ${unansweredRides.length > 0 ? "" : "dx-offer-banner"}`}
+        >
             <RideReturnBanner
                 kind={unansweredRides.length > 0 ? "available" : "offer"}
                 title={unansweredRides.length > 0

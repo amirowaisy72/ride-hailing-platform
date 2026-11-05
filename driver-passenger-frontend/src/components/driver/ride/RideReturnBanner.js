@@ -4,11 +4,11 @@ import Link from "next/link";
 import { BellRing, CarFront, ChevronRight, Clock3 } from "lucide-react";
 
 const KINDS = {
-    active: { Icon: CarFront, tone: "bg-pd-accent text-pd-accent-ink" },
-    // In dark theme the inverted ink card would render white, so these
-    // use a normal surface card there instead. Light theme is unchanged.
-    available: { Icon: BellRing, tone: "bg-pd-ink text-pd-ink-text dark:border dark:border-pd-line dark:bg-pd-surface dark:text-pd-text" },
-    offer: { Icon: Clock3, tone: "bg-pd-ink text-pd-ink-text dark:border dark:border-pd-line dark:bg-pd-surface dark:text-pd-text" },
+    active: { Icon: CarFront, tone: "bg-pd-accent text-pd-accent-ink", chip: "bg-white/20" },
+    // Normal surface card in both themes: the old inverted-ink card
+    // rendered black in light theme and white in dark theme.
+    available: { Icon: BellRing, tone: "bg-pd-surface text-pd-text border border-pd-line", chip: "bg-pd-accent-soft text-pd-accent-text" },
+    offer: { Icon: Clock3, tone: "bg-pd-surface text-pd-text border border-pd-line", chip: "bg-pd-accent-soft text-pd-accent-text" },
 };
 
 /**
@@ -17,12 +17,12 @@ const KINDS = {
  * Pass `href` to navigate from other screens, or `onClick` on the home screen.
  */
 export default function RideReturnBanner({ kind, title, subtitle, href, onClick, className = "" }) {
-    const { Icon, tone } = KINDS[kind] || KINDS.available;
+    const { Icon, tone, chip } = KINDS[kind] || KINDS.available;
     const body = (
         <>
-            <span className="relative flex size-11 shrink-0 items-center justify-center rounded-full bg-white/20" aria-hidden>
+            <span className={`relative flex size-11 shrink-0 items-center justify-center rounded-full ${chip}`} aria-hidden>
                 <Icon size={22} />
-                {kind === "available" && <span className="absolute -right-0.5 -top-0.5 size-3 animate-pulse rounded-full bg-pd-accent ring-2 ring-pd-ink" />}
+                {kind === "available" && <span className="absolute -right-0.5 -top-0.5 size-3 animate-pulse rounded-full bg-pd-accent ring-2 ring-pd-surface" />}
             </span>
             <span className="min-w-0 flex-1 text-left">
                 <span className="block truncate text-lg font-extrabold leading-tight">{title}</span>
