@@ -438,6 +438,30 @@ const reviewDriverDocument = async (req, res) => {
 
         await document.save();
 
+        // Vehicle double-approval fix: approving the Vehicle
+        // Registration document also approves the driver's pending
+        // vehicles, so an approved driver no longer waits a second
+        // time for a separate vehicle approval. Only vehicles with a
+        // live (unexpired or unset) registration are auto-approved,
+        // mirroring the manual vehicle-approval guard; admin can
+        // still reject any vehicle individually afterwards.
+        if (
+            status === "APPROVED" &&
+            document.documentType === "VEHICLE_REGISTRATION"
+        ) {
+            await Vehicle.updateMany(
+                {
+                    driverId: document.driverId,
+                    verificationStatus: "PENDING",
+                    $or: [
+                        { registrationExpiryDate: null },
+                        { registrationExpiryDate: { $gt: new Date() } },
+                    ],
+                },
+                { $set: { verificationStatus: "APPROVED" } }
+            );
+        }
+
         return res.json({
             success: true,
             message: "Document reviewed successfully",
