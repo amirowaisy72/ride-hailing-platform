@@ -425,49 +425,9 @@ export default function RideMap({
             // never be confused with the prominent live passenger/driver
             // markers (full-opacity Safar green, white ring, shadow).
             const placesMuted = theme === "dark" ? "#3F8E73" : "#2E8F70";
-            map.addLayer({
-                id: "safar-local-cluster-halo",
-                type: "circle",
-                source: "safar-local-places",
-                filter: ["has", "point_count"],
-                paint: {
-                    "circle-color": placesMuted,
-                    "circle-opacity": theme === "dark" ? 0.2 : 0.18,
-                    "circle-radius": ["step", ["get", "point_count"], 22, 10, 27, 50, 33],
-                },
-            });
-
-            map.addLayer({
-                id: "safar-local-clusters",
-                type: "circle",
-                source: "safar-local-places",
-                filter: ["has", "point_count"],
-                paint: {
-                    "circle-color": placesMuted,
-                    "circle-opacity": 0.92,
-                    "circle-radius": ["step", ["get", "point_count"], 15, 10, 19, 50, 24],
-                    "circle-stroke-color": "#FFFFFF",
-                    "circle-stroke-opacity": 1,
-                    "circle-stroke-width": 2.5,
-                },
-            });
-
-            map.addLayer({
-                id: "safar-local-cluster-count",
-                type: "symbol",
-                source: "safar-local-places",
-                filter: ["has", "point_count"],
-                layout: {
-                    "text-field": ["get", "point_count_abbreviated"],
-                    "text-font": ["Open Sans Semibold"],
-                    "text-size": 13,
-                    "text-allow-overlap": true,
-                },
-                paint: {
-                    "text-color": "#FFFFFF",
-                },
-            });
-
+            // Place clusters and labels are gone on purpose: the
+            // normal map shows nothing, and only tiny dots appear
+            // once the user zooms in (dots layer below, minzoom 15).
             map.addLayer({
                 id: "safar-local-dots",
                 type: "circle",
@@ -475,55 +435,15 @@ export default function RideMap({
                 filter: ["!", ["has", "point_count"]],
                 minzoom: 15,
                 paint: {
-                    "circle-radius": ["interpolate", ["linear"], ["zoom"], 15, 6, 18, 8],
+                    "circle-radius": ["interpolate", ["linear"], ["zoom"], 15, 3.5, 18, 4.5],
                     "circle-color": placesMuted,
-                    "circle-opacity": 0.95,
-                    "circle-stroke-width": 2.5,
+                    "circle-opacity": 0.9,
+                    "circle-stroke-width": 1.5,
                     "circle-stroke-color": "#FFFFFF",
                     "circle-stroke-opacity": 1,
                 },
             });
 
-            map.addLayer({
-                id: "safar-local-labels",
-                type: "symbol",
-                source: "safar-local-places",
-                filter: ["!", ["has", "point_count"]],
-                minzoom: 16,
-                layout: {
-                    "text-field": [
-                        "case",
-                        [">", ["length", ["get", "name"]], 22],
-                        ["concat", ["slice", ["get", "name"], 0, 22], "…"],
-                        ["get", "name"]
-                    ],
-                    "text-size": [
-                        "interpolate",
-                        ["linear"],
-                        ["zoom"],
-                        16, 10,
-                        18, 11
-                    ],
-                    "text-font": ["Open Sans Semibold"],
-                    "text-variable-anchor": ["top", "bottom", "left", "right"],
-                    "text-radial-offset": 1.5,
-                    "text-justify": "auto",
-                    "text-max-width": 16,
-                    "text-padding": 12,
-                    "text-optional": true,
-                    "text-letter-spacing": 0.02,
-                    "text-allow-overlap": false,
-                    "text-ignore-placement": false,
-                    "symbol-sort-key": 1
-                },
-                paint: {
-                    "text-color": theme === "dark" ? "#D7E0DA" : "#3D4A44",
-                    "text-opacity": 0.9,
-                    "text-halo-color": theme === "dark" ? "#16181D" : "#FFFFFF",
-                    "text-halo-width": 2,
-                    "text-halo-blur": 0.5
-                },
-            });
         }
 
         async function loadVisiblePlaces() {
@@ -553,39 +473,6 @@ export default function RideMap({
             }
         }
 
-        const handleClusterClick = (event) => {
-            const feature = event.features?.[0];
-            if (!feature) return;
-
-            const fallback = () => {
-                map.easeTo({
-                    center: feature.geometry.coordinates,
-                    zoom: Math.min(map.getZoom() + 2, 20),
-                    duration: 500,
-                });
-            };
-
-            const source = map.getSource("safar-local-places");
-            const clusterId = feature.properties?.cluster_id;
-            if (source && typeof source.getClusterExpansionZoom === "function" && clusterId != null) {
-                source.getClusterExpansionZoom(clusterId, (error, zoom) => {
-                    if (error || !Number.isFinite(zoom)) {
-                        fallback();
-                        return;
-                    }
-
-                    map.easeTo({
-                        center: feature.geometry.coordinates,
-                        zoom: Math.min(zoom, 20),
-                        duration: 500,
-                    });
-                });
-            } else {
-                fallback();
-            }
-        };
-
-        map.on("click", "safar-local-clusters", handleClusterClick);
         const handlePlaceClick = (event) => {
             const feature = event.features?.[0];
             if (!feature) return;
@@ -703,9 +590,8 @@ export default function RideMap({
         };
 
         map.on("click", "safar-local-dots", handlePlaceClick);
-        map.on("click", "safar-local-labels", handlePlaceClick);
 
-        for (const layer of ["safar-local-dots", "safar-local-labels"]) {
+        for (const layer of ["safar-local-dots"]) {
             map.on("mouseenter", layer, () => {
                 map.getCanvas().style.cursor = "pointer";
             });
@@ -720,8 +606,6 @@ export default function RideMap({
             cancelled = true;
             map.off("moveend", loadVisiblePlaces);
             map.off("click", "safar-local-dots", handlePlaceClick);
-            map.off("click", "safar-local-labels", handlePlaceClick);
-            map.off("click", "safar-local-clusters", handleClusterClick);
         };
     }, [mapReady, token, styleEpoch]);
 

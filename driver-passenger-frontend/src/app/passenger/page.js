@@ -526,7 +526,7 @@ function PassengerDashboard() {
     useEffect(() => {
         if (!rideAssigned) setMapChatOpen(false);
     }, [rideAssigned]);
-    const nearbyDrivers = useNearbyDrivers(activeRideId, token, searchingForDriver);
+    const nearbyDrivers = useNearbyDrivers(activeRideId, token, searchingForDriver, userLocation);
     const [liveRoute, setLiveRoute] = useState(null);
     useEffect(() => {
         setLiveRoute(null);
