@@ -10,6 +10,14 @@ const Feedback = require("../models/Feedback");
 const DriverDocument = require("../models/DriverDocument");
 const UserAppVersion = require("../models/UserAppVersion");
 const AppVersionConfig = require("../models/AppVersionConfig");
+const RentalPartner = require("../models/RentalPartner");
+const RentalVehicle = require("../models/RentalVehicle");
+const RentalBooking = require("../models/RentalBooking");
+const ParcelOrder = require("../models/ParcelOrder");
+const PurchaseOrder = require("../models/PurchaseOrder");
+const PaymentOrder = require("../models/PaymentOrder");
+const ParcelSettlement = require("../models/ParcelSettlement");
+const PurchaseSettlement = require("../models/PurchaseSettlement");
 
 const activeStatuses = [
     "REQUESTED",
@@ -484,6 +492,24 @@ async function getImportant(req, res) {
             totalUsers,
             latestVersionUsers,
             reportedUsers,
+            rentalPartnersPending,
+            rentalListingsPending,
+            rentalBookingsAwaitingAccept,
+            rentalBookingsAwaitingPayment,
+            rentalReturnsPending,
+            rentalBookingsDisputed,
+            rentalFeeRefundsDue,
+            parcelsAwaitingDriver,
+            buyDeliverAwaitingShopper,
+            buyDeliverAwaitingApproval,
+            buyDeliverDisputed,
+            bankTransfersPending,
+            rideSettlePending,
+            parcelSettlePending,
+            purchaseSettlePending,
+            rideSettleFailed,
+            parcelSettleFailed,
+            purchaseSettleFailed,
         ] = await Promise.all([
             Complaint.countDocuments({
                 status: { $in: ["OPEN", "IN_REVIEW"] },
@@ -594,6 +620,36 @@ async function getImportant(req, res) {
                 })
                 : Promise.resolve(0),
             UserAppVersion.countDocuments({}),
+            // ADDITIVE ONLY: every remaining pending queue across
+            // all services, so no waiting item can hide from the
+            // Important section. No existing query or response
+            // field is changed by these additions.
+            RentalPartner.countDocuments({
+                applicationStatus: { $in: ["PENDING", "UNDER_REVIEW"] },
+            }),
+            RentalVehicle.countDocuments({ listingStatus: "PENDING" }),
+            RentalBooking.countDocuments({ status: "REQUESTED" }),
+            RentalBooking.countDocuments({ status: "PAYMENT_PENDING" }),
+            RentalBooking.countDocuments({ status: "RETURN_PENDING" }),
+            RentalBooking.countDocuments({ status: "DISPUTED" }),
+            RentalBooking.countDocuments({ "feeRefund.status": "DUE" }),
+            ParcelOrder.countDocuments({ status: "REQUESTED" }),
+            PurchaseOrder.countDocuments({ status: "REQUESTED" }),
+            PurchaseOrder.countDocuments({ status: "AWAITING_APPROVAL" }),
+            PurchaseOrder.countDocuments({ status: "DISPUTED" }),
+            PaymentOrder.countDocuments({
+                gateway: "BANK_TRANSFER",
+                status: { $in: ["PENDING", "VERIFIED"] },
+            }),
+            // Settlements: pending payouts plus failed payouts
+            // (money owed that never arrived) across all three
+            // settlement collections.
+            RideSettlement.countDocuments({ status: "PENDING" }),
+            ParcelSettlement.countDocuments({ status: "PENDING" }),
+            PurchaseSettlement.countDocuments({ status: "PENDING" }),
+            RideSettlement.countDocuments({ status: "FAILED" }),
+            ParcelSettlement.countDocuments({ status: "FAILED" }),
+            PurchaseSettlement.countDocuments({ status: "FAILED" }),
         ]);
 
         // Group pending-review documents by driver for a readable
@@ -722,6 +778,47 @@ async function getImportant(req, res) {
                         unknownUsers: Math.max(0, totalUsers - reportedUsers),
                     }
                     : null,
+                // ADDITIVE ONLY: pending queues from every service.
+                // Each count is a queue the admin can clear from the
+                // linked dashboard page; nothing here changes any
+                // existing field.
+                rentalPartnersPending: { count: rentalPartnersPending },
+                rentalListingsPending: { count: rentalListingsPending },
+                rentalBookingsAwaitingAccept: {
+                    count: rentalBookingsAwaitingAccept,
+                },
+                rentalBookingsAwaitingPayment: {
+                    count: rentalBookingsAwaitingPayment,
+                },
+                rentalReturnsPending: { count: rentalReturnsPending },
+                rentalBookingsDisputed: { count: rentalBookingsDisputed },
+                rentalFeeRefundsDue: { count: rentalFeeRefundsDue },
+                parcelsAwaitingDriver: { count: parcelsAwaitingDriver },
+                buyDeliverAwaitingShopper: {
+                    count: buyDeliverAwaitingShopper,
+                },
+                buyDeliverAwaitingApproval: {
+                    count: buyDeliverAwaitingApproval,
+                },
+                buyDeliverDisputed: { count: buyDeliverDisputed },
+                bankTransfersPending: { count: bankTransfersPending },
+                settlementsNeedingAttention: {
+                    count:
+                        rideSettlePending +
+                        parcelSettlePending +
+                        purchaseSettlePending +
+                        rideSettleFailed +
+                        parcelSettleFailed +
+                        purchaseSettleFailed,
+                    pending:
+                        rideSettlePending +
+                        parcelSettlePending +
+                        purchaseSettlePending,
+                    failed:
+                        rideSettleFailed +
+                        parcelSettleFailed +
+                        purchaseSettleFailed,
+                },
             },
         });
     } catch (error) {

@@ -651,6 +651,331 @@ export default function DashboardPage() {
                                     </p>
                                 )}
                             </Link>
+
+                            <Link
+                                href="/dashboard/rentals"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                                        <ShieldCheck size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Rental Partners Pending Review
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold">
+                                    {important.rentalPartnersPending?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.rentalPartnersPending?.count ?? 0) === 0 ? (
+                                        "No partners waiting for KYC review."
+                                    ) : (
+                                        "Partners waiting for KYC review. Approve or reject from the Partners tab."
+                                    )}
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/rentals"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                                        <CarFront size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Rental Listings Pending
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold">
+                                    {important.rentalListingsPending?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.rentalListingsPending?.count ?? 0) === 0 ? (
+                                        "No listings waiting for approval."
+                                    ) : (
+                                        "Vehicles listed but not live yet. Approve from the Listings tab."
+                                    )}
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/rentals"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                                        <Clock3 size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Rental Bookings Awaiting Accept
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold">
+                                    {important.rentalBookingsAwaitingAccept?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.rentalBookingsAwaitingAccept?.count ?? 0) === 0 ? (
+                                        "No bookings waiting for the owner to accept."
+                                    ) : (
+                                        "Passengers waiting on the owner to accept. Chase from the Bookings tab."
+                                    )}
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/rentals"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                                        <Wallet size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Rental Bookings Awaiting Payment
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold">
+                                    {important.rentalBookingsAwaitingPayment?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.rentalBookingsAwaitingPayment?.count ?? 0) === 0 ? (
+                                        "No bookings waiting for payment."
+                                    ) : (
+                                        "Bookings waiting for the passenger's payment."
+                                    )}
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/rentals"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                                        <Route size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Rental Returns Pending
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold">
+                                    {important.rentalReturnsPending?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.rentalReturnsPending?.count ?? 0) === 0 ? (
+                                        "No returns waiting for confirmation."
+                                    ) : (
+                                        "Vehicles back, return confirmation still open."
+                                    )}
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/rentals"
+                                className="group rounded-[22px] border border-red-100 bg-white p-4 shadow-sm transition hover:border-red-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600">
+                                        <Flag size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-red-600" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Rental Bookings Disputed
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold">
+                                    {important.rentalBookingsDisputed?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.rentalBookingsDisputed?.count ?? 0) === 0 ? (
+                                        "No disputed rentals."
+                                    ) : (
+                                        "Disputed rentals needing a resolution."
+                                    )}
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/rentals"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                                        <CircleDollarSign size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Rental Fee Refunds Due
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold">
+                                    {important.rentalFeeRefundsDue?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.rentalFeeRefundsDue?.count ?? 0) === 0 ? (
+                                        "No fee refunds due."
+                                    ) : (
+                                        "Cancelled bookings whose fee refund transfer is still due."
+                                    )}
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/parcels"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                                        <Bike size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Parcels Awaiting Driver
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold">
+                                    {important.parcelsAwaitingDriver?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.parcelsAwaitingDriver?.count ?? 0) === 0 ? (
+                                        "No parcels waiting for a driver."
+                                    ) : (
+                                        "Parcels with no driver assigned yet."
+                                    )}
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/buy-deliver"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                                        <Activity size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Buy &amp; Deliver Awaiting Shopper
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold">
+                                    {important.buyDeliverAwaitingShopper?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.buyDeliverAwaitingShopper?.count ?? 0) === 0 ? (
+                                        "No orders waiting for a shopper."
+                                    ) : (
+                                        "Orders with no shopper yet."
+                                    )}
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/buy-deliver"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                                        <FileCheck size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Buy &amp; Deliver Awaiting Approval
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold">
+                                    {important.buyDeliverAwaitingApproval?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.buyDeliverAwaitingApproval?.count ?? 0) === 0 ? (
+                                        "No shopped costs waiting for approval."
+                                    ) : (
+                                        "Shopped costs waiting for the passenger to approve."
+                                    )}
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/buy-deliver"
+                                className="group rounded-[22px] border border-red-100 bg-white p-4 shadow-sm transition hover:border-red-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-600">
+                                        <Flag size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-red-600" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Buy &amp; Deliver Disputed
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold">
+                                    {important.buyDeliverDisputed?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.buyDeliverDisputed?.count ?? 0) === 0 ? (
+                                        "No disputed orders."
+                                    ) : (
+                                        "Disputed orders needing a resolution."
+                                    )}
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/bank-transfers"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                                        <Wallet size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Bank Transfers Pending
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold">
+                                    {important.bankTransfersPending?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.bankTransfersPending?.count ?? 0) === 0 ? (
+                                        "No bank transfers waiting for verification."
+                                    ) : (
+                                        "Manual bank transfers waiting for verification."
+                                    )}
+                                </p>
+                            </Link>
+
+                            <Link
+                                href="/dashboard/settlements"
+                                className="group rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm transition hover:border-amber-200 hover:shadow-md"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
+                                        <CircleDollarSign size={20} />
+                                    </div>
+                                    <ArrowUpRight size={16} className="text-slate-400 group-hover:text-amber-600" />
+                                </div>
+                                <p className="mt-3 text-sm text-slate-500">
+                                    Settlements Needing Attention
+                                </p>
+                                <p className="mt-1 text-2xl font-extrabold">
+                                    {important.settlementsNeedingAttention?.count ?? 0}
+                                </p>
+                                <p className="mt-2 text-xs leading-5 text-slate-500">
+                                    {(important.settlementsNeedingAttention?.count ?? 0) === 0 ? (
+                                        "No pending or failed payouts."
+                                    ) : (
+                                        `${important.settlementsNeedingAttention.pending ?? 0} pending · ${important.settlementsNeedingAttention.failed ?? 0} failed payouts.`
+                                    )}
+                                </p>
+                            </Link>
                         </div>
                     </section>
                 )}
