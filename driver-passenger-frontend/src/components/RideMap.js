@@ -34,7 +34,8 @@ const DEFAULT_PADDING_RATIO = 0.62;
 const TRACKING_PADDING_RATIO = 0.42;
 
 const MAP_STYLES = `
-.rx-map-pickup{position:relative;width:36px;height:34px;cursor:grab}
+.rx-map-pickup{position:relative;width:36px;height:34px;cursor:grab;--rx-pickup-man:#087F5B}
+.dark .rx-map-pickup{--rx-pickup-man:#FFFFFF}
 .rx-map-pickup>span{position:relative;z-index:1}
 .rx-map-pickup-ground{position:absolute;z-index:0;left:50%;bottom:-1px;width:28px;height:9px;margin-left:-14px;border-radius:50%;background:radial-gradient(ellipse,rgba(9,24,17,.35) 0%,rgba(9,24,17,0) 70%);pointer-events:none}
 .rx-map-pin-tail{position:absolute;left:50%;top:calc(100% - 4px);transform:translateX(-50%);width:0;height:0;border:6px solid transparent;pointer-events:none}
@@ -188,8 +189,12 @@ function createPickupElement() {
     element.setAttribute("aria-label", "Pickup location");
     // No circle pin: just the man, bigger, feet on the coordinate
     // (marker anchor "bottom") with a ground shadow, so he stands on
-    // the map instead of floating inside a badge.
-    element.innerHTML = `<span class="rx-map-pickup-ground"></span>${hailingPersonSvg(MARKER_WHITE, 32)}`;
+    // the map instead of floating inside a badge. The man's colour is
+    // a CSS variable, not a fixed white: a white man is invisible on
+    // the light map, so light theme gets brand green and dark theme
+    // keeps white — the .dark class on <html> flips it with no
+    // marker re-creation on theme change.
+    element.innerHTML = `<span class="rx-map-pickup-ground"></span>${hailingPersonSvg("var(--rx-pickup-man)", 32)}`;
     return element;
 }
 
