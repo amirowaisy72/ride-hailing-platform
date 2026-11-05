@@ -8,6 +8,7 @@ const PushDevice = require("../models/PushDevice");
 const IntegrationSetting = require("../models/IntegrationSetting");
 const LastAdminNotification = require("../models/LastAdminNotification");
 const { sendPushToUser } = require("../services/pushService");
+const { autoApproveEligibleServices } = require("../services/eligibilityService");
 
 const getPendingDrivers = async (req, res) => {
     try {
@@ -459,6 +460,19 @@ const reviewDriverDocument = async (req, res) => {
                     ],
                 },
                 { $set: { verificationStatus: "APPROVED" } }
+            );
+        }
+
+        // Service auto-approval: approving documents can complete a
+        // service's full requirements — turn such services ON at
+        // once instead of leaving another per-service wait. A
+        // failure here must never fail the document review itself.
+        try {
+            await autoApproveEligibleServices(document.driverId);
+        } catch (error) {
+            console.error(
+                "Service auto-approval failed:",
+                error.message
             );
         }
 

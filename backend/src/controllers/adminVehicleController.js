@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Vehicle = require("../models/Vehicle");
 const Driver = require("../models/Driver");
+const { autoApproveEligibleServices } = require("../services/eligibilityService");
 
 const getVehicles = async (req, res) => {
     try {
@@ -141,6 +142,20 @@ const reviewVehicle = async (req, res) => {
                 { _id: vehicle.driverId, currentVehicleId: vehicle._id },
                 { $set: { currentVehicleId: null, isOnline: false, isAvailable: false } }
             );
+        }
+
+        // Service auto-approval: an approved vehicle can complete a
+        // service's full requirements — turn such services ON at
+        // once instead of leaving another per-service wait.
+        if (status === "APPROVED") {
+            try {
+                await autoApproveEligibleServices(vehicle.driverId);
+            } catch (error) {
+                console.error(
+                    "Service auto-approval failed:",
+                    error.message
+                );
+            }
         }
 
         res.json({ success: true, vehicle });

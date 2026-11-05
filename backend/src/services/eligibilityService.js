@@ -1,3 +1,4 @@
+const Driver = require("../models/Driver");
 const Vehicle = require("../models/Vehicle");
 const DriverDocument = require("../models/DriverDocument");
 
@@ -315,6 +316,66 @@ async function canReceiveBuyDeliverRequests(partner, context) {
     ).eligible;
 }
 
+// Auto-approval: a service turns ON by itself the moment its full
+// requirements are satisfied — approved + unexpired documents, an
+// approved active vehicle with live registration (and, for Buy &
+// Deliver, a selected transport mode + acknowledged policy). This
+// ends per-service re-submission and admin waits: approving the
+// driver's documents once satisfies every service those documents
+// cover. An explicit admin REJECTED/SUSPENDED decision is never
+// overridden, and a service the driver switched off stays off
+// (its evaluation fails on `enabled`). Returns the services that
+// were newly approved.
+async function autoApproveEligibleServices(driverId) {
+    const driver = await Driver.findById(driverId);
+    if (!driver) return [];
+    // A global sanction is an explicit admin decision: never
+    // auto-approve anything under it.
+    if (["SUSPENDED", "REJECTED"].includes(driver.verificationStatus)) {
+        return [];
+    }
+    const context = await loadEligibilityContext(driver);
+    const plain =
+        typeof driver.toObject === "function" ? driver.toObject() : driver;
+    const approved = [];
+    for (const service of SERVICES) {
+        const record = getServiceRecord(driver, service);
+        if (["APPROVED", "REJECTED", "SUSPENDED"].includes(record.status)) {
+            continue;
+        }
+        if (!driver.services || !driver.services[service]) continue;
+        // Requirements check only: evaluate as if the record were
+        // APPROVED, so a service that merely awaits admin action
+        // still auto-approves when everything it needs is already
+        // satisfied. This matters for BUY_DELIVER, whose status has
+        // no legacy derivation — a NOT_APPLIED record could never
+        // evaluate eligible otherwise. Enabled, documents, vehicle,
+        // transport mode and policy are all still evaluated for real.
+        const snapshotDriver = {
+            ...plain,
+            services: {
+                ...(plain.services || {}),
+                [service]: {
+                    ...(plain.services?.[service] || {}),
+                    status: "APPROVED",
+                },
+            },
+        };
+        const evaluation = evaluateServiceEligibility(service, {
+            driver: snapshotDriver,
+            vehicle: context.vehicle || null,
+            documents: context.documents || [],
+            now: new Date(),
+        });
+        if (!evaluation.eligible) continue;
+        driver.services[service].status = "APPROVED";
+        driver.services[service].statusUpdatedAt = new Date();
+        approved.push(service);
+    }
+    if (approved.length > 0) await driver.save();
+    return approved;
+}
+
 // At least one enabled service is fully eligible — used by the online
 // gate. Every service requires its full document set + an approved
 // active vehicle, so this only relaxes WHICH service qualifies the
@@ -364,4 +425,5 @@ module.exports = {
     canReceiveParcelRequests,
     canReceiveBuyDeliverRequests,
     hasAnyEligibleService,
+    autoApproveEligibleServices,
 };

@@ -9,6 +9,7 @@ const {
     loadEligibilityContext,
     evaluateServiceEligibility,
     missingDocumentsFor,
+    autoApproveEligibleServices,
 } = require("../services/eligibilityService");
 
 // ---------------------------------------------------------------------------
@@ -208,14 +209,34 @@ const applyForService = async (req, res) => {
 
         await driver.save();
 
+        // Service auto-approval: if this application (or any other
+        // service) now meets its full requirements, turn it ON at
+        // once instead of leaving another admin wait. A failure
+        // here must never fail the application itself.
+        let autoApproved = [];
+        try {
+            autoApproved = await autoApproveEligibleServices(driver._id);
+        } catch (error) {
+            console.error(
+                "Service auto-approval failed:",
+                error.message
+            );
+        }
+        if (autoApproved.includes(service)) {
+            record.status = "APPROVED";
+            record.statusUpdatedAt = new Date();
+        }
+
         const context = await loadEligibilityContext(driver);
 
         return res.status(200).json({
             success: true,
             message:
-                record.status === "PENDING" || movedToReview
-                    ? "Application submitted for review"
-                    : "Application saved — requirements incomplete",
+                record.status === "APPROVED"
+                    ? "Service approved"
+                    : record.status === "PENDING" || movedToReview
+                        ? "Application submitted for review"
+                        : "Application saved — requirements incomplete",
             service: serviceState(driver, service, context),
         });
     } catch (error) {
