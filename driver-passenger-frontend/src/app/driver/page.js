@@ -1164,8 +1164,7 @@ function DriverDashboard() {
                 </>
             )}
             <button type="button" onClick={locateMe} disabled={locating} aria-label="Centre on my location"
-                style={{ bottom: hideTripPanel ? "calc(16px + env(safe-area-inset-bottom))" : rideInProgress || rideEnded ? `${TRIP_PANEL_HEIGHT + 16}px` : showGuidedCard ? `calc(${guidedHeight}px + 68px + 24px + env(safe-area-inset-bottom))` : `calc(${heights[sheet]} + 78px)` }}
-                className="absolute right-4 z-30 flex h-12 w-12 items-center justify-center rounded-2xl bg-pd-surface text-pd-text shadow-[0_6px_24px_rgba(17,17,17,0.12)] disabled:opacity-60">
+                className="absolute left-4 top-[calc(max(16px,env(safe-area-inset-top))+60px)] z-30 flex h-12 w-12 items-center justify-center rounded-2xl bg-pd-surface text-pd-text shadow-[0_6px_24px_rgba(17,17,17,0.12)] disabled:opacity-60">
                 <LocateFixed size={21} className={locating ? "animate-pulse" : ""} />
             </button>
             {travelling && (
