@@ -34,8 +34,8 @@ async function sendPushToUser(userId, title, body, data = {}) {
             android: {
                 priority: "high",
                 notification: {
-                    channelId: "ride_alerts_v2",
-                    sound: "ride_alert",
+                    channelId: "ride_alerts_v3",
+                    sound: "safar_chime",
                 },
             },
         });

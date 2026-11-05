@@ -123,7 +123,7 @@ const radiusKmFor = (settings) =>
 
 // Socket + FCM together, following the codebase's notification split:
 // Socket.IO updates the open app instantly; the FCM push is what
-// reaches a backgrounded / closed app (pushService + the ride_alerts_v2
+// reaches a backgrounded / closed app (pushService + the ride_alerts_v3
 // channel handle delivery; sendPushToUser no-ops gracefully with no
 // registered device).
 const notifyUser = (userId, { event, room, payload, title, body, data }) => {
