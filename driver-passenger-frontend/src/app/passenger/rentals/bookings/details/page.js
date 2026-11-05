@@ -261,6 +261,46 @@ function BookingDetail() {
     const showFeeForm = feeDue && feeStatus !== "VERIFIED" && feeStatus !== "SUBMITTED";
     const canRate = booking.status === "COMPLETED" && !booking.ratedAt;
     const dues = booking.returnDues || {};
+    const feeDeadline = feeInfo?.paymentDeadlineAt || booking.paymentDeadlineAt;
+    const whenShort = (value) => (value ? new Date(value).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "");
+
+    // One line that tells the renter what to do right now.
+    let next = null;
+    if (booking.status === "REQUESTED") {
+        next = { title: "Waiting for the owner", body: "Your request has been sent. This page updates as soon as the owner replies — nothing else to do yet." };
+    } else if (feeDue && showFeeForm) {
+        next = {
+            title: "Pay the booking fee to confirm",
+            body: feeDeadline ? "Pay before " + whenShort(feeDeadline) + " (" + countdown(feeDeadline, now) + ")." : "The owner accepted. Pay the booking fee to lock in your booking.",
+            cta: { label: "Pay the fee", target: "fee-section" },
+            urgent: true,
+        };
+    } else if (feeDue) {
+        next = { title: "Safar is checking your payment", body: "Your proof was received. We will confirm your booking as soon as it is verified." };
+    } else if (booking.status === "CONFIRMED") {
+        next = {
+            title: "You are confirmed",
+            body: (booking.startAt && new Date(booking.startAt).getTime() > now ? "Pickup " + whenShort(booking.startAt) + " (" + countdown(booking.startAt, now).replace(" left", "") + " to go). " : "") + "Show your pickup code to the owner at handover.",
+            cta: { label: "Show pickup code", target: "otp-section" },
+            urgent: true,
+        };
+    } else if (booking.status === "PICKUP_VERIFIED" || booking.status === "RENTAL_ACTIVE") {
+        next = { title: "Enjoy your rental", body: "Return by " + whenShort(booking.endAt) + (booking.endAt ? " (" + countdown(booking.endAt, now) + ")." : ".") };
+    } else if (booking.status === "RETURN_PENDING") {
+        next = { title: "Confirm the return", body: "Check the dues below and confirm once the vehicle is back with the owner.", cta: { label: "Review and confirm", target: "return-section" }, urgent: true };
+    } else if (canRate) {
+        next = { title: "Rental complete", body: "How was the car and the owner? Your rating helps other renters.", cta: { label: "Rate this rental", target: "rating-section" }, urgent: true };
+    } else if (booking.status === "COMPLETED") {
+        next = { title: "Rental complete", body: "Thank you for renting with Safar." };
+    } else if (booking.status === "CANCELLED") {
+        next = { title: "This booking was cancelled", body: "You can book another vehicle from Rentals any time." };
+    } else if (booking.status === "DISPUTED") {
+        next = { title: "Under review", body: "Our team is reviewing this booking and will contact you." };
+    }
+
+    function jumpTo(target) {
+        document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
 
     return (
         <main className="min-h-dvh bg-pd-bg pb-28 text-pd-text">
@@ -284,53 +324,28 @@ function BookingDetail() {
                 {error && <p role="alert" className="rounded-2xl bg-pd-danger-soft px-4 py-3 text-sm font-semibold text-pd-danger">{error}</p>}
                 {notice && <p role="status" className="rounded-2xl bg-pd-success-soft px-4 py-3 text-sm font-semibold text-[#087F5B]">{notice}</p>}
 
-                <section className="rounded-[24px] bg-pd-surface p-4 shadow-sm">
-                    <RentalTimeline status={booking.status} />
-                </section>
-
-                {/* Vehicle + window */}
-                <section className="rounded-[24px] bg-pd-surface p-4 shadow-sm">
-                    <div className="flex gap-3">
-                        <span className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-pd-surface-3 text-pd-faint">
-                            {photo ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={photo} alt={vehicleTitle(vehicle)} className="h-full w-full object-cover" />
-                            ) : (
-                                <CarFront size={28} />
-                            )}
-                        </span>
-                        <div className="min-w-0 flex-1 text-sm">
-                            <p className="text-[15px] font-extrabold">{vehicleTitle(vehicle)}</p>
-                            <p className="mt-0.5 flex items-center gap-1.5 font-semibold text-pd-muted">
-                                <CalendarDays size={13} />
-                                {booking.startAt ? new Date(booking.startAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
-                            </p>
-                            <p className="font-semibold text-pd-muted">
-                                → {booking.endAt ? new Date(booking.endAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
-                            </p>
-                            <p className="mt-0.5 text-xs font-semibold text-pd-faint">
-                                {booking.units} × {String(booking.billingUnit || "").toLowerCase()} @ {formatPKR(booking.ratePerUnit)}
-                            </p>
-                        </div>
-                    </div>
-                    <dl className="mt-4 space-y-1.5 border-t border-pd-line pt-3 text-sm font-semibold">
-                        <div className="flex justify-between"><dt className="text-pd-muted">Rental charges</dt><dd>{formatPKR(booking.rentalCharges)}</dd></div>
-                        <div className="flex justify-between"><dt className="text-pd-muted">Booking fee ({booking.bookingFeePercent}%)</dt><dd>{formatPKR(booking.bookingFee)}</dd></div>
-                        <div className="flex justify-between"><dt className="text-pd-muted">Security deposit (at pickup, refundable)</dt><dd>{formatPKR(booking.securityDeposit)}</dd></div>
-                    </dl>
-                    <button
-                        type="button"
-                        disabled={!booking.partnerUserId}
-                        onClick={() => setChatOpen(true)}
-                        className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-pd-ink text-sm font-bold text-pd-ink-text disabled:opacity-40"
+{next && (
+                    <section
+                        aria-live="polite"
+                        className={`rounded-[24px] p-4 shadow-sm ${next.urgent ? "bg-pd-ink text-pd-ink-text" : "bg-pd-surface"}`}
                     >
-                        <MessageCircle size={17} /> Chat with the vehicle owner
-                    </button>
-                </section>
+                        <p className="text-[17px] font-extrabold leading-tight">{next.title}</p>
+                        <p className={`mt-1 text-sm leading-relaxed ${next.urgent ? "opacity-80" : "text-pd-muted"}`}>{next.body}</p>
+                        {next.cta && (
+                            <button
+                                type="button"
+                                onClick={() => jumpTo(next.cta.target)}
+                                className="mt-3 flex h-12 w-full items-center justify-center rounded-2xl bg-[#087F5B] text-[15px] font-extrabold text-white"
+                            >
+                                {next.cta.label}
+                            </button>
+                        )}
+                    </section>
+                )}
 
                 {/* Fee instructions + proof */}
                 {feeDue && (
-                    <section className="space-y-3 rounded-[24px] border-2 border-pd-line bg-pd-warning-soft p-4 shadow-sm" aria-labelledby="fee-title">
+                    <section id="fee-section" className="scroll-mt-24 space-y-3 rounded-[24px] border-2 border-pd-line bg-pd-warning-soft p-4 shadow-sm" aria-labelledby="fee-title">
                         <h2 id="fee-title" className="flex items-center gap-2 text-[15px] font-extrabold text-pd-warning">
                             <Landmark size={17} /> Pay the booking fee to confirm
                         </h2>
@@ -446,33 +461,9 @@ function BookingDetail() {
                     </p>
                 )}
 
-                {/* Pickup details (unlocked after confirmation) */}
-                {vehicle?.contactUnlocked && (
-                    <section className="space-y-2 rounded-[24px] bg-pd-surface p-4 shadow-sm">
-                        <h2 className="flex items-center gap-2 text-[15px] font-extrabold">
-                            <MapPin size={17} className="text-[#087F5B]" /> Pickup details
-                        </h2>
-                        <p className="text-sm font-semibold">{vehicle.exactPickupAddress || "Address shared by the owner in chat"}</p>
-                        {(vehicle.pickupContactName || vehicle.pickupContactPhone) && (
-                            <p className="flex items-center justify-between gap-3 text-sm font-medium text-pd-muted">
-                                <span>{vehicle.pickupContactName}{vehicle.pickupContactPhone ? ` · ${vehicle.pickupContactPhone}` : ""}</span>
-                                {vehicle.pickupContactPhone && (
-                                    <a
-                                        href={`tel:${String(vehicle.pickupContactPhone).replace(/[^+\d]/g, "")}`}
-                                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#087F5B] text-white"
-                                        aria-label="Call pickup contact"
-                                    >
-                                        <Phone size={17} />
-                                    </a>
-                                )}
-                            </p>
-                        )}
-                    </section>
-                )}
-
                 {/* Pickup OTP */}
                 {booking.status === "CONFIRMED" && (
-                    <section className="rounded-[24px] bg-pd-surface p-4 shadow-sm">
+                    <section id="otp-section" className="scroll-mt-24 rounded-[24px] bg-pd-surface p-4 shadow-sm">
                         <h2 className="flex items-center gap-2 text-[15px] font-extrabold">
                             <KeyRound size={17} className="text-[#087F5B]" /> Pickup code
                         </h2>
@@ -496,7 +487,7 @@ function BookingDetail() {
 
                 {/* Return confirmation */}
                 {booking.status === "RETURN_PENDING" && (
-                    <section className="space-y-2 rounded-[24px] border-2 border-pd-line bg-pd-warning-soft p-4 shadow-sm">
+                    <section id="return-section" className="scroll-mt-24 space-y-2 rounded-[24px] border-2 border-pd-line bg-pd-warning-soft p-4 shadow-sm">
                         <h2 className="text-[15px] font-extrabold text-pd-warning">Confirm the return</h2>
                         <dl className="space-y-1.5 rounded-2xl bg-pd-surface p-3.5 text-sm font-semibold">
                             <div className="flex justify-between"><dt className="text-pd-muted">Driven</dt><dd>{dues.drivenKm ?? "—"} km</dd></div>
@@ -521,7 +512,7 @@ function BookingDetail() {
 
                 {/* Rating */}
                 {canRate && (
-                    <section className="space-y-3 rounded-[24px] bg-pd-surface p-4 shadow-sm">
+                    <section id="rating-section" className="scroll-mt-24 space-y-3 rounded-[24px] bg-pd-surface p-4 shadow-sm">
                         <h2 className="text-[15px] font-extrabold">Rate this rental</h2>
                         <div className="flex gap-1.5" role="radiogroup" aria-label="Your rating">
                             {[1, 2, 3, 4, 5].map((value) => (
@@ -560,6 +551,74 @@ function BookingDetail() {
                     <p className="rounded-[24px] bg-pd-surface px-4 py-3 text-center text-sm font-bold text-[#087F5B] shadow-sm">
                         ⭐ You rated this rental — thank you!
                     </p>
+                )}
+
+                <section className="rounded-[24px] bg-pd-surface p-4 shadow-sm">
+                    <RentalTimeline status={booking.status} />
+                </section>
+
+                {/* Vehicle + window */}
+                <section className="rounded-[24px] bg-pd-surface p-4 shadow-sm">
+                    <div className="flex gap-3">
+                        <span className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-pd-surface-3 text-pd-faint">
+                            {photo ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={photo} alt={vehicleTitle(vehicle)} className="h-full w-full object-cover" />
+                            ) : (
+                                <CarFront size={28} />
+                            )}
+                        </span>
+                        <div className="min-w-0 flex-1 text-sm">
+                            <p className="text-[15px] font-extrabold">{vehicleTitle(vehicle)}</p>
+                            <p className="mt-0.5 flex items-center gap-1.5 font-semibold text-pd-muted">
+                                <CalendarDays size={13} />
+                                {booking.startAt ? new Date(booking.startAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
+                            </p>
+                            <p className="font-semibold text-pd-muted">
+                                → {booking.endAt ? new Date(booking.endAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}
+                            </p>
+                            <p className="mt-0.5 text-xs font-semibold text-pd-faint">
+                                {booking.units} × {String(booking.billingUnit || "").toLowerCase()} @ {formatPKR(booking.ratePerUnit)}
+                            </p>
+                        </div>
+                    </div>
+                    <dl className="mt-4 space-y-1.5 border-t border-pd-line pt-3 text-sm font-semibold">
+                        <div className="flex justify-between"><dt className="text-pd-muted">Rental charges</dt><dd>{formatPKR(booking.rentalCharges)}</dd></div>
+                        <div className="flex justify-between"><dt className="text-pd-muted">Booking fee ({booking.bookingFeePercent}%)</dt><dd>{formatPKR(booking.bookingFee)}</dd></div>
+                        <div className="flex justify-between"><dt className="text-pd-muted">Security deposit (at pickup, refundable)</dt><dd>{formatPKR(booking.securityDeposit)}</dd></div>
+                    </dl>
+                    <button
+                        type="button"
+                        disabled={!booking.partnerUserId}
+                        onClick={() => setChatOpen(true)}
+                        className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-pd-ink text-sm font-bold text-pd-ink-text disabled:opacity-40"
+                    >
+                        <MessageCircle size={17} /> Chat with the vehicle owner
+                    </button>
+                </section>
+
+                {/* Pickup details (unlocked after confirmation) */}
+                {vehicle?.contactUnlocked && (
+                    <section className="space-y-2 rounded-[24px] bg-pd-surface p-4 shadow-sm">
+                        <h2 className="flex items-center gap-2 text-[15px] font-extrabold">
+                            <MapPin size={17} className="text-[#087F5B]" /> Pickup details
+                        </h2>
+                        <p className="text-sm font-semibold">{vehicle.exactPickupAddress || "Address shared by the owner in chat"}</p>
+                        {(vehicle.pickupContactName || vehicle.pickupContactPhone) && (
+                            <p className="flex items-center justify-between gap-3 text-sm font-medium text-pd-muted">
+                                <span>{vehicle.pickupContactName}{vehicle.pickupContactPhone ? ` · ${vehicle.pickupContactPhone}` : ""}</span>
+                                {vehicle.pickupContactPhone && (
+                                    <a
+                                        href={`tel:${String(vehicle.pickupContactPhone).replace(/[^+\d]/g, "")}`}
+                                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#087F5B] text-white"
+                                        aria-label="Call pickup contact"
+                                    >
+                                        <Phone size={17} />
+                                    </a>
+                                )}
+                            </p>
+                        )}
+                    </section>
                 )}
 
                 {/* Cancel / dispute */}
