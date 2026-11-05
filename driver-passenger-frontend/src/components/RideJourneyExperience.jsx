@@ -145,11 +145,11 @@ export default function RideJourneyExperience({
                             <p className="mt-0.5 text-sm text-pd-muted">{subtitle}</p>
                         </div>
                         {showEta ? (
-                            <div className="shrink-0 rounded-2xl bg-pd-ink px-3.5 py-2.5 text-center text-pd-ink-text">
+                            <div className="shrink-0 rounded-2xl bg-pd-surface-2 px-3.5 py-2.5 text-center text-pd-text">
                                 <p className="text-2xl font-extrabold leading-none tabular-nums text-[#087F5B]">
                                     {routeInfo.durationMinutes}<span className="ml-0.5 text-xs font-bold">min</span>
                                 </p>
-                                <p className="mt-1 text-[11px] font-semibold text-white/70">{routeInfo.distanceKm} km away</p>
+                                <p className="mt-1 text-[11px] font-semibold text-pd-muted">{routeInfo.distanceKm} km away</p>
                             </div>
                         ) : arrived ? (
                             <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#087F5B] text-white">
@@ -192,7 +192,7 @@ export default function RideJourneyExperience({
                     <div className="mt-4 rounded-2xl border border-pd-line p-3.5">
                         <div className="flex items-center gap-3">
                             <span className="relative flex h-13 w-13 shrink-0 items-center justify-center" aria-hidden="true">
-                                <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-pd-ink text-sm font-extrabold text-[#087F5B]">
+                                <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-pd-surface-2 text-sm font-extrabold text-[#087F5B]">
                                     {driverProfile?.profileImage ? (
                                         <img
                                             src={driverProfile.profileImage}

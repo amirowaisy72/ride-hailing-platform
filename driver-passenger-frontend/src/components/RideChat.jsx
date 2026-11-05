@@ -98,7 +98,7 @@ export default function RideChat({ rideId, token, userId, directOpen = false, on
         {!directOpen && <button
             type="button"
             onClick={() => setOpen(true)}
-            className="relative flex h-12 items-center justify-center gap-2 rounded-2xl bg-pd-ink px-4 text-sm font-bold text-pd-ink-text transition-transform active:scale-[0.98]"
+            className="relative flex h-12 items-center justify-center gap-2 rounded-2xl bg-pd-surface-2 px-4 text-sm font-bold text-pd-text transition-transform active:scale-[0.98]"
         >
             <MessageCircle size={18} aria-hidden="true" />
             Message {participantLabel}
