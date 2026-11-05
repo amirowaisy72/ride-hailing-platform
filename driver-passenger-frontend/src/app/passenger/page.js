@@ -7,7 +7,7 @@ import {
     Trash2, ChevronUp, Clock, Crosshair, LocateFixed,
     Map as MapIcon, MapPin, Minimize2, Minus, Navigation, Plus, Radio, Route as RouteIcon,
     ShieldCheck, Star, UserRound, Users, Volume2, VolumeX, X, Car, Menu, MessageCircle,
-    ChevronRight, Package, ShoppingBag, ArrowLeft, Briefcase, House,
+    ChevronRight, Package, ShoppingBag, ArrowLeft, Briefcase, House, CircleHelp,
 } from "lucide-react";
 import { Geolocation } from "@capacitor/geolocation";
 import AuthGuard from "@/components/AuthGuard";
@@ -56,6 +56,20 @@ const FARE_STEP = 10;
 const DEFAULT_OFFER_WINDOW_MS = 60000;
 const LONG_SEARCH_MS = 45000;
 const FLOATING_SHADOW = "shadow-[0_6px_24px_rgba(17,17,17,0.12)]";
+
+function LocateButton({ onClick, locating }) {
+    return (
+        <button
+            type="button"
+            aria-label="Locate me"
+            onClick={onClick}
+            disabled={locating}
+            className={`flex h-14 w-14 items-center justify-center rounded-full border border-pd-line bg-pd-surface text-pd-accent-text transition-transform active:scale-95 disabled:opacity-60 ${FLOATING_SHADOW}`}
+        >
+            <LocateFixed size={24} className={locating ? "animate-pulse" : ""} />
+        </button>
+    );
+}
 
 const MOTION_STYLES = `
 @keyframes rx-indeterminate { 0% { transform: translateX(-110%); } 100% { transform: translateX(260%); } }
@@ -1382,16 +1396,18 @@ function PassengerDashboard() {
                     </button>
                 </div>
 
-                {searchingForDriver && (
-                    <div className="flex min-w-0 items-center gap-2 rounded-full bg-pd-ink px-3.5 py-2 text-xs font-semibold text-pd-ink-text shadow-lg">
-                        <span className="relative flex h-2.5 w-2.5 shrink-0">
-                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#087F5B] opacity-75" />
-                            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#087F5B]" />
-                        </span>
-                        <span className="truncate">{onlineNearby} online nearby</span>
-                    </div>
-                )}
+                <div className={`pointer-events-auto flex min-w-0 items-center gap-2 rounded-full bg-pd-surface px-3.5 py-2.5 text-xs font-bold text-pd-text ${FLOATING_SHADOW}`}>
+                    <span className="relative flex h-2.5 w-2.5 shrink-0">
+                        {onlineNearby > 0 && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#087F5B] opacity-60" />}
+                        <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${onlineNearby > 0 ? "bg-[#087F5B]" : "bg-pd-faint"}`} />
+                    </span>
+                    <span className="truncate">{onlineNearby} online nearby</span>
+                </div>
 
+                <Link href="/passenger/complaints" aria-label="Help"
+                    className={`pointer-events-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-pd-surface text-pd-text transition-transform active:scale-95 ${FLOATING_SHADOW}`}>
+                    <CircleHelp size={22} />
+                </Link>
             </header>
             )}
 
@@ -1421,17 +1437,9 @@ function PassengerDashboard() {
                 </>
             )}
 
-            {!activeRide && !mapInteracting && (
+            {!activeRide && !mapInteracting && mapPickTarget && (
                 <div className="absolute right-4 bottom-[calc(250px+env(safe-area-inset-bottom))] z-20">
-                    <button
-                        type="button"
-                        aria-label={activeRide ? "Recenter map" : "Locate me"}
-                        onClick={activeRide ? () => setMapLocateRequest((n) => n + 1) : locateMe}
-                        disabled={locating}
-                        className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-pd-surface transition-transform active:scale-95 disabled:opacity-60 ${FLOATING_SHADOW}`}
-                    >
-                        <LocateFixed size={21} className={locating ? "animate-pulse" : ""} />
-                    </button>
+                    <LocateButton onClick={locateMe} locating={locating} />
                 </div>
             )}
 
@@ -1452,6 +1460,9 @@ function PassengerDashboard() {
 
             {!activeRide && !mapPickTarget && !bookingOpen && !mapInteracting && (
                 <div className="absolute inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom))] z-20 rounded-t-[28px] border-t border-pd-line bg-pd-surface px-4 pb-4 pt-3 shadow-[0_-12px_36px_rgba(17,17,17,0.16)]">
+                    <div className="absolute -top-[68px] right-4">
+                        <LocateButton onClick={locateMe} locating={locating} />
+                    </div>
                     <div className="mx-auto max-w-lg space-y-3">
                         <span className="mx-auto block h-1.5 w-10 rounded-full bg-pd-surface-3" aria-hidden="true" />
                         <button type="button" onClick={() => setBookingOpen(true)}
@@ -1461,6 +1472,37 @@ function PassengerDashboard() {
                             <span className="min-w-0 flex-1 truncate text-lg font-extrabold">{t("ride.whereToHowMuch")}</span>
                             <ArrowRight size={22} className="shrink-0" aria-hidden="true" />
                         </button>
+                        {savedPlaces.length > 0 && (
+                            <ul aria-label="Saved places" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                                {savedPlaces.map((place) => (
+                                    <li key={place._id} className="shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setDestination({
+                                                    latitude: place.latitude,
+                                                    longitude: place.longitude,
+                                                    name: place.name,
+                                                    display_name: place.name,
+                                                });
+                                                setDestinationQuery(place.name);
+                                                setDestinationSelected(true);
+                                                setSearchResults([]);
+                                                setRoute(null);
+                                                setFare(null);
+                                                setBookingOpen(true);
+                                            }}
+                                            className="flex h-11 max-w-[220px] items-center gap-2 rounded-full border border-pd-line bg-pd-surface-2 pl-2.5 pr-4 text-sm font-bold text-pd-text transition-transform active:scale-95"
+                                        >
+                                            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-pd-accent-soft text-pd-accent-text" aria-hidden="true">
+                                                {place.type === "HOME" ? <House size={15} /> : place.type === "WORK" ? <Briefcase size={15} /> : <Star size={15} />}
+                                            </span>
+                                            <span className="truncate">{place.name}</span>
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
                         {destinationSelected && destinationQuery && <p className="truncate px-1 text-xs text-pd-muted">Last selected: {destinationQuery}</p>}
                         {activeRequests.length > 0 && (
                             <section aria-label={t("pHome.activeRequests")} className="space-y-2">
@@ -1485,28 +1527,44 @@ function PassengerDashboard() {
                                 ))}
                             </section>
                         )}
-                        <nav aria-label="Services" className="grid grid-cols-3 gap-2">
+                        <nav aria-label="Services" className="grid grid-cols-4 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setBookingOpen(true)}
+                                className="flex min-h-[92px] flex-col items-center justify-center gap-2 rounded-2xl bg-pd-surface-2 px-1 py-3 text-center text-pd-text transition-transform active:scale-95"
+                            >
+                                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-pd-accent text-pd-accent-ink shadow-[0_6px_14px_rgba(8,127,91,0.3)]">
+                                    <Car size={24} strokeWidth={1.8} aria-hidden="true" />
+                                </span>
+                                <span className="text-[12px] font-bold leading-tight">{t("pHome.tabRide")}</span>
+                            </button>
                             <Link
                                 href="/passenger/parcels"
-                                className="relative flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-2xl bg-pd-surface-2 px-2 py-3 text-center text-pd-text transition-transform active:scale-95"
+                                className="relative flex min-h-[92px] flex-col items-center justify-center gap-2 rounded-2xl bg-pd-surface-2 px-1 py-3 text-center text-pd-text transition-transform active:scale-95"
                             >
-                                <Package size={24} className="text-pd-accent-text" aria-hidden="true" />
-                                <span className="text-[13px] font-bold leading-tight">{t("pHome.tabParcel")}</span>
+                                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-pd-accent-soft text-pd-accent-text">
+                                    <Package size={24} strokeWidth={1.8} aria-hidden="true" />
+                                </span>
+                                <span className="text-[12px] font-bold leading-tight">{t("pHome.tabParcel")}</span>
                                 <ParcelActivityBar token={token} role="PASSENGER" variant="badge" />
                             </Link>
                             <Link
                                 href="/passenger/buy-deliver"
-                                className="flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-2xl bg-pd-surface-2 px-2 py-3 text-center text-pd-text transition-transform active:scale-95"
+                                className="flex min-h-[92px] flex-col items-center justify-center gap-2 rounded-2xl bg-pd-surface-2 px-1 py-3 text-center text-pd-text transition-transform active:scale-95"
                             >
-                                <ShoppingBag size={24} className="text-pd-accent-text" aria-hidden="true" />
-                                <span className="text-[13px] font-bold leading-tight">{t("pHome.tabBuyDeliver")}</span>
+                                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-pd-accent-soft text-pd-accent-text">
+                                    <ShoppingBag size={24} strokeWidth={1.8} aria-hidden="true" />
+                                </span>
+                                <span className="text-[12px] font-bold leading-tight">{t("pHome.tabBuyDeliver")}</span>
                             </Link>
                             <Link
                                 href="/passenger/rentals"
-                                className="flex min-h-[76px] flex-col items-center justify-center gap-1.5 rounded-2xl bg-pd-surface-2 px-2 py-3 text-center text-pd-text transition-transform active:scale-95"
+                                className="flex min-h-[92px] flex-col items-center justify-center gap-2 rounded-2xl bg-pd-surface-2 px-1 py-3 text-center text-pd-text transition-transform active:scale-95"
                             >
-                                <Car size={24} className="text-pd-accent-text" aria-hidden="true" />
-                                <span className="text-[13px] font-bold leading-tight">{t("pHome.tabRentals")}</span>
+                                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-pd-accent-soft text-pd-accent-text">
+                                    <Car size={24} strokeWidth={1.8} aria-hidden="true" />
+                                </span>
+                                <span className="text-[12px] font-bold leading-tight">{t("pHome.tabRentals")}</span>
                             </Link>
                         </nav>
                     </div>
