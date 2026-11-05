@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Navigation, RotateCw } from "lucide-react";
+import { Info, Navigation, RotateCw } from "lucide-react";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { flagSvg, hailingPersonSvg } from "@/components/mapMarkerArt";
 import {
@@ -43,9 +43,6 @@ const MARKER_STYLES = `
 @keyframes dm-pulse{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.5);opacity:0}}
 @media (prefers-reduced-motion: reduce){.dm-ride-pulse{animation:none;opacity:.35}}
 .maplibregl-ctrl-attrib{font-size:10px}
-.maplibregl-ctrl.maplibregl-ctrl-attrib{background:rgba(12,13,16,.72);color:#9aa0aa;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.3)}
-.maplibregl-ctrl-attrib a{color:#c4c8cf}
-.maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button{color:#c4c8cf}
 `;
 
 const getPoint = (point) => {
@@ -162,6 +159,7 @@ export default function DriverMap({
     const [following, setFollowing] = useState(true);
     const [rerouteTick, setRerouteTick] = useState(0);
     const [routeError, setRouteError] = useState(false);
+    const [attribOpen, setAttribOpen] = useState(false);
     // Keep latest props in refs for map callbacks. This runs after every
     // render (no dep array) so callbacks always see fresh values without
     // assigning refs during render.
@@ -313,7 +311,7 @@ export default function DriverMap({
             maxPitch: 60,
         });
         mapRef.current = map;
-        map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-left");
+
         map.on("load", () => {
             softenDarkBackground(map, appliedThemeRef.current);
             setMapReady(true);
@@ -562,6 +560,20 @@ export default function DriverMap({
         <div className="relative h-full w-full">
             <style>{MARKER_STYLES}</style>
             <div ref={nodeRef} className="h-full w-full" />
+            {/* Map-data credit as a tiny button only. MapLibre's own compact
+                control auto-expands on narrow screens, which is why the
+                credit text kept showing. The full credit is one tap away. */}
+            <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2">
+                <button type="button" onClick={() => setAttribOpen((open) => !open)} aria-label="Map data credits"
+                    className="flex h-7 w-7 items-center justify-center rounded-full bg-[rgba(12,13,16,.72)] text-[#c4c8cf] shadow-[0_4px_14px_rgba(0,0,0,.3)]">
+                    <Info size={15} />
+                </button>
+                {attribOpen && (
+                    <span className="rounded-lg bg-[rgba(12,13,16,.85)] px-2 py-1 text-[11px] font-semibold text-[#c4c8cf] shadow-[0_4px_14px_rgba(0,0,0,.3)]">
+                        © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap</a> contributors © <a href="https://carto.com/" target="_blank" rel="noopener noreferrer" className="underline">CARTO</a>
+                    </span>
+                )}
+            </div>
             {showBackToNav && (
                 <button
                     type="button"
