@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarClock, ChevronRight, KeyRound } from "lucide-react";
+import { ArrowRight, CalendarClock, ChevronRight, KeyRound } from "lucide-react";
 
 import { getPartnerRentalBookings } from "@/lib/rentalService";
 
@@ -36,6 +36,19 @@ export const RENTAL_BOOKING_META = {
     DISPUTED: { label: "Disputed", pill: "bg-pd-danger-soft text-pd-danger" },
 };
 
+// The one thing the partner does next on each booking. `urgent` ones
+// need the partner; the rest are simply waiting on someone else.
+const NEXT_ACTION = {
+    REQUESTED: { text: "Accept or reject this request", urgent: true },
+    PROVIDER_ACCEPTED: { text: "Waiting for the customer's booking fee", urgent: false },
+    PAYMENT_PENDING: { text: "Waiting for Safar to verify the fee", urgent: false },
+    CONFIRMED: { text: "Hand over the car — verify pickup", urgent: true },
+    PICKUP_VERIFIED: { text: "Start the rental", urgent: true },
+    RENTAL_ACTIVE: { text: "Record the return when the car is back", urgent: true },
+    RETURN_PENDING: { text: "Waiting for the customer to confirm the return", urgent: false },
+    DISPUTED: { text: "Under dispute — open to see details", urgent: true },
+};
+
 export default function RentalPartnerBookings({ token }) {
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -66,6 +79,72 @@ export default function RentalPartnerBookings({ token }) {
         ? bookings.filter((b) => b.status === statusFilter)
         : bookings;
 
+    const needsYou = visibleBookings.filter(
+        (b) => NEXT_ACTION[b.status]?.urgent
+    );
+    const others = visibleBookings.filter(
+        (b) => !NEXT_ACTION[b.status]?.urgent
+    );
+
+    function renderBooking(booking) {
+        const meta =
+            RENTAL_BOOKING_META[booking.status] || {
+                label: booking.status,
+                pill: "bg-pd-surface-3 text-pd-muted",
+            };
+        const next = NEXT_ACTION[booking.status];
+        return (
+            <Link
+                key={booking._id}
+                href={`/driver/rentals/bookings/details?id=${booking._id}`}
+                className="block rounded-[24px] bg-pd-surface p-5 shadow-sm"
+            >
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-extrabold">
+                        {booking.bookingRef}
+                    </span>
+                    <span
+                        className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${meta.pill}`}
+                    >
+                        {meta.label}
+                    </span>
+                    <ChevronRight size={16} className="ml-auto text-pd-faint" />
+                </div>
+                <p className="mt-2 text-sm font-bold">
+                    {booking.vehicle
+                        ? `${booking.vehicle.brand} ${booking.vehicle.model} (${booking.vehicle.year})`
+                        : "Vehicle"}
+                    <span className="ml-2 text-xs font-semibold text-pd-faint">
+                        {booking.mode === "WITH_DRIVER"
+                            ? "With Driver"
+                            : "Self-Drive"}
+                    </span>
+                </p>
+                <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-pd-muted">
+                    <CalendarClock size={13} />
+                    {fmtDateTime(booking.startAt)} →{" "}
+                    {fmtDateTime(booking.endAt)}
+                </p>
+                <p className="mt-1.5 text-xs font-semibold text-pd-muted">
+                    Rental {money(booking.rentalCharges)} · Deposit{" "}
+                    {money(booking.securityDeposit)}
+                </p>
+                {next && (
+                    <p
+                        className={`mt-3 flex min-h-11 items-center gap-2 rounded-xl px-3 text-xs font-extrabold ${
+                            next.urgent
+                                ? "bg-[#087F5B] text-white"
+                                : "bg-pd-surface-2 text-pd-muted"
+                        }`}
+                    >
+                        <span className="min-w-0 flex-1">{next.text}</span>
+                        {next.urgent && <ArrowRight size={15} className="shrink-0" />}
+                    </p>
+                )}
+            </Link>
+        );
+    }
+
     return (
         <section>
             <div className="flex items-center gap-2 px-1">
@@ -79,7 +158,7 @@ export default function RentalPartnerBookings({ token }) {
                         setStatusFilter(e.target.value);
                     }}
                     aria-label="Filter bookings by status"
-                    className="ml-auto h-9 rounded-xl border bg-pd-surface px-2 text-xs font-bold text-pd-text-2"
+                    className="ml-auto h-11 rounded-xl border bg-pd-surface px-2 text-xs font-bold text-pd-text-2"
                 >
                     <option value="">All statuses</option>
                     {Object.entries(RENTAL_BOOKING_META).map(([key, meta]) => (
@@ -108,51 +187,26 @@ export default function RentalPartnerBookings({ token }) {
                         </p>
                     </div>
                 ) : (
-                    visibleBookings.map((booking) => {
-                        const meta =
-                            RENTAL_BOOKING_META[booking.status] || {
-                                label: booking.status,
-                                pill: "bg-pd-surface-3 text-pd-muted",
-                            };
-                        return (
-                            <Link
-                                key={booking._id}
-                                href={`/driver/rentals/bookings/details?id=${booking._id}`}
-                                className="block rounded-[24px] bg-pd-surface p-5 shadow-sm"
-                            >
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm font-extrabold">
-                                        {booking.bookingRef}
-                                    </span>
-                                    <span
-                                        className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold ${meta.pill}`}
-                                    >
-                                        {meta.label}
-                                    </span>
-                                    <ChevronRight size={16} className="ml-auto text-pd-faint" />
-                                </div>
-                                <p className="mt-2 text-sm font-bold">
-                                    {booking.vehicle
-                                        ? `${booking.vehicle.brand} ${booking.vehicle.model} (${booking.vehicle.year})`
-                                        : "Vehicle"}
-                                    <span className="ml-2 text-xs font-semibold text-pd-faint">
-                                        {booking.mode === "WITH_DRIVER"
-                                            ? "With Driver"
-                                            : "Self-Drive"}
-                                    </span>
+                    <>
+                        {needsYou.length > 0 && (
+                            <>
+                                <p className="px-1 text-xs font-extrabold uppercase tracking-wider text-[#087F5B]">
+                                    Needs you ({needsYou.length})
                                 </p>
-                                <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-pd-muted">
-                                    <CalendarClock size={13} />
-                                    {fmtDateTime(booking.startAt)} →{" "}
-                                    {fmtDateTime(booking.endAt)}
-                                </p>
-                                <p className="mt-1.5 text-xs font-semibold text-pd-muted">
-                                    Rental {money(booking.rentalCharges)} ·
-                                    Deposit {money(booking.securityDeposit)}
-                                </p>
-                            </Link>
-                        );
-                    })
+                                {needsYou.map(renderBooking)}
+                            </>
+                        )}
+                        {others.length > 0 && (
+                            <>
+                                {needsYou.length > 0 && (
+                                    <p className="px-1 pt-2 text-xs font-extrabold uppercase tracking-wider text-pd-muted">
+                                        Everything else ({others.length})
+                                    </p>
+                                )}
+                                {others.map(renderBooking)}
+                            </>
+                        )}
+                    </>
                 )}
             </div>
         </section>
