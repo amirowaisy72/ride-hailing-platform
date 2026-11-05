@@ -3,6 +3,7 @@ const Driver = require("../models/Driver");
 const Vehicle = require("../models/Vehicle");
 const DriverMissedRide = require("../models/DriverMissedRide");
 const { canReceiveRideRequests } = require("../services/eligibilityService");
+const { servableRideTypes } = require("../services/driverMatchingService");
 
 const getAvailableRides = async (req, res) => {
     try {
@@ -61,7 +62,7 @@ const getAvailableRides = async (req, res) => {
         });
 
         const rides = await Ride.find({
-            vehicleType: vehicle.vehicleType,
+            vehicleType: { $in: servableRideTypes(vehicle.vehicleType) },
             status: { $in: ["REQUESTED", "SEARCHING", "BIDDING"] },
             driverId: null,
             _id: { $nin: missedRideIds },

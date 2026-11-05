@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Ride = require("../models/Ride");
 const Driver = require("../models/Driver");
 const Vehicle = require("../models/Vehicle");
+const { servingVehicleTypes } = require("../services/driverMatchingService");
 
 // Approximate, anonymous markers only. Never expose exact driver GPS on a public discovery map.
 async function nearbyDriversForRide(req, res) {
@@ -18,7 +19,7 @@ async function nearbyDriversForRide(req, res) {
         if (!ride) return res.status(404).json({ success: false, message: "Active ride not found" });
 
         const vehicleIds = await Vehicle.distinct("_id", {
-            vehicleType: ride.vehicleType, verificationStatus: "APPROVED", isActive: true,
+            vehicleType: { $in: servingVehicleTypes(ride.vehicleType) }, verificationStatus: "APPROVED", isActive: true,
         });
         const drivers = await Driver.find({
             verificationStatus: "APPROVED", isOnline: true, isAvailable: true,

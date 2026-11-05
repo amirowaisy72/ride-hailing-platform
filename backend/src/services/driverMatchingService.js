@@ -1,6 +1,25 @@
 const Driver = require("../models/Driver");
 const Vehicle = require("../models/Vehicle");
 
+// One-way car-tier matching rule (single source of truth):
+// A car whose AC works can serve a non-AC request — the
+// passenger gets a better car at the non-AC fare they chose.
+// A non-AC car — its AC does not work at all — must NEVER
+// serve an AC request: that would mislead a passenger who
+// asked and paid for AC. Every other type serves only its
+// own kind.
+const servingVehicleTypes = (requestedType) =>
+    requestedType === "CAR_NON_AC"
+        ? ["CAR_NON_AC", "CAR_AC"]
+        : [requestedType];
+
+// Inverse view for a driver's own vehicle: which ride types
+// it may serve.
+const servableRideTypes = (vehicleType) =>
+    vehicleType === "CAR_AC"
+        ? ["CAR_AC", "CAR_NON_AC"]
+        : [vehicleType];
+
 const findNearbyDrivers = async (
     longitude,
     latitude,
@@ -36,7 +55,7 @@ const findNearbyDrivers = async (
 
     if (vehicleType) {
         const vehicleIds = await Vehicle.distinct("_id", {
-            vehicleType,
+            vehicleType: { $in: servingVehicleTypes(vehicleType) },
             verificationStatus: "APPROVED",
             isActive: true,
         });
@@ -71,4 +90,6 @@ const findDriversWithExpandedRadius = async (
 module.exports = {
     findNearbyDrivers,
     findDriversWithExpandedRadius,
+    servingVehicleTypes,
+    servableRideTypes,
 };

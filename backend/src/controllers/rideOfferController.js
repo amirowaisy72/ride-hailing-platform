@@ -10,6 +10,7 @@ const { publishEvent } = require("../services/socketService");
 const { sendPushToUser } = require("../services/pushService");
 const { paymentsConfigured } = require("../services/paymentsConfigService");
 const { canReceiveRideRequests } = require("../services/eligibilityService");
+const { servingVehicleTypes } = require("../services/driverMatchingService");
 
 const OPEN = ["REQUESTED", "SEARCHING", "BIDDING"];
 const OFFER_DURATION_MS = 5 * 60 * 1000;
@@ -112,7 +113,7 @@ async function submitOffer(req, res) {
         const vehicle = await Vehicle.exists({
             _id: driver.currentVehicleId,
             driverId: driver._id,
-            vehicleType: ride.vehicleType,
+            vehicleType: { $in: servingVehicleTypes(ride.vehicleType) },
             verificationStatus: "APPROVED",
             isActive: true,
         });
