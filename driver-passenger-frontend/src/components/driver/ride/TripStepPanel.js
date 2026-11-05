@@ -82,7 +82,11 @@ export default function TripStepPanel({
 }) {
     const [confirming, setConfirming] = useState(false);
     const info = describeStep({ status, passengerName, pendingStop, stopWaiting, tripType, stopsDone, stopsTotal });
-    const url = info.navigate ? mapsUrl(targetPoint) : null;
+    // Open in Maps is a directions link to the current target, so it
+    // shows at every step that has one — previously it was hidden on
+    // non-driving steps (Step 1 before starting, arrival, waiting),
+    // leaving the driver with no way to open Maps for the pickup.
+    const url = mapsUrl(targetPoint);
     const waiting = status === "DRIVER_ARRIVED" || stopWaiting;
     const blocked = busy || (info.confirm && completeBlocked);
 
