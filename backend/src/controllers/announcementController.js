@@ -3,8 +3,33 @@ const Driver = require("../models/Driver");
 const DriverDocument = require("../models/DriverDocument");
 const AdminAnnouncement = require("../models/AdminAnnouncement");
 const AnnouncementRead = require("../models/AnnouncementRead");
+const UserAppVersion = require("../models/UserAppVersion");
+const AppVersionConfig = require("../models/AppVersionConfig");
 
 const MAX_ANNOUNCEMENT_TARGETS = 5000;
+
+// Same "latest version" resolution as the bulk-notification filter:
+// the admin-set latest (AppVersionConfig, android) when present,
+// otherwise the highest version code any user has reported.
+async function getLatestVersion() {
+    const config = await AppVersionConfig.findOne({ platform: "android" })
+        .select("latestVersionCode latestVersionName")
+        .lean();
+    if (config) {
+        return {
+            latestVersionCode: config.latestVersionCode,
+            latestVersionName: config.latestVersionName,
+        };
+    }
+    const newest = await UserAppVersion.findOne({})
+        .sort({ appVersionCode: -1 })
+        .select("appVersionCode")
+        .lean();
+    return {
+        latestVersionCode: newest ? newest.appVersionCode : null,
+        latestVersionName: null,
+    };
+}
 
 function parseFilter(body) {
     const raw = body || {};
@@ -14,6 +39,7 @@ function parseFilter(body) {
             : "ALL";
     const driverDocuments =
         raw.driverDocuments === "NO_DOCUMENTS" ? "NO_DOCUMENTS" : "ALL";
+    const onlyNotUpdated = raw.onlyNotUpdated === true;
     let lastHours = null;
     if (raw.lastHours !== "" && raw.lastHours !== null && raw.lastHours !== undefined) {
         const parsed = Number(raw.lastHours);
@@ -22,7 +48,7 @@ function parseFilter(body) {
         }
         lastHours = parsed;
     }
-    return { audience, driverDocuments, lastHours };
+    return { audience, driverDocuments, lastHours, onlyNotUpdated };
 }
 
 // Same matching rules as the bulk-notification filters, except no
@@ -62,6 +88,34 @@ async function computeTargetUserIds(filter) {
         });
     }
 
+    // "Not on the latest app version": keep users whose last reported
+    // version is older than the admin-set latest version, plus users
+    // with no version row at all (builds older than the reporting
+    // feature report nothing, so no row means an old build). Users
+    // already on the latest version are excluded. Same rule as the
+    // bulk-notification filter. Needs no app change: the app already
+    // reports its version on launch/login, and targeting is computed
+    // server-side here at creation time.
+    if (filter.onlyNotUpdated) {
+        const latest = await getLatestVersion();
+        const rows = await UserAppVersion.find({
+            userId: { $in: users.map((user) => user._id) },
+        })
+            .select("userId appVersionCode")
+            .lean();
+        const versionByUser = new Map(
+            rows.map((row) => [String(row.userId), row.appVersionCode])
+        );
+        users = users.filter((user) => {
+            const reported = versionByUser.get(String(user._id));
+            if (reported === undefined) return true;
+            return (
+                latest.latestVersionCode !== null &&
+                reported < latest.latestVersionCode
+            );
+        });
+    }
+
     return users.map((user) => user._id);
 }
 
@@ -72,12 +126,18 @@ async function previewAnnouncementTargets(req, res) {
             return res.status(400).json({ success: false, message: filter.error });
         }
         const targetUserIds = await computeTargetUserIds(filter);
-        return res.json({
+        const response = {
             success: true,
             filter,
             targetCount: targetUserIds.length,
             limit: MAX_ANNOUNCEMENT_TARGETS,
-        });
+        };
+        if (filter.onlyNotUpdated) {
+            const latest = await getLatestVersion();
+            response.latestVersionCode = latest.latestVersionCode;
+            response.latestVersionName = latest.latestVersionName;
+        }
+        return res.json(response);
     } catch (error) {
         console.error("Announcement preview error:", error.message);
         return res.status(500).json({

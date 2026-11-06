@@ -31,6 +31,10 @@ const adminAnnouncementSchema = new mongoose.Schema(
                 enum: ["ALL", "NO_DOCUMENTS"],
                 default: "ALL",
             },
+            onlyNotUpdated: {
+                type: Boolean,
+                default: false,
+            },
         },
         targetUserIds: [
             {

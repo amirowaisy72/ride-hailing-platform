@@ -8,6 +8,7 @@ export default function AnnouncementsPage() {
     const [audience, setAudience] = useState("ALL");
     const [lastHours, setLastHours] = useState("");
     const [documents, setDocuments] = useState("ALL");
+    const [onlyNotUpdated, setOnlyNotUpdated] = useState(false);
     const [title, setTitle] = useState("");
     const [body, setBody] = useState("");
     const [preview, setPreview] = useState(null);
@@ -22,6 +23,7 @@ export default function AnnouncementsPage() {
             audience,
             lastHours: lastHours === "" ? null : Number(lastHours),
             driverDocuments: documents,
+            onlyNotUpdated,
         };
     }
 
@@ -161,6 +163,23 @@ export default function AnnouncementsPage() {
                                 <option value="NO_DOCUMENTS">No documents uploaded yet</option>
                             </select>
                         </label>
+                        <label className="flex items-start gap-3 text-sm font-bold">
+                            <input
+                                type="checkbox"
+                                checked={onlyNotUpdated}
+                                onChange={(event) => setOnlyNotUpdated(event.target.checked)}
+                                className="mt-1"
+                            />
+                            <span>
+                                Only users NOT on the latest app version
+                                <span className="block font-normal text-slate-500">
+                                    Users still on an older version, plus users who
+                                    never reported a version (older builds), are
+                                    included. Users already on the latest version
+                                    are excluded.
+                                </span>
+                            </span>
+                        </label>
                         <button
                             type="submit"
                             disabled={previewing}
@@ -186,6 +205,13 @@ export default function AnnouncementsPage() {
                             <p className="text-sm font-bold">
                                 Matched users: {preview.targetCount}
                             </p>
+                            {preview.filter?.onlyNotUpdated && (
+                                <p className="text-sm text-slate-500">
+                                    {preview.latestVersionCode
+                                        ? `Latest version: ${preview.latestVersionName || ""} (code ${preview.latestVersionCode}). Only users below it, plus users with no reported version, match.`
+                                        : "Latest version: not set anywhere — only users with no reported version match."}
+                                </p>
+                            )}
                             <form onSubmit={create} className="space-y-4">
                                 <label className="block text-sm font-bold">
                                     Title
