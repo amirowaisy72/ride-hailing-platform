@@ -14,6 +14,7 @@ export default function AnnouncementsPage() {
     const [preview, setPreview] = useState(null);
     const [previewing, setPreviewing] = useState(false);
     const [creating, setCreating] = useState(false);
+    const [confirming, setConfirming] = useState(false);
     const [list, setList] = useState([]);
     const [error, setError] = useState("");
     const [notice, setNotice] = useState("");
@@ -47,6 +48,7 @@ export default function AnnouncementsPage() {
         setPreviewing(true);
         setError("");
         setPreview(null);
+        setConfirming(false);
         try {
             const result = await authenticatedAdminRequest(
                 "/admin/announcements/preview",
@@ -62,17 +64,22 @@ export default function AnnouncementsPage() {
 
     async function create(event) {
         event.preventDefault();
-        if (!preview || preview.targetCount < 1) {
+        if (
+            !preview ||
+            preview.targetCount < 1
+        ) {
             setError("Preview targets first, and make sure at least one user matches.");
             return;
         }
-        if (
-            !window.confirm(
-                `Create this announcement for ${preview.targetCount} user(s)? Each will see it only once.`
-            )
-        ) {
+        // Two-step in-page confirm (no native window.confirm): the native
+        // dialog cannot be answered by automation or in some mobile
+        // browsers, which left the Create button dead. First click arms
+        // the button, second click sends.
+        if (!confirming) {
+            setConfirming(true);
             return;
         }
+        setConfirming(false);
         setCreating(true);
         setError("");
         setNotice("");
@@ -243,7 +250,9 @@ export default function AnnouncementsPage() {
                                 >
                                     {creating
                                         ? "Creating..."
-                                        : `Create for ${preview.targetCount} user(s)`}
+                                        : confirming
+                                          ? `Click again to confirm — send to ${preview.targetCount} user(s)`
+                                          : `Create for ${preview.targetCount} user(s)`}
                                 </button>
                             </form>
                         </div>
