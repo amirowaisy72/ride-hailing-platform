@@ -27,6 +27,7 @@ export default function CustomNotificationsPage() {
     const [bulkPreview, setBulkPreview] = useState(null);
     const [bulkPreviewing, setBulkPreviewing] = useState(false);
     const [bulkSending, setBulkSending] = useState(false);
+    const [bulkConfirming, setBulkConfirming] = useState(false);
     const [bulkError, setBulkError] = useState("");
     const [bulkMessage, setBulkMessage] = useState("");
     const [bulkHistory, setBulkHistory] = useState([]);
@@ -64,6 +65,7 @@ export default function CustomNotificationsPage() {
         setBulkError("");
         setBulkMessage("");
         setBulkPreview(null);
+        setBulkConfirming(false);
         try {
             const result = await authenticatedAdminRequest(
                 "/admin/notifications/bulk/preview",
@@ -83,13 +85,16 @@ export default function CustomNotificationsPage() {
             setBulkError("Preview recipients first, and make sure at least one push-enabled user matches.");
             return;
         }
-        if (
-            !window.confirm(
-                `Send this notification to ${Math.min(bulkPreview.pushEnabledCount, bulkPreview.sendLimit)} user(s)?`
-            )
-        ) {
+        // In-page confirm instead of window.confirm: native confirm dialogs
+        // are auto-dismissed by automated browsers, so the old confirm made
+        // every automated bulk send silently return here with no Sending
+        // state, no error and no history entry, while the same send worked
+        // from a real browser. First click arms the confirm, second sends.
+        if (!bulkConfirming) {
+            setBulkConfirming(true);
             return;
         }
+        setBulkConfirming(false);
         setBulkSending(true);
         setBulkError("");
         setBulkMessage("");
@@ -504,8 +509,19 @@ export default function CustomNotificationsPage() {
                                     <Send size={18} />
                                     {bulkSending
                                         ? "Sending..."
-                                        : `Send to ${Math.min(bulkPreview.pushEnabledCount, bulkPreview.sendLimit)} user(s)`}
+                                        : bulkConfirming
+                                          ? `Confirm: send to ${Math.min(bulkPreview.pushEnabledCount, bulkPreview.sendLimit)} user(s)? Click again to send`
+                                          : `Send to ${Math.min(bulkPreview.pushEnabledCount, bulkPreview.sendLimit)} user(s)`}
                                 </button>
+                                {bulkConfirming && !bulkSending && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setBulkConfirming(false)}
+                                        className="w-full rounded-xl border p-2 text-sm font-bold text-slate-600"
+                                    >
+                                        Cancel
+                                    </button>
+                                )}
                             </form>
                         </div>
                     )}
