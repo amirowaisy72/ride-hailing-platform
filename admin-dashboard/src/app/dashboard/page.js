@@ -149,6 +149,32 @@ function versionDelta(latest) {
     }
 }
 
+// Daily Averages checker (Important section): PKT calendar dates.
+// Pakistan has no daylight saving, so the fixed +05:00 shift is
+// correct — same rule as the backend daily-averages endpoint.
+const AVG_PKT_OFFSET_MS = 5 * 60 * 60 * 1000;
+function avgPktDateString(date) {
+    return new Date(date.getTime() + AVG_PKT_OFFSET_MS)
+        .toISOString()
+        .slice(0, 10);
+}
+function avgPktTodayString() {
+    return avgPktDateString(new Date());
+}
+function avgPktYesterdayString() {
+    return avgPktDateString(new Date(Date.now() - 24 * 60 * 60 * 1000));
+}
+
+// Gap colour: the gap is the headline — green under an hour,
+// amber 1–2 hours, red above 2 hours.
+function avgGapTone(minutes) {
+    if (minutes == null) return "text-slate-400";
+    const abs = Math.abs(minutes);
+    if (abs >= 120) return "text-red-600";
+    if (abs >= 60) return "text-amber-600";
+    return "text-[#087F5B]";
+}
+
 const statCards = [
     { key: "passengers", label: "Passengers", icon: Users },
     { key: "drivers", label: "Registered Drivers", icon: CarFront },
@@ -213,6 +239,31 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [lastUpdated, setLastUpdated] = useState(null);
+
+    // Daily Averages checker: day selector defaults to yesterday
+    // (the last complete day). Nothing loads until Check is
+    // pressed — the averages are on demand, not on page load.
+    const [avgDate, setAvgDate] = useState(() => avgPktYesterdayString());
+    const [avgResult, setAvgResult] = useState(null);
+    const [avgLoading, setAvgLoading] = useState(false);
+    const [avgError, setAvgError] = useState("");
+
+    const checkAverages = useCallback(async () => {
+        if (!avgDate) return;
+        setAvgLoading(true);
+        setAvgError("");
+        try {
+            const result = await authenticatedAdminRequest(
+                `/admin/operations/daily-averages?date=${avgDate}`
+            );
+            setAvgResult(result.dailyAverages || null);
+        } catch (err) {
+            setAvgError(err.message);
+            setAvgResult(null);
+        } finally {
+            setAvgLoading(false);
+        }
+    }, [avgDate]);
 
     const loadOverview = useCallback(async () => {
         setLoading(true);
@@ -936,6 +987,131 @@ export default function DashboardPage() {
                                     )}
                                 </p>
                             </Link>
+                        </div>
+
+                        {/* Daily Averages — passenger vs driver gap, checked on demand. */}
+                        <div className="mt-3 rounded-[22px] border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <p className="flex items-center gap-2 text-sm font-bold">
+                                        <Clock3 size={18} className="text-[#087F5B]" />
+                                        Daily Averages — Passengers vs Drivers
+                                    </p>
+                                    <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500">
+                                        Pick a day and check the gap between when
+                                        passengers request rides and when drivers
+                                        come online — so both can be brought to
+                                        the same time.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <input
+                                        type="date"
+                                        value={avgDate}
+                                        max={avgPktTodayString()}
+                                        onChange={(e) => setAvgDate(e.target.value)}
+                                        aria-label="Day to check"
+                                        className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={checkAverages}
+                                        disabled={avgLoading || !avgDate}
+                                        className="flex items-center gap-2 rounded-xl bg-[#087F5B] px-4 py-2 text-sm font-bold text-white disabled:opacity-50"
+                                    >
+                                        <Clock3
+                                            size={16}
+                                            className={avgLoading ? "animate-spin" : ""}
+                                        />
+                                        {avgLoading ? "Checking…" : "Check"}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {avgError && (
+                                <p
+                                    role="alert"
+                                    className="mt-3 rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-600"
+                                >
+                                    Unable to load daily averages: {avgError}
+                                </p>
+                            )}
+
+                            {avgResult && (
+                                <div className="mt-4">
+                                    {avgResult.gap?.minutes != null ? (
+                                        <>
+                                            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                                Gap · {avgResult.date}
+                                            </p>
+                                            <p
+                                                className={`mt-1 text-3xl font-extrabold ${avgGapTone(avgResult.gap.minutes)}`}
+                                            >
+                                                Gap: {avgResult.gap.label}
+                                            </p>
+                                            <p className="mt-1 text-sm text-slate-500">
+                                                {avgResult.gap.direction === "drivers-later"
+                                                    ? "Drivers came online later than passengers requested, on average."
+                                                    : avgResult.gap.direction === "passengers-later"
+                                                      ? "Passengers requested later than drivers came online, on average."
+                                                      : "Passengers and drivers came at the same time, on average."}
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <p className="text-sm text-slate-500">
+                                            {avgResult.passengers.rideCount === 0 &&
+                                            avgResult.drivers.driverCount === 0
+                                                ? `No rides requested and no drivers came online on ${avgResult.date}.`
+                                                : avgResult.drivers.driverCount === 0
+                                                  ? `No drivers came online on ${avgResult.date} — no gap to show.`
+                                                  : `No rides requested on ${avgResult.date} — no gap to show.`}
+                                        </p>
+                                    )}
+
+                                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                        <div className="rounded-2xl bg-slate-50 p-4">
+                                            <p className="text-xs font-bold text-slate-500">
+                                                Avg passenger request time
+                                            </p>
+                                            <p className="mt-1 text-2xl font-extrabold">
+                                                {avgResult.passengers.avgRequestTime || "—"}
+                                            </p>
+                                            <p className="mt-1 text-xs text-slate-500">
+                                                {avgResult.passengers.rideCount} ride
+                                                {avgResult.passengers.rideCount === 1 ? "" : "s"} requested
+                                                that day
+                                            </p>
+                                        </div>
+                                        <div className="rounded-2xl bg-slate-50 p-4">
+                                            <p className="text-xs font-bold text-slate-500">
+                                                Avg driver online time
+                                            </p>
+                                            <p className="mt-1 text-2xl font-extrabold">
+                                                {avgResult.drivers.avgOnlineTime || "—"}
+                                            </p>
+                                            <p className="mt-1 text-xs text-slate-500">
+                                                {avgResult.drivers.driverCount} driver
+                                                {avgResult.drivers.driverCount === 1 ? "" : "s"} came
+                                                online that day
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {avgResult.isToday && (
+                                        <p className="mt-3 text-xs text-slate-400">
+                                            Today is still in progress — partial day.
+                                        </p>
+                                    )}
+                                    {!avgResult.drivers.dataAvailable && (
+                                        <p className="mt-3 text-xs text-slate-400">
+                                            Driver online recording started{" "}
+                                            {avgResult.drivers.dataSince ||
+                                                "with this update"}{" "}
+                                            — driver averages appear for days after that.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </section>
                 )}

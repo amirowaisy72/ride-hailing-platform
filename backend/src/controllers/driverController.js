@@ -1,5 +1,6 @@
 
 const Driver = require("../models/Driver");
+const DriverOnlineEvent = require("../models/DriverOnlineEvent");
 const Vehicle = require("../models/Vehicle");
 const DriverDocument = require("../models/DriverDocument");
 const Ride = require("../models/Ride");
@@ -8,6 +9,7 @@ const { publishEvent } = require("../services/socketService");
 const {
     hasAnyEligibleService,
 } = require("../services/eligibilityService");
+const { pktDateString } = require("../services/dailyAveragesService");
 
 const registerDriver = async (req, res) => {
     try {
@@ -216,10 +218,34 @@ const updateOnlineStatus = async (req, res) => {
             });
         }
 
+        // ADDITIVE ONLY: remember the pre-toggle state so the
+        // transition below can be logged for the admin Daily
+        // Averages (passenger vs driver gap). The log write is
+        // fire-and-forget and can never fail this toggle.
+        const wasOnline = driver.isOnline === true;
+
         driver.isOnline = isOnline;
         driver.isAvailable = isOnline && !activeTrip && !activeParcel;
 
         await driver.save();
+
+        // Record the online transition for Daily Averages. Only the
+        // false -> true moment matters for "when did drivers come
+        // online"; the true -> false close just stamps offlineAt.
+        // No await: a logging failure must never fail the toggle
+        // or delay the driver's response.
+        if (isOnline && !wasOnline) {
+            DriverOnlineEvent.create({
+                driverId: driver._id,
+                date: pktDateString(new Date()),
+                onlineAt: new Date(),
+            }).catch(() => {});
+        } else if (!isOnline && wasOnline) {
+            DriverOnlineEvent.updateMany(
+                { driverId: driver._id, offlineAt: null },
+                { $set: { offlineAt: new Date() } }
+            ).catch(() => {});
+        }
 
         return res.json({
             success: true,
