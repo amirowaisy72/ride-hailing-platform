@@ -243,10 +243,20 @@ export default function DashboardPage() {
     // Daily Averages checker: day selector defaults to yesterday
     // (the last complete day). Nothing loads until Check is
     // pressed — the averages are on demand, not on page load.
-    const [avgDate, setAvgDate] = useState(() => avgPktYesterdayString());
+    // The defaults start empty and are set after mount: reading
+    // the current time during render breaks the production
+    // prerender (Next.js rejects Date.now() in Client Components —
+    // this failed the Vercel deploy of commit a1895281).
+    const [avgDate, setAvgDate] = useState("");
+    const [avgMaxDate, setAvgMaxDate] = useState("");
     const [avgResult, setAvgResult] = useState(null);
     const [avgLoading, setAvgLoading] = useState(false);
     const [avgError, setAvgError] = useState("");
+
+    useEffect(() => {
+        setAvgDate(avgPktYesterdayString());
+        setAvgMaxDate(avgPktTodayString());
+    }, []);
 
     const checkAverages = useCallback(async () => {
         if (!avgDate) return;
@@ -1008,7 +1018,7 @@ export default function DashboardPage() {
                                     <input
                                         type="date"
                                         value={avgDate}
-                                        max={avgPktTodayString()}
+                                        max={avgMaxDate || undefined}
                                         onChange={(e) => setAvgDate(e.target.value)}
                                         aria-label="Day to check"
                                         className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold"
