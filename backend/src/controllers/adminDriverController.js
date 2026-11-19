@@ -465,6 +465,28 @@ const reviewDriverDocument = async (req, res) => {
 
         await document.save();
 
+        // One approval settles the document: any other still-waiting
+        // rows of the same type are the same document uploaded again,
+        // so mark them as duplicates instead of leaving them in the
+        // review queue (or getting approved a second time).
+        if (status === "APPROVED") {
+            await DriverDocument.updateMany(
+                {
+                    _id: { $ne: document._id },
+                    driverId: document.driverId,
+                    documentType: document.documentType,
+                    verificationStatus: "PENDING",
+                },
+                {
+                    $set: {
+                        verificationStatus: "REJECTED",
+                        rejectionReason:
+                            "Duplicate upload — this document was already approved.",
+                    },
+                }
+            );
+        }
+
         // Vehicle double-approval fix: approving the Vehicle
         // Registration document also approves the driver's pending
         // vehicles, so an approved driver no longer waits a second
