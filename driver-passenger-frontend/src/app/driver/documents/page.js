@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
     ArrowLeft, UploadCloud, FileCheck2,
@@ -56,6 +56,36 @@ function DocumentUploadScreen() {
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
 
+    // Load the server's record on open, so a document that is already
+    // uploaded (or approved) shows as such instead of "not uploaded
+    // yet". Before this, `uploaded` started empty on every visit and
+    // was only set by an upload in the same page session, so reopening
+    // the page always looked like nothing had been uploaded. Uses the
+    // backend GET /drivers/me/documents added in commit e5423af2.
+    useEffect(() => {
+        if (!token) return;
+        (async () => {
+            try {
+                const response = await fetch(
+                    `${API_URL}/drivers/me/documents`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                const result = await response.json();
+                if (!response.ok || !result.success) return;
+                const byType = {};
+                for (const doc of result.documents || []) {
+                    if (!byType[doc.documentType]) {
+                        byType[doc.documentType] = doc;
+                    }
+                }
+                setUploaded(byType);
+            } catch {
+                // Leave the page usable if the list cannot load;
+                // uploading still works.
+            }
+        })();
+    }, [token]);
+
     function selectFile(type, file) {
         if (!file) return;
 
@@ -64,8 +94,8 @@ function DocumentUploadScreen() {
             return;
         }
 
-        if (file.size > 5 * 1024 * 1024) {
-            setError("Maximum file size is 5 MB.");
+        if (file.size > 10 * 1024 * 1024) {
+            setError("Maximum file size is 10 MB.");
             return;
         }
 
@@ -215,7 +245,14 @@ function DocumentUploadScreen() {
 
                             {uploaded[doc.type] && (
                                 <span className="rounded-lg bg-pd-warning-soft px-3 py-2 text-xs font-bold text-pd-warning">
-                                    Uploaded
+                                    {uploaded[doc.type].verificationStatus ===
+                                    "APPROVED"
+                                        ? "Approved"
+                                        : uploaded[doc.type]
+                                              .verificationStatus ===
+                                          "REJECTED"
+                                        ? "Rejected — upload again"
+                                        : "Uploaded"}
                                 </span>
                             )}
                         </div>
@@ -276,7 +313,13 @@ function DocumentUploadScreen() {
 
                         {uploaded[doc.type] && (
                             <p className="mt-3 text-xs text-pd-warning">
-                                Submitted for admin verification.
+                                {uploaded[doc.type].verificationStatus ===
+                                "APPROVED"
+                                    ? "Approved by admin."
+                                    : uploaded[doc.type].verificationStatus ===
+                                      "REJECTED"
+                                    ? "Rejected by admin — please upload again."
+                                    : "Submitted for admin verification."}
                             </p>
                         )}
                     </section>
