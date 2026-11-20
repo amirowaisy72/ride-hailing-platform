@@ -19,6 +19,7 @@ const {
     getRentalBookingDetails,
     getRentalFeeInstructions,
     submitRentalFeePayment,
+    submitRentalRentPayment,
     getRentalPickupOtp,
     confirmRentalReturn,
     getPartnerRentalBookings,
@@ -171,6 +172,14 @@ router.post(
     protect,
     authorize("PASSENGER", "DRIVER"),
     submitRentalFeePayment
+);
+// Rent paid TO the platform (To-Do #3): passenger submits the rent
+// payment proof; admin verifies it. Never gates confirmation.
+router.post(
+    "/bookings/:id/pay-rent",
+    protect,
+    authorize("PASSENGER"),
+    submitRentalRentPayment
 );
 router.post(
     "/bookings/:id/pickup-otp",

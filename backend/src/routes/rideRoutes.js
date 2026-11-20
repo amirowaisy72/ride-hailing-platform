@@ -127,6 +127,14 @@ const { getMessages, sendMessage } = require("../controllers/rideChatController"
 router.get("/:rideId/messages", protect, getMessages);
 router.post("/:rideId/messages", protect, sendMessage);
 
+// Passenger No-Show Fix (To-Do #1): pre-departure pickup
+// confirmation (passenger) + ride contact for the call/chat hookup
+// (either party of an assigned ride). No role restriction beyond
+// protect — both handlers resolve the caller from the ride itself.
+const { confirmPickup, getRideContact } = require("../controllers/ridePickupController");
+router.post("/:rideId/confirm-pickup", protect, authorize("PASSENGER"), confirmPickup);
+router.get("/:rideId/contact", protect, getRideContact);
+
 const { nearbyDriversForRide } = require("../controllers/nearbyDriverController");
 router.get("/:rideId/nearby-drivers", protect, authorize("PASSENGER"), nearbyDriversForRide);
 

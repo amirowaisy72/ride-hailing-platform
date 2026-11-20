@@ -51,6 +51,7 @@ router.get("/me", protect, (req, res) => {
             firstName: req.user.firstName,
             lastName: req.user.lastName,
             email: req.user.email,
+            phone: req.user.phone || null,
             role: req.user.role,
             activeMode: req.user.activeMode || "PASSENGER",
         },

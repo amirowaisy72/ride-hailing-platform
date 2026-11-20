@@ -72,6 +72,41 @@ const userSchema = new mongoose.Schema(
             type: String,
             default: null,
         },
+        // Passenger No-Show Fix (To-Do #1): repeat no-show
+        // warning/counter on the passenger record. Counts rides the
+        // driver cancelled as a passenger no-show after the 5-minute
+        // arrival wait; the warning timestamp marks when the passenger
+        // was last warned about repeat no-shows.
+        rideNoShowCount: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+        rideNoShowWarningAt: {
+            type: Date,
+            default: null,
+        },
+        // Invite System (To-Do #6): per-user unique invite code.
+        // ADDITIVE optional — existing users have none until one is
+        // generated on first use. invitedBy records who invited this
+        // user (signup attribution only); NO reward logic attached.
+        inviteCode: {
+            type: String,
+            trim: true,
+            uppercase: true,
+            unique: true,
+            sparse: true,
+            default: null,
+        },
+        invitedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+        invitedAt: {
+            type: Date,
+            default: null,
+        },
     },
     { timestamps: true }
 );

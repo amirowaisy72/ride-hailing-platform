@@ -12,6 +12,10 @@ const {
     verifyRentalFeePayment,
     confirmRentalBookingFree,
     rejectRentalFeePayment,
+    listPendingRentPayments,
+    verifyRentalRentPayment,
+    rejectRentalRentPayment,
+    markPartnerPayoutPaid,
     markRentalFeeRefunded,
     getSuspiciousCancellations,
     resolveRentalDispute,
@@ -41,6 +45,16 @@ router.post("/bookings/:id/verify-payment", verifyRentalFeePayment);
 router.post("/bookings/:id/confirm-free", confirmRentalBookingFree);
 router.post("/bookings/:id/reject-payment", rejectRentalFeePayment);
 router.post("/bookings/:id/mark-refunded", markRentalFeeRefunded);
+
+// Rent paid TO the platform (To-Do #3): verification queue + payout.
+// NOTE: confirm-free (POST /bookings/:id/confirm-free) already exists
+// on origin/main (live 1.0.7) but NOT in this checkout (67 commits
+// behind) — it is deliberately NOT re-implemented here; this checkout
+// catches up to it by merging main. These rent/payout routes are new.
+router.get("/rent-payments/pending", listPendingRentPayments);
+router.post("/bookings/:id/verify-rent-payment", verifyRentalRentPayment);
+router.post("/bookings/:id/reject-rent-payment", rejectRentalRentPayment);
+router.post("/bookings/:id/mark-payout-paid", markPartnerPayoutPaid);
 
 // Booking management
 router.get("/bookings", listRentalBookingsAdmin);

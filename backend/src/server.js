@@ -76,6 +76,9 @@ app.use("/api/v1/locations", locationRoutes);
 app.use("/api/v1/service-areas", serviceAreaRoutes);
 app.use("/api/v1/admin/service-areas", serviceAreaRoutes);
 app.use("/api/v1/rides", rideRoutes);
+app.use("/api/v1/safety", require("./routes/safetyRoutes").safetyUserRouter);
+app.use("/api/v1/admin/safety", require("./routes/safetyRoutes").safetyAdminRouter);
+app.use("/api/v1/invites", require("./routes/inviteRoutes"));
 app.use("/api/v1/parcels", require("./routes/parcelRoutes"));
 app.use("/api/v1/purchases", require("./routes/purchaseRoutes"));
 app.use(

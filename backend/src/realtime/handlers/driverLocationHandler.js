@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { recordTrailPoint } = require("../../services/rideTrailService");
 
 // ---------------------------------------------------------------------
 // GPS eligibility gate (Phase 8 finding fix).
@@ -279,6 +280,11 @@ const registerDriverLocationHandler = (io, socket) => {
                     longitude,
                     updatedAt: new Date().toISOString(),
                 });
+
+                // Safety GPS trail (To-Do #5, item d): sampled trail
+                // point for the FIR pack. Best-effort, never fails
+                // the location update.
+                void recordTrailPoint(activeRide._id, driver._id, latitude, longitude);
             }
 
 
