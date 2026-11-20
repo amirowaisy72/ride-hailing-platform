@@ -1,3 +1,9 @@
+// Version of this codebase (see config/appVersion). Sent on every
+// request so the backend can enforce new-version-only rules while
+// old apps (which send no version header) keep working exactly as
+// today. Never remove this header.
+import { APP_VERSION_CODE } from "@/config/appVersion";
+
 const API_URL =
     process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
 
@@ -12,6 +18,7 @@ export async function apiRequest(path, options = {}) {
                 ...requestOptions,
                 signal: AbortSignal.timeout(45000),
                 headers: {
+                    "X-App-Version-Code": String(APP_VERSION_CODE),
                     ...(requestOptions.body && !(requestOptions.body instanceof FormData)
                         ? { "Content-Type": "application/json" }
                         : {}),

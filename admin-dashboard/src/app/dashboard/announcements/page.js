@@ -11,6 +11,7 @@ export default function AnnouncementsPage() {
     const [onlyNotUpdated, setOnlyNotUpdated] = useState(false);
     const [title, setTitle] = useState("");
     const [body, setBody] = useState("");
+    const [expiresAt, setExpiresAt] = useState("");
     const [preview, setPreview] = useState(null);
     const [previewing, setPreviewing] = useState(false);
     const [creating, setCreating] = useState(false);
@@ -92,6 +93,7 @@ export default function AnnouncementsPage() {
                         ...filters(),
                         title: title.trim(),
                         body: body.trim(),
+                        ...(expiresAt ? { expiresAt } : {}),
                     }),
                 }
             );
@@ -101,6 +103,7 @@ export default function AnnouncementsPage() {
             setPreview(null);
             setTitle("");
             setBody("");
+            setExpiresAt("");
             loadList();
         } catch (err) {
             setError(err.message);
@@ -242,6 +245,18 @@ export default function AnnouncementsPage() {
                                         rows={4}
                                         className="mt-2 w-full rounded-xl border p-3 font-normal"
                                     />
+                                </label>
+                                <label className="block text-sm font-bold">
+                                    Stop showing after (optional)
+                                    <input
+                                        type="datetime-local"
+                                        value={expiresAt}
+                                        onChange={(event) => setExpiresAt(event.target.value)}
+                                        className="mt-2 w-full rounded-xl border p-3 font-normal"
+                                    />
+                                    <span className="mt-1 block font-normal text-slate-500">
+                                        Leave empty and the announcement shows until you deactivate it.
+                                    </span>
                                 </label>
                                 <button
                                     type="submit"

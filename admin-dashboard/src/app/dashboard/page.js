@@ -236,6 +236,13 @@ export default function DashboardPage() {
     const [overview, setOverview] = useState(null);
     const [important, setImportant] = useState(null);
     const [importantDelta, setImportantDelta] = useState(null);
+    // Per-version user counts for the Latest App Version card, from
+    // GET /admin/app-version/usage (already served by the backend:
+    // versions: [{ appVersion, appVersionCode, users }] newest-first,
+    // plus totalUsers / reportedUsers / unknownUsers). Null until
+    // loaded — the card falls back to its old "latest · unknown"
+    // line, so an older backend or a failed fetch never blanks it.
+    const [versionUsage, setVersionUsage] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [lastUpdated, setLastUpdated] = useState(null);
@@ -312,6 +319,18 @@ export default function DashboardPage() {
             setImportant(null);
         } finally {
             setLoading(false);
+        }
+
+        // Per-version breakdown for the Latest App Version card.
+        // Loads independently like Important above: if it fails,
+        // the card keeps its old "latest · unknown" line.
+        try {
+            const usage = await authenticatedAdminRequest(
+                "/admin/app-version/usage"
+            );
+            setVersionUsage(usage);
+        } catch {
+            setVersionUsage(null);
         }
     }, []);
 
@@ -1255,10 +1274,33 @@ export default function DashboardPage() {
                                             {important.appVersion.latestVersionName}
                                         </p>
                                         <p className="mt-2 text-xs leading-5 text-slate-500">
-                                            <span className="block">
-                                                {important.appVersion.latestUsers} users on latest
-                                                · {important.appVersion.unknownUsers} unknown.
-                                            </span>
+                                            {Array.isArray(versionUsage?.versions) ? (
+                                                <>
+                                                    {versionUsage.versions.map((row) => (
+                                                        <span key={row.appVersionCode} className="block">
+                                                            {row.appVersion} — {row.users} user{row.users === 1 ? "" : "s"}
+                                                            {row.appVersionCode === important.appVersion.latestVersionCode && (
+                                                                <span className="font-bold text-[#087F5B]"> · latest</span>
+                                                            )}
+                                                        </span>
+                                                    ))}
+                                                    {versionUsage.unknownUsers > 0 && (
+                                                        <span className="block">
+                                                            Unknown — {versionUsage.unknownUsers} user{versionUsage.unknownUsers === 1 ? "" : "s"}
+                                                        </span>
+                                                    )}
+                                                    {versionUsage.versions.length === 0 && versionUsage.unknownUsers === 0 && (
+                                                        <span className="block">
+                                                            No users yet.
+                                                        </span>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <span className="block">
+                                                    {important.appVersion.latestUsers} users on latest
+                                                    · {important.appVersion.unknownUsers} unknown.
+                                                </span>
+                                            )}
                                             {importantDelta !== null && (
                                                 <span className="block font-bold text-[#087F5B]">
                                                     +{importantDelta} more people are on latest version now.

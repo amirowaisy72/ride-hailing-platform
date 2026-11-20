@@ -33,6 +33,8 @@ const navigation = [
     { label: "Buy & Deliver", href: "/dashboard/buy-deliver", icon: ShoppingBag },
     { label: "Rentals", href: "/dashboard/rentals", icon: KeyRound },
     { label: "Complaints", href: "/dashboard/complaints", icon: Flag },
+    // Safety (To-Do #5, Phase 1): SOS / panic alerts from active rides.
+    { label: "SOS Alerts", href: "/dashboard/sos-alerts", icon: Flag },
     { label: "Feedbacks", href: "/dashboard/feedbacks", icon: Flag },
     { label: "Wallets", href: "/dashboard/wallets", icon: Wallet },
     { label: "Settlements", href: "/dashboard/settlements", icon: CircleDollarSign },
