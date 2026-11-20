@@ -9,6 +9,7 @@ import {
     CarFront,
     History,
     LayoutGrid,
+    UserPlus,
     UserRound,
     Wallet,
 } from "lucide-react";
@@ -16,6 +17,8 @@ import {
 const passengerLinks = [
     { labelKey: "nav.home", href: "/passenger", icon: House },
     { labelKey: "nav.myRides", href: "/passenger/trips", icon: History },
+    // Invite System (To-Do #6): any user can invite others.
+    { labelKey: "nav.invite", href: "/invite", icon: UserPlus },
     { labelKey: "nav.account", href: "/passenger/account", icon: UserRound },
 ];
 
@@ -24,6 +27,8 @@ const driverLinks = [
     { labelKey: "nav.trips", href: "/driver/trips", icon: CarFront },
     { labelKey: "nav.services", href: "/driver/services", icon: LayoutGrid },
     { labelKey: "nav.earnings", href: "/driver/earnings", icon: Wallet },
+    // Invite System (To-Do #6): any user can invite others.
+    { labelKey: "nav.invite", href: "/invite", icon: UserPlus },
     { labelKey: "nav.account", href: "/driver/account", icon: UserRound },
 ];
 

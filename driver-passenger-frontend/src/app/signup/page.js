@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiRequest } from "@/lib/api";
+import { normalizePkPhone, isValidPkPhone, PK_PHONE_HINT } from "@/lib/phone";
 import { BRAND } from "@/config/brand";
 import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 import { useAuth } from "@/context/AuthContext";
@@ -48,7 +49,7 @@ const FIELD_MESSAGES = {
         valueMissing: "Please create a password.",
         tooShort: "Your password must be at least 8 characters.",
     },
-    phone: {},
+    phone: { valueMissing: "Please enter your phone number." },
 };
 
 function messageFor(input) {
@@ -70,6 +71,10 @@ export default function SignupPage() {
         email: "",
         phone: "",
         password: "",
+        // Invite System (To-Do #6): optional — prefilled from an invite
+        // link (?invite=CODE) and carried through the OTP step to the
+        // backend. A wrong code never blocks signup (server ignores it).
+        inviteCode: "",
     });
     const [role, setRole] = useState(null);
     const [stepIndex, setStepIndex] = useState(0);
@@ -119,9 +124,12 @@ export default function SignupPage() {
         });
 
         if (currentStep === "phone") {
-            const cleanPhone = (form.phone || "").replace(/[\s-]/g, "").trim();
-            if (cleanPhone && !/^\+?\d{10,15}$/.test(cleanPhone)) {
-                errors.phone = "Please enter a valid phone number.";
+            // Mobile number is MANDATORY for new signups (this app
+            // is version code 10; the backend enforces it only for
+            // clients sending X-App-Version-Code >= 10, so older
+            // apps keep the old phone-optional behaviour).
+            if (!normalizePkPhone(form.phone)) {
+                errors.phone = "Please enter a valid Pakistani mobile number.";
                 firstInvalid ??= stepRef.current?.querySelector("input[name='phone']");
             }
         }
@@ -155,11 +163,6 @@ export default function SignupPage() {
         setTimeout(() => setStepIndex((i) => (i === 0 ? 1 : i)), 220);
     }
 
-    function skipPhone() {
-        updateField("phone", "");
-        goTo(stepIndex + 1);
-    }
-
     function handleFormSubmit(e) {
         e.preventDefault();
         if (isReview) {
@@ -169,6 +172,12 @@ export default function SignupPage() {
         goNext();
     }
 
+    // Prefill the invite code from a shared invite link (?invite=CODE).
+    useEffect(() => {
+        const code = new URLSearchParams(window.location.search).get("invite");
+        if (code) setForm((prev) => (prev.inviteCode ? prev : { ...prev, inviteCode: code.trim().toUpperCase() }));
+    }, []);
+
     async function submit(e) {
         e.preventDefault();
         if (loading) return;
@@ -177,10 +186,13 @@ export default function SignupPage() {
 
         try {
             const email = form.email.trim().toLowerCase();
-            const cleanPhone = (form.phone || "").replace(/[\s-]/g, "").trim();
-
-            if (cleanPhone && !/^\+?\d{10,15}$/.test(cleanPhone)) {
-                throw new Error("Please enter a valid phone number.");
+            // Mobile number is MANDATORY for every signup (passenger
+            // and driver): a valid Pakistani number, no bypass.
+            const normalizedPhone = normalizePkPhone(form.phone);
+            if (!normalizedPhone) {
+                throw new Error(
+                    `A valid Pakistani mobile number is required. ${PK_PHONE_HINT}`
+                );
             }
 
             const withTimeout = (promise, step) =>
@@ -203,6 +215,7 @@ export default function SignupPage() {
                     method: "POST",
                     body: JSON.stringify({
                         ...form,
+                        phone: normalizedPhone,
                         email,
                         role: selectedRole,
                     }),
@@ -222,7 +235,7 @@ export default function SignupPage() {
 
             sessionStorage.setItem(
                 "safar-pending-signup",
-                JSON.stringify({ ...form, email, role: selectedRole })
+                JSON.stringify({ ...form, phone: normalizedPhone, email, role: selectedRole })
             );
 
             router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
@@ -252,7 +265,7 @@ export default function SignupPage() {
 
             const data = await apiRequest("/auth/google", {
                 method: "POST",
-                body: JSON.stringify({ idToken }),
+                body: JSON.stringify({ idToken, inviteCode: form.inviteCode || undefined }),
             });
 
             if (!data.accessToken || !data.refreshToken) {
@@ -268,6 +281,14 @@ export default function SignupPage() {
                 profile.user,
                 data.refreshToken
             );
+
+            // Google sign-in creates an account with NO phone number.
+            // Mobile is mandatory: send the user to add a valid
+            // Pakistani number before they can use the app.
+            if (!isValidPkPhone(profile.user?.phone)) {
+                router.replace("/complete-phone");
+                return;
+            }
 
             router.replace(
                 profile.user.activeMode === "DRIVER"
@@ -454,20 +475,22 @@ export default function SignupPage() {
                             <>
                                 <StepHeading
                                     title="What is your phone number?"
-                                    subtitle="Optional. It helps drivers and passengers reach you during a ride."
+                                    subtitle="Required — drivers and passengers need it to reach you during a ride."
                                 />
                                 <AuthField
                                     id="signup-phone"
                                     name="phone"
-                                    label="Phone Number (optional)"
+                                    label="Phone Number"
                                     icon={Phone}
                                     type="tel"
                                     inputMode="tel"
                                     autoComplete="tel"
+                                    required
                                     maxLength={20}
                                     autoFocus
                                     size="lg"
                                     placeholder="+92 300 1234567"
+                                    hint={PK_PHONE_HINT}
                                     value={form.phone}
                                     onChange={(e) => updateField("phone", e.target.value)}
                                     error={fieldErrors.phone}
@@ -476,12 +499,31 @@ export default function SignupPage() {
                         )}
 
                         {isReview && (
-                            <ReviewStep
-                                role={role}
-                                form={form}
-                                onEdit={(step) => goTo(STEPS.indexOf(step))}
-                                disabled={loading}
-                            />
+                            <>
+                                <ReviewStep
+                                    role={role}
+                                    form={form}
+                                    onEdit={(step) => goTo(STEPS.indexOf(step))}
+                                    disabled={loading}
+                                />
+                                {/* Invite System (To-Do #6): optional — prefilled
+                                    from ?invite=CODE above; a wrong code never
+                                    blocks signup (server ignores it). */}
+                                <AuthField
+                                    id="signup-invite-code"
+                                    name="inviteCode"
+                                    label="Invite code (optional)"
+                                    type="text"
+                                    autoComplete="off"
+                                    maxLength={32}
+                                    size="lg"
+                                    placeholder="Enter an invite code if you have one"
+                                    value={form.inviteCode}
+                                    onChange={(e) =>
+                                        updateField("inviteCode", e.target.value.toUpperCase())
+                                    }
+                                />
+                            </>
                         )}
                     </section>
 
@@ -510,16 +552,6 @@ export default function SignupPage() {
                                     aria-hidden="true"
                                 />
                             </PrimaryButton>
-                        )}
-
-                        {currentStep === "phone" && (
-                            <button
-                                type="button"
-                                onClick={skipPhone}
-                                className="h-11 rounded-2xl text-sm font-semibold text-pd-muted transition-colors hover:text-pd-text outline-none focus-visible:ring-2 focus-visible:ring-pd-accent"
-                            >
-                                Skip for now
-                            </button>
                         )}
 
                         {currentStep === "role" && (

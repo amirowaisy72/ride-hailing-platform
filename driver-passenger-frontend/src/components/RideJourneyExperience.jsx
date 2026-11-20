@@ -5,6 +5,8 @@ import {
     Banknote, Car, Check, ChevronDown, Clock3, Flag, Map as MapIcon, MapPin, Navigation, Phone, Star, X,
 } from "lucide-react";
 import DriverProfileCard from "@/components/DriverProfileCard";
+import SosButton from "@/components/SosButton";
+import ShareTripButton from "@/components/ShareTripButton";
 import { apiRequest } from "@/lib/api";
 import {
     describeDriver, formatArrival, formatPKR, getInitials, getVehicle, placeLabel,
@@ -272,6 +274,13 @@ export default function RideJourneyExperience({
                                 )}
                             </div>
                         )}
+                    </div>
+
+                    {/* Safety (To-Do #5, Phase 1): SOS + live-trip sharing,
+                        on every active-ride screen. */}
+                    <div className="mt-3 space-y-2">
+                        <SosButton rideId={ride._id} token={token} />
+                        <ShareTripButton rideId={ride._id} token={token} />
                     </div>
 
                     {tripStarted && stops.length > 0 && (

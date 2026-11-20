@@ -13,6 +13,7 @@ import {
 
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
+import { normalizePkPhone, PK_PHONE_HINT } from "@/lib/phone";
 
 export default function EditProfileScreen({ role }) {
     const { token } = useAuth();
@@ -63,15 +64,18 @@ export default function EditProfileScreen({ role }) {
 
         const first = firstName.trim();
         const last = lastName.trim();
-        const cleanPhone = phone.replace(/[\s-]/g, "").trim();
+        // Mobile number is MANDATORY: a valid Pakistani number.
+        const normalizedPhone = normalizePkPhone(phone);
 
         if (!first || !last || first.length > 80 || last.length > 80) {
             setError("First and last names must be 1–80 characters.");
             return;
         }
 
-        if (cleanPhone && !/^\+?\d{10,15}$/.test(cleanPhone)) {
-            setError("Please enter a valid phone number.");
+        if (!normalizedPhone) {
+            setError(
+                `A valid Pakistani mobile number is required. ${PK_PHONE_HINT}`
+            );
             return;
         }
 
@@ -86,7 +90,7 @@ export default function EditProfileScreen({ role }) {
                 body: JSON.stringify({
                     firstName: first,
                     lastName: last,
-                    phone: cleanPhone,
+                    phone: normalizedPhone,
                 }),
             });
 
@@ -203,7 +207,7 @@ export default function EditProfileScreen({ role }) {
                                     htmlFor="phone"
                                     className="mb-2 block text-sm font-bold"
                                 >
-                                    Phone Number
+                                    Phone Number *
                                 </label>
 
                                 <input
@@ -214,11 +218,12 @@ export default function EditProfileScreen({ role }) {
                                     autoComplete="tel"
                                     inputMode="tel"
                                     disabled={saving}
+                                    required
                                     className="w-full rounded-xl border border-pd-line px-4 py-3 outline-none focus:border-[#087F5B]"
-                                    placeholder="e.g. 03xx xxxxxxx"
+                                    placeholder="e.g. 0301-2345678"
                                 />
                                 <p className="mt-1 text-xs text-pd-muted">
-                                    Support can call you on this number.
+                                    Required — {PK_PHONE_HINT} Support can call you on this number.
                                 </p>
                             </div>
 
