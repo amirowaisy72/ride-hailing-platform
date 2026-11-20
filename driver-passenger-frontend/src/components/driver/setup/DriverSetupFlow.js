@@ -202,7 +202,7 @@ function DocumentsStep({ docs, doneCount, welcome, uploadingDoc, error, onUpload
                     allowReplace
                         ? "Replace the documents that need changes, then continue."
                         : welcome
-                            ? "Your account is ready. Let us set it up in a few easy steps. First, upload 4 documents."
+                            ? "Your account is ready. Let us set it up in a few easy steps. First, upload 5 documents."
                             : `${doneCount} of ${SETUP_DOCS.length} uploaded. Take a clear photo of each one.`
                 }
             />
@@ -230,7 +230,7 @@ function DocumentsStep({ docs, doneCount, welcome, uploadingDoc, error, onUpload
                     Continue
                 </button>
                 {!canContinue && (
-                    <p className="mt-3 text-center text-base text-pd-muted">Upload all 4 documents to continue.</p>
+                    <p className="mt-3 text-center text-base text-pd-muted">Upload all 5 documents to continue.</p>
                 )}
             </div>
         </>

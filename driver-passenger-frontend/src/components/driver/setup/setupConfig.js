@@ -1,12 +1,20 @@
 // Shared constants for the guided driver setup. The document list and
 // expiry rules mirror what the backend already requires for motor
 // services (CNIC front/back, driving license, vehicle registration).
+// Two To-Do items land here: (8) a vehicle photo with the number plate
+// clearly readable is a required wizard step, and (12) vehicle
+// registration has NO expiry date — only the driving license does.
+// NOTE for (12): the backend upload endpoint must match —
+// driverDocumentController.js still lists VEHICLE_REGISTRATION in
+// requiresExpiry, so remove it there or a no-expiry registration
+// upload gets a 400.
 
 export const SETUP_DOCS = [
     { type: "CNIC_FRONT", title: "CNIC Front", hint: "The front of your ID card", icon: "IdCard", needsExpiry: false },
     { type: "CNIC_BACK", title: "CNIC Back", hint: "The back of your ID card", icon: "IdCard", needsExpiry: false },
     { type: "DRIVING_LICENSE", title: "Driving License", hint: "Your valid driving license", icon: "Car", needsExpiry: true },
-    { type: "VEHICLE_REGISTRATION", title: "Vehicle Registration", hint: "Your vehicle registration book or card", icon: "FileText", needsExpiry: true },
+    { type: "VEHICLE_REGISTRATION", title: "Vehicle Registration", hint: "Your vehicle registration book or card", icon: "FileText", needsExpiry: false },
+    { type: "VEHICLE_PHOTO", title: "Vehicle Photo", hint: "A clear photo of your vehicle with the number plate clearly readable", icon: "Car", needsExpiry: false },
 ];
 
 export const SETUP_STEPS = [

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import { apiRequest } from "@/lib/api";
 import { applyForService } from "@/lib/driverServicesService";
@@ -34,22 +34,50 @@ const writeSet = (key, value) => {
 const displayStatus = (status) =>
     String(status || "UNKNOWN").replaceAll("_", " ").toLowerCase();
 
-// The existing driver APIs expose approved required documents through
-// `missingDocuments`, but do not expose a driver-facing list of pending or
-// rejected document rows. This device's upload response is therefore only a
-// fallback for unapproved uploads; on a new device, pending uploads cannot be
-// distinguished from documents that were never sent. The documents endpoint
-// also creates rows rather than replacing them, so a rejected re-upload may
-// create another row until the backend adds a list/replace API.
+// The driver-facing list GET /drivers/me/documents is the source of
+// truth for what this driver has uploaded: one live row per document
+// type, with verificationStatus PENDING / APPROVED / REJECTED. The
+// device's localStorage list (safar-setup-docs-<userId>) is only an
+// optimistic hint until that list loads, and the fallback if the
+// request fails or the driver is offline — it must never, on its own,
+// mark a document "Uploaded", and the driver's overall
+// UNDER_REVIEW status must never mark every document uploaded: a
+// driver can be under review while a document was never sent at all.
 export default function DriverSetupGate({ token, userId, driver }) {
     const docsKey = `safar-setup-docs-${userId}`;
     const [sentDocs, setSentDocs] = useState(() => readSet(docsKey));
+    const [serverDocs, setServerDocs] = useState(null);
+    const mountedRef = useRef(true);
     const [uploadingDoc, setUploadingDoc] = useState("");
     const [savingVehicle, setSavingVehicle] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [actionError, setActionError] = useState("");
     const [notice, setNotice] = useState("");
+
+    const fetchMyDocuments = useCallback(async () => {
+        if (!token) return null;
+        try {
+            const result = await apiRequest("/drivers/me/documents", { token });
+            const rows = Array.isArray(result?.documents) ? result.documents : [];
+            if (mountedRef.current) setServerDocs(rows);
+            return rows;
+        } catch {
+            // Offline / request failed: keep serverDocs null so the
+            // localStorage hint below stays in effect. The error is
+            // deliberately not surfaced — a failed documents read must
+            // not block the setup flow.
+            return null;
+        }
+    }, [token]);
+
+    useEffect(() => {
+        mountedRef.current = true;
+        fetchMyDocuments();
+        return () => {
+            mountedRef.current = false;
+        };
+    }, [fetchMyDocuments]);
 
     const {
         data: statusData,
@@ -81,10 +109,34 @@ export default function DriverSetupGate({ token, userId, driver }) {
     const error = actionError || statusError?.message || setupError?.message || "";
 
     const docs = {};
-    for (const doc of SETUP_DOCS) {
-        if (serverApprovedDocs.has(doc.type)) docs[doc.type] = "APPROVED";
-        else if (status === "UNDER_REVIEW" || sentDocs.includes(doc.type)) docs[doc.type] = "UPLOADED";
-        else docs[doc.type] = "NONE";
+    if (serverDocs !== null) {
+        // Server truth: latest row per document type (rows are
+        // deduplicated server-side, but take the newest by createdAt
+        // so any legacy duplicate can never resurrect an old status).
+        const latestByType = new Map();
+        [...serverDocs]
+            .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+            .forEach((row) => {
+                if (row?.documentType && !latestByType.has(row.documentType)) {
+                    latestByType.set(row.documentType, row);
+                }
+            });
+        for (const doc of SETUP_DOCS) {
+            const row = latestByType.get(doc.type);
+            if (!row) docs[doc.type] = "NONE";
+            else if (row.verificationStatus === "APPROVED") docs[doc.type] = "APPROVED";
+            else if (row.verificationStatus === "REJECTED") docs[doc.type] = "REJECTED";
+            else docs[doc.type] = "UPLOADED";
+        }
+    } else {
+        // Server list not loaded (yet, or the request failed): fall
+        // back to today's localStorage behaviour as an optimistic
+        // hint only. Once the list loads, the server rows above win.
+        for (const doc of SETUP_DOCS) {
+            if (serverApprovedDocs.has(doc.type)) docs[doc.type] = "APPROVED";
+            else if (status === "UNDER_REVIEW" || sentDocs.includes(doc.type)) docs[doc.type] = "UPLOADED";
+            else docs[doc.type] = "NONE";
+        }
     }
 
     async function uploadDoc(type, file, expiryDate) {
@@ -97,7 +149,18 @@ export default function DriverSetupGate({ token, userId, driver }) {
         try {
             const formData = new FormData();
             formData.append("documentType", type);
-            if (["DRIVING_LICENSE", "VEHICLE_REGISTRATION"].includes(type)) {
+            // Expiry is required only for the document types whose
+            // setupConfig entry says so (DRIVING_LICENSE). Do NOT
+            // hardcode the list here: VEHICLE_REGISTRATION no longer
+            // needs an expiry, and the flow only shows a date picker
+            // for needsExpiry types — a hardcoded check here would
+            // demand a date the driver was never asked for.
+            // NOTE: the backend must match — it still requires an
+            // expiry for VEHICLE_REGISTRATION in
+            // driverDocumentController.js (requiresExpiry). Remove
+            // VEHICLE_REGISTRATION there or this upload gets a 400.
+            const needsExpiry = SETUP_DOCS.find((doc) => doc.type === type)?.needsExpiry === true;
+            if (needsExpiry) {
                 if (!expiryDate) throw new Error("Please select document expiry date");
                 formData.append("expiryDate", expiryDate);
             }
@@ -112,7 +175,7 @@ export default function DriverSetupGate({ token, userId, driver }) {
             const nextSent = Array.from(new Set([...sentDocs, uploadedType]));
             setSentDocs(nextSent);
             writeSet(docsKey, nextSent);
-            await Promise.all([mutateStatus(), mutateSetup()]);
+            await Promise.all([mutateStatus(), mutateSetup(), fetchMyDocuments()]);
         } catch (uploadError) {
             setActionError(uploadError.message);
         } finally {
@@ -164,6 +227,7 @@ export default function DriverSetupGate({ token, userId, driver }) {
             const [latestStatus] = await Promise.all([
                 mutateStatus(),
                 mutateSetup(),
+                fetchMyDocuments(),
             ]);
             return latestStatus?.driver || null;
         } catch (refreshError) {

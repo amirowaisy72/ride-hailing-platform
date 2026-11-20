@@ -2,6 +2,7 @@
 
 import { Check, Clock3, Flag, Minus, Navigation, Plus, Route } from "lucide-react";
 import { useLanguage, storedLanguage } from "@/components/i18n/LanguageProvider";
+import PassengerVerificationBadge from "@/components/PassengerVerificationBadge";
 
 const vehicleNames = { BIKE: "Motorcycle", RICKSHAW: "Rickshaw", CAR_AC: "Car · AC", CAR_NON_AC: "Car · Non-AC" };
 const vehicleNamesUr = { BIKE: "موٹر سائیکل", RICKSHAW: "رکشہ", CAR_AC: "کار · AC", CAR_NON_AC: "کار · بغیر AC" };
@@ -58,6 +59,11 @@ export default function DriverRequestCard({ ride, price, onPriceChange, onSend, 
                     </p>
                 </li>
             </ol>
+
+            {/* Safety (To-Do #5, item b): who this passenger is, before
+                the driver offers. Shown only when the backend attached
+                passengerVerification to the ride. */}
+            <PassengerVerificationBadge verification={ride.passengerVerification} />
 
             {submitted && (
                 <p className="dx-request-sent"><Check size={14} /> Offer sent · waiting for passenger{cooling ? ` · revise in ${cooldownSeconds}s` : ""}</p>
