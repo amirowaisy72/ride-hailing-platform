@@ -100,6 +100,23 @@ const rideSchema = new mongoose.Schema(
         },
         requestedPrice: { type: Number, required: true, min: 1 },
         finalPrice: { type: Number, default: null },
+        // Passenger No-Show Fix (To-Do #1) — all additive, defaults
+        // keep every existing ride working.
+        // (d) Pre-departure confirmation: the passenger confirms they
+        // are ready at pickup before the driver starts driving there.
+        pickupConfirmedByPassenger: { type: Boolean, default: false },
+        pickupConfirmedAt: { type: Date, default: null },
+        // (a)+(c) Arrival wait timer: set when the driver marks
+        // DRIVER_ARRIVED; the driver may cancel as a no-show with no
+        // penalty only once now >= noShowWaitExpiresAt.
+        noShowWaitExpiresAt: { type: Date, default: null },
+        // Outcome of a no-show cancel, if one happened.
+        noShowAt: { type: Date, default: null },
+        noShowByDriverId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Driver",
+            default: null,
+        },
         settlementStatus: {
             type: String,
             enum: ["NOT_REQUIRED", "PENDING", "SETTLED", "FAILED"],
@@ -137,6 +154,11 @@ const rideSchema = new mongoose.Schema(
         completedAt: Date,
         cancelledAt: Date,
         cancellationReason: String,
+        // Safety — live trip sharing (To-Do #5, Phase 1, item c).
+        // ADDITIVE optional: a 24-hour token for the public share link.
+        // Old clients never read or write these fields.
+        shareToken: { type: String, default: null, index: true },
+        shareTokenExpiresAt: { type: Date, default: null },
     },
     { timestamps: true }
 );

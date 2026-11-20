@@ -1,8 +1,14 @@
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
+const { normalizePkPhone } = require("../utils/pakistaniPhone");
+const { isNewClient } = require("../utils/clientVersion");
 const Driver = require("../models/Driver");
 const { generateOTP, hashOTP, verifyOTPHash } =
     require("../services/otpService");
+const {
+    resolveInviteCode,
+    ensureInviteCode,
+} = require("../services/inviteService");
 const { sendOTPEmail } =
     require("../integrations/email/emailService");
 
@@ -59,15 +65,31 @@ async function sendSignupOTP(req, res) {
 async function verifySignupOTP(req, res) {
     const { firstName, lastName, password, otp } = req.body;
     const email = String(req.body.email || "").trim().toLowerCase();
-    // Optional phone from signup: stored as typed, minus spaces/dashes.
-    const phone =
-        typeof req.body.phone === "string"
-            ? req.body.phone.replace(/[\s-]/g, "").trim()
-            : "";
-    if (phone && !/^\+?\d{10,15}$/.test(phone)) {
-        return res.status(400).json({
-            message: "Invalid phone number",
-        });
+    // BACKWARD COMPAT: mobile is mandatory ONLY for new-version
+    // clients (X-App-Version-Code >= 10). Old apps (no version
+    // header) keep the old behaviour — phone optional, any
+    // international format — so they keep working exactly as today.
+    // New clients must send a valid Pakistani number, no bypass.
+    let normalizedPhone = null;
+    if (isNewClient(req)) {
+        normalizedPhone = normalizePkPhone(req.body.phone);
+        if (!normalizedPhone) {
+            return res.status(400).json({
+                message:
+                    "A valid Pakistani mobile number is required (e.g. 0301-2345678)",
+            });
+        }
+    } else {
+        const legacyPhone =
+            typeof req.body.phone === "string"
+                ? req.body.phone.replace(/[\s-]/g, "").trim()
+                : "";
+        if (legacyPhone && !/^\+?\d{10,15}$/.test(legacyPhone)) {
+            return res.status(400).json({
+                message: "Invalid phone number",
+            });
+        }
+        normalizedPhone = legacyPhone || null;
     }
 
     // Optional role from signup: only DRIVER is accepted as an
@@ -127,17 +149,40 @@ async function verifySignupOTP(req, res) {
             });
         }
 
+        // Invite System (To-Do #6): an optional inviteCode in the
+        // signup form attributes the inviter. Invalid/unknown codes
+        // are ignored silently — a bad code must never block signup.
+        let invitedBy = null;
+        if (typeof req.body.inviteCode === "string" && req.body.inviteCode.trim()) {
+            try {
+                const inviter = await resolveInviteCode(req.body.inviteCode);
+                if (inviter) invitedBy = inviter._id;
+            } catch {
+                // Ignore — signup proceeds unattributed.
+            }
+        }
+
         const user = await User.create({
             firstName: firstName.trim(),
             lastName: lastName.trim(),
             email,
-            phone: phone || null,
+            phone: normalizedPhone,
             passwordHash: await bcrypt.hash(password, 12),
             role: requestedRole,
             activeMode: requestedRole,
             emailVerified: true,
             status: "ACTIVE",
+            invitedBy,
+            invitedAt: invitedBy ? new Date() : null,
         });
+
+        // Every account gets its own invite code from day one.
+        // Best-effort: a failure here never fails the signup.
+        try {
+            await ensureInviteCode(user);
+        } catch {
+            // The code is generated lazily on first /invites/me call.
+        }
 
         // A driver signup also creates the Driver profile the driver
         // setup gate expects (verification PENDING, so the guided

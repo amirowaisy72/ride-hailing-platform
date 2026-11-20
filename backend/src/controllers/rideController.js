@@ -5,7 +5,8 @@ const { sendPushToUser } = require("../services/pushService");
 const { findDriversWithExpandedRadius } = require("../services/driverMatchingService");
 const { isLocationSupported } = require("../services/serviceAreaService");
 const { getRoute } = require("../integrations/maps/mapService");
-const { calculateSuggestedFare } = require("../services/fareService");
+const { calculateSuggestedFare, fareBandFor, isFareWithinBand } = require("../services/fareService");
+const { isNewClient } = require("../utils/clientVersion");
 
 const createRide = async (req, res) => {
     try {
@@ -151,6 +152,27 @@ const createRide = async (req, res) => {
             route.distanceKm
         );
 
+        // Fare limits (To-Do #4): the passenger's requested fare must
+        // sit inside the band around the calculated fare. BACKWARD
+        // COMPAT: enforced ONLY for new clients (X-App-Version-Code
+        // >= 10, see utils/clientVersion.js). An old client (1.0.7 and
+        // earlier) never identifies as new, so its ride is created
+        // exactly as today — no rejection, no behaviour change — and
+        // the band rides along in the response as advisory info only.
+        const fareBand = await fareBandFor(vehicleType, route.distanceKm);
+        const fareWithinBand = isFareWithinBand(requestedPrice, fareBand);
+
+        if (!fareWithinBand && isNewClient(req)) {
+            return res.status(400).json({
+                success: false,
+                code: "FARE_OUT_OF_BAND",
+                message: `Requested fare must be between PKR ${fareBand.minFare} and PKR ${fareBand.maxFare} for this ride (calculated fare PKR ${fareBand.suggestedFare}).`,
+                suggestedFare: fareBand.suggestedFare,
+                minFare: fareBand.minFare,
+                maxFare: fareBand.maxFare,
+            });
+        }
+
         // Suggested fare is calculated by the backend.
         // Passenger's proposed fare remains negotiable.
         const ride = await Ride.create({
@@ -241,6 +263,10 @@ const createRide = async (req, res) => {
             success: true,
             message: "Ride requested successfully",
             ride,
+            suggestedFare: fareBand.suggestedFare,
+            fareMin: fareBand.minFare,
+            fareMax: fareBand.maxFare,
+            fareWithinBand,
         });
     } catch (error) {
         console.error("Create ride error:", error.message);

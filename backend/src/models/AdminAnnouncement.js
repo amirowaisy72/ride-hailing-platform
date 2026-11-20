@@ -47,6 +47,15 @@ const adminAnnouncementSchema = new mongoose.Schema(
             type: Boolean,
             default: true,
         },
+        // Optional expiry: announcements with an expiresAt in the past
+        // are hidden server-side by getActiveAnnouncement. Null (the
+        // default, and the value for every row created before this
+        // field existed) means "never expires" — old rows keep showing
+        // until an admin deactivates them, exactly as today.
+        expiresAt: {
+            type: Date,
+            default: null,
+        },
     },
     { timestamps: true }
 );

@@ -152,6 +152,59 @@ const rentalBookingSchema = new mongoose.Schema({
     // rentalBookingService.isHoldExpired on every read/overlap check).
     paymentDeadlineAt: { type: Date, default: null },
 
+    // --- Rent paid TO the platform + partner payout (To-Do #3) --------
+    // The passenger pays the RENT to Safar (not to the partner), and
+    // the partner is paid by Safar AFTER the return, minus the
+    // platform fee. Pilot is manual bank transfer, mirroring
+    // feePayment above: passenger submits reference + proof, admin
+    // verifies. Nothing here gates confirmation — the confirm flows
+    // (verify-payment / confirm-free) are untouched.
+    // platformFee is a SNAPSHOT of this booking's bookingFee (PKR 175
+    // on SRB-422C91F5), or 0 on a free booking (freeBooking lives on
+    // origin/main; read tolerantly here). It is NOT a new flat fee —
+    // if a flat PKR 175 is wanted for every booking, that is a
+    // one-constant change in rentalBookingService.platformFeeForBooking.
+    platformPayment: {
+        status: {
+            type: String,
+            enum: ["NOT_SUBMITTED", "SUBMITTED", "PAID", "REJECTED"],
+            default: "NOT_SUBMITTED",
+        },
+        method: { type: String, enum: ["BANK_TRANSFER"], default: "BANK_TRANSFER" },
+        reference: { type: String, default: "", trim: true, maxlength: 120 },
+        proofImageUrl: { type: String, default: "", maxlength: 1000 },
+        senderAccountTitle: { type: String, default: "", trim: true, maxlength: 120 },
+        submittedAt: { type: Date, default: null },
+        paidAt: { type: Date, default: null },
+        verifiedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+        rejectionReason: { type: String, default: "", maxlength: 500 },
+        // Rent the passenger owes the platform: rentalCharges + any
+        // return dues. Recomputed at return; see
+        // rentalBookingService.computePartnerPayout.
+        rentAmountDue: { type: Number, default: null, min: 0 },
+        rentPaidAmount: { type: Number, default: null, min: 0 },
+        // Platform fee deducted from the partner payout (snapshot).
+        platformFee: { type: Number, default: null, min: 0 },
+        // Partner payout, due only AFTER return (booking COMPLETED).
+        partnerPayoutAmount: { type: Number, default: null, min: 0 },
+        partnerPayoutStatus: {
+            type: String,
+            enum: ["NOT_DUE", "DUE", "PAID"],
+            default: "NOT_DUE",
+        },
+        partnerPayoutPaidAt: { type: Date, default: null },
+        partnerPayoutReference: { type: String, default: "", trim: true, maxlength: 120 },
+        partnerPayoutPaidBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: null,
+        },
+    },
+
     // Pickup OTP — parcel/purchase pattern verbatim: SHA-256 hash on
     // the booking, 6 digits, max 5 attempts enforced atomically.
     pickupOtpHash: { type: String, default: null, select: false },

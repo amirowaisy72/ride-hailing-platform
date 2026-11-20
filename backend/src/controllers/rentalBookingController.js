@@ -21,6 +21,8 @@ const {
     computeRemainingDues,
     serializeRentalVehicle,
     isContactUnlocked,
+    platformFeeForBooking,
+    computePartnerPayout,
 } = require("../services/rentalBookingService");
 
 // ---------------------------------------------------------------------------
@@ -1139,6 +1141,130 @@ const submitRentalFeePayment = async (req, res) => {
 };
 
 // ---------------------------------------------------------------------------
+// Passenger: submit rent payment TO the platform (To-Do #3). Pilot is
+// manual bank transfer, mirroring submitRentalFeePayment: reference +
+// proof image, admin verifies (see adminRentalController
+// verifyRentalRentPayment). Allowed any time from CONFIRMED until the
+// booking completes; it never moves the booking status and never gates
+// confirmation — the rent is held by the platform and the partner is
+// paid only AFTER the return (see confirmRentalReturn).
+// ---------------------------------------------------------------------------
+const submitRentalRentPayment = async (req, res) => {
+    try {
+        const { booking } = await loadBookingWithVehicle({
+            _id: req.params.id,
+            passengerId: req.user._id,
+        });
+
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: "Booking not found",
+            });
+        }
+
+        if (
+            ![
+                "CONFIRMED",
+                "PICKUP_VERIFIED",
+                "RENTAL_ACTIVE",
+                "RETURN_PENDING",
+                "COMPLETED",
+            ].includes(booking.status)
+        ) {
+            return res.status(409).json({
+                success: false,
+                message: "Rent payment is not due at this stage",
+            });
+        }
+
+        if (booking.platformPayment?.status === "PAID") {
+            return res.status(409).json({
+                success: false,
+                message: "The rent is already paid to the platform",
+            });
+        }
+
+        if (booking.platformPayment?.status === "SUBMITTED") {
+            return res.status(409).json({
+                success: false,
+                message: "Your rent payment is already submitted and awaiting verification",
+            });
+        }
+
+        const reference = String(req.body?.reference || "").trim();
+        const proofImageUrl = String(req.body?.proofImageUrl || "").trim();
+        const senderAccountTitle = String(req.body?.senderAccountTitle || "").trim();
+
+        if (
+            !reference || reference.length > 120 ||
+            !proofImageUrl || proofImageUrl.length > 1000 ||
+            senderAccountTitle.length > 120
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "A payment reference and a proof image are required",
+            });
+        }
+
+        const rentAmountDue =
+            (booking.rentalCharges || 0) +
+            (booking.returnDues?.remainingDues || 0);
+
+        const updated = await RentalBooking.findOneAndUpdate(
+            {
+                _id: booking._id,
+                passengerId: req.user._id,
+                "platformPayment.status": { $in: ["NOT_SUBMITTED", "REJECTED"] },
+            },
+            {
+                $set: {
+                    "platformPayment.status": "SUBMITTED",
+                    "platformPayment.method": "BANK_TRANSFER",
+                    "platformPayment.reference": reference,
+                    "platformPayment.proofImageUrl": proofImageUrl,
+                    "platformPayment.senderAccountTitle": senderAccountTitle,
+                    "platformPayment.submittedAt": new Date(),
+                    "platformPayment.rejectionReason": "",
+                    "platformPayment.rentAmountDue": rentAmountDue,
+                },
+                $push: {
+                    events: makeEvent("RENT_PAYMENT_SUBMITTED", "PASSENGER", req.user._id, {
+                        amount: rentAmountDue,
+                        note: reference,
+                    }),
+                },
+            },
+            { new: true, runValidators: true }
+        );
+
+        if (!updated) {
+            return res.status(409).json({
+                success: false,
+                message: "Payment submission failed. Please refresh.",
+            });
+        }
+
+        notifyPartner(
+            updated,
+            "rental:payment:submitted",
+            { status: updated.status, message: "The passenger submitted the rent payment to the platform" },
+            "Rent Payment Submitted",
+            "The passenger submitted the rent payment to Safar. It is verified by Safar before payout.",
+            "RENTAL_RENT_SUBMITTED"
+        );
+
+        return res.json({ success: true, booking: serializeBooking(updated, null) });
+    } catch (error) {
+        console.error("Submit rental rent payment error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Unable to submit payment proof",
+        });
+    }
+};
+
+// ---------------------------------------------------------------------------
 // Pickup OTP + handover / start / return / confirm
 // ---------------------------------------------------------------------------
 
@@ -1496,6 +1622,19 @@ const confirmRentalReturn = async (req, res) => {
             });
         }
 
+        // Rent via platform (To-Do #3): the return settles the money.
+        // The partner payout becomes DUE here — after the return, never
+        // before — at rent + return dues minus the platform fee
+        // (snapshot of this booking's bookingFee, 0 on a free booking).
+        // The payout itself is a separate admin step
+        // (markPartnerPayoutPaid); nothing here moves money.
+        const platformFee = platformFeeForBooking(booking);
+        const payout = computePartnerPayout({
+            rentalCharges: booking.rentalCharges,
+            returnDuesRemaining: booking.returnDues?.remainingDues ?? 0,
+            platformFee,
+        });
+
         const updated = await transitionBooking({
             filter: { _id: booking._id, passengerId: req.user._id },
             fromStatus: "RETURN_PENDING",
@@ -1503,6 +1642,11 @@ const confirmRentalReturn = async (req, res) => {
             set: {
                 completedAt: new Date(),
                 "returnDues.settledAt": new Date(),
+                "platformPayment.rentAmountDue": payout.grossAmount,
+                "platformPayment.platformFee": platformFee,
+                "platformPayment.partnerPayoutAmount": payout.partnerPayoutAmount,
+                "platformPayment.partnerPayoutStatus":
+                    payout.partnerPayoutAmount > 0 ? "DUE" : "NOT_DUE",
             },
             event: {
                 entry: makeEvent("RETURN_CONFIRMED", "PASSENGER", req.user._id, {
@@ -1968,6 +2112,7 @@ module.exports = {
     getRentalBookingDetails,
     getRentalFeeInstructions,
     submitRentalFeePayment,
+    submitRentalRentPayment,
     getRentalPickupOtp,
     confirmRentalReturn,
     // Partner

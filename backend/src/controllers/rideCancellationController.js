@@ -5,6 +5,12 @@ const { publishEvent } = require("../services/socketService");
 const { sendPushToUser } = require("../services/pushService");
 const RideOffer = require("../models/RideOffer");
 const { findDriversWithExpandedRadius } = require("../services/driverMatchingService");
+const { recordMissedRide } = require("../services/missedRideRetryService");
+const {
+    canCancelAsNoShow,
+    waitSecondsRemaining,
+    recordPassengerNoShow,
+} = require("../services/passengerNoShowService");
 
 // Ride states before a driver is chosen, and the assigned-but-not-yet-
 // started states. TRIP_STARTED and beyond can be cancelled by nobody:
@@ -42,6 +48,15 @@ const cancelRideAsPassenger = async (req, res) => {
                 success: false,
                 message: "Ride cannot be cancelled at this stage",
             });
+        }
+
+        // Missed-ride auto-retry (To-Do #7): a passenger cancelling
+        // before any driver was selected asked for a ride and got no
+        // driver — record them so the next driver coming online in
+        // their range triggers a "book again" push. A cancel AFTER a
+        // driver was assigned is not recorded (a driver was available).
+        if (!ride.driverId) {
+            void recordMissedRide(ride);
         }
 
         // Free the assigned driver, if any. The cancelled ride keeps
@@ -133,6 +148,101 @@ const cancelRideAsPassenger = async (req, res) => {
 // again exactly as at creation.
 const cancelRideAsDriver = async (req, res, driver) => {
     try {
+        // (c) No-show cancel (To-Do #1): the driver arrived, waited
+        // the 5-minute timer, and the passenger never showed / never
+        // responded. Body: { reason: "PASSENGER_NO_SHOW" }. Before
+        // the timer expires this is refused (409 + seconds left) so
+        // the driver cannot bail early and blame the passenger; after
+        // it expires the ride is CANCELLED outright (not released back
+        // to REQUESTED — re-searching a passenger who is not there
+        // would loop), the driver is freed with NO penalty, and the
+        // no-show is recorded on the passenger (counter + warning).
+        if (req.body?.reason === "PASSENGER_NO_SHOW") {
+            const arrivedRide = await Ride.findOne({
+                _id: req.params.rideId,
+                driverId: driver._id,
+                status: "DRIVER_ARRIVED",
+            });
+
+            if (!arrivedRide) {
+                return res.status(409).json({
+                    success: false,
+                    message: "Ride cannot be cancelled as a no-show at this stage",
+                });
+            }
+
+            if (!canCancelAsNoShow(arrivedRide)) {
+                return res.status(409).json({
+                    success: false,
+                    code: "NO_SHOW_WAIT_ACTIVE",
+                    message: `Please wait ${waitSecondsRemaining(arrivedRide)} more seconds at the pickup point before cancelling as a no-show.`,
+                    waitSecondsRemaining: waitSecondsRemaining(arrivedRide),
+                });
+            }
+
+            const noShowRide = await Ride.findOneAndUpdate(
+                {
+                    _id: arrivedRide._id,
+                    driverId: driver._id,
+                    status: "DRIVER_ARRIVED",
+                },
+                {
+                    $set: {
+                        status: "CANCELLED",
+                        cancelledAt: new Date(),
+                        cancellationReason: "PASSENGER_NO_SHOW",
+                        noShowAt: new Date(),
+                        noShowByDriverId: driver._id,
+                        pickupWaitingSince: null,
+                        noShowWaitExpiresAt: null,
+                    },
+                },
+                { new: true }
+            );
+
+            if (!noShowRide) {
+                return res.status(409).json({
+                    success: false,
+                    message: "Ride state changed. Please refresh.",
+                });
+            }
+
+            await Driver.updateOne(
+                { _id: driver._id },
+                { $set: { isAvailable: driver.isOnline } }
+            );
+
+            try {
+                await RideOffer.updateOne(
+                    { rideId: noShowRide._id, driverId: driver._id, status: "ACCEPTED" },
+                    { $set: { status: "WITHDRAWN" } }
+                );
+            } catch (error) {
+                console.error("No-show cancel offer withdrawal failed:", error.message);
+            }
+
+            publishEvent(
+                "ride:cancelled",
+                `passenger:${noShowRide.passengerId}`,
+                {
+                    rideId: noShowRide._id.toString(),
+                    reason: "PASSENGER_NO_SHOW",
+                }
+            );
+
+            // (e) Counter + warning live on the passenger record; the
+            // helper also pushes the passenger (warning from the 3rd
+            // no-show on). Awaiting it would delay the driver's
+            // response; the cancel itself is already committed.
+            void recordPassengerNoShow(noShowRide);
+
+            return res.json({
+                success: true,
+                message: "Ride cancelled as passenger no-show. No penalty applied.",
+                ride: noShowRide,
+            });
+        }
+
         const ride = await Ride.findOneAndUpdate(
             {
                 _id: req.params.rideId,

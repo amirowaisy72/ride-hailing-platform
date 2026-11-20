@@ -11,6 +11,8 @@ const { sendPushToUser } = require("../services/pushService");
 const { paymentsConfigured } = require("../services/paymentsConfigService");
 const { canReceiveRideRequests } = require("../services/eligibilityService");
 const { servingVehicleTypes } = require("../services/driverMatchingService");
+const { fareBandFor, isFareWithinBand } = require("../services/fareService");
+const { isNewClient } = require("../utils/clientVersion");
 
 const OPEN = ["REQUESTED", "SEARCHING", "BIDDING"];
 const OFFER_DURATION_MS = 5 * 60 * 1000;
@@ -182,6 +184,40 @@ async function submitOffer(req, res) {
                 success: false,
                 message: "Driver is outside matching radius",
             });
+        }
+
+        // Fare limits (To-Do #4): a driver offer/counter must sit
+        // inside the band around the CALCULATED fare for this ride's
+        // vehicle type + distance. BACKWARD COMPAT: enforced ONLY for
+        // new clients (X-App-Version-Code >= 10, see
+        // utils/clientVersion.js). An old driver app never identifies
+        // as new, so its offers proceed exactly as today — no
+        // rejection, no behaviour change. Existing stored offers are
+        // never re-validated — only new offers and rebids pass
+        // through here. If pricing is unavailable the check is
+        // skipped (fail open) so offers keep working; the failure is
+        // logged.
+        try {
+            const fareBand = await fareBandFor(
+                ride.vehicleType,
+                ride.distance
+            );
+
+            if (!isFareWithinBand(price, fareBand) && isNewClient(req)) {
+                return res.status(400).json({
+                    success: false,
+                    code: "FARE_OUT_OF_BAND",
+                    message: `Offer must be between PKR ${fareBand.minFare} and PKR ${fareBand.maxFare} for this ride (calculated fare PKR ${fareBand.suggestedFare}).`,
+                    suggestedFare: fareBand.suggestedFare,
+                    minFare: fareBand.minFare,
+                    maxFare: fareBand.maxFare,
+                });
+            }
+        } catch (error) {
+            console.error(
+                "Fare band check skipped (pricing unavailable):",
+                error.message
+            );
         }
 
         const now = new Date();
