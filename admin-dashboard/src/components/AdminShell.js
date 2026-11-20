@@ -8,7 +8,7 @@ import {
     SlidersHorizontal, ShieldCheck, Menu, X,
     LogOut, ChevronRight, PanelLeftClose,
     Bell, CircleDollarSign, Plug, Flag,
-    ShoppingBag, KeyRound,
+    ShoppingBag, KeyRound, Search,
 } from "lucide-react";
 
 import {
@@ -24,6 +24,8 @@ const navigation = [
     { label: "Cities", href: "/dashboard/cities", icon: CarFront },
     { label: "Fare Settings", href: "/dashboard/fares", icon: CarFront },
     { label: "Passengers", href: "/dashboard/passengers", icon: Users },
+    // Safar To-Do #18: look up any user by email, any role/status.
+    { label: "User Lookup", href: "/dashboard/user-lookup", icon: Search },
     { label: "Custom Notifications", href: "/dashboard/notifications", icon: Bell },
     { label: "App Version", href: "/dashboard/app-version", icon: Bell },
     { label: "Announcements", href: "/dashboard/announcements", icon: Bell },

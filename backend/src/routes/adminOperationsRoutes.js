@@ -14,6 +14,9 @@ const {
 const {
     getDailyAverages,
 } = require("../controllers/adminDailyAveragesController");
+const {
+    lookupUserByEmail,
+} = require("../controllers/adminUserLookupController");
 
 const router = express.Router();
 
@@ -26,6 +29,8 @@ router.get("/daily-averages", getDailyAverages);
 router.get("/passengers", getPassengers);
 router.get("/passengers/:id/profile", getPassengerProfile);
 router.get("/rides", getRides);
+// Safar To-Do #18 — Dashboard User Lookup by Email (READ-ONLY).
+router.get("/users/lookup", lookupUserByEmail);
 
 module.exports = router;
 
