@@ -207,10 +207,27 @@ async function verifySignupOTP(req, res) {
             userId: user._id,
         });
     } catch (error) {
-        return res.status(error.code === 11000 ? 409 : 500).json({
-            message: error.code === 11000
-                ? "Email already registered"
-                : "Account creation failed. Please restart signup.",
+        // A duplicate key is NOT always the email: any unique index
+        // (e.g. inviteCode) throws 11000 too. Only an actual email
+        // duplicate is "already registered" — anything else must say
+        // so in the logs, or the real cause stays hidden (Nov 2026:
+        // inviteCode nulls 11000'd every signup while the user saw
+        // "Email already registered").
+        if (error.code === 11000) {
+            console.error("Verify signup OTP duplicate key:", {
+                keyPattern: error.keyPattern,
+                keyValue: error.keyValue,
+            });
+            const emailDup =
+                error.keyPattern && error.keyPattern.email;
+            return res.status(emailDup ? 409 : 500).json({
+                message: emailDup
+                    ? "Email already registered"
+                    : "Account creation failed. Please restart signup.",
+            });
+        }
+        return res.status(500).json({
+            message: "Account creation failed. Please restart signup.",
         });
     } finally {
         record.verifying = false;
