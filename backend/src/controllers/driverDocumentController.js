@@ -23,10 +23,10 @@ const uploadDocument = async (req, res) => {
         const allowedTypes = DriverDocument.schema.path("documentType").enumValues;
         const { documentType, expiryDate } = req.body;
 
-        const requiresExpiry = [
-            "DRIVING_LICENSE",
-            "VEHICLE_REGISTRATION",
-        ].includes(documentType);
+        // Expiry exists ONLY for the Driving License. Vehicle
+        // Registration has no expiry date, so the backend must not
+        // require one for it either (the app no longer sends one).
+        const requiresExpiry = ["DRIVING_LICENSE"].includes(documentType);
 
         if (requiresExpiry && (
             typeof expiryDate !== "string" ||

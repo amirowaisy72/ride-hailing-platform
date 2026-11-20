@@ -4,6 +4,7 @@ const User = require("../models/User");
 const IntegrationSetting = require("../models/IntegrationSetting");
 const RefreshToken = require("../models/RefreshToken");
 const { getFirebaseAuth } = require("../services/firebaseService");
+const { resolveInviteCode } = require("../services/inviteService");
 const {
     generateAccessToken,
     generateRefreshToken,
@@ -69,6 +70,19 @@ const googleLogin = async (req, res) => {
             } else {
                 const name = (decoded.name || "").trim().split(/\s+/);
 
+                // Invite System (To-Do #6): optional inviteCode in the
+                // Google signup body attributes the inviter on new
+                // accounts only. Bad codes are ignored, never blocking.
+                let invitedBy = null;
+                if (typeof req.body.inviteCode === "string" && req.body.inviteCode.trim()) {
+                    try {
+                        const inviter = await resolveInviteCode(req.body.inviteCode);
+                        if (inviter) invitedBy = inviter._id;
+                    } catch {
+                        // Ignore — signup proceeds unattributed.
+                    }
+                }
+
                 user = await User.create({
                     firstName: name[0] || "Google",
                     lastName: name.slice(1).join(" ") || "User",
@@ -78,6 +92,8 @@ const googleLogin = async (req, res) => {
                     activeMode: "PASSENGER",
                     emailVerified: true,
                     status: "ACTIVE",
+                    invitedBy,
+                    invitedAt: invitedBy ? new Date() : null,
                 });
             }
 
@@ -109,6 +125,7 @@ const googleLogin = async (req, res) => {
                 firstName: user.firstName,
                 lastName: user.lastName,
                 email: user.email,
+                phone: user.phone || null,
                 role: user.role,
                 activeMode: user.activeMode || "PASSENGER",
             },

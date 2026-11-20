@@ -5,10 +5,14 @@ const Vehicle = require("../models/Vehicle");
 const DriverDocument = require("../models/DriverDocument");
 const Ride = require("../models/Ride");
 const ParcelOrder = require("../models/ParcelOrder");
+const { isValidPkPhone } = require("../utils/pakistaniPhone");
+const { isNewClient } = require("../utils/clientVersion");
 const { publishEvent } = require("../services/socketService");
 const {
     hasAnyEligibleService,
 } = require("../services/eligibilityService");
+const { notifyAwaitingPassengers } = require("../services/missedRideRetryService");
+const { recordTrailPoint } = require("../services/rideTrailService");
 const { pktDateString } = require("../services/dailyAveragesService");
 
 const registerDriver = async (req, res) => {
@@ -28,6 +32,20 @@ const registerDriver = async (req, res) => {
             return res.status(409).json({
                 success: false,
                 message: "Driver profile already exists",
+            });
+        }
+
+        // BACKWARD COMPAT: the mandatory-phone rule applies ONLY to
+        // new-version clients (X-App-Version-Code >= 10). Old apps
+        // (no version header) register a driver exactly as today.
+        // A Gmail-created passenger on the new app with no (valid
+        // Pakistani) number cannot become a driver until one is
+        // added to the account.
+        if (isNewClient(req) && !isValidPkPhone(req.user.phone)) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "A valid Pakistani mobile number is required on your account before driver registration. Add it from your profile.",
             });
         }
 
@@ -223,18 +241,22 @@ const updateOnlineStatus = async (req, res) => {
         // Averages (passenger vs driver gap). The log write is
         // fire-and-forget and can never fail this toggle.
         const wasOnline = driver.isOnline === true;
-
         driver.isOnline = isOnline;
         driver.isAvailable = isOnline && !activeTrip && !activeParcel;
 
         await driver.save();
 
+        // Missed-ride auto-retry (To-Do #7): the moment a driver comes
+        // online, awaiting passengers in their range get one "book
+        // again" push. Only on the offline -> online transition, and
+        // never blocking the status response.
         // Record the online transition for Daily Averages. Only the
         // false -> true moment matters for "when did drivers come
         // online"; the true -> false close just stamps offlineAt.
         // No await: a logging failure must never fail the toggle
         // or delay the driver's response.
         if (isOnline && !wasOnline) {
+            void notifyAwaitingPassengers(driver);
             DriverOnlineEvent.create({
                 driverId: driver._id,
                 date: pktDateString(new Date()),
@@ -335,6 +357,9 @@ const updateDriverLocation = async (req, res) => {
                 location: { latitude, longitude },
                 updatedAt: driver.lastLocationUpdate.toISOString(),
             });
+            // Safety GPS trail (To-Do #5, item d): sampled trail point
+            // for the FIR pack. Best-effort — never fails this update.
+            void recordTrailPoint(ride._id, driver._id, latitude, longitude);
         }
 
         // Share GPS only with the customer assigned to an active parcel.

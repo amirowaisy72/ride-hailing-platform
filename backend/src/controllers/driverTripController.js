@@ -4,6 +4,11 @@ const Driver = require("../models/Driver");
 const CommissionSettings = require("../models/CommissionSettings");
 const { publishEvent } = require("../services/socketService");
 const { sendPushToUser } = require("../services/pushService");
+const {
+    NO_SHOW_WAIT_MINUTES,
+    PICKUP_CONFIRMATION_ENFORCED,
+    noShowWaitExpiresAt,
+} = require("../services/passengerNoShowService");
 
 const transitions = {
     DRIVER_SELECTED: ["DRIVER_EN_ROUTE"],
@@ -60,6 +65,35 @@ const updateTripStatus = async (req, res) => {
         if (status === "DRIVER_ARRIVED") {
             update.pickupWaitingSince = now;
             update.driverArrivedAt = now;
+            // No-show wait timer (To-Do #1c): the driver may cancel
+            // as a passenger no-show with no penalty only once this
+            // 5-minute wait has expired.
+            update.noShowWaitExpiresAt = noShowWaitExpiresAt(now);
+        }
+
+        // (d) Pre-departure passenger confirmation gate. OFF by
+        // default (PICKUP_CONFIRMATION_ENFORCED = false) so the live
+        // 1.0.7 passenger app — which has no confirm button — keeps
+        // working; flip the constant once that app version is live.
+        if (
+            status === "DRIVER_EN_ROUTE" &&
+            PICKUP_CONFIRMATION_ENFORCED
+        ) {
+            const selectedRide = await Ride.findOne({
+                _id: rideId,
+                driverId: driver._id,
+                status: "DRIVER_SELECTED",
+            })
+                .select("pickupConfirmedByPassenger")
+                .lean();
+
+            if (selectedRide && !selectedRide.pickupConfirmedByPassenger) {
+                return res.status(409).json({
+                    success: false,
+                    code: "PICKUP_NOT_CONFIRMED",
+                    message: "The passenger has not confirmed they are ready at pickup yet.",
+                });
+            }
         }
 
         if (status === "TRIP_STARTED") {
@@ -203,13 +237,20 @@ const updateTripStatus = async (req, res) => {
                 finalPrice: ride.finalPrice,
                 pickupWaitingSince: ride.pickupWaitingSince || null,
                 driverArrivedAt: ride.driverArrivedAt || null,
+                noShowWaitExpiresAt: ride.noShowWaitExpiresAt || null,
+                pickupConfirmedByPassenger: ride.pickupConfirmedByPassenger || false,
                 stopWaitingSince: ride.stopWaitingSince || null,
             }
         );
 
         const pushMessages = {
             DRIVER_EN_ROUTE: ["Driver On The Way", "Your driver is heading to pickup."],
-            DRIVER_ARRIVED: ["Driver Arrived", "Your driver has reached your pickup location."],
+            // (a) Arrival notification, in the passenger's language.
+            // Worded for what is actually guaranteed: after 5 minutes
+            // the driver may cancel as a no-show (an old driver app
+            // can still release the ride earlier via the normal
+            // cancel path, so no "will wait" promise is made).
+            DRIVER_ARRIVED: ["Driver pahunch gaya hai", `Your driver has arrived at your pickup location. Please come out soon — if you are not there in ${NO_SHOW_WAIT_MINUTES} minutes, the driver may cancel the ride.`],
             TRIP_STARTED: ["Trip Started", "Your ride has started."],
             TRIP_COMPLETED: ["Trip Completed", "Your ride has been completed."],
         };

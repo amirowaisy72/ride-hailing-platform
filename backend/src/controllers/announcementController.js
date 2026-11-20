@@ -180,12 +180,29 @@ async function createAnnouncement(req, res) {
                 message: `Too many targets (${targetUserIds.length}). Narrow the filters to at most ${MAX_ANNOUNCEMENT_TARGETS}.`,
             });
         }
+        // Optional expiry (additive, never required): a valid date/time
+        // after which the announcement stops showing. Empty/absent
+        // means no expiry, exactly as before. Only this new field is
+        // validated here; title/body validation above is unchanged.
+        let expiresAt = null;
+        const rawExpiresAt = req.body?.expiresAt;
+        if (rawExpiresAt !== "" && rawExpiresAt !== null && rawExpiresAt !== undefined) {
+            const parsedExpiresAt = new Date(rawExpiresAt);
+            if (!Number.isFinite(parsedExpiresAt.getTime())) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Enter a valid expiry date and time, or leave it empty.",
+                });
+            }
+            expiresAt = parsedExpiresAt;
+        }
         const announcement = await AdminAnnouncement.create({
             title: title.trim(),
             body: body.trim(),
             filter,
             targetUserIds,
             active: true,
+            expiresAt,
         });
         return res.json({
             success: true,
@@ -283,6 +300,10 @@ async function getActiveAnnouncement(req, res) {
             active: true,
             targetUserIds: req.user._id,
             _id: { $nin: readIds },
+            // Expired announcements never show, even if still active:
+            // expiresAt null (or missing on pre-expiry rows) means no
+            // expiry. Response shape below is unchanged.
+            $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
         })
             .sort({ createdAt: 1 })
             .select("_id title body createdAt")

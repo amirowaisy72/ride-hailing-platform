@@ -1,10 +1,12 @@
 const Ride = require("../models/Ride");
 const Driver = require("../models/Driver");
+const User = require("../models/User");
 const Vehicle = require("../models/Vehicle");
 const DriverMissedRide = require("../models/DriverMissedRide");
 const RideOffer = require("../models/RideOffer");
 const { canReceiveRideRequests } = require("../services/eligibilityService");
 const { servableRideTypes } = require("../services/driverMatchingService");
+const { buildPassengerVerification } = require("./safetyController");
 
 const getAvailableRides = async (req, res) => {
     try {
@@ -77,7 +79,8 @@ const getAvailableRides = async (req, res) => {
         })
             .limit(30)
             .sort({ createdAt: -1 })
-            .select("pickup destination stops requestedPrice vehicleType tripType distance estimatedDuration status createdAt");
+            .select("passengerId pickup destination stops requestedPrice vehicleType tripType distance estimatedDuration status createdAt")
+            .lean();
 
         // The driver's own live offers ride along with the feed, so a
         // reload still shows their bid instead of the original fare.
@@ -95,13 +98,32 @@ const getAvailableRides = async (req, res) => {
             myOffers.map((offer) => [String(offer.rideId), offer])
         );
         const ridesWithOffers = rides.map((ride) => {
-            const plain = ride.toObject();
+            const plain = { ...ride };
             const offer = offersByRide.get(String(ride._id));
             if (offer) plain.myOffer = { price: offer.price, status: offer.status };
             return plain;
         });
 
-        return res.json({ success: true, rides: ridesWithOffers });
+        // Safety (To-Do #5, item b): the driver sees the passenger's
+        // verification BEFORE offering — photo, phone-on-file,
+        // email-verified, ride history. ADDITIVE field on each ride;
+        // old clients ignore it. A failure here never hides the feed:
+        // rides go out without the badge instead.
+        let ridesWithVerification = ridesWithOffers;
+        try {
+            ridesWithVerification = await Promise.all(
+                ridesWithOffers.map(async (ride) => ({
+                    ...ride,
+                    passengerVerification: ride.passengerId
+                        ? await buildPassengerVerification(ride.passengerId)
+                        : null,
+                }))
+            );
+        } catch (verificationError) {
+            console.error("Passenger verification attach failed:", verificationError.message);
+        }
+
+        return res.json({ success: true, rides: ridesWithVerification });
     } catch (error) {
         console.error("Available rides error:", error.message);
         return res.status(500).json({
@@ -135,7 +157,7 @@ const getMyActiveRide = async (req, res) => {
                 ],
             },
         }).sort({ createdAt: -1 })
-            .populate("passengerId", "firstName lastName profileImage");
+            .populate("passengerId", "firstName lastName profileImage phone");
 
         return res.json({ success: true, ride });
     } catch (error) {

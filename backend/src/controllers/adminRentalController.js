@@ -754,6 +754,252 @@ const hashOtp = (otp) =>
     crypto.createHash("sha256").update(String(otp)).digest("hex");
 const cryptoRandomOtp = () => String(crypto.randomInt(100000, 1000000));
 
+// ---------------------------------------------------------------------------
+// Rent paid TO the platform + partner payout (To-Do #3), admin side.
+// The passenger pays the rent to Safar (submitRentalRentPayment); an
+// admin verifies the manual bank-transfer proof here. The partner is
+// paid by Safar only AFTER the return: confirmRentalReturn computes
+// the payout (rent + return dues − platform fee) and marks it DUE, and
+// markPartnerPayoutPaid records the actual transfer. None of this
+// touches the confirm flows (verify-payment / confirm-free).
+// ---------------------------------------------------------------------------
+
+// Admin queue of submitted rent payments awaiting verification —
+// mirrors listPendingFeePayments.
+const listPendingRentPayments = async (req, res) => {
+    try {
+        const bookings = await RentalBooking.find({
+            "platformPayment.status": "SUBMITTED",
+        })
+            .sort({ "platformPayment.submittedAt": 1 })
+            .limit(200)
+            .lean();
+
+        return res.json({
+            success: true,
+            payments: bookings.map((b) => ({
+                bookingId: b._id,
+                bookingRef: b.bookingRef,
+                passengerId: b.passengerId,
+                rentalPartnerId: b.rentalPartnerId,
+                vehicleId: b.vehicleId,
+                status: b.status,
+                rentalCharges: b.rentalCharges,
+                rentAmountDue: b.platformPayment?.rentAmountDue ?? null,
+                platformPayment: b.platformPayment,
+                createdAt: b.createdAt,
+            })),
+        });
+    } catch {
+        return res.status(500).json({
+            success: false,
+            message: "Unable to load the rent payment verification queue",
+        });
+    }
+};
+
+const verifyRentalRentPayment = async (req, res) => {
+    try {
+        const booking = await RentalBooking.findById(req.params.id);
+
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: "Booking not found",
+            });
+        }
+
+        if (booking.platformPayment?.status !== "SUBMITTED") {
+            return res.status(409).json({
+                success: false,
+                message: "No submitted rent payment is awaiting verification on this booking",
+            });
+        }
+
+        const rentAmountDue =
+            (booking.rentalCharges || 0) +
+            (booking.returnDues?.remainingDues || 0);
+
+        const updated = await RentalBooking.findOneAndUpdate(
+            {
+                _id: booking._id,
+                "platformPayment.status": "SUBMITTED",
+            },
+            {
+                $set: {
+                    "platformPayment.status": "PAID",
+                    "platformPayment.rentAmountDue": rentAmountDue,
+                    "platformPayment.rentPaidAmount": rentAmountDue,
+                    "platformPayment.paidAt": new Date(),
+                    "platformPayment.verifiedBy": req.user._id,
+                    "platformPayment.rejectionReason": "",
+                },
+                $push: {
+                    events: makeEvent("RENT_PAYMENT_VERIFIED", "ADMIN", req.user._id, {
+                        amount: rentAmountDue,
+                    }),
+                },
+            },
+            { new: true, runValidators: true }
+        );
+
+        if (!updated) {
+            return res.status(409).json({
+                success: false,
+                message: "Rent payment status changed. Please refresh.",
+            });
+        }
+
+        notifyPassenger(
+            updated,
+            { status: updated.status, message: "Your rent payment to Safar is verified" },
+            "Rent Payment Verified",
+            `Your rent payment of PKR ${rentAmountDue} for booking ${updated.bookingRef} was received by Safar.`,
+            "RENTAL_RENT_VERIFIED"
+        );
+
+        notifyPartner(
+            updated,
+            "rental:booking:updated",
+            { status: updated.status, message: "The passenger's rent payment was verified" },
+            "Rent Payment Verified",
+            `The rent for booking ${updated.bookingRef} was paid to Safar. You are paid after the return, minus the platform fee.`,
+            "RENTAL_RENT_VERIFIED"
+        );
+
+        return res.json({ success: true, booking: serializeBooking(updated, null) });
+    } catch (error) {
+        console.error("Verify rental rent payment error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Unable to verify rent payment",
+        });
+    }
+};
+
+const rejectRentalRentPayment = async (req, res) => {
+    try {
+        const reason = String(req.body?.reason || "").trim();
+
+        if (!reason || reason.length > 500) {
+            return res.status(400).json({
+                success: false,
+                message: "A rejection reason is required",
+            });
+        }
+
+        const updated = await RentalBooking.findOneAndUpdate(
+            {
+                _id: req.params.id,
+                "platformPayment.status": "SUBMITTED",
+            },
+            {
+                $set: {
+                    "platformPayment.status": "REJECTED",
+                    "platformPayment.rejectionReason": reason,
+                    "platformPayment.verifiedBy": req.user._id,
+                    "platformPayment.paidAt": null,
+                },
+                $push: {
+                    events: makeEvent("RENT_PAYMENT_REJECTED", "ADMIN", req.user._id, {
+                        note: reason,
+                    }),
+                },
+            },
+            { new: true, runValidators: true }
+        );
+
+        if (!updated) {
+            return res.status(409).json({
+                success: false,
+                message: "No submitted rent payment is awaiting verification on this booking",
+            });
+        }
+
+        notifyPassenger(
+            updated,
+            {
+                status: updated.status,
+                message: "Your rent payment proof was not accepted",
+            },
+            "Payment Proof Rejected",
+            `Your rent payment proof was not accepted: ${reason}. Please resubmit.`,
+            "RENTAL_RENT_REJECTED"
+        );
+
+        return res.json({ success: true, booking: serializeBooking(updated, null) });
+    } catch {
+        return res.status(400).json({
+            success: false,
+            message: "Unable to reject payment",
+        });
+    }
+};
+
+// Record the actual partner payout transfer (manual, off-platform in
+// the pilot). Only from a COMPLETED booking whose payout is DUE —
+// i.e. after the return, never before. The payout amount was computed
+// at return time (rent + return dues − platform fee).
+const markPartnerPayoutPaid = async (req, res) => {
+    try {
+        const reference = String(req.body?.reference || "").trim();
+
+        if (reference.length > 120) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid payout reference",
+            });
+        }
+
+        const updated = await RentalBooking.findOneAndUpdate(
+            {
+                _id: req.params.id,
+                status: "COMPLETED",
+                "platformPayment.partnerPayoutStatus": "DUE",
+            },
+            {
+                $set: {
+                    "platformPayment.partnerPayoutStatus": "PAID",
+                    "platformPayment.partnerPayoutPaidAt": new Date(),
+                    "platformPayment.partnerPayoutReference": reference,
+                    "platformPayment.partnerPayoutPaidBy": req.user._id,
+                },
+                $push: {
+                    events: makeEvent("PARTNER_PAYOUT_PAID", "ADMIN", req.user._id, {
+                        amount: null,
+                        note: reference,
+                    }),
+                },
+            },
+            { new: true, runValidators: true }
+        );
+
+        if (!updated) {
+            return res.status(409).json({
+                success: false,
+                message: "No due partner payout on this booking",
+            });
+        }
+
+        notifyPartner(
+            updated,
+            "rental:booking:updated",
+            { status: "COMPLETED", message: "Your payout was sent" },
+            "Payout Sent",
+            `Safar paid your payout of PKR ${updated.platformPayment?.partnerPayoutAmount ?? 0} for booking ${updated.bookingRef} (rent minus the platform fee).`,
+            "RENTAL_PAYOUT_PAID"
+        );
+
+        return res.json({ success: true, booking: serializeBooking(updated, null) });
+    } catch (error) {
+        console.error("Mark partner payout paid error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Unable to record payout",
+        });
+    }
+};
+
 // Marks a DUE fee refund as actually refunded (the manual bank
 // transfer back to the customer happens off-platform in the pilot;
 // this records that it was done, by whom, and when).
@@ -1217,6 +1463,10 @@ module.exports = {
     verifyRentalFeePayment,
     confirmRentalBookingFree,
     rejectRentalFeePayment,
+    listPendingRentPayments,
+    verifyRentalRentPayment,
+    rejectRentalRentPayment,
+    markPartnerPayoutPaid,
     markRentalFeeRefunded,
     getSuspiciousCancellations,
     resolveRentalDispute,

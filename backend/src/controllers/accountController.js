@@ -27,13 +27,19 @@ const getAccount = async (req, res) => {
     }
 };
 
+const { normalizePkPhone } = require("../utils/pakistaniPhone");
+const { isNewClient } = require("../utils/clientVersion");
+
 const updateAccount = async (req, res) => {
     try {
         const allowed = ["firstName", "lastName", "name"];
         const updates = {};
 
-        // Phone is handled separately: it may also be cleared by
-        // sending an empty string, and it has its own format check.
+        // BACKWARD COMPAT: the mandatory-Pakistani-phone rule applies
+        // ONLY to new-version clients (X-App-Version-Code >= 10).
+        // Old apps (no version header) keep the old behaviour —
+        // phone optional, any international format, may be cleared —
+        // so they keep working exactly as today.
         if (Object.prototype.hasOwnProperty.call(req.body || {}, "phone")) {
             const rawPhone = req.body.phone;
 
@@ -44,16 +50,37 @@ const updateAccount = async (req, res) => {
                 });
             }
 
-            const phone = rawPhone.replace(/[\s-]/g, "").trim();
+            if (isNewClient(req)) {
+                if (!rawPhone.trim()) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Mobile number is required",
+                    });
+                }
 
-            if (phone && !/^\+?\d{10,15}$/.test(phone)) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Invalid phone",
-                });
+                const phone = normalizePkPhone(rawPhone);
+
+                if (!phone) {
+                    return res.status(400).json({
+                        success: false,
+                        message:
+                            "Invalid phone — enter a valid Pakistani mobile number (e.g. 0301-2345678)",
+                    });
+                }
+
+                updates.phone = phone;
+            } else {
+                const phone = rawPhone.replace(/[\s-]/g, "").trim();
+
+                if (phone && !/^\+?\d{10,15}$/.test(phone)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Invalid phone",
+                    });
+                }
+
+                updates.phone = phone || null;
             }
-
-            updates.phone = phone || null;
         }
 
         for (const field of allowed) {
