@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Ride = require("../models/Ride");
 const RideOffer = require("../models/RideOffer");
 const { sendPushToUser } = require("./pushService");
+const { recordMissedRide } = require("./missedRideRetryService");
 
 // Rides with no driver selected that stay in REQUESTED / SEARCHING /
 // BIDDING longer than this are abandoned (passenger closed the app
@@ -25,7 +26,7 @@ async function expireStaleRides() {
             driverId: null,
             createdAt: { $lt: cutoff },
         })
-            .select("_id passengerId")
+            .select("_id passengerId pickup vehicleType driverId")
             .lean();
 
         if (!stale.length) return;
@@ -46,6 +47,14 @@ async function expireStaleRides() {
             { rideId: { $in: rideIds }, status: "PENDING" },
             { $set: { status: "EXPIRED" } }
         );
+
+        // Missed-ride auto-retry (To-Do #7): these passengers asked
+        // for a ride and got no driver. Record them so the next driver
+        // coming online in their range triggers a "book again" push.
+        // Recording failure never rolls the expiry back.
+        for (const ride of stale) {
+            await recordMissedRide(ride);
+        }
 
         // Best effort: tell the passenger their request expired. A
         // failed push must never roll the expiry back.

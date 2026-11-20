@@ -815,6 +815,52 @@ function evaluateRentalDisputeResolution({
     return { ok: true, toStatus: "CANCELLED", feeRefund, noShowBy: null };
 }
 
+// ---------------------------------------------------------------------------
+// Rental Payment via Platform (Safar To-Do #3) — pure money math for the
+// partner payout. The passenger pays the rent TO the platform; the
+// partner is paid by the platform AFTER the return, minus the platform
+// fee. No separate passenger fee, no partner upfront fee.
+//
+// platformFeeForBooking: the fee deducted is this booking's own
+// bookingFee (PKR 175 on SRB-422C91F5) — or 0 on a free booking.
+// `freeBooking` lives on origin/main (confirm-free); this checkout
+// predates it, so the read is tolerant: undefined means "not free".
+// If a flat PKR 175 platform fee is wanted for EVERY booking instead,
+// change this one function.
+// ---------------------------------------------------------------------------
+function platformFeeForBooking(booking) {
+    if (!booking) return 0;
+    if (booking.freeBooking === true) return 0;
+    const fee = Number(booking.bookingFee);
+    return Number.isFinite(fee) ? Math.max(0, Math.round(fee)) : 0;
+}
+
+// Gross = rent + any return dues still owed; payout = gross minus the
+// platform fee, floored at 0 (a fee can never make the payout
+// negative). All inputs are whole PKR.
+function computePartnerPayout({
+    rentalCharges = 0,
+    returnDuesRemaining = 0,
+    platformFee = 0,
+} = {}) {
+    const rent = Number.isFinite(rentalCharges)
+        ? Math.max(0, Math.round(rentalCharges))
+        : 0;
+    const dues = Number.isFinite(returnDuesRemaining)
+        ? Math.max(0, Math.round(returnDuesRemaining))
+        : 0;
+    const fee = Number.isFinite(platformFee)
+        ? Math.max(0, Math.round(platformFee))
+        : 0;
+    const grossAmount = rent + dues;
+
+    return {
+        grossAmount,
+        platformFee: fee,
+        partnerPayoutAmount: Math.max(0, grossAmount - fee),
+    };
+}
+
 module.exports = {
     RENTAL_STATUSES,
     RENTAL_DISPUTE_OUTCOMES,
@@ -849,4 +895,6 @@ module.exports = {
     serializeRentalVehicle,
     isContactUnlocked,
     CONTACT_UNLOCKED_STATUSES,
+    platformFeeForBooking,
+    computePartnerPayout,
 };
