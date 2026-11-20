@@ -13,6 +13,8 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import { useAuth } from "@/context/AuthContext";
 import { apiRequest } from "@/lib/api";
 import { selectVehicle } from "@/lib/vehicleService";
+import DriverRegistrationWizard from "@/components/driver/DriverRegistrationWizard";
+import { useRouter } from "next/navigation";
 
 const vehicleTypes = [
     { id: "BIKE", label: "Motorcycle", emoji: "🏍️" },
@@ -38,15 +40,33 @@ const statusStyles = {
 };
 
 export default function DriverVehiclesPage() {
+    // Same precedent as /driver/documents: a PENDING driver is still
+    // in PASSENGER mode, and the registration wizard (step 2) must be
+    // reachable before approval. The backend vehicle endpoints
+    // already allow PASSENGER + DRIVER roles, so this is safe.
     return (
-        <AuthGuard role="DRIVER">
+        <AuthGuard roles={["DRIVER", "PASSENGER"]}>
             <VehicleScreen />
         </AuthGuard>
     );
 }
 
 function VehicleScreen() {
-    const { token } = useAuth();
+    const { token, user } = useAuth();
+    const router = useRouter();
+    // Registration-wizard mode (?onboarding=1): same stepper as the
+    // documents step, plus a gated Continue to step 3.
+    const [onboarding, setOnboarding] = useState(false);
+    useEffect(() => {
+        setOnboarding(
+            new URLSearchParams(window.location.search).get("onboarding") === "1"
+        );
+    }, []);
+    // Back goes to the account page of the mode the user is actually
+    // in — /driver is DRIVER-guarded and would bounce a
+    // passenger-mode pending driver to /login.
+    const backHref =
+        user?.activeMode === "DRIVER" ? "/driver" : "/passenger/account";
 
     const [vehicles, setVehicles] = useState([]);
     const [driver, setDriver] = useState(null);
@@ -174,12 +194,12 @@ function VehicleScreen() {
 
     return (
         <main className="driver-subpage min-h-dvh bg-pd-bg pb-[calc(100px+env(safe-area-inset-bottom))] text-pd-text">
-            <MobileBottomNav role="DRIVER" />
+            <MobileBottomNav role={user?.activeMode || "PASSENGER"} />
 
             <header className="bg-[#087F5B] px-5 pb-24 pt-[max(24px,env(safe-area-inset-top))] text-white">
                 <div className="mx-auto flex max-w-xl items-center gap-4">
                     <Link
-                        href="/driver"
+                        href={backHref}
                         aria-label="Back to driver dashboard"
                         className="rounded-xl bg-white/15 p-3"
                     >
@@ -200,6 +220,8 @@ function VehicleScreen() {
             </header>
 
             <div className="relative z-10 mx-auto mt-5 max-w-xl space-y-5 px-4">
+                {onboarding && <DriverRegistrationWizard currentStep={2} />}
+
                 <section className="rounded-[26px] bg-pd-surface p-5 shadow-lg shadow-slate-900/5">
                     <div className="flex items-center justify-between gap-4">
                         <div>
@@ -508,6 +530,43 @@ function VehicleScreen() {
                         })
                     )}
                 </section>
+
+                {onboarding && (
+                    <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
+                        <h2 className="font-extrabold">Continue to Review</h2>
+                        {vehicles.length === 0 ? (
+                            <p className="mt-2 text-sm text-pd-muted">
+                                Add a vehicle above to continue with your
+                                driver registration.
+                            </p>
+                        ) : user?.activeMode === "DRIVER" ? (
+                            <p className="mt-2 text-sm text-pd-muted">
+                                Vehicle added. Continue to review your
+                                application and apply for services.
+                            </p>
+                        ) : (
+                            <p className="mt-2 text-sm text-pd-muted">
+                                Vehicle saved. Services unlock after admin
+                                approval — you can track your application
+                                from your account.
+                            </p>
+                        )}
+                        <button
+                            type="button"
+                            disabled={vehicles.length === 0}
+                            onClick={() =>
+                                router.push(
+                                    user?.activeMode === "DRIVER"
+                                        ? "/driver/services?onboarding=1"
+                                        : "/passenger/account"
+                                )
+                            }
+                            className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#087F5B] font-bold text-white disabled:opacity-40"
+                        >
+                            Continue
+                        </button>
+                    </section>
+                )}
             </div>
         </main>
     );

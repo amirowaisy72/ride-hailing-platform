@@ -17,6 +17,7 @@ import {
     updateServiceAvailability,
     updateServiceTransportMode,
 } from "@/lib/driverServicesService";
+import DriverRegistrationWizard from "@/components/driver/DriverRegistrationWizard";
 
 export default function DriverServicesPage() {
     return (
@@ -117,6 +118,15 @@ function MyServicesScreen() {
     const [services, setServices] = useState(null);
     const [rentalPartner, setRentalPartner] = useState(undefined);
     const [error, setError] = useState("");
+    const [notice, setNotice] = useState(null);
+    // Registration-wizard mode (?onboarding=1): same stepper as the
+    // documents and vehicle steps.
+    const [onboarding, setOnboarding] = useState(false);
+    useEffect(() => {
+        setOnboarding(
+            new URLSearchParams(window.location.search).get("onboarding") === "1"
+        );
+    }, []);
     const [selected, setSelected] = useState(null);
     const [toggleNotice, setToggleNotice] = useState(null);
     const [toggling, setToggling] = useState("");
@@ -228,6 +238,20 @@ function MyServicesScreen() {
                             </div>
                         )}
 
+                        {onboarding && <DriverRegistrationWizard currentStep={3} />}
+
+                        {notice && (
+                            <p
+                                role={notice.kind === "error" ? "alert" : "status"}
+                                className={`rounded-xl p-4 text-sm font-semibold ${
+                                    notice.kind === "error"
+                                        ? "bg-pd-danger-soft text-pd-danger"
+                                        : "bg-pd-success-soft text-[#087F5B]"
+                                }`}
+                            >
+                                {notice.text}
+                            </p>
+                        )}
                         {services && (
                             <ul className="flex flex-col gap-3">
                                 {["RIDE", "PARCEL", "BUY_DELIVER"].map((key) => byService[key] && (

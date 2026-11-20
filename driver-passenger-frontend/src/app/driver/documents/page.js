@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
     ArrowLeft, UploadCloud, FileCheck2,
     CheckCircle2, AlertCircle, ShieldCheck,
@@ -10,16 +11,30 @@ import {
 import AuthGuard from "@/components/AuthGuard";
 import { useAuth } from "@/context/AuthContext";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import DriverRegistrationWizard from "@/components/driver/DriverRegistrationWizard";
 
 const DOCUMENTS = [
     { type: "CNIC_FRONT", title: "CNIC Front", icon: "🪪" },
     { type: "CNIC_BACK", title: "CNIC Back", icon: "🪪" },
-    { type: "PROFILE_PHOTO", title: "Profile Photo", icon: "🧑" },
+    {
+        type: "PROFILE_PHOTO",
+        title: "Profile Photo",
+        icon: "🧑",
+        required: true,
+        hint: "Required — a clear photo of your face. You cannot continue without it.",
+    },
     { type: "DRIVING_LICENSE", title: "Driving License", icon: "🚘" },
     {
         type: "VEHICLE_REGISTRATION",
         title: "Vehicle Registration",
         icon: "📄",
+    },
+    {
+        type: "VEHICLE_PHOTO",
+        title: "Vehicle Photo — Number Plate Must Be Visible",
+        icon: "🚗",
+        required: true,
+        hint: "Required — photograph your whole vehicle so the number plate is clearly readable in the photo. A photo where the plate cannot be read will be rejected.",
     },
 ];
 
@@ -43,6 +58,16 @@ export default function DriverDocumentsPage() {
 
 function DocumentUploadScreen() {
     const { token, user } = useAuth();
+    const router = useRouter();
+    // Onboarding mode (?onboarding=1) shows the shared registration
+    // wizard stepper and the gated Continue button. Read from the URL
+    // directly (no useSearchParams) so no Suspense boundary is needed.
+    const [onboarding, setOnboarding] = useState(false);
+    useEffect(() => {
+        setOnboarding(
+            new URLSearchParams(window.location.search).get("onboarding") === "1"
+        );
+    }, []);
     // Back goes to the account page of the mode the user is actually
     // in — /driver/account is DRIVER-guarded and would bounce a
     // passenger-mode pending driver to /login again.
@@ -120,7 +145,7 @@ function DocumentUploadScreen() {
             const formData = new FormData();
             formData.append("documentType", type);
 
-            if (["DRIVING_LICENSE", "VEHICLE_REGISTRATION"].includes(type)) {
+            if (["DRIVING_LICENSE"].includes(type)) {
                 const expiryDate = expiryDates[type];
 
                 if (!expiryDate) {
@@ -166,6 +191,24 @@ function DocumentUploadScreen() {
         }
     }
 
+    // Continue is blocked until the two mandatory uploads are in
+    // (uploaded and not rejected): Vehicle Photo (number plate
+    // visible) and Profile Photo. Other documents stay uploadable in
+    // any order; admin approval still enforces the full set.
+    const isSatisfied = (type) =>
+        Boolean(uploaded[type]) &&
+        uploaded[type].verificationStatus !== "REJECTED";
+    const mandatoryMissing = ["VEHICLE_PHOTO", "PROFILE_PHOTO"].filter(
+        (type) => !isSatisfied(type)
+    );
+
+    function handleContinue() {
+        if (mandatoryMissing.length > 0) return;
+        router.push(
+            onboarding ? "/driver/vehicles?onboarding=1" : "/driver/vehicles"
+        );
+    }
+
     return (
         <main className="driver-subpage min-h-dvh bg-pd-bg pb-28 text-pd-text">
             <MobileBottomNav role={user?.activeMode || "PASSENGER"} />
@@ -191,6 +234,8 @@ function DocumentUploadScreen() {
             </header>
 
             <div className="relative z-10 mx-auto mt-4 max-w-xl space-y-5 px-4 pb-6">
+                {onboarding && <DriverRegistrationWizard currentStep={1} />}
+
                 <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
                     <div className="flex items-center gap-3">
                         <ShieldCheck size={26} className="text-[#087F5B]" />
@@ -240,7 +285,13 @@ function DocumentUploadScreen() {
                                 <h3 className="font-extrabold">{doc.title}</h3>
                                 <p className="mt-1 text-xs text-pd-muted">
                                     JPG, PNG or WebP
+                                    {doc.required ? " · Required" : ""}
                                 </p>
+                                {doc.hint && (
+                                    <p className="mt-1 text-xs font-semibold text-pd-text">
+                                        {doc.hint}
+                                    </p>
+                                )}
                             </div>
 
                             {uploaded[doc.type] && (
@@ -277,7 +328,7 @@ function DocumentUploadScreen() {
                             />
                         </label>
 
-                        {["DRIVING_LICENSE", "VEHICLE_REGISTRATION"].includes(doc.type) && (
+                        {["DRIVING_LICENSE"].includes(doc.type) && (
                             <label className="mt-4 block">
                                 <span className="text-sm font-semibold">
                                     Document Expiry Date
@@ -330,6 +381,34 @@ function DocumentUploadScreen() {
                     approval — your administrator must review each document.
                     Do not use someone else's documents.
                 </p>
+
+                <section className="rounded-[24px] bg-pd-surface p-5 shadow-sm">
+                    <h2 className="font-extrabold">Continue to Vehicle</h2>
+                    {mandatoryMissing.length > 0 ? (
+                        <p className="mt-2 text-sm text-pd-muted">
+                            Upload these before you can continue:{" "}
+                            {mandatoryMissing
+                                .map((type) =>
+                                    DOCUMENTS.find((d) => d.type === type)?.title || type
+                                )
+                                .join(" and ")}
+                            .
+                        </p>
+                    ) : (
+                        <p className="mt-2 text-sm text-pd-muted">
+                            Vehicle photo and profile photo uploaded. Continue
+                            to add your vehicle.
+                        </p>
+                    )}
+                    <button
+                        type="button"
+                        disabled={mandatoryMissing.length > 0}
+                        onClick={handleContinue}
+                        className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#087F5B] font-bold text-white disabled:opacity-40"
+                    >
+                        Continue
+                    </button>
+                </section>
             </div>
         </main>
     );

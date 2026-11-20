@@ -9,6 +9,7 @@ import { BRAND } from "@/config/brand";
 import Link from "next/link";
 import "@/lib/firebase";
 import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
+import { isValidPkPhone } from "@/lib/phone";
 import { ArrowRight, Lock, Mail } from "lucide-react";
 import AuthField from "@/components/auth/AuthField";
 import {
@@ -112,6 +113,14 @@ export default function LoginPage() {
                 profile.user,
                 data.refreshToken
             );
+
+            // Google accounts can exist with NO phone number. Mobile
+            // is mandatory: send the user to add a valid Pakistani
+            // number before they can use the app.
+            if (!isValidPkPhone(profile.user?.phone)) {
+                router.replace("/complete-phone");
+                return;
+            }
 
             router.replace(
                 profile.user.activeMode === "DRIVER"

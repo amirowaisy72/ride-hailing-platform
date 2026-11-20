@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
     ArrowLeft, ChevronRight, Clock3, History,
     LogOut, Mail, ShieldCheck, UserRound,
@@ -12,6 +13,7 @@ import AuthGuard from "@/components/AuthGuard";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import { apiRequest } from "@/lib/api";
+import { isValidPkPhone } from "@/lib/phone";
 import { BRAND } from "@/config/brand";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import ThemeSelector from "@/components/theme/ThemeSelector";
@@ -41,6 +43,7 @@ export default function PassengerAccountPage() {
 function AccountScreen() {
     const { user, token, logout, switchMode } = useAuth();
     const { t } = useLanguage();
+    const router = useRouter();
     const [driver, setDriver] = useState(null);
     const [switching, setSwitching] = useState(false);
     const [driverError, setDriverError] = useState("");
@@ -82,11 +85,27 @@ function AccountScreen() {
 
         try {
             if (!driver) {
+                // Mobile number is mandatory for drivers. A Gmail
+                // account has no phone — collect it first, then come
+                // back here to continue becoming a driver.
+                if (!isValidPkPhone(accountUser?.phone ?? user?.phone)) {
+                    const account = await apiRequest("/account/me", { token });
+                    if (!isValidPkPhone(account.user?.phone)) {
+                        router.push(
+                            "/complete-phone?next=/passenger/account"
+                        );
+                        return;
+                    }
+                }
+
                 const data = await apiRequest("/drivers/register", {
                     method: "POST",
                     token,
                 });
                 setDriver(data.driver);
+                // Same registration wizard as the normal driver
+                // flow: documents first, then vehicle, then review.
+                router.push("/driver/documents?onboarding=1");
             } else if (driver.verificationStatus === "APPROVED") {
                 await switchMode("DRIVER");
                 window.location.replace("/driver");
@@ -232,7 +251,7 @@ function AccountScreen() {
 
                     {driver && driver.verificationStatus !== "APPROVED" && (
                         <Link
-                            href="/driver/documents"
+                            href="/driver/documents?onboarding=1"
                             className="mt-4 block rounded-xl bg-pd-success-soft p-3 text-center font-bold text-[#087F5B]"
                         >
                             Manage Driver Documents

@@ -14,6 +14,8 @@ import AuthGuard from "@/components/AuthGuard";
 import DriverMap from "@/components/driver/map/DriverMap";
 import { reverseGeocode } from "@/lib/locationService";
 import RideChat from "@/components/RideChat";
+import SosButton from "@/components/SosButton";
+import ShareTripButton from "@/components/ShareTripButton";
 import ParcelActivityBar from "@/components/ParcelActivityBar";
 import { Package } from "lucide-react";
 import Link from "next/link";
@@ -1029,26 +1031,33 @@ function DriverDashboard() {
         </div>
     );
     const tripPanel = rideInProgress && (
-        <TripStepPanel
-            key={`${selectedRide._id}:${selectedRide.status}:${stopsDone}:${Boolean(selectedRide.stopWaitingSince)}`}
-            status={selectedRide.status}
-            passengerName={passengerNameOf(selectedRide)}
-            tripType={selectedRide.tripType}
-            stopsDone={stopsDone}
-            stopsTotal={stopsTotal}
-            pendingStop={pendingStop}
-            stopWaiting={Boolean(selectedRide.stopWaitingSince)}
-            targetPoint={nextTarget}
-            targetPlace={targetTitle}
-            navigationInfo={navigationInfo}
-            waitingTime={waitingSince ? waitingTime : null}
-            completeBlocked={completeBlocked}
-            busy={busy}
-            unread={unreadMessages}
-            onAdvance={advanceTrip}
-            onStopAction={updateStop}
-            onChat={() => { markMessagesRead(); setChatOpen(true); }}
-        />
+        <>
+            <TripStepPanel
+                key={`${selectedRide._id}:${selectedRide.status}:${stopsDone}:${Boolean(selectedRide.stopWaitingSince)}`}
+                status={selectedRide.status}
+                passengerName={passengerNameOf(selectedRide)}
+                tripType={selectedRide.tripType}
+                stopsDone={stopsDone}
+                stopsTotal={stopsTotal}
+                pendingStop={pendingStop}
+                stopWaiting={Boolean(selectedRide.stopWaitingSince)}
+                targetPoint={nextTarget}
+                targetPlace={targetTitle}
+                navigationInfo={navigationInfo}
+                waitingTime={waitingSince ? waitingTime : null}
+                completeBlocked={completeBlocked}
+                busy={busy}
+                unread={unreadMessages}
+                onAdvance={advanceTrip}
+                onStopAction={updateStop}
+                onChat={() => { markMessagesRead(); setChatOpen(true); }}
+            />
+            {/* Safety (To-Do #5, Phase 1): SOS + live-trip sharing on the
+                driver's active-ride screen. Main's TripStepPanel replaced
+                the old inline trip body, so the buttons live here now. */}
+            <SosButton rideId={selectedRide._id} token={token} />
+            <ShareTripButton rideId={selectedRide._id} token={token} />
+        </>
     );
     const endedPanel = rideEnded && (
         <RideEndedPanel status={selectedRide.status} firstName={firstName} finalPrice={selectedRide.finalPrice} onDone={finishRide} />
