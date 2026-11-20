@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import useSWR from "swr";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -7,10 +8,15 @@ import {
     getDriverStatusKey,
 } from "@/components/driver/setup/setupData";
 import DriverSetupGate from "@/components/driver/setup/DriverSetupGate";
+import MissingPhotosGate from "@/components/driver/setup/MissingPhotosGate";
 import SafarLoader from "@/components/SafarLoader";
 
 export default function DriverSetupBoundary({ children }) {
     const { user, token, loading: authLoading } = useAuth();
+    // Retroactive photo check (Safar To-Do #16): once an approved
+    // driver has satisfied the vehicle + profile photo gate, do not
+    // ask again while this layout stays mounted.
+    const [photosDone, setPhotosDone] = useState(false);
     const shouldCheck = Boolean(user);
     const statusKey = shouldCheck ? getDriverStatusKey(token) : null;
     const {
@@ -51,7 +57,22 @@ export default function DriverSetupBoundary({ children }) {
     }
 
     const driver = data.driver;
-    if (["APPROVED", "SUSPENDED"].includes(driver.verificationStatus)) return children;
+    // SUSPENDED keeps bypassing exactly as before. APPROVED drivers
+    // used to bypass too — but the vehicle photo and profile photo
+    // are now required of every driver (Safar To-Do #16), so an
+    // approved driver missing either one gets the missing-photos
+    // screen instead of the driver section until both are uploaded.
+    if (driver.verificationStatus === "SUSPENDED") return children;
+
+    if (driver.verificationStatus === "APPROVED") {
+        if (photosDone) return children;
+        return (
+            <MissingPhotosGate
+                token={token}
+                onDone={() => setPhotosDone(true)}
+            />
+        );
+    }
 
     return (
         <DriverSetupGate
