@@ -1,10 +1,14 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
     ArrowLeft, BadgeCheck, Camera, Car, Check, FileText, Hourglass, IdCard,
     Loader2, RefreshCw, TriangleAlert, Upload,
 } from "lucide-react";
+import {
+    consumeRestoredPhotos, isPickerCancelled, pickGalleryPhotos,
+    takeCameraPhoto, useIsNative,
+} from "@/lib/nativePhoto";
 import { BRAND } from "@/config/brand";
 import DriverHelp from "@/components/driver/DriverHelp";
 import {
@@ -249,6 +253,9 @@ function tomorrowDateInputValue() {
 function DocRow({ doc, status, busy, locked, allowReplace, onUpload }) {
     const inputRef = useRef(null);
     const [expiry, setExpiry] = useState("");
+    const [picking, setPicking] = useState(false);
+    const native = useIsNative();
+    const restoreCheckedRef = useRef(false);
     const Icon = DOC_ICONS[doc.icon] || FileText;
     const isReady = ready(status);
     const needsDate = doc.needsExpiry && (!isReady || allowReplace);
@@ -266,6 +273,65 @@ function DocRow({ doc, status, busy, locked, allowReplace, onUpload }) {
         const file = event.target.files?.[0];
         event.target.value = "";
         if (file) onUpload?.(doc.type, file, doc.needsExpiry ? expiry : "");
+    }
+
+    // If the app was killed while the picker/camera was open, the photo
+    // comes back through appRestoredResult — upload it instead of
+    // making the driver pick it again.
+    useEffect(() => {
+        if (!native || restoreCheckedRef.current) return;
+        restoreCheckedRef.current = true;
+        let alive = true;
+        (async () => {
+            const files = await consumeRestoredPhotos(
+                "setup",
+                doc.type
+            ).catch(() => null);
+            if (!alive || !files?.length) return;
+            onUpload?.(doc.type, files[0], doc.needsExpiry ? expiry : "");
+        })();
+        return () => {
+            alive = false;
+        };
+    }, [native]);
+
+    // On the installed app the photo comes from the native Camera
+    // plugin (gallery or camera), which survives the picker activity
+    // restart that used to lose the file. The hidden file input stays
+    // for PDFs and for the web. A failed native pick falls back to it.
+    async function handlePick() {
+        if (busy || locked || picking || (needsDate && !expiry)) return;
+        if (!native) {
+            inputRef.current?.click();
+            return;
+        }
+        setPicking(true);
+        try {
+            const [file] = await pickGalleryPhotos({
+                limit: 1,
+                pending: { flow: "setup", key: doc.type },
+            });
+            if (file) onUpload?.(doc.type, file, doc.needsExpiry ? expiry : "");
+        } catch (err) {
+            if (!isPickerCancelled(err)) inputRef.current?.click();
+        } finally {
+            setPicking(false);
+        }
+    }
+
+    async function handleTakePhoto() {
+        if (busy || locked || picking || (needsDate && !expiry)) return;
+        setPicking(true);
+        try {
+            const file = await takeCameraPhoto({
+                pending: { flow: "setup", key: doc.type },
+            });
+            if (file) onUpload?.(doc.type, file, doc.needsExpiry ? expiry : "");
+        } catch (err) {
+            if (!isPickerCancelled(err)) inputRef.current?.click();
+        } finally {
+            setPicking(false);
+        }
     }
 
     return (
@@ -301,16 +367,36 @@ function DocRow({ doc, status, busy, locked, allowReplace, onUpload }) {
                     <input ref={inputRef} type="file" accept="image/*,.pdf" capture={undefined} hidden onChange={handleFile} />
                     <button
                         type="button"
-                        disabled={busy || locked || (needsDate && !expiry)}
-                        onClick={() => inputRef.current?.click()}
+                        disabled={busy || locked || picking || (needsDate && !expiry)}
+                        onClick={() => void handlePick()}
                         className="mt-3 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-pd-accent px-5 text-base font-extrabold text-pd-accent-ink outline-none transition-transform active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-pd-accent focus-visible:ring-offset-2 focus-visible:ring-offset-pd-surface disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        {busy ? (
+                        {busy || picking ? (
                             <><Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> Uploading…</>
                         ) : (
                             <><Camera className="h-5 w-5" aria-hidden="true" /> {needsDate && !expiry ? "Pick the expiry date first" : `${allowReplace && isReady ? "Replace" : "Upload"} ${doc.title}`}</>
                         )}
                     </button>
+                    {native && (
+                        <div className="mt-2 flex gap-2">
+                            <button
+                                type="button"
+                                disabled={busy || locked || picking || (needsDate && !expiry)}
+                                onClick={() => void handleTakePhoto()}
+                                className="flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl border border-pd-line bg-pd-surface text-sm font-bold text-pd-accent-text disabled:opacity-50"
+                            >
+                                <Camera className="h-4 w-4" aria-hidden="true" /> Take photo
+                            </button>
+                            <button
+                                type="button"
+                                disabled={busy || locked || picking || (needsDate && !expiry)}
+                                onClick={() => inputRef.current?.click()}
+                                className="flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl border border-pd-line bg-pd-surface text-sm font-bold text-pd-accent-text disabled:opacity-50"
+                            >
+                                <FileText className="h-4 w-4" aria-hidden="true" /> Choose file (PDF)
+                            </button>
+                        </div>
+                    )}
                 </>
             )}
         </li>

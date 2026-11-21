@@ -2,10 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-    AlertCircle, Car, CheckCircle2, FileCheck2,
+    AlertCircle, Camera, Car, CheckCircle2, FileCheck2,
     ShieldCheck, UploadCloud, User,
 } from "lucide-react";
 import SafarLoader from "@/components/SafarLoader";
+import {
+    consumeRestoredPhotos, isPickerCancelled, pickGalleryPhotos,
+    takeCameraPhoto, useIsNative,
+} from "@/lib/nativePhoto";
 import {
     fetchMyDocuments,
     latestDocumentByType,
@@ -43,6 +47,9 @@ export default function MissingPhotosGate({ token, onDone }) {
     const [message, setMessage] = useState("");
     const doneRef = useRef(false);
     const mountedRef = useRef(true);
+    const native = useIsNative();
+    const inputRefs = useRef({});
+    const restoreCheckedRef = useRef(false);
 
     const finish = useCallback(() => {
         if (doneRef.current) return;
@@ -98,6 +105,73 @@ export default function MissingPhotosGate({ token, onDone }) {
         }
         setFiles((previous) => ({ ...previous, [type]: file }));
         setError("");
+    }
+
+    // If the app was killed while the picker/camera was open, the photo
+    // comes back through appRestoredResult — recover it as the selected
+    // file instead of making the driver pick it again.
+    useEffect(() => {
+        if (!native || restoreCheckedRef.current) return;
+        restoreCheckedRef.current = true;
+        let alive = true;
+        (async () => {
+            for (const type of RETROACTIVE_PHOTO_TYPES) {
+                const files = await consumeRestoredPhotos("gate", type).catch(
+                    () => null
+                );
+                if (!alive || !files?.length) continue;
+                selectFile(type, files[0]);
+                setMessage(
+                    "Your photo from before the restart was recovered — tap Upload Photo."
+                );
+            }
+        })();
+        return () => {
+            alive = false;
+        };
+    }, [native]);
+
+    // On the installed app the photo comes from the native Camera
+    // plugin (gallery or camera), which survives the picker activity
+    // restart that used to lose the file. On the web the hidden file
+    // input is used, exactly as before.
+    async function handleChoosePhoto(type) {
+        if (busy) return;
+        if (!native) {
+            inputRefs.current[type]?.click();
+            return;
+        }
+        try {
+            const [file] = await pickGalleryPhotos({
+                limit: 1,
+                pending: { flow: "gate", key: type },
+            });
+            if (file) selectFile(type, file);
+        } catch (err) {
+            if (isPickerCancelled(err)) return;
+            setError(
+                err?.message ||
+                    "Could not open the photo picker — try choosing a file instead."
+            );
+            inputRefs.current[type]?.click();
+        }
+    }
+
+    async function handleTakePhoto(type) {
+        if (busy) return;
+        try {
+            const file = await takeCameraPhoto({
+                pending: { flow: "gate", key: type },
+            });
+            if (file) selectFile(type, file);
+        } catch (err) {
+            if (isPickerCancelled(err)) return;
+            setError(
+                err?.message ||
+                    "Could not open the camera — try choosing a photo instead."
+            );
+            inputRefs.current[type]?.click();
+        }
     }
 
     async function uploadDocument(type) {
@@ -223,7 +297,21 @@ export default function MissingPhotosGate({ token, onDone }) {
                                 )}
                             </div>
 
-                            <label className="mt-4 block cursor-pointer rounded-xl border-2 border-dashed border-emerald-200 bg-pd-success-soft/40 p-5 text-center">
+                            <div
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => void handleChoosePhoto(type)}
+                                onKeyDown={(event) => {
+                                    if (
+                                        event.key === "Enter" ||
+                                        event.key === " "
+                                    ) {
+                                        event.preventDefault();
+                                        void handleChoosePhoto(type);
+                                    }
+                                }}
+                                className="mt-4 block cursor-pointer rounded-xl border-2 border-dashed border-emerald-200 bg-pd-success-soft/40 p-5 text-center"
+                            >
                                 <UploadCloud
                                     size={26}
                                     className="mx-auto text-[#087F5B]"
@@ -231,18 +319,32 @@ export default function MissingPhotosGate({ token, onDone }) {
                                 <p className="mt-2 text-sm font-semibold">
                                     {files[type]?.name || "Choose Photo"}
                                 </p>
-                                <input
-                                    type="file"
-                                    accept="image/jpeg,image/png,image/webp"
-                                    className="hidden"
-                                    onChange={(event) =>
-                                        selectFile(
-                                            type,
-                                            event.target.files?.[0]
-                                        )
-                                    }
-                                />
-                            </label>
+                            </div>
+                            <input
+                                ref={(el) => {
+                                    if (el) inputRefs.current[type] = el;
+                                }}
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                className="hidden"
+                                onChange={(event) =>
+                                    selectFile(
+                                        type,
+                                        event.target.files?.[0]
+                                    )
+                                }
+                            />
+                            {native && (
+                                <button
+                                    type="button"
+                                    disabled={Boolean(busy)}
+                                    onClick={() => void handleTakePhoto(type)}
+                                    className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-pd-surface text-sm font-bold text-[#087F5B] disabled:opacity-40"
+                                >
+                                    <Camera size={18} />
+                                    Take a photo
+                                </button>
+                            )}
 
                             <button
                                 type="button"

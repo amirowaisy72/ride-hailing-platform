@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-    ArrowLeft, UploadCloud, FileCheck2,
+    ArrowLeft, Camera, UploadCloud, FileCheck2,
     CheckCircle2, AlertCircle, ShieldCheck,
 } from "lucide-react";
 
 import AuthGuard from "@/components/AuthGuard";
+import {
+    consumeRestoredPhotos, isPickerCancelled, pickGalleryPhotos,
+    takeCameraPhoto, useIsNative,
+} from "@/lib/nativePhoto";
 import { useAuth } from "@/context/AuthContext";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import DriverRegistrationWizard from "@/components/driver/DriverRegistrationWizard";
@@ -80,6 +84,9 @@ function DocumentUploadScreen() {
     const [busy, setBusy] = useState("");
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
+    const native = useIsNative();
+    const inputRefs = useRef({});
+    const restoreCheckedRef = useRef(false);
 
     // Load the server's record on open, so a document that is already
     // uploaded (or approved) shows as such instead of "not uploaded
@@ -130,6 +137,74 @@ function DocumentUploadScreen() {
         }));
 
         setError("");
+    }
+
+    // If the app was killed while the picker/camera was open, the photo
+    // comes back through appRestoredResult — recover it as the selected
+    // file instead of making the driver pick it again.
+    useEffect(() => {
+        if (!native || restoreCheckedRef.current) return;
+        restoreCheckedRef.current = true;
+        let alive = true;
+        (async () => {
+            for (const doc of DOCUMENTS) {
+                const files = await consumeRestoredPhotos(
+                    "documents",
+                    doc.type
+                ).catch(() => null);
+                if (!alive || !files?.length) continue;
+                selectFile(doc.type, files[0]);
+                setMessage(
+                    "Your photo from before the restart was recovered — tap Upload Document."
+                );
+            }
+        })();
+        return () => {
+            alive = false;
+        };
+    }, [native]);
+
+    // On the installed app the photo comes from the native Camera
+    // plugin (gallery or camera), which survives the picker activity
+    // restart that used to lose the file. On the web the hidden file
+    // input is used, exactly as before.
+    async function handleChoosePhoto(type) {
+        if (busy) return;
+        if (!native) {
+            inputRefs.current[type]?.click();
+            return;
+        }
+        try {
+            const [file] = await pickGalleryPhotos({
+                limit: 1,
+                pending: { flow: "documents", key: type },
+            });
+            if (file) selectFile(type, file);
+        } catch (err) {
+            if (isPickerCancelled(err)) return;
+            setError(
+                err?.message ||
+                    "Could not open the photo picker — try choosing a file instead."
+            );
+            inputRefs.current[type]?.click();
+        }
+    }
+
+    async function handleTakePhoto(type) {
+        if (busy) return;
+        try {
+            const file = await takeCameraPhoto({
+                pending: { flow: "documents", key: type },
+            });
+            if (file) selectFile(type, file);
+        } catch (err) {
+            if (isPickerCancelled(err)) return;
+            setError(
+                err?.message ||
+                    "Could not open the camera — try choosing a photo instead."
+            );
+            inputRefs.current[type]?.click();
+        }
     }
 
     async function uploadDocument(type) {
@@ -308,7 +383,18 @@ function DocumentUploadScreen() {
                             )}
                         </div>
 
-                        <label className="mt-4 block cursor-pointer rounded-xl border-2 border-dashed border-emerald-200 bg-pd-success-soft/40 p-5 text-center">
+                        <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => void handleChoosePhoto(doc.type)}
+                            onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault();
+                                    void handleChoosePhoto(doc.type);
+                                }
+                            }}
+                            className="mt-4 block cursor-pointer rounded-xl border-2 border-dashed border-emerald-200 bg-pd-success-soft/40 p-5 text-center"
+                        >
                             <UploadCloud
                                 size={26}
                                 className="mx-auto text-[#087F5B]"
@@ -317,16 +403,29 @@ function DocumentUploadScreen() {
                             <p className="mt-2 text-sm font-semibold">
                                 {files[doc.type]?.name || "Choose Document Image"}
                             </p>
-
-                            <input
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp"
-                                className="hidden"
-                                onChange={(event) =>
-                                    selectFile(doc.type, event.target.files?.[0])
-                                }
-                            />
-                        </label>
+                        </div>
+                        <input
+                            ref={(el) => {
+                                if (el) inputRefs.current[doc.type] = el;
+                            }}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            onChange={(event) =>
+                                selectFile(doc.type, event.target.files?.[0])
+                            }
+                        />
+                        {native && (
+                            <button
+                                type="button"
+                                disabled={Boolean(busy)}
+                                onClick={() => void handleTakePhoto(doc.type)}
+                                className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-pd-surface text-sm font-bold text-[#087F5B] disabled:opacity-40"
+                            >
+                                <Camera size={18} />
+                                Take a photo
+                            </button>
+                        )}
 
                         {["DRIVING_LICENSE"].includes(doc.type) && (
                             <label className="mt-4 block">

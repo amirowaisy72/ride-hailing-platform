@@ -28,6 +28,10 @@ import {
 } from "lucide-react";
 
 import AuthGuard from "@/components/AuthGuard";
+import {
+    consumeRestoredPhotos, isPickerCancelled, pickGalleryPhotos,
+    takeCameraPhoto, useIsNative,
+} from "@/lib/nativePhoto";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import OrderChat from "@/components/OrderChat";
 import DestinationMap from "@/components/DestinationMap";
@@ -607,6 +611,7 @@ function BookingScreen() {
                                     <InspectionForm
                                         form={handover}
                                         setForm={setHandover}
+                                        target="handover"
                                         uploading={uploading === "handover"}
                                         onUpload={(files) => void uploadPhotos("handover", files)}
                                     />
@@ -697,6 +702,7 @@ function BookingScreen() {
                                     <InspectionForm
                                         form={returnForm}
                                         setForm={setReturnForm}
+                                        target="return"
                                         uploading={uploading === "return"}
                                         onUpload={(files) => void uploadPhotos("return", files)}
                                     />
@@ -872,9 +878,73 @@ function InspectionCard({ title, inspection }) {
     );
 }
 
-function InspectionForm({ form, setForm, uploading, onUpload }) {
+function InspectionForm({ form, setForm, target, uploading, onUpload }) {
     const set = (field, value) =>
         setForm((prev) => ({ ...prev, [field]: value }));
+    const native = useIsNative();
+    const inputRef = useRef(null);
+    const [picking, setPicking] = useState(false);
+    const restoreCheckedRef = useRef(false);
+
+    // If the app was killed while the picker/camera was open, the
+    // photos come back through appRestoredResult — upload them instead
+    // of making the driver pick them again.
+    useEffect(() => {
+        if (!native || restoreCheckedRef.current) return;
+        restoreCheckedRef.current = true;
+        let alive = true;
+        (async () => {
+            const files = await consumeRestoredPhotos(
+                "rental-inspection",
+                target
+            ).catch(() => null);
+            if (!alive || !files?.length) return;
+            onUpload(files);
+        })();
+        return () => {
+            alive = false;
+        };
+    }, [native]);
+
+    // On the installed app photos come from the native Camera plugin
+    // (gallery or camera), which survives the picker activity restart
+    // that used to lose the files. On the web the hidden file input is
+    // used, exactly as before.
+    async function handleChoosePhotos() {
+        if (uploading || picking) return;
+        if (!native) {
+            inputRef.current?.click();
+            return;
+        }
+        setPicking(true);
+        try {
+            const files = await pickGalleryPhotos({
+                limit: 12,
+                pending: { flow: "rental-inspection", key: target },
+            });
+            if (files.length) onUpload(files);
+        } catch (err) {
+            if (!isPickerCancelled(err)) inputRef.current?.click();
+        } finally {
+            setPicking(false);
+        }
+    }
+
+    async function handleTakePhoto() {
+        if (uploading || picking) return;
+        setPicking(true);
+        try {
+            const file = await takeCameraPhoto({
+                pending: { flow: "rental-inspection", key: target },
+            });
+            if (file) onUpload([file]);
+        } catch (err) {
+            if (!isPickerCancelled(err)) inputRef.current?.click();
+        } finally {
+            setPicking(false);
+        }
+    }
+
     return (
         <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
@@ -905,26 +975,49 @@ function InspectionForm({ form, setForm, uploading, onUpload }) {
                     />
                 </label>
             </div>
-            <label className="block cursor-pointer rounded-xl border-2 border-dashed border-pd-line bg-pd-success-soft p-3 text-center">
+            <div
+                role="button"
+                tabIndex={0}
+                onClick={() => void handleChoosePhotos()}
+                onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        void handleChoosePhotos();
+                    }
+                }}
+                className="block cursor-pointer rounded-xl border-2 border-dashed border-pd-line bg-pd-success-soft p-3 text-center"
+            >
                 <Camera size={20} className="mx-auto text-[#087F5B]" />
                 <span className="mt-1 block text-xs font-semibold">
-                    {uploading
+                    {uploading || picking
                         ? "Uploading photos…"
                         : form.photoUrls.length
                           ? `${form.photoUrls.length} photo(s) added — tap to add more`
                           : "Add inspection photos (at least 1)"}
                 </span>
-                <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => {
-                        onUpload(e.target.files);
-                        e.target.value = "";
-                    }}
-                />
-            </label>
+            </div>
+            <input
+                ref={inputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                    onUpload(e.target.files);
+                    e.target.value = "";
+                }}
+            />
+            {native && (
+                <button
+                    type="button"
+                    disabled={uploading || picking}
+                    onClick={() => void handleTakePhoto()}
+                    className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-pd-line bg-pd-surface text-xs font-bold text-[#087F5B] disabled:opacity-50"
+                >
+                    <Camera size={16} />
+                    Take a photo
+                </button>
+            )}
             {form.photoUrls.length > 0 && (
                 <div className="flex gap-2 overflow-x-auto">
                     {form.photoUrls.map((url) => (

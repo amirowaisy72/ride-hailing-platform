@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Geolocation } from "@capacitor/geolocation";
 import {
     ArrowLeft,
+    Camera,
     Check,
     ChevronDown,
     ImagePlus,
@@ -15,6 +16,10 @@ import {
     ShoppingBag,
     X,
 } from "lucide-react";
+import {
+    consumeRestoredPhotos, isPickerCancelled, pickGalleryPhotos,
+    takeCameraPhoto, useIsNative,
+} from "@/lib/nativePhoto";
 import AuthGuard from "@/components/AuthGuard";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
@@ -63,6 +68,9 @@ function BuyDeliverForm() {
     const [moreOptionsOpen, setMoreOptionsOpen] = useState(false);
 
     const [error, setError] = useState("");
+    const native = useIsNative();
+    const [pickingPhoto, setPickingPhoto] = useState(false);
+    const photoRestoreCheckedRef = useRef(false);
     const [submitting, setSubmitting] = useState(false);
     const fileRef = useRef(null);
 
@@ -160,6 +168,65 @@ function BuyDeliverForm() {
             setError(e.message);
         } finally {
             setUploading(false);
+        }
+    }
+
+    // If the app was killed while the picker/camera was open, the
+    // photos come back through appRestoredResult — attach them instead
+    // of making the passenger pick them again.
+    useEffect(() => {
+        if (!native || photoRestoreCheckedRef.current) return;
+        photoRestoreCheckedRef.current = true;
+        let alive = true;
+        (async () => {
+            const files = await consumeRestoredPhotos(
+                "passenger-buy-deliver",
+                "photos"
+            ).catch(() => null);
+            if (!alive || !files?.length) return;
+            void attachPhotos(files);
+        })();
+        return () => {
+            alive = false;
+        };
+    }, [native]);
+
+    // On the installed app photos come from the native Camera plugin
+    // (gallery or camera), which survives the picker activity restart
+    // that used to lose the files. On the web the hidden file input is
+    // used, exactly as before.
+    async function handleChoosePhotos() {
+        if (uploading || pickingPhoto) return;
+        if (!native) {
+            fileRef.current?.click();
+            return;
+        }
+        setPickingPhoto(true);
+        try {
+            const files = await pickGalleryPhotos({
+                limit: Math.max(1, 6 - imageUrls.length),
+                pending: { flow: "passenger-buy-deliver", key: "photos" },
+            });
+            if (files.length) void attachPhotos(files);
+        } catch (err) {
+            if (!isPickerCancelled(err)) fileRef.current?.click();
+        } finally {
+            setPickingPhoto(false);
+        }
+    }
+
+    async function handleTakePhoto() {
+        if (uploading || pickingPhoto) return;
+        setPickingPhoto(true);
+        try {
+            const file = await takeCameraPhoto({
+                pending: { flow: "passenger-buy-deliver", key: "photos" },
+            });
+            if (file) void attachPhotos([file]);
+        } catch (err) {
+            if (!isPickerCancelled(err)) fileRef.current?.click();
+        } finally {
+            setPickingPhoto(false);
         }
     }
 
@@ -301,11 +368,22 @@ function BuyDeliverForm() {
                                 {imageUrls.length < 6 && (
                                     <button
                                         type="button"
-                                        disabled={uploading}
-                                        onClick={() => fileRef.current?.click()}
+                                        disabled={uploading || pickingPhoto}
+                                        onClick={() => void handleChoosePhotos()}
                                         className="grid h-20 w-20 place-items-center rounded-2xl border-2 border-dashed border-pd-line text-pd-faint disabled:opacity-50"
                                     >
-                                        {uploading ? <Loader2 size={20} className="animate-spin" /> : <ImagePlus size={20} />}
+                                        {uploading || pickingPhoto ? <Loader2 size={20} className="animate-spin" /> : <ImagePlus size={20} />}
+                                    </button>
+                                )}
+                                {native && imageUrls.length < 6 && (
+                                    <button
+                                        type="button"
+                                        disabled={uploading || pickingPhoto}
+                                        onClick={() => void handleTakePhoto()}
+                                        aria-label="Take a photo"
+                                        className="grid h-20 w-20 place-items-center rounded-2xl border-2 border-dashed border-pd-line text-pd-faint disabled:opacity-50"
+                                    >
+                                        <Camera size={20} />
                                     </button>
                                 )}
                             </div>

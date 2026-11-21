@@ -8,6 +8,7 @@ import {
     BadgeCheck,
     Banknote,
     CalendarDays,
+    Camera,
     CarFront,
     ImagePlus,
     KeyRound,
@@ -21,6 +22,10 @@ import {
     TriangleAlert,
     XCircle,
 } from "lucide-react";
+import {
+    consumeRestoredPhotos, isPickerCancelled, pickGalleryPhotos,
+    takeCameraPhoto, useIsNative,
+} from "@/lib/nativePhoto";
 import AuthGuard from "@/components/AuthGuard";
 import { useActionDialog } from "@/components/ActionDialog";
 import MobileBottomNav from "@/components/MobileBottomNav";
@@ -90,7 +95,10 @@ function BookingDetail() {
     const [feeSender, setFeeSender] = useState("");
     const [proofUrl, setProofUrl] = useState("");
     const [proofUploading, setProofUploading] = useState(false);
+    const [pickingProof, setPickingProof] = useState(false);
     const proofRef = useRef(null);
+    const native = useIsNative();
+    const proofRestoreCheckedRef = useRef(false);
 
     const [rating, setRating] = useState(0);
     const [ratingComment, setRatingComment] = useState("");
@@ -179,6 +187,65 @@ function BookingDetail() {
             setError(e.message);
         } finally {
             setProofUploading(false);
+        }
+    }
+
+    // If the app was killed while the picker/camera was open, the photo
+    // comes back through appRestoredResult — upload it instead of
+    // making the passenger pick it again.
+    useEffect(() => {
+        if (!native || proofRestoreCheckedRef.current) return;
+        proofRestoreCheckedRef.current = true;
+        let alive = true;
+        (async () => {
+            const files = await consumeRestoredPhotos(
+                "passenger-proof",
+                "proof"
+            ).catch(() => null);
+            if (!alive || !files?.length) return;
+            void uploadProof(files[0]);
+        })();
+        return () => {
+            alive = false;
+        };
+    }, [native]);
+
+    // On the installed app the proof comes from the native Camera
+    // plugin (gallery or camera), which survives the picker activity
+    // restart that used to lose the file. On the web the hidden file
+    // input is used, exactly as before.
+    async function handleChooseProof() {
+        if (proofUploading || pickingProof) return;
+        if (!native) {
+            proofRef.current?.click();
+            return;
+        }
+        setPickingProof(true);
+        try {
+            const [file] = await pickGalleryPhotos({
+                limit: 1,
+                pending: { flow: "passenger-proof", key: "proof" },
+            });
+            if (file) void uploadProof(file);
+        } catch (err) {
+            if (!isPickerCancelled(err)) proofRef.current?.click();
+        } finally {
+            setPickingProof(false);
+        }
+    }
+
+    async function handleTakeProofPhoto() {
+        if (proofUploading || pickingProof) return;
+        setPickingProof(true);
+        try {
+            const file = await takeCameraPhoto({
+                pending: { flow: "passenger-proof", key: "proof" },
+            });
+            if (file) void uploadProof(file);
+        } catch (err) {
+            if (!isPickerCancelled(err)) proofRef.current?.click();
+        } finally {
+            setPickingProof(false);
         }
     }
 
@@ -422,14 +489,27 @@ function BookingDetail() {
                                             </button>
                                         </div>
                                     ) : (
+                                        <>
                                         <button
                                             type="button"
-                                            disabled={proofUploading}
-                                            onClick={() => proofRef.current?.click()}
+                                            disabled={proofUploading || pickingProof}
+                                            onClick={() => void handleChooseProof()}
                                             className="grid h-24 w-full place-items-center rounded-2xl border-2 border-dashed border-pd-line text-sm font-bold text-pd-faint disabled:opacity-50"
                                         >
-                                            {proofUploading ? <Loader2 size={20} className="animate-spin" /> : <span className="flex items-center gap-2"><ImagePlus size={18} /> Attach proof image</span>}
+                                            {proofUploading || pickingProof ? <Loader2 size={20} className="animate-spin" /> : <span className="flex items-center gap-2"><ImagePlus size={18} /> Attach proof image</span>}
                                         </button>
+                                        {native && (
+                                            <button
+                                                type="button"
+                                                disabled={proofUploading || pickingProof}
+                                                onClick={() => void handleTakeProofPhoto()}
+                                                className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-pd-line bg-pd-surface text-xs font-bold text-pd-accent-text disabled:opacity-50"
+                                            >
+                                                <Camera size={16} />
+                                                Take a photo
+                                            </button>
+                                        )}
+                                        </>
                                     )}
                                     <input
                                         ref={proofRef}

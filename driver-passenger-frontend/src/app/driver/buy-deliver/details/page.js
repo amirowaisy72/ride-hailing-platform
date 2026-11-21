@@ -31,6 +31,10 @@ import {
 
 import AuthGuard from "@/components/AuthGuard";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import {
+    consumeRestoredPhotos, isPickerCancelled, pickGalleryPhotos,
+    takeCameraPhoto, useIsNative,
+} from "@/lib/nativePhoto";
 import { useLanguage } from "@/components/i18n/LanguageProvider";
 import OrderChat from "@/components/OrderChat";
 import DestinationMap from "@/components/DestinationMap";
@@ -117,6 +121,10 @@ function BuyDeliverScreen() {
     const [actualCost, setActualCost] = useState("");
     const [receiptUrls, setReceiptUrls] = useState([]);
     const [uploadingReceipt, setUploadingReceipt] = useState(false);
+    const [pickingReceipt, setPickingReceipt] = useState(false);
+    const receiptInputRef = useRef(null);
+    const native = useIsNative();
+    const receiptRestoreCheckedRef = useRef(false);
     const [otp, setOtp] = useState("");
     const [amountReceived, setAmountReceived] = useState("");
     const [disputeReason, setDisputeReason] = useState("");
@@ -270,6 +278,65 @@ function BuyDeliverScreen() {
             setNotice({ kind: "error", text: err.message });
         } finally {
             setUploadingReceipt(false);
+        }
+    }
+
+    // If the app was killed while the picker/camera was open, the
+    // photos come back through appRestoredResult — upload them instead
+    // of making the driver pick them again.
+    useEffect(() => {
+        if (!native || receiptRestoreCheckedRef.current) return;
+        receiptRestoreCheckedRef.current = true;
+        let alive = true;
+        (async () => {
+            const files = await consumeRestoredPhotos(
+                "buy-deliver-receipts",
+                "receipts"
+            ).catch(() => null);
+            if (!alive || !files?.length) return;
+            void uploadReceipts(files);
+        })();
+        return () => {
+            alive = false;
+        };
+    }, [native]);
+
+    // On the installed app receipts come from the native Camera plugin
+    // (gallery or camera), which survives the picker activity restart
+    // that used to lose the files. On the web the hidden file input is
+    // used, exactly as before.
+    async function handleChooseReceipts() {
+        if (uploadingReceipt || pickingReceipt) return;
+        if (!native) {
+            receiptInputRef.current?.click();
+            return;
+        }
+        setPickingReceipt(true);
+        try {
+            const files = await pickGalleryPhotos({
+                limit: Math.max(1, 6 - receiptUrls.length),
+                pending: { flow: "buy-deliver-receipts", key: "receipts" },
+            });
+            if (files.length) void uploadReceipts(files);
+        } catch (err) {
+            if (!isPickerCancelled(err)) receiptInputRef.current?.click();
+        } finally {
+            setPickingReceipt(false);
+        }
+    }
+
+    async function handleTakeReceiptPhoto() {
+        if (uploadingReceipt || pickingReceipt) return;
+        setPickingReceipt(true);
+        try {
+            const file = await takeCameraPhoto({
+                pending: { flow: "buy-deliver-receipts", key: "receipts" },
+            });
+            if (file) void uploadReceipts([file]);
+        } catch (err) {
+            if (!isPickerCancelled(err)) receiptInputRef.current?.click();
+        } finally {
+            setPickingReceipt(false);
         }
     }
 
@@ -460,26 +527,49 @@ function BuyDeliverScreen() {
                                                 {t("dBd.overCap", { amount: money(order.approvedMaxAmount) })}
                                             </p>
                                         )}
-                                        <label className="block cursor-pointer rounded-xl border-2 border-dashed border-pd-line bg-pd-surface-2 p-3 text-center">
+                                        <div
+                                            role="button"
+                                            tabIndex={0}
+                                            onClick={() => void handleChooseReceipts()}
+                                            onKeyDown={(event) => {
+                                                if (event.key === "Enter" || event.key === " ") {
+                                                    event.preventDefault();
+                                                    void handleChooseReceipts();
+                                                }
+                                            }}
+                                            className="block cursor-pointer rounded-xl border-2 border-dashed border-pd-line bg-pd-surface-2 p-3 text-center"
+                                        >
                                             <Camera size={20} className="mx-auto text-violet-600" />
                                             <span className="mt-1 block text-xs font-semibold">
-                                                {uploadingReceipt
+                                                {uploadingReceipt || pickingReceipt
                                                     ? t("dBd.uploadingReceipt")
                                                     : receiptUrls.length
                                                       ? t("dBd.receiptAdded", { count: receiptUrls.length })
                                                       : t("dBd.receiptOptional")}
                                             </span>
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                multiple
-                                                className="hidden"
-                                                onChange={(e) => {
-                                                    void uploadReceipts(e.target.files);
-                                                    e.target.value = "";
-                                                }}
-                                            />
-                                        </label>
+                                        </div>
+                                        <input
+                                            ref={receiptInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            multiple
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                void uploadReceipts(e.target.files);
+                                                e.target.value = "";
+                                            }}
+                                        />
+                                        {native && (
+                                            <button
+                                                type="button"
+                                                disabled={uploadingReceipt || pickingReceipt}
+                                                onClick={() => void handleTakeReceiptPhoto()}
+                                                className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-pd-line bg-pd-surface text-xs font-bold text-violet-700 disabled:opacity-50"
+                                            >
+                                                <Camera size={16} />
+                                                Take a receipt photo
+                                            </button>
+                                        )}
                                         {receiptUrls.length > 0 && (
                                             <div className="flex gap-2 overflow-x-auto">
                                                 {receiptUrls.map((url) => (

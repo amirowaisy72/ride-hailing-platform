@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
     ArrowLeft,
     ArrowRight,
     CalendarDays,
+    Camera,
     CarFront,
     CheckCircle2,
     ChevronDown,
@@ -18,6 +19,10 @@ import {
     Store,
     UploadCloud,
 } from "lucide-react";
+import {
+    consumeRestoredPhotos, isPickerCancelled, pickGalleryPhotos,
+    takeCameraPhoto, useIsNative,
+} from "@/lib/nativePhoto";
 
 import AuthGuard from "@/components/AuthGuard";
 import MobileBottomNav from "@/components/MobileBottomNav";
@@ -701,6 +706,10 @@ function DocumentRow({
     onUpload,
 }) {
     const { type, label, status, satisfied } = doc;
+    const native = useIsNative();
+    const inputRef = useRef(null);
+    const [picking, setPicking] = useState(false);
+    const restoreCheckedRef = useRef(false);
     const pill =
         status === "APPROVED"
             ? { text: "Approved", cls: "bg-pd-success-soft text-[#087F5B]" }
@@ -711,6 +720,65 @@ function DocumentRow({
                 : status === "REJECTED"
                   ? { text: "Rejected", cls: "bg-pd-danger-soft text-pd-danger" }
                   : { text: "Missing", cls: "bg-pd-surface-3 text-pd-muted" };
+
+    // If the app was killed while the picker/camera was open, the photo
+    // comes back through appRestoredResult — recover it as the selected
+    // file instead of making the partner pick it again.
+    useEffect(() => {
+        if (!native || restoreCheckedRef.current) return;
+        restoreCheckedRef.current = true;
+        let alive = true;
+        (async () => {
+            const files = await consumeRestoredPhotos(
+                "rentals-docs",
+                type
+            ).catch(() => null);
+            if (!alive || !files?.length) return;
+            onSelect(type, files[0]);
+        })();
+        return () => {
+            alive = false;
+        };
+    }, [native]);
+
+    // On the installed app the photo comes from the native Camera
+    // plugin (gallery or camera), which survives the picker activity
+    // restart that used to lose the file. On the web the hidden file
+    // input is used, exactly as before.
+    async function handleChoosePhoto() {
+        if (uploading || picking) return;
+        if (!native) {
+            inputRef.current?.click();
+            return;
+        }
+        setPicking(true);
+        try {
+            const [file] = await pickGalleryPhotos({
+                limit: 1,
+                pending: { flow: "rentals-docs", key: type },
+            });
+            if (file) onSelect(type, file);
+        } catch (err) {
+            if (!isPickerCancelled(err)) inputRef.current?.click();
+        } finally {
+            setPicking(false);
+        }
+    }
+
+    async function handleTakePhoto() {
+        if (uploading || picking) return;
+        setPicking(true);
+        try {
+            const file = await takeCameraPhoto({
+                pending: { flow: "rentals-docs", key: type },
+            });
+            if (file) onSelect(type, file);
+        } catch (err) {
+            if (!isPickerCancelled(err)) inputRef.current?.click();
+        } finally {
+            setPicking(false);
+        }
+    }
 
     return (
         <li className="py-3">
@@ -753,23 +821,46 @@ function DocumentRow({
 
             {!satisfied && (
                 <div className="mt-2.5 pl-[30px]">
-                    <label className="block cursor-pointer rounded-2xl border-2 border-dashed border-pd-line bg-pd-success-soft p-4 text-center">
+                    <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => void handleChoosePhoto()}
+                        onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                void handleChoosePhoto();
+                            }
+                        }}
+                        className="block cursor-pointer rounded-2xl border-2 border-dashed border-pd-line bg-pd-success-soft p-4 text-center"
+                    >
                         <UploadCloud
                             size={22}
                             className="mx-auto text-[#087F5B]"
                         />
                         <span className="mt-1 block truncate text-sm font-semibold">
-                            {file?.name || "Tap to choose a photo"}
+                            {picking ? "Opening photo picker…" : file?.name || "Tap to choose a photo"}
                         </span>
-                        <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            className="hidden"
-                            onChange={(event) =>
-                                onSelect(type, event.target.files?.[0])
-                            }
-                        />
-                    </label>
+                    </div>
+                    <input
+                        ref={inputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(event) =>
+                            onSelect(type, event.target.files?.[0])
+                        }
+                    />
+                    {native && (
+                        <button
+                            type="button"
+                            disabled={Boolean(uploading) || picking}
+                            onClick={() => void handleTakePhoto()}
+                            className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-pd-line bg-pd-surface text-sm font-bold text-[#087F5B] disabled:opacity-40"
+                        >
+                            <Camera size={18} />
+                            Take a photo
+                        </button>
+                    )}
                     {type === "DRIVING_LICENSE" && (
                         <label className="mt-3 block">
                             <span className="text-xs font-semibold">
